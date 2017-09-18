@@ -7,6 +7,9 @@ import hashlib
 import time
 import functools
 import six
+import json
+import xml.dom.minidom
+
 import requests
 
 
@@ -45,9 +48,10 @@ def stringfy_jsonrpc_errcode(errcode):
 
 
 class AutomatorServer(object):
-    def __init__(self):
+    def __init__(self, host, port=9008):
         self._reqsess = requests.Session() # use HTTP Keep-Alive to speed request
-        self._server_url = "http://10.0.0.1:7912/jsonrpc/0"
+        self._server_url = "http://{}:{}/jsonrpc/0".format(host, port)
+        self._default_session = Session(self, None)
 
     @property
     def jsonrpc(self):
@@ -87,14 +91,20 @@ class AutomatorServer(object):
             headers={"Content-Type": "application/json"},
             timeout=10,
             data=data)
+        if DEBUG:
+            print("Shell$ curl -X POST -d '{}' {}".format(data, self._server_url))
+            print("Output> " + res.text)
         if res.status_code != 200:
             raise UiaError(self._server_url, data, res.status_code, "HTTP Return code is not 200")
         jsondata = res.json()
-        if jsondata.get('error'):
-            error = jsondata.get('error')
-            code, message, data = error.get('code'), error.get('message'), error.get('data')
-            if -32099 <= code <= -32000: # Server error
-                raise UiaRpcError(stringfy_jsonrpc_errcode(code), code, message, data)
+        error = jsondata.get('error')
+        if not error:
+            return jsondata.get('result')
+
+        # error happends
+        code, message, data = error.get('code'), error.get('message'), error.get('data')
+        if -32099 <= code <= -32000: # Server error
+            raise UiaRpcError(stringfy_jsonrpc_errcode(code), code, message, data)
     
     def _jsonrpc_id(self, method):
         m = hashlib.md5()
@@ -108,9 +118,21 @@ class AutomatorServer(object):
         """
         pass
     
-    def dump_hierarchy(self, compressed=False, pretty=True):
-        pass
+    def dump_hierarchy(self, compressed=False, pretty=False):
+        content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
+        if pretty and "\n " not in content:
+            xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))
+            content = U(xml_text.toprettyxml(indent='  '))
+        return content
     
+    def app_start(self, pkg_name, activity=None):
+        """ Launch application """
+        raise NotImplementedError()
+    
+    def app_stop(self, pkg_name):
+        """ Stop application """
+        raise NotImplementedError()
+
     def session(self, pkg_name):
         """
         Context context = InstrumentationRegistry.getInstrumentation().getContext();
@@ -120,19 +142,21 @@ class AutomatorServer(object):
 
         It is also possible to get pid, and use pid to get package name
         """
-        pass
+        raise NotImplementedError()
 
     def dismiss_apps(self):
         """
         UiDevice.getInstance().pressRecentApps();
         UiObject recentapp = new UiObject(new UiSelector().resourceId("com.android.systemui:id/dismiss_task"));
         """
-        pass
+        raise NotImplementedError()
+        self.press("recent")
+    
+    def __getattr__(self, attr):
+        return getattr(self._default_session, attr)
 
-
-class JsonRpcClient(object):
-    def __init__(self, )
-    def __getattr__(self, method):
+    def __call__(self, **kwargs):
+        return self._default_session(**kwargs)
 
 
 def check_alive(fn):
@@ -204,9 +228,9 @@ class Session(object):
 
 
 def wait_exists(fn):
-    @functools.wraps(fn):
+    @functools.wraps(fn)
     def inner(self, *args, **kwargs):
-        self.wait(self.wait_timeout)
+        self.wait(timeout=self.wait_timeout)
         return fn(self, *args, **kwargs)
     return inner
 
@@ -236,7 +260,7 @@ class UiObject(object):
         """ Alias of tap """
         return self.tap()
 
-    def wait(self, status='exists'):
+    def wait(self, status='exists', timeout=None):
         """
         Wait until UI Element exists or gone
         
