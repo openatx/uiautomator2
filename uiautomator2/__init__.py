@@ -8,6 +8,7 @@ import time
 import functools
 import six
 import json
+import urlparse
 import xml.dom.minidom
 
 import requests
@@ -19,10 +20,13 @@ DEBUG = False
 class UiaError(Exception):
     pass
 
-class UiaRpcError(UiaError):
+class JsonRpcError(UiaError):
     pass
 
-class UiaSessionBrokeError(UiaError):
+class SessionBrokenError(UiaError):
+    pass
+
+class UiObjectNotFoundError(JsonRpcError):
     pass
 
 
@@ -45,6 +49,23 @@ def stringfy_jsonrpc_errcode(errcode):
     if errcode >= -32099 and errcode <= -32000:
         return 'Server error'
     return 'Unknown error'
+
+
+def connect(addr):
+    """
+    Args:
+        addr (str): uiautomator server address
+    
+    Example:
+        connect("http://10.0.0.1")
+    """
+    if addr.startswith('http://'):
+        u = urlparse.urlparse(addr)
+        host = u.hostname
+        port = u.port or 9008
+        return AutomatorServer(host, port)
+    else:
+        raise RuntimeError("address should startswith http://")
 
 
 class AutomatorServer(object):
@@ -89,7 +110,7 @@ class AutomatorServer(object):
         data = json.dumps(data).encode('utf-8')
         res = self._reqsess.post(self._server_url,
             headers={"Content-Type": "application/json"},
-            timeout=10,
+            timeout=60,
             data=data)
         if DEBUG:
             print("Shell$ curl -X POST -d '{}' {}".format(data, self._server_url))
@@ -104,7 +125,11 @@ class AutomatorServer(object):
         # error happends
         code, message, data = error.get('code'), error.get('message'), error.get('data')
         if -32099 <= code <= -32000: # Server error
-            raise UiaRpcError(stringfy_jsonrpc_errcode(code), code, message, data)
+            exceptionName = data and data.get('exceptionTypeName', '')
+            if 'UiObjectNotFoundException' in exceptionName:
+                raise UiObjectNotFoundError(repr(message))
+            else:
+                raise JsonRpcError(stringfy_jsonrpc_errcode(code), code, message, data)
     
     def _jsonrpc_id(self, method):
         m = hashlib.md5()
@@ -163,7 +188,7 @@ def check_alive(fn):
     @functools.wraps(fn)
     def inner(self, *args, **kwargs):
         if not self._check_alive():
-            raise UiaSessionBrokeError(self._pkg_name)
+            raise SessionBrokenError(self._pkg_name)
         return fn(self, *args, **kwargs)
     return inner
 
@@ -285,6 +310,18 @@ class UiObject(object):
     @wait_exists
     def clear_text(self):
         return self.set_text(None)
+
+    def child(self, **kwargs):
+        return UiObject(
+            self.session,
+            self.selector.clone().child(**kwargs)
+        )
+
+    def sibling(self, **kwargs):
+        return UiObject(
+            self.session, 
+            self.selector.clone().sibling(**kwargs)
+        )
 
 
 class Selector(dict):
