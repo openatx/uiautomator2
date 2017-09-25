@@ -4,49 +4,309 @@ Android Uiautomator2 Python Wrapper
 暂时先中文，以后再英文
 
 # Installation
-git clone this repo and run `pip install -e .`
+Install python library
 
-# Usage 使用指南
-```python
-import uiautomator2 as ut2
-
-d = ut2.connect('http://10.0.0.1')
-with d.session('com.example.hello_world') as s:
-    s(text='Clock').tap()
-    assert s(resourceId='Time').value == '00:00'
+```bash
+git clone https://github.com/openatx/uiautomator2
+pip install -e .
 ```
 
-## 其他常见用法
+参考改项目的安装文档<https://github.com/openatx/atx-agent> 将`atx-agent`安装到手机上
 
-查看系统信息
+Test if install successfully
+
+```bash
+adb shell 'echo $(curl -s localhost:7912/version)'
+# expect: 0.0.?
+```
+
+# Usage 使用指南
+通常的硬件配置是一台PC加多个连接了WIFI的手机。我们先说一台PC一台手机的情况。
+
+下文中我们用`DEVICE_IP`这个环境变量来定义手机的IP
+
+通常来说安装完`atx-agent`的时候会自动提示你手机的IP是多少。
+
+如果手机的WIFI跟电脑不是一个网段的，需要先通过数据线将手机连接到电脑上，使用命令`adb forward tcp:9008 tcp:9008` 将手机上的服务端口9008转发到PC上。这个时候连接地址使用`127.0.0.1`即可。
+
+## QUICK START
+Open python, input with the following code
+
 ```python
->>> d.info
-{
-    "displayRotation": 1,
-    "displaySizeDpY": 360,
-    "displaySizeDpX": 640,
-    "screenOn": true,
-    "currentPackageName": "com.netease.index",
-    "productName": "surabaya",
-    "displayWidth": 1920,
-    "sdkInt": 23,
-    "displayHeight": 1080,
-    "naturalOrientation": false
+>>> import os
+>>> import uiautomator2 as ut2
+>>> d = ut2.connect(os.getenv("DEVICE_IP"))
+>>> print(d.info)
+{'currentPackageName': 'com.android.systemui', 'displayHeight': 1920, 'displayRotation': 0, 'displaySizeDpX': 360, 'displaySizeDpY': 640, 'displayWidth': 1080, 'productName': 'surabaya', 'screenOn': False, 'sdkInt': 23, 'naturalOrientation': True}
+```
+
+<!-- with d.session('com.example.hello_world') as s:
+    s(text='Clock').tap()
+    assert s(resourceId='Time').value == '00:00'
+``` -->
+
+**Notes:** In below examples, we use `d` represent the uiautomator2 connect object
+
+# Table of Contents
+**[Basic API Usage](#basic-api-usages)**
+  - **[Retrive the device info](#retrive-the-device-info)**
+  - **TODO**
+
+## Basic API Usages
+This part show the normal actions of the device through some simple examples
+
+### Retrive the device info
+
+```python
+d.info
+```
+
+Below is a possible result:
+
+```
+{ 
+    u'displayRotation': 0,
+    u'displaySizeDpY': 640,
+    u'displaySizeDpX': 360,
+    u'currentPackageName': u'com.android.launcher',
+    u'productName': u'takju',
+    u'displayWidth': 720,
+    u'sdkInt': 18,
+    u'displayHeight': 1184,
+    u'naturalOrientation': True
 }
 ```
 
-元素操作, 默认会等待10s，如果没有找到会抛出`UiObjectNotFoundError`
+### Key Event Actions of the device
+
+* Tun on/off screen
+
+    ```python
+    d.screen_on() # turn on screen
+    d.screen_off() # turn off screen
+    ```
+
+* Get screen on/off status
+
+    ```python
+    d.info.get('screenOn') # require android >= 4.4
+    ```
+
+* Press hard/soft key
+
+    ```python
+    d.press("home") # press home key
+    d.press("back") # the normal way to press back key
+    d.press(0x07, 0x02) # press keycode 0x07('0') with META ALT(0x02)
+    ```
+
+* Next keys are currently supported:
+
+    - home
+    - back
+    - left
+    - right
+    - up
+    - down
+    - center
+    - menu
+    - search
+    - enter
+    - delete ( or del)
+    - recent (recent apps)
+    - volume_up
+    - volume_down
+    - volume_mute
+    - camera
+    - power
+
+You can find all key code definitions at [Android KeyEvnet](https://developer.android.com/reference/android/view/KeyEvent.html)
+
+### Gesture interaction of the device
+* Click the screen
+
+    ```python
+    d.click(x, y)
+    ```
+
+* Long click the screen
+
+    ```python
+    d.long_click(x, y)
+    d.long_click(x, y, 0.5) # long click 0.5s (default)
+    ```
+
+* Swipe
+
+    ```python
+    d.swipe(sx, sy, ex, ey)
+    d.swipe(sx, sy, ex, ey, 0.5) # swipe for 0.5s(default)
+    ```
+
+* Drag
+
+    ```python
+    d.drag(sx, sy, ex, dy)
+    d.drag(sx, sy, ex, ey, 0.5) # swipe for 0.5s(default)
+
+### Screen Actions of the device
+* Retrieve/Set Orientation
+
+    The possible orientation is:
+
+    -   `natural` or `n`
+    -   `left` or `l`
+    -   `right` or `r`
+    -   `upsidedown` or `u` (can not be set)
+
+    ```python
+    # retrieve orientation, it may be "natural" or "left" or "right" or "upsidedown"
+    orientation = d.orientation
+
+    # WARNING: not pass testing in my TT-M1
+    # set orientation and freeze rotation.
+    # notes: "upsidedown" can not be set until Android 4.3.
+    d.set_orientation('l') # or "left"
+    d.set_orientation("l") # or "left"
+    d.set_orientation("r") # or "right"
+    d.set_orientation("n") # or "natural"
+    ```
+
+* Freeze/Un-Freeze rotation
+
+    ```python
+    # freeze rotation
+    d.freeze_rotation()
+    # un-freeze rotation
+    d.freeze_rotation(False)
+    ```
+
+* Take screenshot
+
+    ```python
+    # take screenshot and save to local file "home.png", can not work until Android 4.2.
+    d.screenshot("home.png")
+    # get png as raw data
+    png_raw = d.screenshot()
+    with open('home.png', 'wb') as f:
+        f.write(png_raw)
+    ```
+
+* Dump Window Hierarchy
+
+    ```python
+    # or get the dumped content(unicode) from return.
+    xml = d.dump_hierarchy()
+    ```
+
+* Open notification or quick settings
+
+    ```python
+    d.open_notification()
+    d.open_quick_settings()
+    ```
+
+### Selector
+
+Selector is to identify specific ui object in current window.
+
 ```python
->>> s(text="Game").tap()
-# 选择相邻元素点击
->>> s(text="Game").sibling(className="android.widget.ImageView").click()
+# To seleted the object ,text is 'Clock' and its className is 'android.widget.TextView'
+d(text='Clock', className='android.widget.TextView')
 ```
 
-dump xml格式的hierarchy
+#### Child and sibling UI object
+* child
 
-```python
-d.dump_hierarchy()
-```
+    ```python
+    # get the child or grandchild
+    d(className="android.widget.ListView").child(text="Bluetooth")
+    ```
+
+* sibling
+
+    ```python
+    # get sibling or child of sibling
+    d(text="Google").sibling(className="android.widget.ImageView")
+    ```
+
+Selector supports below parameters. Refer to [UiSelector java doc](http://developer.android.com/tools/help/uiautomator/UiSelector.html) for detailed information.
+
+*  `text`, `textContains`, `textMatches`, `textStartsWith`
+*  `className`, `classNameMatches`
+*  `description`, `descriptionContains`, `descriptionMatches`, `descriptionStartsWith`
+*  `checkable`, `checked`, `clickable`, `longClickable`
+*  `scrollable`, `enabled`,`focusable`, `focused`, `selected`
+*  `packageName`, `packageNameMatches`
+*  `resourceId`, `resourceIdMatches`
+*  `index`, `instance`
+
+#### Get the selected ui object status and its information
+* Check if the specific ui object exists
+
+    ```python
+    d(text="Settings").exists # True if exists, else False
+    d.exists(text="Settings") # alias of above property.
+    ```
+
+* Retrieve the info of the specific ui object
+
+    ```python
+    d(text="Settings").info
+    ```
+
+    Below is a possible result:
+
+    ```
+    { u'contentDescription': u'',
+    u'checked': False,
+    u'scrollable': False,
+    u'text': u'Settings',
+    u'packageName': u'com.android.launcher',
+    u'selected': False,
+    u'enabled': True,
+    u'bounds': {u'top': 385,
+                u'right': 360,
+                u'bottom': 585,
+                u'left': 200},
+    u'className': u'android.widget.TextView',
+    u'focused': False,
+    u'focusable': True,
+    u'clickable': True,
+    u'chileCount': 0,
+    u'longClickable': True,
+    u'visibleBounds': {u'top': 385,
+                        u'right': 360,
+                        u'bottom': 585,
+                        u'left': 200},
+    u'checkable': False
+    }
+    ```
+* Set/Clear text of editable field
+
+    ```python
+    d(text="Settings").clear_text()  # clear the text
+    d(text="Settings").set_text("My text...")  # set the text
+    ```
+
+#### Perform the click action on the seleted ui object
+* Perform click on the specific ui object
+
+    ```python
+    # click on the center of the specific ui object
+    d(text="Settings").click()
+    ```
+
+* Wait until the specific ui appears or gone
+    
+    ```python
+    # wait until the ui object appears
+    d(text="Settings").wait(timeout=3.0)
+    # wait until the ui object gone
+    d(text="Settings").wait_gone(timeout=1.0)
+    ```
+
+    Default timeout is 10s
 
 另外文档还是有很多没有写，推荐直接去看源码[__init__.py](uiautomato2/__init__.py)
 
@@ -70,6 +330,23 @@ $ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' localhost:9008/jsonrp
 # 依赖项目
 - uiautomator守护程序 <https://github.com/openatx/atx-agent>
 - uiautomator jsonrpc server<https://github.com/openatx/android-uiautomator-server/>
+
+# Contributors
+- codeskyblue ([@codeskyblue][])
+- Xiaocong He ([@xiaocong][])
+- Yuanyuan Zou ([@yuanyuan][])
+- Qian Jin ([@QianJin2013][])
+- Xu Jingjie ([@xiscoxu][])
+- Xia Mingyuan ([@mingyuan-xia][])
+- Artem Iglikov, Google Inc. ([@artikz][])
+
+[@codeskyblue]: https://github.com/codeskyblue
+[@xiaocong]: https://github.com/xiaocong
+[@yuanyuan]: https://github.com/yuanyuanzou
+[@QianJin2013]: https://github.com/QianJin2013
+[@xiscoxu]: https://github.com/xiscoxu
+[@mingyuan-xia]: https://github.com/mingyuan-xia
+[@artikz]: https://github.com/artikz
 
 # LICENSE
 Under [MIT](LICENSE)

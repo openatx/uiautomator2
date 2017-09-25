@@ -8,8 +8,12 @@ import time
 import functools
 import six
 import json
-import urlparse
 import xml.dom.minidom
+
+if six.PY2:
+    import urlparse
+else: # for py3
+    import urllib.parse as urlparse
 
 import requests
 
@@ -51,14 +55,16 @@ def stringfy_jsonrpc_errcode(errcode):
     return 'Unknown error'
 
 
-def connect(addr):
+def connect(addr='127.0.0.1'):
     """
     Args:
         addr (str): uiautomator server address
     
     Example:
-        connect("http://10.0.0.1")
+        connect("10.0.0.1")
     """
+    if '://' not in addr:
+        addr = 'http://' + addr
     if addr.startswith('http://'):
         u = urlparse.urlparse(addr)
         host = u.hostname
@@ -70,6 +76,8 @@ def connect(addr):
 
 class AutomatorServer(object):
     def __init__(self, host, port=9008):
+        self._host = host
+        self._port = port
         self._reqsess = requests.Session() # use HTTP Keep-Alive to speed request
         self._server_url = "http://{}:{}/jsonrpc/0".format(host, port)
         self._default_session = Session(self, None)
@@ -157,6 +165,10 @@ class AutomatorServer(object):
     def app_stop(self, pkg_name):
         """ Stop application """
         raise NotImplementedError()
+    
+    @property
+    def screenshot_uri(self):
+        return 'http://%s:%d/screenshot/0' % (self._host, self._port)
 
     def session(self, pkg_name):
         """
@@ -194,6 +206,13 @@ def check_alive(fn):
 
 
 class Session(object):
+    __orientation = (  # device orientation
+        (0, "natural", "n", 0),
+        (1, "left", "l", 90),
+        (2, "upsidedown", "u", 180),
+        (3, "right", "r", 270)
+    )
+
     def __init__(self, server, pkg_name):
         self.server = server
         self._pkg_name = pkg_name
@@ -206,12 +225,11 @@ class Session(object):
     def jsonrpc(self):
         return self.server.jsonrpc
 
-    @check_alive
     def tap(self, x, y):
         """
         Tap position
         """
-        return self.server.jsonrpc.click(x, y)
+        return self.jsonrpc.click(x, y)
 
     def click(self, x, y):
         """
@@ -219,37 +237,121 @@ class Session(object):
         """
         return self.tap(x, y)
     
-    @check_alive
-    def swipe(self, lx, ly, rx, ry, duration=0.5):
+    def long_click(self, x, y, duration=0.5):
+        '''long click at arbitrary coordinates.'''
+        return self.swipe(x, y, x + 1, y + 1, duration)
+    
+    def swipe(self, fx, fy, tx, ty, duration=0.5):
         """
         Args:
-            lx, ly: from position
-            rx, ry: to position
+            fx, fy: from position
+            tx, ty: to position
             duration (float): duration
+        
+        Documents:
+            uiautomator use steps instead of duration
+            As the document say: Each step execution is throttled to 5ms per step.
+        
+        Links:
+            https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe%28int,%20int,%20int,%20int,%20int%29
         """
-        pass
+        return self.jsonrpc.swipe(fx, fy, tx, ty, int(duration*200))
     
+    def swipePoints(self, points, duration=0.5):
+        ppoints = []
+        for p in points:
+            ppoints.append(p[0])
+            ppoints.append(p[1])
+        return self.jsonrpc.swipePoints(ppoints, int(duration)*200)
+
+    def drag(self, sx, sy, ex, ey, duration=0.5):
+        '''Swipe from one point to another point.'''
+        return self.jsonrpc.drag(sx, sy, ex, ey, int(duration*200))
+
     def screenshot(self, filename=None):
         """
         Image format is PNG
         """
-        pass
+        r = requests.get(self.server.screenshot_uri)
+        if filename:
+            with open(filename, 'wb') as f:
+                f.write(r.content)
+            return filename
+        else:
+            return r.content
+
+    def freeze_rotation(self, freeze=True):
+        '''freeze or unfreeze the device rotation in current status.'''
+        self.jsonrpc.freezeRotation(freeze)
+
     
-    def press(self, key):
+    def press(self, key, meta=None):
         """
         press key via name or key code. Supported key name includes:
             home, back, left, right, up, down, center, menu, search, enter,
             delete(or del), recent(recent apps), volume_up, volume_down,
             volume_mute, camera, power.
         """
-        return self.server.jsonrpc.pressKey(key)
+        if isinstance(key, int):
+            return self.jsonrpc.pressKeyCode(key, meta) if meta else self.server.jsonrpc.pressKeyCode(key)
+        else:
+            return self.jsonrpc.pressKey(key)
+    
+    def screen_on(self):
+        self.jsonrpc.wakeUp()
+    
+    def screen_off(self):
+        self.jsonrpc.sleep()
+
+    @property
+    def orientation(self):
+        '''
+        orienting the devie to left/right or natural.
+        left/l:       rotation=90 , displayRotation=1
+        right/r:      rotation=270, displayRotation=3
+        natural/n:    rotation=0  , displayRotation=0
+        upsidedown/u: rotation=180, displayRotation=2
+        '''
+        return self.__orientation[self.info["displayRotation"]][1]
+
+    def set_orientation(self, value):
+        '''setter of orientation property.'''
+        for values in self.__orientation:
+            if value in values:
+                # can not set upside-down until api level 18.
+                self.jsonrpc.setOrientation(values[1])
+                break
+        else:
+            raise ValueError("Invalid orientation.")
+
+    # @orientation.setter
+    # def orientation(self, value):
+    
+    @property
+    def last_traversed_text(self):
+        '''get last traversed text. used in webview for highlighted text.'''
+        return self.jsonrpc.getLastTraversedText()
+
+    def clear_traversed_text(self):
+        '''clear the last traversed text.'''
+        self.jsonrpc.clearLastTraversedText()
+    
+    def open_notification(self):
+        return self.jsonrpc.openNotification()
+
+    def open_quick_settings(self):
+        return self.jsonrpc.openQuickSettings()
+
+    def exists(self, **kwargs):
+        return self(**kwargs).exists
 
     @property
     def info(self):
-        return self.server.jsonrpc.deviceInfo()
+        return self.jsonrpc.deviceInfo()
 
     def __call__(self, **kwargs):
         return UiObject(self, Selector(**kwargs))
+
 
 
 def wait_exists(fn):
@@ -285,7 +387,7 @@ class UiObject(object):
         """ Alias of tap """
         return self.tap()
 
-    def wait(self, status='exists', timeout=None):
+    def wait(self, exists=True, timeout=10.0):
         """
         Wait until UI Element exists or gone
         
@@ -293,12 +395,14 @@ class UiObject(object):
             d(text="Clock").wait()
             d(text="Settings").wait("gone") # wait until it's gone
         """
-        if status == 'exists':
-            return self.jsonrpc.waitForExists(self.selector)
-        elif status == 'gone':
-            return self.jsonrpc.waitUntilGone(self.selector)
+        if exists:
+            return self.jsonrpc.waitForExists(self.selector, int(timeout*1000))
         else:
-            raise ValueError("status can only be exists or gone")
+            return self.jsonrpc.waitUntilGone(self.selector, int(timeout*1000))
+    
+    def wait_gone(self, timeout=10.0):
+        """ wait until ui gone """
+        return self.wait(exists=False)
     
     @wait_exists
     def set_text(self, text):
@@ -322,6 +426,11 @@ class UiObject(object):
             self.session, 
             self.selector.clone().sibling(**kwargs)
         )
+    
+    def __getitem__(self, index):
+        selector = self.selector.clone()
+        selector['instance'] = index
+        return UiObject(self.session, selector)    
 
 
 class Selector(dict):
