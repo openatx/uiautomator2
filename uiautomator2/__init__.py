@@ -5,10 +5,13 @@ from __future__ import absolute_import, print_function
 
 import hashlib
 import time
+import datetime
 import functools
 import six
 import json
 import xml.dom.minidom
+import humanize
+import threading
 from subprocess import list2cmdline
 
 if six.PY2:
@@ -26,13 +29,47 @@ class UiaError(Exception):
     pass
 
 class JsonRpcError(UiaError):
-    pass
+    @staticmethod
+    def format_errcode(errcode):
+        m = {
+            -32700: 'Parse error',
+            -32600: 'Invalid Request',
+            -32601: 'Method not found',
+            -32602: 'Invalid params',
+            -32603: 'Internal error',
+        }
+        if errcode in m:
+            return m[errcode]
+        if errcode >= -32099 and errcode <= -32000:
+            return 'Server error'
+        return 'Unknown error'
+
+    def __init__(self, error):
+        self.code = error.get('code')
+        self.message = error.get('message')
+        self.data = error.get('data')
+        self.exception_name = self.data and self.data.get('exceptionTypeName', '')
+
+    def __str__(self):
+        return '%d %s: %s' % (
+            self.code,
+            self.format_errcode(self.code),
+            self.message)
+    
+    def __repr__(self):
+        return repr(str(self))
+
 
 class SessionBrokenError(UiaError):
     pass
 
 class UiObjectNotFoundError(JsonRpcError):
     pass
+
+
+def log_print(s):
+    thread_name = threading.current_thread().getName()
+    print(thread_name + ": " + datetime.datetime.now().strftime('%H:%M:%S,%f')[:-3] + " " + s)
 
 
 def U(x):
@@ -129,20 +166,19 @@ class AutomatorServer(object):
             print("Shell$ curl -X POST -d '{}' {}".format(data, self._server_jsonrpc_url))
             print("Output> " + res.text)
         if res.status_code != 200:
-            raise UiaError(self._server_jsonrpc_url, data, res.status_code, "HTTP Return code is not 200")
+            raise UiaError(self._server_jsonrpc_url, data, res.status_code, res.text, "HTTP Return code is not 200")
         jsondata = res.json()
         error = jsondata.get('error')
         if not error:
             return jsondata.get('result')
 
         # error happends
-        code, message, data = error.get('code'), error.get('message'), error.get('data')
+        code, data = error.get('code'), error.get('data')
         if -32099 <= code <= -32000: # Server error
             exceptionName = data and data.get('exceptionTypeName', '')
             if 'UiObjectNotFoundException' in exceptionName:
                 raise UiObjectNotFoundError(repr(message))
-            else:
-                raise JsonRpcError(stringfy_jsonrpc_errcode(code), code, message, data)
+        raise JsonRpcError(error)
     
     def _jsonrpc_id(self, method):
         m = hashlib.md5()
@@ -155,6 +191,37 @@ class AutomatorServer(object):
             TouchAction
         """
         pass
+    
+    def app_install(self, url):
+        """
+        {u'message': u'downloading', u'id': u'2', u'titalSize': 407992690, u'copiedSize': 49152}
+        """
+        r = self._reqsess.post(self.path2url('/install'), data={'url': url})
+        id = r.text.strip()
+        interval = 1.0 # 2.0s
+        next_refresh = time.time()
+        while True:
+            if time.time() < next_refresh:
+                time.sleep(.2)
+                continue
+            ret = self._reqsess.get(self.path2url('/install/'+id))
+            progress = ret.json()
+            total_size = progress.get('totalSize') or progress.get('titalSize')
+            copied_size = progress.get('copiedSize')
+            message = progress.get('message')
+            if message == 'downloading':
+                next_refresh = time.time() + interval
+            elif message == 'installing':
+                next_refresh = time.time() + interval*2
+            log_print("{} {} / {}".format(
+                progress.get('message'),
+                humanize.naturalsize(copied_size),
+                humanize.naturalsize(total_size)))
+            if progress.get('error'):
+                raise RuntimeError(progress.get('error'))
+            if message == 'success installed':
+                break
+        return True
     
     def dump_hierarchy(self, compressed=False, pretty=False):
         content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
@@ -181,11 +248,15 @@ class AutomatorServer(object):
     
     def app_start(self, pkg_name, activity=None):
         """ Launch application """
-        raise NotImplementedError()
+        # self.adb_shell('pm clear com.netease.index')
+        self.adb_shell('monkey', '-p', pkg_name, '-c', 'android.intent.category.LAUNCHER', '1')
     
     def app_stop(self, pkg_name):
         """ Stop application """
-        raise NotImplementedError()
+        self.adb_shell('am', 'force-stop', pkg_name)
+    
+    def app_clear(self, pkg_name):
+        self.adb_shell('pm', 'clear', pkg_name)
     
     @property
     def screenshot_uri(self):
@@ -372,7 +443,6 @@ class Session(object):
 
     def __call__(self, **kwargs):
         return UiObject(self, Selector(**kwargs))
-
 
 
 def wait_exists(fn):
