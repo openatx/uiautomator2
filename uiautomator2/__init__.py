@@ -9,6 +9,7 @@ import functools
 import six
 import json
 import xml.dom.minidom
+from subprocess import list2cmdline
 
 if six.PY2:
     import urlparse
@@ -68,19 +69,23 @@ def connect(addr='127.0.0.1'):
     if addr.startswith('http://'):
         u = urlparse.urlparse(addr)
         host = u.hostname
-        port = u.port or 9008
+        port = u.port or 7912
         return AutomatorServer(host, port)
     else:
         raise RuntimeError("address should startswith http://")
 
 
 class AutomatorServer(object):
-    def __init__(self, host, port=9008):
+    def __init__(self, host, port=7912):
         self._host = host
         self._port = port
         self._reqsess = requests.Session() # use HTTP Keep-Alive to speed request
-        self._server_url = "http://{}:{}/jsonrpc/0".format(host, port)
+        self._server_url = 'http://{}:{}'.format(host, port)
+        self._server_jsonrpc_url = self._server_url + "/jsonrpc/0"
         self._default_session = Session(self, None)
+
+    def path2url(self, path):
+        return urlparse.urljoin(self._server_url, path)
 
     @property
     def jsonrpc(self):
@@ -116,15 +121,15 @@ class AutomatorServer(object):
             "params": params,
         }
         data = json.dumps(data).encode('utf-8')
-        res = self._reqsess.post(self._server_url,
+        res = self._reqsess.post(self._server_jsonrpc_url,
             headers={"Content-Type": "application/json"},
             timeout=60,
             data=data)
         if DEBUG:
-            print("Shell$ curl -X POST -d '{}' {}".format(data, self._server_url))
+            print("Shell$ curl -X POST -d '{}' {}".format(data, self._server_jsonrpc_url))
             print("Output> " + res.text)
         if res.status_code != 200:
-            raise UiaError(self._server_url, data, res.status_code, "HTTP Return code is not 200")
+            raise UiaError(self._server_jsonrpc_url, data, res.status_code, "HTTP Return code is not 200")
         jsondata = res.json()
         error = jsondata.get('error')
         if not error:
@@ -157,6 +162,22 @@ class AutomatorServer(object):
             xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))
             content = U(xml_text.toprettyxml(indent='  '))
         return content
+
+    def adb_shell(self, *args):
+        """
+        Example:
+            adb_shell('pwd')
+            adb_shell('ls', '-l')
+            adb_shell('ls -l')
+
+        Returns:
+            shell output
+        """
+        cmdline = args[0] if len(args) == 1 else list2cmdline(args)
+        ret = self._reqsess.post(self.path2url('/shell'), data={'command': cmdline})
+        if ret.status_code != 200:
+            raise RuntimeError("expect status 200, but got %d" % ret.status_code)
+        return ret.json().get('output')
     
     def app_start(self, pkg_name, activity=None):
         """ Launch application """
