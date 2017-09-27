@@ -4,30 +4,34 @@ Android Uiautomator2 Python Wrapper
 暂时先中文，以后再英文
 
 # Installation
-Install python library
+1. Install python library
 
-```bash
-git clone https://github.com/openatx/uiautomator2
-pip install -e .
-```
+    ```bash
+    git clone https://github.com/openatx/uiautomator2
+    pip install -e .
+    ```
 
-参考改项目的安装文档<https://github.com/openatx/atx-agent> 将`atx-agent`安装到手机上
+2. 安装两个apk
 
-Test if install successfully
+    下载地址: <https://github.com/openatx/android-uiautomator-server/releases>
 
-```bash
-adb shell 'echo $(curl -s localhost:7912/version)'
-# expect: 0.0.?
-```
+3. 安装`atx-agent`到手机
+
+    参考改项目的安装文档<https://github.com/openatx/atx-agent> 将`atx-agent`安装到手机上
+
+4. 最后的测试
+
+    Test if install successfully
+
+    ```bash
+    adb shell 'echo $(curl -s localhost:7912/version)'
+    # expect: 0.0.?
+    ```
 
 # Usage 使用指南
-通常的硬件配置是一台PC加多个连接了WIFI的手机。我们先说一台PC一台手机的情况。
+下文中我们用`device_ip`这个变量来定义手机的IP，通常来说安装完`atx-agent`的时候会自动提示你手机的IP是多少。
 
-下文中我们用`device_ip`这个变量来定义手机的IP
-
-通常来说安装完`atx-agent`的时候会自动提示你手机的IP是多少。
-
-如果手机的WIFI跟电脑不是一个网段的，需要先通过数据线将手机连接到电脑上，使用命令`adb forward tcp:9008 tcp:9008` 将手机上的服务端口9008转发到PC上。这个时候连接地址使用`127.0.0.1`即可。
+如果手机的WIFI跟电脑不是一个网段的，需要先通过数据线将手机连接到电脑上，使用命令`adb forward tcp:7912 tcp:7912` 将手机上的服务端口7912转发到PC上。这个时候连接地址使用`127.0.0.1`即可。
 
 ## QUICK START
 Open python, input with the following code
