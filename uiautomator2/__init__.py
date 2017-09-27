@@ -10,8 +10,10 @@ import functools
 import six
 import json
 import xml.dom.minidom
-import humanize
+import xml.etree.ElementTree as ET
 import threading
+
+import humanize
 from subprocess import list2cmdline
 
 if six.PY2:
@@ -190,7 +192,7 @@ class AutomatorServer(object):
         Returns:
             TouchAction
         """
-        pass
+        raise NotImplementedError()
     
     def app_install(self, url):
         """
@@ -437,6 +439,11 @@ class Session(object):
     def exists(self, **kwargs):
         return self(**kwargs).exists
 
+    def xpath_findall(self, xpath):
+        xml = self.server.dump_hierarchy()
+        root = ET.fromstring(xml)
+        return root.findall(xpath)
+
     @property
     def info(self):
         return self.jsonrpc.deviceInfo()
@@ -445,7 +452,7 @@ class Session(object):
         return UiObject(self, Selector(**kwargs))
 
 
-def wait_exists(fn):
+def wait_exists_wrap(fn):
     @functools.wraps(fn)
     def inner(self, *args, **kwargs):
         self.wait(timeout=self.wait_timeout)
@@ -465,7 +472,12 @@ class UiObject(object):
         '''check if the object exists in current window.'''
         return self.jsonrpc.exist(self.selector)
 
-    @wait_exists
+    @property
+    def info(self):
+        '''ui object info.'''
+        return self.jsonrpc.objInfo(self.selector)
+
+    @wait_exists_wrap
     def tap(self):
         '''
         click on the ui object.
@@ -477,6 +489,26 @@ class UiObject(object):
     def click(self):
         """ Alias of tap """
         return self.tap()
+    
+    @wait_exists_wrap
+    def long_click(self):
+        info = self.info
+        if info['longClickable']:
+            return self.jsonrpc.longClick(self.selector)
+        bounds = info.get("visibleBounds") or info.get("bounds")
+        x = (bounds["left"] + bounds["right"]) / 2
+        y = (bounds["top"] + bounds["bottom"]) / 2
+        return self.session.long_click(x, y)
+
+    @wait_exists_wrap
+    def drag_to(self, *args, **kwargs):
+        duration = kwargs.pop('duration', 0.5)
+        steps = int(duration*200)
+        if len(args) >= 2 or "x" in kwargs or "y" in kwargs:
+            def drag2xy(x, y):
+                return self.jsonrpc.dragTo(self.selector, x, y, steps)
+            return drag2xy(*args, **kwargs)
+        return self.jsonrpc.dragTo(self.selector, Selector(**kwargs), steps)
 
     def wait(self, exists=True, timeout=10.0):
         """
@@ -495,14 +527,14 @@ class UiObject(object):
         """ wait until ui gone """
         return self.wait(exists=False)
     
-    @wait_exists
+    @wait_exists_wrap
     def set_text(self, text):
         if not text:
             return self.jsonrpc.clearTextField(self.selector)
         else:
             return self.jsonrpc.setText(self.selector, text)
     
-    @wait_exists
+    @wait_exists_wrap
     def clear_text(self):
         return self.set_text(None)
 

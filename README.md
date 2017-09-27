@@ -23,7 +23,7 @@ adb shell 'echo $(curl -s localhost:7912/version)'
 # Usage 使用指南
 通常的硬件配置是一台PC加多个连接了WIFI的手机。我们先说一台PC一台手机的情况。
 
-下文中我们用`DEVICE_IP`这个环境变量来定义手机的IP
+下文中我们用`device_ip`这个变量来定义手机的IP
 
 通常来说安装完`atx-agent`的时候会自动提示你手机的IP是多少。
 
@@ -33,9 +33,8 @@ adb shell 'echo $(curl -s localhost:7912/version)'
 Open python, input with the following code
 
 ```python
->>> import os
 >>> import uiautomator2 as ut2
->>> d = ut2.connect(os.getenv("DEVICE_IP"))
+>>> d = ut2.connect(device_ip)
 >>> print(d.info)
 {'currentPackageName': 'com.android.systemui', 'displayHeight': 1920, 'displayRotation': 0, 'displaySizeDpX': 360, 'displaySizeDpY': 640, 'displayWidth': 1080, 'productName': 'surabaya', 'screenOn': False, 'sdkInt': 23, 'naturalOrientation': True}
 ```
@@ -50,7 +49,23 @@ Open python, input with the following code
 # Table of Contents
 **[Basic API Usage](#basic-api-usages)**
   - **[Retrive the device info](#retrive-the-device-info)**
-  - **TODO**
+  - **[Key Event Actions of the device](#key-event-actions-of-the-device)**
+  - **[Gesture interaction of the device](#gesture-interaction-of-the-device)**
+  - **[Screen Actions of the device](#screen-actions-of-the-device)**
+  
+**[App management](#app-management)**
+  - **[App install](#app-install)**
+
+**[Selector](#selector)**
+  - **[Child and sibling UI object](#child-and-sibling-ui-object)**
+  - **[Get the selected ui object status and its information](#get-the-selected-ui-object-status-and-its-information)**
+  - **[Perform the click action on the seleted ui object](#perform-the-click-action-on-the-seleted-ui-object)**
+
+**[Contributors](#contributors)**
+
+**[LICENSE](#license)**
+
+**TODO**
 
 ## Basic API Usages
 This part show the normal actions of the device through some simple examples
@@ -206,6 +221,29 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
     d.open_quick_settings()
     ```
 
+### App management
+Include app install, launch and stop
+
+#### App install
+Only support install from url for now.
+
+    ```python
+    d.app_install('http://some-domain.com/some.apk')
+    ```
+
+#### App launch
+    ```python
+    d.app_start("com.example.hello_world") # start with package name
+    ```
+
+#### App stop
+    ```python
+    # perform am force-stop
+    d.app_stop("com.example.hello_world") 
+    # perform pm clear
+    d.app_clear('com.example.hello_world')
+    ```
+
 ### Selector
 
 Selector is to identify specific ui object in current window.
@@ -295,6 +333,24 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
     ```python
     # click on the center of the specific ui object
     d(text="Settings").click()
+    ```
+
+* Perform long click on the specific ui object
+
+    ```python
+    # long click on the center of the specific ui object
+    d(text="Settings").long_click()
+    ```
+
+#### Gesture action for the specific ui object
+* Drag the ui object to another point or ui object 
+
+    ```python
+    # notes : drag can not be set until Android 4.3.
+    # drag the ui object to point (x, y)
+    d(text="Settings").drag_to(x, y, duration=0.5)
+    # drag the ui object to another ui object(center)
+    d(text="Settings").drag_to(text="Clock", duration=0.25)
     ```
 
 * Wait until the specific ui appears or gone
