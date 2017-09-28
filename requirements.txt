@@ -1,3 +1,4 @@
 requests>=2.7.0
 six
 humanize
+pillow

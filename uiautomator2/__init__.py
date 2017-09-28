@@ -7,12 +7,14 @@ import hashlib
 import time
 import datetime
 import functools
-import six
 import json
+import io
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
 import threading
 
+import six
+from PIL import Image
 import humanize
 from subprocess import list2cmdline
 
@@ -220,7 +222,7 @@ class AutomatorServer(object):
                 humanize.naturalsize(copied_size),
                 humanize.naturalsize(total_size)))
             if progress.get('error'):
-                raise RuntimeError(progress.get('error'))
+                raise RuntimeError(progress.get('error'), progress.get('message'))
             if message == 'success installed':
                 break
         return True
@@ -375,7 +377,8 @@ class Session(object):
                 f.write(r.content)
             return filename
         else:
-            return r.content
+            buff = io.BytesIO(r.content)
+            return Image.open(buff)
 
     def freeze_rotation(self, freeze=True):
         '''freeze or unfreeze the device rotation in current status.'''
