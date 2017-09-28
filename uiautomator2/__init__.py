@@ -251,7 +251,10 @@ class AutomatorServer(object):
     def app_start(self, pkg_name, activity=None):
         """ Launch application """
         # self.adb_shell('pm clear com.netease.index')
-        self.adb_shell('monkey', '-p', pkg_name, '-c', 'android.intent.category.LAUNCHER', '1')
+        if activity is None:
+            self.adb_shell('monkey', '-p', pkg_name, '-c', 'android.intent.category.LAUNCHER', '1')
+        else:
+            self.adb_shell('am', 'start', '-n', '{}/{}'.format(pkg_name, activity))
     
     def app_stop(self, pkg_name):
         """ Stop application """
