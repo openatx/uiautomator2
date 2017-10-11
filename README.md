@@ -1,13 +1,23 @@
 # uiautomator2
 Android Uiautomator2 Python Wrapper
+这是一个可以完成Android的UI自动化的python库。
 
-暂时先中文，以后再英文
+google提供的uiautomator库功能做起安卓自动化来非常强大，唯独有两个缺点：1. 只能在手机上运行 2. 只能使用java语言。
+所以为了能更简单快捷的使用uiautomator，这个项目通过在手机上运行了一个http服务的方法，将uiautomator中的函数开放了出来。然后再将这些http接口，封装成了python库。这里要非常感谢 Xiaocong He ([@xiaocong][])，他将这个想法实现了出来，uiautomator2这个项目则是对原有xiaocong的项目[uiautomator](https://github.com/xiaocong/uiautomator)进行了bug的修改，功能进行了加强。具体有以下
 
-# Installation
+* 修复uiautomator经常性退出的问题
+* 代码进行了重构和精简，方便维护
+* 增加了脱离数据线运行测试的功能
+* 通过[minicap](https://github.com/openstf/minicap)加快截图速度
+
+虽然我说的很简单，但是实现起来用到了很多的技术和技巧，功能非常强，唯独文档有点少。哈哈
+
+# Installation manualy（手动安装方法）
 1. Install python library
 
     ```bash
     git clone https://github.com/openatx/uiautomator2
+    cd uiautomator2
     pip install -e .
     ```
 
@@ -24,6 +34,7 @@ Android Uiautomator2 Python Wrapper
     Test if install successfully
 
     ```bash
+    adb forward tcp:7912 tcp:7912 # 转发手机的7912端口到PC上
     adb shell 'echo $(curl -s localhost:7912/version)'
     # expect: 0.0.?
     ```
