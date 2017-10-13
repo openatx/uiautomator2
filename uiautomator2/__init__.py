@@ -356,7 +356,7 @@ class Session(object):
         """
         return self.jsonrpc.swipe(fx, fy, tx, ty, int(duration*200))
     
-    def swipePoints(self, points, duration=0.5):
+    def swipe_points(self, points, duration=0.5):
         ppoints = []
         for p in points:
             ppoints.append(p[0])
