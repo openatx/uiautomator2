@@ -7,8 +7,10 @@ import os
 import logging
 import subprocess
 import tarfile
+import shutil
 import hashlib
 import re
+import time
 
 import requests
 
@@ -106,6 +108,7 @@ def install_uiautomator_apk(sdk):
 
 
 def install_atx_agent():
+    log.info("install atx-agent")
     files = {
         'armeabi-v7a': 'atx-agent_0.0.3_linux_armv7.tar.gz',
         'arm64-v8a': 'atx-agent_0.0.3_linux_armv7.tar.gz',
@@ -121,15 +124,22 @@ def install_atx_agent():
         raise Exception("arch(%s) need to be supported yet, please report an issue in github" % abis)
     url = 'https://github.com/openatx/atx-agent/releases/download/%s/%s' % (__atx_agent_version, name)
     path = cache_download(url)
+    # print(path)
     tar = tarfile.open(path, 'r:gz')
-    f = tar.extractfile('atx-agent')
     bin_path = os.path.join(os.path.dirname(path), 'atx-agent')
-    print(path)
+    f = tar.extractfile('atx-agent')
     with open(bin_path, 'wb') as outf:
-        outf.write(f.read())
-    adb('push', path, '/data/local/tmp/atx-agent')
+        shutil.copyfileobj(f, outf)
+    adb('push', bin_path, '/data/local/tmp/atx-agent')
     adb('shell', 'chmod', '0755', '/data/local/tmp/atx-agent')
 
+def check():
+    log.info("launch atx-agent daemon")
+    adb('shell', '/data/local/tmp/atx-agent', '-d')
+    adb('forward', 'tcp:7912', 'tcp:7912')
+    time.sleep(1)
+    r = requests.get('http://localhost:7912/version', timeout=3)
+    log.info("atx-agent version: %s", r.text)
 
 def main():
     abi = adb('shell', 'getprop', 'ro.product.cpu.abi').strip()
@@ -139,6 +149,8 @@ def main():
     install_minicap(abi, sdk, pre)
     install_uiautomator_apk(sdk)
     install_atx_agent()
+    log.info("checking")
+    check()
     print("install success")
     # TODO: test not passed
 

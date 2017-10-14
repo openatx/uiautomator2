@@ -1,6 +1,6 @@
 # uiautomator2
 Android Uiautomator2 Python Wrapper
-这是一个可以完成Android的UI自动化的python库。
+这是一个可以完成Android的UI自动化的python库。**该项目还在火热的开发中**
 
 google提供的uiautomator库功能做起安卓自动化来非常强大，唯独有两个缺点：1. 只能在手机上运行 2. 只能使用java语言。
 所以为了能更简单快捷的使用uiautomator，这个项目通过在手机上运行了一个http服务的方法，将uiautomator中的函数开放了出来。然后再将这些http接口，封装成了python库。这里要非常感谢 Xiaocong He ([@xiaocong][])，他将这个想法实现了出来，uiautomator2这个项目则是对原有xiaocong的项目[uiautomator](https://github.com/xiaocong/uiautomator)进行了bug的修改，功能进行了加强。具体有以下
@@ -12,7 +12,7 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
 
 虽然我说的很简单，但是实现起来用到了很多的技术和技巧，功能非常强，唯独文档有点少。哈哈
 
-# Installation manualy（手动安装方法）
+# Installation
 1. Install python library
 
     ```bash
@@ -21,15 +21,15 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
     pip install -e .
     ```
 
-2. 安装两个apk
+2. 安装[uiautomator-apk](https://github.com/openatx/android-uiautomator-server/releases) 以及 [atx-agent](https://github.com/openatx/atx-agent)
 
-    下载地址: <https://github.com/openatx/android-uiautomator-server/releases>
+    电脑连接上一个手机（目前只能一个手机）
 
-3. 安装`atx-agent`到手机
+    ```bash
+    python -m uiautomator2
+    ```
 
-    参考改项目的安装文档<https://github.com/openatx/atx-agent> 将`atx-agent`安装到手机上
-
-4. 最后的测试
+3. 最后的测试
 
     Test if install successfully
 
