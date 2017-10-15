@@ -52,6 +52,44 @@ def cache_download(url, filename=None):
     return storepath
 
 
+class Adb(object):
+    def __init__(self, serial=None):
+        self.serial=None
+    
+    def execute(self, *args):
+        cmds = ['adb', '-s', self.serial] if self.serial else ['adb']
+        cmds.extend(args)
+        cmdline = subprocess.list2cmdline(map(str, cmds))
+        return subprocess.check_output(cmdline, stderr=subprocess.STDOUT, shell=True).decode('utf-8')
+
+    def getprop(self, prop):
+        return self.execute('shell', 'getprop', prop).strip()
+
+    def push(self, src, dst, mode=0644):
+        self.execute('push', src, dst)
+        if mode != 0644:
+            self.execute('chmod', oct(mode), dst)
+    
+    def install(self, apk_path):
+        sdk = self.getprop('ro.build.version.sdk')
+        if int(sdk) <= 23:
+            self.execute('install', '-d', '-r', apk_path)
+        else:
+            self.execute('install', '-d', '-r', '-g', apk_path)
+
+
+class Installer(Adb):
+    def __init__(self, serial=None):
+        super(self).__init__(serial)
+        self.sdk = self.getprop('ro.build.version.sdk')
+        self.abi = self.getprop('ro.product.cpu.abi')
+        self.pre = self.getprop('ro.build.version.preview_sdk')
+
+    def install_minicap(self):
+        pass
+        # TODO
+
+
 def adb(*args):
     cmds = ['adb']
     cmds.extend(args)
