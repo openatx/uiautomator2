@@ -7,7 +7,6 @@ import os
 import logging
 import subprocess
 import tarfile
-import shutil
 import hashlib
 import re
 import time
@@ -22,14 +21,14 @@ def get_logger(name):
     logger.setLevel(logging.INFO)
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     return logger
 
 log = get_logger('uiautomator2')
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
-
+log.info("use cache directory: %s", appdir)
 
 def cache_download(url, filename=None):
     """ return downloaded filepath """
@@ -127,19 +126,20 @@ def install_atx_agent():
     # print(path)
     tar = tarfile.open(path, 'r:gz')
     bin_path = os.path.join(os.path.dirname(path), 'atx-agent')
-    f = tar.extractfile('atx-agent')
-    with open(bin_path, 'wb') as outf:
-        shutil.copyfileobj(f, outf)
+    tar.extract('atx-agent', os.path.dirname(bin_path))
     adb('push', bin_path, '/data/local/tmp/atx-agent')
     adb('shell', 'chmod', '0755', '/data/local/tmp/atx-agent')
 
 def check():
     log.info("launch atx-agent daemon")
-    adb('shell', '/data/local/tmp/atx-agent', '-d')
+    output = adb('shell', '/data/local/tmp/atx-agent', '-d')
     adb('forward', 'tcp:7912', 'tcp:7912')
-    time.sleep(1)
+    time.sleep(2)
     r = requests.get('http://localhost:7912/version', timeout=3)
     log.info("atx-agent version: %s", r.text)
+    print('-'*20)
+    print(output.strip())
+    print('-'*20)
 
 def main():
     abi = adb('shell', 'getprop', 'ro.product.cpu.abi').strip()
@@ -151,8 +151,7 @@ def main():
     install_atx_agent()
     log.info("checking")
     check()
-    print("install success")
-    # TODO: test not passed
+    log.info("install success")
 
 
 if __name__ == '__main__':
