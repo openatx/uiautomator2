@@ -65,9 +65,9 @@ class Adb(object):
     def getprop(self, prop):
         return self.execute('shell', 'getprop', prop).strip()
 
-    def push(self, src, dst, mode=0644):
+    def push(self, src, dst, mode=0o644):
         self.execute('push', src, dst)
-        if mode != 0644:
+        if mode != 0o644:
             self.execute('chmod', oct(mode), dst)
     
     def install(self, apk_path):
@@ -80,7 +80,7 @@ class Adb(object):
 
 class Installer(Adb):
     def __init__(self, serial=None):
-        super(self).__init__(serial)
+        super(Installer, self).__init__(serial)
         self.sdk = self.getprop('ro.build.version.sdk')
         self.abi = self.getprop('ro.product.cpu.abi')
         self.pre = self.getprop('ro.build.version.preview_sdk')
