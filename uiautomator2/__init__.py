@@ -48,7 +48,7 @@ class JsonRpcError(UiaError):
             return 'Server error'
         return 'Unknown error'
 
-    def __init__(self, error):
+    def __init__(self, error={}):
         self.code = error.get('code')
         self.message = error.get('message')
         self.data = error.get('data')
@@ -177,12 +177,10 @@ class AutomatorServer(object):
             return jsondata.get('result')
 
         # error happends
-        code, data = error.get('code'), error.get('data')
-        if -32099 <= code <= -32000: # Server error
-            exceptionName = data and data.get('exceptionTypeName', '')
-            if 'UiObjectNotFoundException' in exceptionName:
-                raise UiObjectNotFoundError(repr(message))
-        raise JsonRpcError(error)
+        err = JsonRpcError(error)
+        if 'UiObjectNotFoundException' in err.exception_name:
+            err.__class__ = UiObjectNotFoundError
+        raise err
     
     def _jsonrpc_id(self, method):
         m = hashlib.md5()
@@ -490,6 +488,15 @@ class UiObject(object):
         Usage:
         d(text="Clock").click()  # click on the center of the ui object
         '''
+        self.tap_nowait()
+
+    def tap_nowait(self): # todo, the java layer wait a little longer(10s)
+        """
+        Tap element with no wait
+
+        Raises:
+            UiObjectNotFoundError
+        """
         return self.jsonrpc.click(self.selector)
 
     def click(self):

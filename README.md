@@ -348,6 +348,13 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
     ```python
     # click on the center of the specific ui object
     d(text="Settings").click()
+    # wait element show for 10 seconds(Default)
+    d(text="Settings").click(timeout=10)
+    # alias of click
+    # short name for quick type with keyboard
+    d(text="Settings").tap()
+    # wait element show for 0 seconds
+    d(text="Settings").tap_nowait()
     ```
 
 * Perform long click on the specific ui object
@@ -372,7 +379,7 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
     
     ```python
     # wait until the ui object appears
-    d(text="Settings").wait(timeout=3.0)
+    d(text="Settings").wait(timeout=3.0) # return bool
     # wait until the ui object gone
     d(text="Settings").wait_gone(timeout=1.0)
     ```
