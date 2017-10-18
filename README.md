@@ -190,7 +190,7 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
 * Drag
 
     ```python
-    d.drag(sx, sy, ex, dy)
+    d.drag(sx, sy, ex, ey)
     d.drag(sx, sy, ex, ey, 0.5) # swipe for 0.5s(default)
 
 Note: click, swipe, drag support percent position. Example:
@@ -275,6 +275,14 @@ Only support install from url for now.
     d.app_stop("com.example.hello_world") 
     # perform pm clear
     d.app_clear('com.example.hello_world')
+    ```
+
+#### App stop all the runnings
+    ```python
+    # stop all
+    d.app_stop_all()
+    # stop all app except com.examples.demo
+    d.app_stop_all(excludes=['com.examples.demo'])
     ```
 
 ### Selector

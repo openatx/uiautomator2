@@ -9,6 +9,7 @@ import datetime
 import functools
 import json
 import io
+import re
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
 import threading
@@ -260,6 +261,22 @@ class AutomatorServer(object):
         """ Stop application """
         self.adb_shell('am', 'force-stop', pkg_name)
     
+    def app_stop_all(self, excludes=[]):
+        """ Stop all applications
+        Args:
+            excludes (list): apps that do now want to kill
+        
+        Returns:
+            list of apps that been killed
+        """
+        pkgs = re.findall('package:([^\s]+)', self.adb_shell('pm', 'list', 'packages', '-3'))
+        process_names = re.findall('([^\s]+)$', self.adb_shell('ps'), re.M)
+        kill_pkgs = set(pkgs).intersection(process_names).difference(['com.github.uiautomator'] + excludes)
+        kill_pkgs = list(kill_pkgs)
+        for pkg_name in kill_pkgs:
+            self.app_stop(pkg_name)
+        return kill_pkgs
+
     def app_clear(self, pkg_name):
         self.adb_shell('pm', 'clear', pkg_name)
     
