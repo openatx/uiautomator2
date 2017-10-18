@@ -26,7 +26,7 @@ def get_logger(name):
     logger.setLevel(logging.INFO)
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(filename)s:%(lineno)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     return logger
@@ -150,7 +150,7 @@ class Installer(Adb):
         log.debug("install atx-agent")
         current_agent_version = self.shell('/data/local/tmp/atx-agent', '-v').strip()
         if current_agent_version == agent_version:
-            log.info("already installed, skip")
+            log.info("atx-agent already installed, skip")
             return
         if current_agent_version == 'dev':
             log.warn("atx-agent develop version, skip")
@@ -214,21 +214,24 @@ class MyFire(object):
         if verbose:
             log.setLevel(logging.DEBUG)
 
-        output = subprocess.check_output('adb devices -l', shell=True)
-        pattern = re.compile(r'(?P<serial>[\w\d-]+)\s+(?P<status>device|offline)\s+(product:.+)')
-        for m in pattern.findall(output.decode()):
-            serial, status, info = m[0], m[1], m[2]
+        output = subprocess.check_output(['adb', 'devices'])
+        pattern = re.compile(r'(?P<serial>[\w\d-]+)\t(?P<status>device|offline)')
+        matches = pattern.findall(output.decode())
+        for m in matches:
+            serial, status = m[0], m[1]
             if status == 'offline':
                 log.warn("device(%s) is offline, skip", serial)
                 continue
             
-            log.info("Device(%s) %s initialing ...", serial, info.strip())
+            log.info("Device(%s) initialing ...", serial)
             ins = Installer(serial)
             ins.server_addr = server
             ins.install_minicap()
             ins.install_uiautomator_apk(apk_version)
             ins.install_atx_agent(agent_version)
             ins.launch_and_check()
+        if len(matches) == 0:
+            log.warn("No avaliable android devices detected. See details from `adb devices`")
         
     def install(self, device_ip, apk_url):
         import uiautomator2 as u2
