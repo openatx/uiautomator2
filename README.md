@@ -23,7 +23,7 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
 
 2. 安装[uiautomator-apk](https://github.com/openatx/android-uiautomator-server/releases) 以及 [atx-agent](https://github.com/openatx/atx-agent)
 
-    电脑连接上一个手机（目前只能一个手机）
+    电脑连接上一个手机或多个手机, 确保adb已经添加到环境变量中
 
     ```bash
     python -m uiautomator2 init
@@ -43,6 +43,20 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
 下文中我们用`device_ip`这个变量来定义手机的IP，通常来说安装完`atx-agent`的时候会自动提示你手机的IP是多少。
 
 如果手机的WIFI跟电脑不是一个网段的，需要先通过数据线将手机连接到电脑上，使用命令`adb forward tcp:7912 tcp:7912` 将手机上的服务端口7912转发到PC上。这个时候连接地址使用`127.0.0.1`即可。
+
+## 命令行使用
+- init: 初始化设备的atx-agent等
+
+    Installation部分已经介绍过，这里就不写了
+
+- install: 通过URL安装应用
+
+    ```bash
+    $ python -m uiautomator2 install $device_ip https://example.org/some.apk
+    MainThread: 15:37:55,731 downloading 80.4 kB / 770.6 kB
+    MainThread: 15:37:56,763 installing 770.6 kB / 770.6 kB
+    MainThread: 15:37:58,780 success installed 770.6 kB / 770.6 kB
+    ```
 
 ## QUICK START
 Open python, input with the following code

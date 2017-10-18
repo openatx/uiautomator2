@@ -33,7 +33,7 @@ def get_logger(name):
 
 log = get_logger('uiautomator2')
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
-log.info("use cache directory: %s", appdir)
+log.debug("use cache directory: %s", appdir)
 
 
 def find_free_port():
@@ -52,11 +52,11 @@ def cache_download(url, filename=None):
     if not os.path.isdir(storedir):
         os.makedirs(storedir)
     if os.path.exists(storepath) and os.path.getsize(storepath) > 0:
-        log.info("file '%s' cached before", filename)
+        log.debug("file '%s' cached before", filename)
         return storepath
     # download from url
     r = requests.get(url, stream=True)
-    log.info("download from %s", url)
+    log.debug("download from %s", url)
     if r.status_code != 200:
         raise Exception("status code", r.status_code)
     with open(storepath, 'wb') as f:
@@ -66,7 +66,7 @@ def cache_download(url, filename=None):
 
 class Adb(object):
     def __init__(self, serial=None):
-        self.serial=None
+        self.serial = serial
     
     def execute(self, *args):
         cmds = ['adb', '-s', self.serial] if self.serial else ['adb']
@@ -93,6 +93,9 @@ class Adb(object):
         else:
             self.execute('install', '-d', '-r', '-g', apk_path)
     
+    def uninstall(self, pkg_name):
+        return self.execute('uninstall', pkg_name)
+    
     def package_info(self, pkg_name):
         output = self.shell('dumpsys', 'package', pkg_name)
         m = re.compile(r'versionName=(?P<name>[\d.]+)').search(output)
@@ -113,12 +116,12 @@ class Installer(Adb):
         if self.pre and self.pre != "0":
             sdk = sdk + self.pre
         minicap_base_url = "https://github.com/codeskyblue/stf-binaries/raw/master/node_modules/minicap-prebuilt/prebuilt/"
-        log.info("install minicap.so")
+        log.debug("install minicap.so")
         url = minicap_base_url+self.abi+"/lib/android-"+sdk+"/minicap.so"
         path = cache_download(url)
         self.push(path, '/data/local/tmp/minicap.so')
         # adb('push', path, '/data/local/tmp/minicap.so')
-        log.info("install minicap")
+        log.debug("install minicap")
         url = minicap_base_url+self.abi+"/bin/minicap"
         path = cache_download(url)
         self.push(path, '/data/local/tmp/minicap', 0o755)
@@ -130,19 +133,27 @@ class Installer(Adb):
         if pkg_info and pkg_info['version_name'] == apk_version:
             log.info("apk already installed, skip")
             return
+        if pkg_info:
+            log.debug("uninstall old apks")
+            self.uninstall('com.github.uiautomator')
+            self.uninstall('com.github.uiautomator.test')
         log.info("app-uiautomator.apk installing ...")
         path = cache_download(app_url)
         self.install(path)
-        log.info("app-uiautomator.apk installed")
-        log.info("app-uiautomator-test.apk installing ...")
+        log.debug("app-uiautomator.apk installed")
+        log.debug("app-uiautomator-test.apk installing ...")
         path = cache_download(app_test_url)
         self.install(path)
-        log.info("app-uiautomator-test.apk installed")
+        log.debug("app-uiautomator-test.apk installed")
     
     def install_atx_agent(self, agent_version):
-        log.info("install atx-agent")
-        if self.shell('/data/local/tmp/atx-agent', '-v').strip() == agent_version:
+        log.debug("install atx-agent")
+        current_agent_version = self.shell('/data/local/tmp/atx-agent', '-v').strip()
+        if current_agent_version == agent_version:
             log.info("already installed, skip")
+            return
+        if current_agent_version == 'dev':
+            log.warn("atx-agent develop version, skip")
             return
         files = {
             'armeabi-v7a': 'atx-agent_{v}_linux_armv7.tar.gz',
@@ -160,51 +171,69 @@ class Installer(Adb):
         url = 'https://github.com/openatx/atx-agent/releases/download/%s/%s' % (
             agent_version,
             name.format(v=agent_version))
-        log.info("download atx-agent(%s) from github releases", agent_version)
+        log.debug("download atx-agent(%s) from github releases", agent_version)
         path = cache_download(url)
         tar = tarfile.open(path, 'r:gz')
         bin_path = os.path.join(os.path.dirname(path), 'atx-agent')
         tar.extract('atx-agent', os.path.dirname(bin_path))
         self.push(bin_path, '/data/local/tmp/atx-agent', 0o755)
-        log.info("atx-agent installed")
+        log.debug("atx-agent installed")
     
     def launch_and_check(self):
-        log.info("launch atx-agent daemon")
+        log.debug("launch atx-agent daemon")
         args = ['/data/local/tmp/atx-agent', '-d']
         if self.server_addr:
             args.append('-t')
             args.append(self.server_addr)
         output = self.shell(*args)
         free_port = find_free_port()
-        log.info("obtain freeport: %d", free_port)
+        log.debug("obtain freeport: %d", free_port)
         self.execute('forward', 'tcp:%d' % free_port, 'tcp:7912')
         time.sleep(.5)
         cnt = 0
         while cnt < 3:
             try:
                 r = requests.get('http://localhost:%d/version' % free_port, timeout=3)
-                log.info("atx-agent version: %s", r.text)
+                log.debug("atx-agent version: %s", r.text)
                 # todo finish the retry logic
-                print('-'*20)
-                print(output.strip())
-                print('-'*20)
-                log.info("Success")
+                log.info("atx-agent output: %s", output.strip())
+                # print('-'*20)
+                # print(output.strip())
+                # print('-'*20)
+                log.info("success")
                 break
             except requests.exceptions.ConnectionError:
                 time.sleep(1.0)
                 cnt += 1
         else:
-            log.error("Failure")
+            log.error("failure")
 
 
 class MyFire(object):
-    def init(self, serial=None, server=None, apk_version=__apk_version__, agent_version=__atx_agent_version__):
-        ins = Installer(serial)
-        ins.server_addr = server
-        ins.install_minicap()
-        ins.install_uiautomator_apk(apk_version)
-        ins.install_atx_agent(agent_version)
-        ins.launch_and_check()
+    def init(self, server=None, apk_version=__apk_version__, agent_version=__atx_agent_version__, verbose=False):
+        if verbose:
+            log.setLevel(logging.DEBUG)
+
+        output = subprocess.check_output('adb devices -l', shell=True)
+        pattern = re.compile(r'(?P<serial>[\w\d-]+)\s+(?P<status>device|offline)\s+(product:.+)')
+        for m in pattern.findall(output.decode()):
+            serial, status, info = m[0], m[1], m[2]
+            if status == 'offline':
+                log.warn("device(%s) is offline, skip", serial)
+                continue
+            
+            log.info("Device(%s) %s initialing ...", serial, info.strip())
+            ins = Installer(serial)
+            ins.server_addr = server
+            ins.install_minicap()
+            ins.install_uiautomator_apk(apk_version)
+            ins.install_atx_agent(agent_version)
+            ins.launch_and_check()
+        
+    def install(self, device_ip, apk_url):
+        import uiautomator2 as u2
+        u = u2.connect('http://'+device_ip)
+        u.app_install(apk_url)
 
 
 def main():
