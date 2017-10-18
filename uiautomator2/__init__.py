@@ -326,6 +326,11 @@ class Session(object):
         """
         Tap position
         """
+        if x < 1 and y < 1:
+            info = self.info
+            x = int(info['displayWidth'] * x)
+            y = int(info['displayHeight'] * y)
+        print(x, y)
         return self.jsonrpc.click(x, y)
 
     def click(self, x, y):

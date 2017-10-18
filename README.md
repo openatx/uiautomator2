@@ -26,7 +26,7 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
     电脑连接上一个手机（目前只能一个手机）
 
     ```bash
-    python -m uiautomator2
+    python -m uiautomator2 init
     ```
 
 3. 最后的测试
