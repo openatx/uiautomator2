@@ -322,14 +322,18 @@ class Session(object):
     def jsonrpc(self):
         return self.server.jsonrpc
 
-    def tap(self, x, y):
-        """
-        Tap position
-        """
+    def pos_rel2abs(self, x, y):
         if x < 1 and y < 1:
             info = self.info
             x = int(info['displayWidth'] * x)
             y = int(info['displayHeight'] * y)
+        return x, y
+
+    def tap(self, x, y):
+        """
+        Tap position
+        """
+        x, y = self.pos_rel2abs(x, y)
         return self.jsonrpc.click(x, y)
 
     def click(self, x, y):
@@ -340,6 +344,7 @@ class Session(object):
     
     def long_click(self, x, y, duration=0.5):
         '''long click at arbitrary coordinates.'''
+        x, y = self.pos_rel2abs(x, y)
         return self.swipe(x, y, x + 1, y + 1, duration)
     
     def swipe(self, fx, fy, tx, ty, duration=0.5):
@@ -356,6 +361,8 @@ class Session(object):
         Links:
             https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe%28int,%20int,%20int,%20int,%20int%29
         """
+        fx, fy = self.pos_rel2abs(fx, fy)
+        tx, ty = self.pos_rel2abs(tx, ty)
         return self.jsonrpc.swipe(fx, fy, tx, ty, int(duration*200))
     
     def swipe_points(self, points, duration=0.5):
@@ -367,6 +374,8 @@ class Session(object):
 
     def drag(self, sx, sy, ex, ey, duration=0.5):
         '''Swipe from one point to another point.'''
+        sx, sy = self.pos_rel2abs(sx, sy)
+        ex, ey = self.pos_rel2abs(ex, ey)
         return self.jsonrpc.drag(sx, sy, ex, ey, int(duration*200))
 
     def screenshot(self, filename=None):

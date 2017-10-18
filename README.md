@@ -193,6 +193,10 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
     d.drag(sx, sy, ex, dy)
     d.drag(sx, sy, ex, ey, 0.5) # swipe for 0.5s(default)
 
+Note: click, swipe, drag support percent position. Example:
+
+`d.long_click(0.5, 0.5)` means long click center of screen
+
 ### Screen Actions of the device
 * Retrieve/Set Orientation
 
