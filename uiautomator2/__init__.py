@@ -330,7 +330,6 @@ class Session(object):
             info = self.info
             x = int(info['displayWidth'] * x)
             y = int(info['displayHeight'] * y)
-        print(x, y)
         return self.jsonrpc.click(x, y)
 
     def click(self, x, y):
