@@ -13,8 +13,10 @@ import hashlib
 import re
 import time
 import socket
+import progress.bar
 from contextlib import closing
 
+import humanize
 import requests
 
 
@@ -42,6 +44,19 @@ def find_free_port():
         return s.getsockname()[1]
 
 
+class DownloadBar(progress.bar.Bar):
+    message = "Downloading"
+    suffix = '%(current_size)s / %(total_size)s'
+
+    @property
+    def total_size(self):
+        return humanize.naturalsize(self.max, binary=True)
+    
+    @property
+    def current_size(self):
+        return humanize.naturalsize(self.index, binary=True)
+
+
 def cache_download(url, filename=None):
     """ return downloaded filepath """
     # check cache
@@ -59,8 +74,18 @@ def cache_download(url, filename=None):
     log.debug("download from %s", url)
     if r.status_code != 200:
         raise Exception("status code", r.status_code)
-    with open(storepath, 'wb') as f:
-        shutil.copyfileobj(r.raw, f)
+    file_size = int(r.headers.get("Content-Length"))
+    bar = DownloadBar(filename, max=file_size)
+    with open(storepath+'.tmp', 'wb') as f:
+        chunk_length = 16*1024
+        while 1:
+            buf = r.raw.read(chunk_length)
+            if not buf:
+                break
+            f.write(buf)
+            bar.next(len(buf))
+        bar.finish()
+    shutil.move(storepath+'.tmp', storepath)
     return storepath
 
 
@@ -147,7 +172,7 @@ class Installer(Adb):
         log.debug("app-uiautomator-test.apk installed")
     
     def install_atx_agent(self, agent_version):
-        log.debug("install atx-agent")
+        log.info("atx-agent is installing, please be patient")
         current_agent_version = self.shell('/data/local/tmp/atx-agent', '-v').strip()
         if current_agent_version == agent_version:
             log.info("atx-agent already installed, skip")
@@ -237,6 +262,10 @@ class MyFire(object):
         import uiautomator2 as u2
         u = u2.connect('http://'+device_ip)
         u.app_install(apk_url)
+    
+    def clear_cache(self):
+        log.info("clear cache dir: %s", appdir)
+        shutil.rmtree(appdir, ignore_errors=True)
 
 
 def main():

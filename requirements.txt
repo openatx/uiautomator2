@@ -3,3 +3,4 @@ six
 humanize
 pillow
 fire
+progress>=1.3

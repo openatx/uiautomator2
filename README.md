@@ -58,6 +58,12 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
     MainThread: 15:37:58,780 success installed 770.6 kB / 770.6 kB
     ```
 
+- clear-cache: 清空缓存
+
+    ```bash
+    $ python -m uiautomator2 clear-cache
+    ```
+    
 ## QUICK START
 Open python, input with the following code
 
@@ -267,7 +273,7 @@ Note: click, swipe, drag support percent position. Example:
     # push and change file mode
     d.push("foo.sh", "/data/local/tmp/", mode=0o755)
     ```
-    
+
 ### App management
 Include app install, launch and stop
 
