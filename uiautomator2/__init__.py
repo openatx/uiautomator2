@@ -15,7 +15,6 @@ import xml.etree.ElementTree as ET
 import threading
 
 import six
-from PIL import Image
 import humanize
 from subprocess import list2cmdline
 
@@ -258,7 +257,7 @@ class AutomatorServer(object):
             self.adb_shell('am', 'start', '-n', '{}/{}'.format(pkg_name, activity))
     
     def app_stop(self, pkg_name):
-        """ Stop application """
+        """ Stop application: am force-stop"""
         self.adb_shell('am', 'force-stop', pkg_name)
     
     def app_stop_all(self, excludes=[]):
@@ -278,8 +277,32 @@ class AutomatorServer(object):
         return kill_pkgs
 
     def app_clear(self, pkg_name):
+        """ Stop and clear app data: pm clear """
         self.adb_shell('pm', 'clear', pkg_name)
     
+    def push(self, src, dst, mode=0o644):
+        """
+        Args:
+            src (path or fileobj): source file
+            dst (str): destination can be folder or file path
+        
+        Returns:
+            dict object, for example:
+                
+                {"mode":"0660","size":63,"target":"/sdcard/ABOUT.rst"}
+            
+            Since chmod may fail in android, the result "mode" may not same with input args(mode)
+        
+        Raises:
+            RuntimeError(if push got something wrong)
+        """
+        modestr = oct(mode).replace('o', '')
+        pathname = self.path2url('/upload/' + dst.lstrip('/'))
+        r = self._reqsess.post(pathname, data={'mode': modestr}, files={'file': src})
+        if r.status_code == 200:
+            return r.json()
+        raise RuntimeError("push", r.text)
+
     @property
     def screenshot_uri(self):
         return 'http://%s:%d/screenshot/0' % (self._host, self._port)
@@ -405,13 +428,13 @@ class Session(object):
                 f.write(r.content)
             return filename
         else:
+            from PIL import Image
             buff = io.BytesIO(r.content)
             return Image.open(buff)
 
     def freeze_rotation(self, freeze=True):
         '''freeze or unfreeze the device rotation in current status.'''
         self.jsonrpc.freezeRotation(freeze)
-
     
     def press(self, key, meta=None):
         """

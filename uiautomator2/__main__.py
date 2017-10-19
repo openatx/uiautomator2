@@ -19,7 +19,7 @@ import requests
 
 
 __apk_version__ = '1.0.5'
-__atx_agent_version__ = '0.0.5'
+__atx_agent_version__ = '0.0.6'
 
 def get_logger(name):
     logger = logging.getLogger(name)

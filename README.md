@@ -81,7 +81,7 @@ Open python, input with the following code
   - **[Key Event Actions of the device](#key-event-actions-of-the-device)**
   - **[Gesture interaction of the device](#gesture-interaction-of-the-device)**
   - **[Screen Actions of the device](#screen-actions-of-the-device)**
-  
+  - **[Push file into device](#push-file-into-device)**
 **[App management](#app-management)**
   - **[App install](#app-install)**
 
@@ -254,6 +254,20 @@ Note: click, swipe, drag support percent position. Example:
     d.open_quick_settings()
     ```
 
+### Push file into device
+
+    ```python
+    # push into a folder
+    d.push("foo.txt", "/sdcard/")
+    # push and rename
+    d.push("foo.txt", "/sdcard/bar.txt")
+    # push fileobj
+    with open("foo.txt", 'rb') as f:
+        d.push(f, "/sdcard/")
+    # push and change file mode
+    d.push("foo.sh", "/data/local/tmp/", mode=0o755)
+    ```
+    
 ### App management
 Include app install, launch and stop
 
