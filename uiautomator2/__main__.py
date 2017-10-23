@@ -192,7 +192,7 @@ class Installer(Adb):
             'arm64-v8a': 'atx-agent_{v}_linux_armv7.tar.gz',
             'armeabi': 'atx-agent_{v}_linux_armv6.tar.gz',
         }
-        abis = self.shell('getprop', 'ro.product.cpu.abilist').strip()
+        abis = self.shell('getprop', 'ro.product.cpu.abilist').strip() or self.abi
         name = None
         for abi in abis.split(','):
             name = files.get(abi)
