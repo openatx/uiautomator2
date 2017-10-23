@@ -124,6 +124,8 @@ class AutomatorServer(object):
         self._server_url = 'http://{}:{}'.format(host, port)
         self._server_jsonrpc_url = self._server_url + "/jsonrpc/0"
         self._default_session = Session(self, None)
+        # check if server alive
+        self.info
 
     def path2url(self, path):
         return urlparse.urljoin(self._server_url, path)
@@ -280,6 +282,9 @@ class AutomatorServer(object):
         """ Stop and clear app data: pm clear """
         self.adb_shell('pm', 'clear', pkg_name)
     
+    def _pidof_app(self, pkg_name):
+        return self.adb_shell('pidof', pkg_name).strip()
+    
     def push(self, src, dst, mode=0o644):
         """
         Args:
@@ -316,7 +321,13 @@ class AutomatorServer(object):
 
         It is also possible to get pid, and use pid to get package name
         """
-        raise NotImplementedError()
+        self.app_start(pkg_name)
+        time.sleep(0.5)
+        pid = self._pidof_app(pkg_name)
+        if not pid:
+            raise SessionBrokenError(pkg_name)
+        return Session(self, pkg_name, pid)
+        # raise NotImplementedError()
 
     def dismiss_apps(self):
         """
@@ -350,12 +361,15 @@ class Session(object):
         (3, "right", "r", 270)
     )
 
-    def __init__(self, server, pkg_name):
+    def __init__(self, server, pkg_name=None, pid=None):
         self.server = server
         self._pkg_name = pkg_name
+        self._pid = pid
 
     def _check_alive(self):
-        return True
+        if self._pid is None:
+            return True
+        return self.server.adb_shell('pidof', self._pkg_name).strip() == self._pid
 
     @property
     @check_alive
