@@ -93,15 +93,20 @@ class Adb(object):
     def __init__(self, serial=None):
         self.serial = serial
     
-    def execute(self, *args):
+    def execute(self, *args, **kwargs):
         cmds = ['adb', '-s', self.serial] if self.serial else ['adb']
         cmds.extend(args)
         cmdline = subprocess.list2cmdline(map(str, cmds))
-        return subprocess.check_output(cmdline, stderr=subprocess.STDOUT, shell=True).decode('utf-8')
+        try:
+            return subprocess.check_output(cmdline, stderr=subprocess.STDOUT, shell=True).decode('utf-8')
+        except subprocess.CalledProcessError as e:
+            if kwargs.get('raise_error', True):
+                raise e
+            return ''
     
-    def shell(self, *args):
+    def shell(self, *args, **kwargs):
         args = ['shell'] + list(args)
-        return self.execute(*args)
+        return self.execute(*args, **kwargs)
 
     def getprop(self, prop):
         return self.execute('shell', 'getprop', prop).strip()
@@ -124,8 +129,10 @@ class Adb(object):
     def package_info(self, pkg_name):
         output = self.shell('dumpsys', 'package', pkg_name)
         m = re.compile(r'versionName=(?P<name>[\d.]+)').search(output)
-        if m:
-            return dict(version_name=m.group('name'))
+        version_name = m.group('name') if m else None
+        m = re.search(r'PackageSignatures\{(.*?)\}', output)
+        signature = m.group(1) if m else None
+        return dict(version_name=version_name, signature=signature)
 
 
 class Installer(Adb):
@@ -145,7 +152,6 @@ class Installer(Adb):
         url = minicap_base_url+self.abi+"/lib/android-"+sdk+"/minicap.so"
         path = cache_download(url)
         self.push(path, '/data/local/tmp/minicap.so')
-        # adb('push', path, '/data/local/tmp/minicap.so')
         log.debug("install minicap")
         url = minicap_base_url+self.abi+"/bin/minicap"
         path = cache_download(url)
@@ -155,10 +161,11 @@ class Installer(Adb):
         app_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % apk_version
         app_test_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator-test.apk' % apk_version
         pkg_info = self.package_info('com.github.uiautomator')
+        test_pkg_info = self.package_info('com.github.uiautomator.test')
         if pkg_info and pkg_info['version_name'] == apk_version:
             log.info("apk already installed, skip")
             return
-        if pkg_info:
+        if pkg_info or test_pkg_info:
             log.debug("uninstall old apks")
             self.uninstall('com.github.uiautomator')
             self.uninstall('com.github.uiautomator.test')
@@ -173,7 +180,7 @@ class Installer(Adb):
     
     def install_atx_agent(self, agent_version):
         log.info("atx-agent is installing, please be patient")
-        current_agent_version = self.shell('/data/local/tmp/atx-agent', '-v').strip()
+        current_agent_version = self.shell('/data/local/tmp/atx-agent', '-v', raise_error=False).strip()
         if current_agent_version == agent_version:
             log.info("atx-agent already installed, skip")
             return
