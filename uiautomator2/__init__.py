@@ -292,6 +292,11 @@ class AutomatorServer(object):
         """ Stop and clear app data: pm clear """
         self.adb_shell('pm', 'clear', pkg_name)
     
+    def unlock(self):
+        """ unlock screen """
+        self.adb_shell('am', 'start', '-W', '-a', 'com.github.uiautomator.ACTION_IDENTIFY')
+        self._default_session.press("home")
+
     def _pidof_app(self, pkg_name):
         return self.adb_shell('pidof', pkg_name).strip()
     

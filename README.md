@@ -173,6 +173,14 @@ Below is a possible result:
 
 You can find all key code definitions at [Android KeyEvnet](https://developer.android.com/reference/android/view/KeyEvent.html)
 
+* Unlock screen
+
+    ```python
+    d.unlock()
+    # 1. launch activity: com.github.uiautomator.ACTION_IDENTIFY
+    # 2. press "home"
+    ```
+
 ### Gesture interaction of the device
 * Click the screen
 
