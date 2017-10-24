@@ -124,11 +124,21 @@ class AutomatorServer(object):
         self._server_url = 'http://{}:{}'.format(host, port)
         self._server_jsonrpc_url = self._server_url + "/jsonrpc/0"
         self._default_session = Session(self, None)
+        self._click_post_delay = None
         # check if server alive
         self.info
 
     def path2url(self, path):
         return urlparse.urljoin(self._server_url, path)
+
+    def set_click_post_delay(self, seconds):
+        """
+        Set delay seconds after click
+
+        Args:
+            seconds (float): seconds
+        """
+        self._click_post_delay = seconds
 
     @property
     def jsonrpc(self):
@@ -377,9 +387,12 @@ class Session(object):
         return self.server.jsonrpc
 
     def pos_rel2abs(self, x, y):
-        if x < 1 and y < 1:
+        info = None
+        if x < 1 or y < 1:
             info = self.info
+        if x < 1:
             x = int(info['displayWidth'] * x)
+        if y < 1:
             y = int(info['displayHeight'] * y)
         return x, y
 
@@ -388,7 +401,9 @@ class Session(object):
         Tap position
         """
         x, y = self.pos_rel2abs(x, y)
-        return self.jsonrpc.click(x, y)
+        ret = self.jsonrpc.click(x, y)
+        if self.server._click_post_delay:
+            time.sleep(self.server._click_post_delay)
 
     def click(self, x, y):
         """
@@ -564,7 +579,10 @@ class UiObject(object):
         Raises:
             UiObjectNotFoundError
         """
-        return self.jsonrpc.click(self.selector)
+        self.jsonrpc.click(self.selector)
+        post_delay = self.session.server._click_post_delay
+        if post_delay:
+            time.sleep(post_delay)
 
     def click(self):
         """ Alias of tap """

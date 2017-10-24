@@ -92,6 +92,7 @@ Open python, input with the following code
   - **[App install](#app-install)**
 
 **[Selector](#selector)**
+  - **[Click settings](#click-settings)**
   - **[Child and sibling UI object](#child-and-sibling-ui-object)**
   - **[Get the selected ui object status and its information](#get-the-selected-ui-object-status-and-its-information)**
   - **[Perform the click action on the seleted ui object](#perform-the-click-action-on-the-seleted-ui-object)**
@@ -313,6 +314,12 @@ Selector is to identify specific ui object in current window.
 # To seleted the object ,text is 'Clock' and its className is 'android.widget.TextView'
 d(text='Clock', className='android.widget.TextView')
 ```
+
+#### Click settings
+```python
+# set delay 1.5s after each UI click and click
+d.set_click_post_delay(1.5)
+"""
 
 #### Child and sibling UI object
 * child
