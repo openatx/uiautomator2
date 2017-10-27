@@ -89,6 +89,13 @@ d.healthcheck()
 d = u2.connect_usb("{Your-Device-Serial}")
 ```
 
+### 一定时间内，出现则点击
+10s内如果出现Skip则点击
+
+```python
+clicked = d(text='Skip').click_exists(timeout=10.0)
+```
+
 **Notes:** In below examples, we use `d` represent the uiautomator2 connect object
 
 # Table of Contents

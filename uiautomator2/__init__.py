@@ -594,6 +594,15 @@ class UiObject(object):
     def click(self):
         """ Alias of tap """
         return self.tap()
+
+    def click_exists(self, timeout=0):
+        if not self.wait(timeout=timeout):
+            return False
+        try:
+            self.tap_nowait()
+            return True
+        except UiObjectNotFoundError:
+                return False
     
     @wait_exists_wrap
     def long_click(self):
