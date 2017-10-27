@@ -74,10 +74,20 @@ Open python, input with the following code
 {'currentPackageName': 'com.android.systemui', 'displayHeight': 1920, 'displayRotation': 0, 'displaySizeDpX': 360, 'displaySizeDpY': 640, 'displayWidth': 1080, 'productName': 'surabaya', 'screenOn': False, 'sdkInt': 23, 'naturalOrientation': True}
 ```
 
-<!-- with d.session('com.example.hello_world') as s:
-    s(text='Clock').tap()
-    assert s(resourceId='Time').value == '00:00'
-``` -->
+## 一些常用但是不知道归到什么类里的函数
+先中文写着了，国外大佬们先用Google Translate顶着
+
+### 检查并维持uiautomator处于运行状态
+```
+d.healthcheck()
+```
+
+### 连接本地的设备
+需要设备曾经使用`python -muiautomator2 init`初始化过
+
+```
+d = u2.connect_usb("{Your-Device-Serial}")
+```
 
 **Notes:** In below examples, we use `d` represent the uiautomator2 connect object
 

@@ -24,7 +24,7 @@ else: # for py3
     import urllib.parse as urlparse
 
 import requests
-
+from uiautomator2 import adbutils
 
 DEBUG = False
 
@@ -52,13 +52,13 @@ class JsonRpcError(UiaError):
         self.code = error.get('code')
         self.message = error.get('message')
         self.data = error.get('data')
-        self.exception_name = self.data and self.data.get('exceptionTypeName', '')
+        self.exception_name = (self.data or {}).get('exceptionTypeName', 'Unknown')
 
     def __str__(self):
         return '%d %s: %s' % (
             self.code,
             self.format_errcode(self.code),
-            self.message)
+            '%s <%s>' % (self.exception_name, self.message))
     
     def __repr__(self):
         return repr(str(self))
@@ -82,21 +82,6 @@ def U(x):
     return x.decode('utf-8') if type(x) is str else x
 
 
-def stringfy_jsonrpc_errcode(errcode):
-    m = {
-        -32700: 'Parse error',
-        -32600: 'Invalid Request',
-        -32601: 'Method not found',
-        -32602: 'Invalid params',
-        -32603: 'Internal error',
-    }
-    if errcode in m:
-        return m[errcode]
-    if errcode >= -32099 and errcode <= -32000:
-        return 'Server error'
-    return 'Unknown error'
-
-
 def connect(addr='127.0.0.1'):
     """
     Args:
@@ -116,6 +101,12 @@ def connect(addr='127.0.0.1'):
         raise RuntimeError("address should startswith http://")
 
 
+def connect_usb(serial=None):
+    adb = adbutils.Adb(serial)
+    lport = adb.forward_port(7912)
+    return connect('127.0.0.1:'+str(lport))
+
+
 class AutomatorServer(object):
     def __init__(self, host, port=7912):
         self._host = host
@@ -125,8 +116,7 @@ class AutomatorServer(object):
         self._server_jsonrpc_url = self._server_url + "/jsonrpc/0"
         self._default_session = Session(self, None)
         self._click_post_delay = None
-        # check if server alive
-        self.info
+        # TODO: check if server alive
 
     def path2url(self, path):
         return urlparse.urljoin(self._server_url, path)
@@ -182,7 +172,7 @@ class AutomatorServer(object):
             print("Shell$ curl -X POST -d '{}' {}".format(data, self._server_jsonrpc_url))
             print("Output> " + res.text)
         if res.status_code != 200:
-            raise UiaError(self._server_jsonrpc_url, data, res.status_code, res.text, "HTTP Return code is not 200")
+            raise UiaError(self._server_jsonrpc_url, data, res.status_code, res.text, "HTTP Return code is not 200", res.text)
         jsondata = res.json()
         error = jsondata.get('error')
         if not error:
@@ -206,6 +196,12 @@ class AutomatorServer(object):
         """
         raise NotImplementedError()
     
+    def healthcheck(self):
+        """
+        Check if uiautomator is running, if not launch again
+        """
+        return self._reqsess.post(self.path2url('/uiautomator')).text
+
     def app_install(self, url):
         """
         {u'message': u'downloading', u'id': u'2', u'titalSize': 407992690, u'copiedSize': 49152}
@@ -262,11 +258,15 @@ class AutomatorServer(object):
     
     def app_start(self, pkg_name, activity=None):
         """ Launch application """
-        # self.adb_shell('pm clear com.netease.index')
-        if activity is None:
-            self.adb_shell('monkey', '-p', pkg_name, '-c', 'android.intent.category.LAUNCHER', '1')
+        if activity:
+            # -D: enable debugging
+            # -W: wait for launch to complete
+            # -S: force stop the target app before starting the activity
+            # --user <USER_ID> | current: Specify which user to run as; if not
+            #    specified then run as the current user.
+            self.adb_shell('am', 'start', '-W', '-n', '{}/{}'.format(pkg_name, activity))
         else:
-            self.adb_shell('am', 'start', '-n', '{}/{}'.format(pkg_name, activity))
+            self.adb_shell('monkey', '-p', pkg_name, '-c', 'android.intent.category.LAUNCHER', '1')
     
     def app_stop(self, pkg_name):
         """ Stop application: am force-stop"""
@@ -318,6 +318,8 @@ class AutomatorServer(object):
         """
         modestr = oct(mode).replace('o', '')
         pathname = self.path2url('/upload/' + dst.lstrip('/'))
+        if isinstance(src, six.string_types):
+            src = open(src, 'rb')
         r = self._reqsess.post(pathname, data={'mode': modestr}, files={'file': src})
         if r.status_code == 200:
             return r.json()

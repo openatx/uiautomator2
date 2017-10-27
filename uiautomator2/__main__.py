@@ -2,6 +2,7 @@
 #
 
 from __future__ import print_function
+from __future__ import absolute_import
 
 import fire
 import os
@@ -18,6 +19,8 @@ from contextlib import closing
 
 import humanize
 import requests
+
+from uiautomator2 import adbutils
 
 
 __apk_version__ = '1.0.5'
@@ -36,12 +39,6 @@ def get_logger(name):
 log = get_logger('uiautomator2')
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
 log.debug("use cache directory: %s", appdir)
-
-
-def find_free_port():
-    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-        s.bind(('localhost', 0))
-        return s.getsockname()[1]
 
 
 class DownloadBar(progress.bar.Bar):
@@ -89,53 +86,7 @@ def cache_download(url, filename=None):
     return storepath
 
 
-class Adb(object):
-    def __init__(self, serial=None):
-        self.serial = serial
-    
-    def execute(self, *args, **kwargs):
-        cmds = ['adb', '-s', self.serial] if self.serial else ['adb']
-        cmds.extend(args)
-        cmdline = subprocess.list2cmdline(map(str, cmds))
-        try:
-            return subprocess.check_output(cmdline, stderr=subprocess.STDOUT, shell=True).decode('utf-8')
-        except subprocess.CalledProcessError as e:
-            if kwargs.get('raise_error', True):
-                raise e
-            return ''
-    
-    def shell(self, *args, **kwargs):
-        args = ['shell'] + list(args)
-        return self.execute(*args, **kwargs)
-
-    def getprop(self, prop):
-        return self.execute('shell', 'getprop', prop).strip()
-
-    def push(self, src, dst, mode=0o644):
-        self.execute('push', src, dst)
-        if mode != 0o644:
-            self.shell('chmod', oct(mode)[-3:], dst)
-    
-    def install(self, apk_path):
-        sdk = self.getprop('ro.build.version.sdk')
-        if int(sdk) <= 23:
-            self.execute('install', '-d', '-r', apk_path)
-        else:
-            self.execute('install', '-d', '-r', '-g', apk_path)
-    
-    def uninstall(self, pkg_name):
-        return self.execute('uninstall', pkg_name)
-    
-    def package_info(self, pkg_name):
-        output = self.shell('dumpsys', 'package', pkg_name)
-        m = re.compile(r'versionName=(?P<name>[\d.]+)').search(output)
-        version_name = m.group('name') if m else None
-        m = re.search(r'PackageSignatures\{(.*?)\}', output)
-        signature = m.group(1) if m else None
-        return dict(version_name=version_name, signature=signature)
-
-
-class Installer(Adb):
+class Installer(adbutils.Adb):
     def __init__(self, serial=None):
         super(Installer, self).__init__(serial)
         self.sdk = self.getprop('ro.build.version.sdk')
@@ -218,14 +169,13 @@ class Installer(Adb):
             args.append('-t')
             args.append(self.server_addr)
         output = self.shell(*args)
-        free_port = find_free_port()
-        log.debug("obtain freeport: %d", free_port)
-        self.execute('forward', 'tcp:%d' % free_port, 'tcp:7912')
+        lport = self.forward_port(7912)
+        log.debug("forward device(port:7912) -> %d", lport)
         time.sleep(.5)
         cnt = 0
         while cnt < 3:
             try:
-                r = requests.get('http://localhost:%d/version' % free_port, timeout=3)
+                r = requests.get('http://localhost:%d/version' % lport, timeout=3)
                 log.debug("atx-agent version: %s", r.text)
                 # todo finish the retry logic
                 log.info("atx-agent output: %s", output.strip())
