@@ -256,15 +256,24 @@ class AutomatorServer(object):
             raise RuntimeError("expect status 200, but got %d" % ret.status_code)
         return ret.json().get('output')
     
-    def app_start(self, pkg_name, activity=None):
-        """ Launch application """
+    def app_start(self, pkg_name, activity=None, stop=False):
+        """ Launch application
+        Args:
+            pkg_name (str): package name
+            activity (str): app activity
+            stop (str): Stop app before starting the activity. (require activity)
+        """
         if activity:
             # -D: enable debugging
             # -W: wait for launch to complete
             # -S: force stop the target app before starting the activity
             # --user <USER_ID> | current: Specify which user to run as; if not
             #    specified then run as the current user.
-            self.adb_shell('am', 'start', '-W', '-n', '{}/{}'.format(pkg_name, activity))
+            args = ['am', 'start', '-W']
+            if stop:
+                args.append('-S')
+            args += ['-n', '{}/{}'.format(pkg_name, activity)]
+            self.adb_shell(*args) #'am', 'start', '-W', '-n', '{}/{}'.format(pkg_name, activity))
         else:
             self.adb_shell('monkey', '-p', pkg_name, '-c', 'android.intent.category.LAUNCHER', '1')
     
