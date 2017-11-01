@@ -24,7 +24,7 @@ from uiautomator2 import adbutils
 
 
 __apk_version__ = '1.0.5'
-__atx_agent_version__ = '0.0.6'
+__atx_agent_version__ = '0.0.7'
 
 def get_logger(name):
     logger = logging.getLogger(name)
@@ -129,13 +129,13 @@ class Installer(adbutils.Adb):
         self.install(path)
         log.debug("app-uiautomator-test.apk installed")
     
-    def install_atx_agent(self, agent_version):
+    def install_atx_agent(self, agent_version, reinstall=False):
         log.info("atx-agent is installing, please be patient")
         current_agent_version = self.shell('/data/local/tmp/atx-agent', '-v', raise_error=False).strip()
         if current_agent_version == agent_version:
             log.info("atx-agent already installed, skip")
             return
-        if current_agent_version == 'dev':
+        if current_agent_version == 'dev' and not reinstall:
             log.warn("atx-agent develop version, skip")
             return
         files = {
@@ -161,7 +161,7 @@ class Installer(adbutils.Adb):
         tar.extract('atx-agent', os.path.dirname(bin_path))
         self.push(bin_path, '/data/local/tmp/atx-agent', 0o755)
         log.debug("atx-agent installed")
-    
+
     def launch_and_check(self):
         log.debug("launch atx-agent daemon")
         args = ['/data/local/tmp/atx-agent', '-d']
@@ -179,9 +179,6 @@ class Installer(adbutils.Adb):
                 log.debug("atx-agent version: %s", r.text)
                 # todo finish the retry logic
                 log.info("atx-agent output: %s", output.strip())
-                # print('-'*20)
-                # print(output.strip())
-                # print('-'*20)
                 log.info("success")
                 break
             except requests.exceptions.ConnectionError:
@@ -192,7 +189,7 @@ class Installer(adbutils.Adb):
 
 
 class MyFire(object):
-    def init(self, server=None, apk_version=__apk_version__, agent_version=__atx_agent_version__, verbose=False):
+    def init(self, server=None, apk_version=__apk_version__, agent_version=__atx_agent_version__, verbose=False, reinstall=False):
         if verbose:
             log.setLevel(logging.DEBUG)
 
@@ -210,7 +207,7 @@ class MyFire(object):
             ins.server_addr = server
             ins.install_minicap()
             ins.install_uiautomator_apk(apk_version)
-            ins.install_atx_agent(agent_version)
+            ins.install_atx_agent(agent_version, reinstall)
             ins.launch_and_check()
         if len(matches) == 0:
             log.warn("No avaliable android devices detected. See details from `adb devices`")

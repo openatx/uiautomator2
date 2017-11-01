@@ -1,0 +1,17 @@
+language: python
+python:
+- '2.7'
+- '3.5'
+- '3.6'
+install:
+- pip install -r requirements.txt
+script:
+- echo "skip test"
+deploy:
+  provider: pypi
+  user: codeskyblue
+  password:
+    secure: GlIZ4GKSU6CUHKFfcn2JqvJmEcdt5fQBf56zVG9+7ZeIeeWacfeWzXHICyxY84eiJtRhvpZWvkpzcV8vyJviMclih80iM251+2gmrEuojU5NefD2VeeC5m1RgL4TEq+G2vMskOYr6nTAG+r+sDt/piSi630KZpcfpM+oe455M/K/ygmbIyXHwxaE3N0cmVop/RCkIFs2kZuWqeZYOfULqPhMvzB8IYX1DY/TH/lCeumAFdS9PJ4wkxz0N1WMijB50FhvOA0rV8nADePRy4z86573UXpc+pVUBucKGigKbF4RJsW/3C096N9xdgvbsuKA1WIzBcWQPmwyIosPEwrPzBNt7BGIJFZ+YGjDd6nxz7KpQi8ZYX7h413DeJb6qpQmCNyB1TrcO7sa8K/0KzWLZWK7djqGdAaFgefYEub1knBmMBmeNfsdhOXLgGxdf/pXDMktiIJ494Ne6P/9GpC2kW5lJOtwVQWacITWLpRxhOF1m3xoHOp4euqK84GXjKnZL5PPOxPKDgCFL+LH9oUBv4kIywOxC4+OybZ4WvWBcyQ967w/9/JuUB5dsFcYbcQvR+nm2hyG9WY0Vz3ikRyt/OK8Z1DXN70uXlqjMJh1boW/GQvXemByYeF+HVihwmFyXp9S6Ucz6W6A8y4MbnnaPtwtFpy+IOdD+0FTivIjFwc=
+  on:
+    distributions: sdist bdist_wheel
+    repo: openatx/uiautomator2

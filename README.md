@@ -1,4 +1,6 @@
 # uiautomator2
+[![Build Status](https://travis-ci.org/openatx/uiautomator2.svg?branch=master)](https://travis-ci.org/openatx/uiautomator2)
+
 Android Uiautomator2 Python Wrapper
 这是一个可以完成Android的UI自动化的python库。**该项目还在火热的开发中**
 
