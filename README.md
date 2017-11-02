@@ -20,14 +20,23 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
 1. Install python library
 
     ```bash
+    # Since uiautomator2 is still developing, you have to add --pre to install development version
+    pip install --pre uiautomator2
+
+    # Or you can install from source
     git clone https://github.com/openatx/uiautomator2
-    cd uiautomator2
-    pip install -e .
+    pip install -e uiautomator2
     ```
 
-2. 安装[uiautomator-apk](https://github.com/openatx/android-uiautomator-server/releases) 以及 [atx-agent](https://github.com/openatx/atx-agent)
+    Optional, used in screenshot()
+    
+    ```bash
+    pip install pillow
+    ```
 
-    电脑连接上一个手机或多个手机, 确保adb已经添加到环境变量中
+2. 安装依赖(apk, atx-agent, minicap)到手机
+
+    电脑连接上一个手机或多个手机, 确保adb已经添加到环境变量中，执行下面的命令会自动安装[uiautomator-apk](https://github.com/openatx/android-uiautomator-server/releases) 以及 [atx-agent](https://github.com/openatx/atx-agent)
 
     ```bash
     python -m uiautomator2 init
@@ -38,8 +47,8 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
     Test if install successfully
 
     ```bash
-    adb forward tcp:7912 tcp:7912 # 转发手机的7912端口到PC上
-    adb shell 'echo $(curl -s localhost:7912/version)'
+    $ adb forward tcp:7912 tcp:7912 # 转发手机的7912端口到PC上
+    $ adb shell 'echo $(curl -s localhost:7912/version)'
     # expect: 0.0.?
     ```
 

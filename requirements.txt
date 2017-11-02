@@ -1,6 +1,7 @@
 requests>=2.7.0
 six
 humanize
-pillow
 fire
 progress>=1.3
+# remove pillow because pillow can't installed on QPython
+# pillow
