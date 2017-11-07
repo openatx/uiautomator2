@@ -20,6 +20,7 @@ from contextlib import closing
 import humanize
 import requests
 
+import uiautomator2 as u2
 from uiautomator2 import adbutils
 
 
@@ -213,9 +214,12 @@ class MyFire(object):
             log.warn("No avaliable android devices detected. See details from `adb devices`")
         
     def install(self, device_ip, apk_url):
-        import uiautomator2 as u2
         u = u2.connect('http://'+device_ip)
         u.app_install(apk_url)
+    
+    def unlock(self, device_ip):
+        u = u2.connect('http://'+device_ip)
+        u.unlock()
     
     def clear_cache(self):
         log.info("clear cache dir: %s", appdir)
