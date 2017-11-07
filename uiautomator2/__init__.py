@@ -9,6 +9,7 @@ import datetime
 import functools
 import json
 import io
+import os
 import re
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
@@ -82,14 +83,16 @@ def U(x):
     return x.decode('utf-8') if type(x) is str else x
 
 
-def connect(addr='127.0.0.1'):
+def connect(addr=None):
     """
     Args:
-        addr (str): uiautomator server address
+        addr (str): uiautomator server address. default from env-var ANDROID_DEVICE_IP
     
     Example:
         connect("10.0.0.1")
     """
+    if not addr:
+        addr = os.getenv('ANDROID_DEVICE_IP') or '127.0.0.1'
     if '://' not in addr:
         addr = 'http://' + addr
     if addr.startswith('http://'):
@@ -333,6 +336,12 @@ class AutomatorServer(object):
         if r.status_code == 200:
             return r.json()
         raise RuntimeError("push", r.text)
+    
+    def pull(self, src, dst):
+        """
+        Pull file from device
+        """
+        raise NotImplementedError()
 
     @property
     def screenshot_uri(self):
@@ -545,6 +554,66 @@ class Session(object):
         xml = self.server.dump_hierarchy()
         root = ET.fromstring(xml)
         return root.findall(xpath)
+
+    def watcher(self, name):
+        obj = self
+
+        class Watcher(object):
+            def __init__(self):
+                self.__selectors = []
+
+            @property
+            def triggered(self):
+                return obj.server.jsonrpc.hasWatcherTriggered(name)
+
+            def remove(self):
+                obj.server.jsonrpc.removeWatcher(name)
+
+            def when(self, **kwargs):
+                self.__selectors.append(Selector(**kwargs))
+                return self
+
+            def click(self, **kwargs):
+                obj.server.jsonrpc.registerClickUiObjectWatcher(name, self.__selectors, Selector(**kwargs))
+
+            def press(self, *keys):
+                """
+                key (str): on of
+                    ("home", "back", "left", "right", "up", "down", "center",
+                    "search", "enter", "delete", "del", "recent", "volume_up",
+                    "menu", "volume_down", "volume_mute", "camera", "power")
+                """
+                obj.server.jsonrpc.registerPressKeyskWatcher(name, self.__selectors, keys)
+        return Watcher()
+
+    @property
+    def watchers(self):
+        obj = self
+
+        class Watchers(list):
+            def __init__(self):
+                for watcher in obj.server.jsonrpc.getWatchers():
+                    self.append(watcher)
+
+            @property
+            def triggered(self):
+                return obj.server.jsonrpc.hasAnyWatcherTriggered()
+
+            def remove(self, name=None):
+                if name:
+                    obj.server.jsonrpc.removeWatcher(name)
+                else:
+                    for name in self:
+                        obj.server.jsonrpc.removeWatcher(name)
+
+            def reset(self):
+                obj.server.jsonrpc.resetWatcherTriggers()
+                return self
+
+            def run(self):
+                obj.server.jsonrpc.runWatchers()
+                return self
+        return Watchers()
 
     @property
     def info(self):

@@ -87,6 +87,8 @@ Open python, input with the following code
 {'currentPackageName': 'com.android.systemui', 'displayHeight': 1920, 'displayRotation': 0, 'displaySizeDpX': 360, 'displaySizeDpY': 640, 'displayWidth': 1080, 'productName': 'surabaya', 'screenOn': False, 'sdkInt': 23, 'naturalOrientation': True}
 ```
 
+当`device_ip`为空时，会先检查环境变量`ANDROID_DEVICE_IP`,最后才设置成默认值`127.0.0.1`
+
 ## 一些常用但是不知道归到什么类里的函数
 先中文写着了，国外大佬们先用Google Translate顶着
 
@@ -118,8 +120,11 @@ clicked = d(text='Skip').click_exists(timeout=10.0)
   - **[Gesture interaction of the device](#gesture-interaction-of-the-device)**
   - **[Screen Actions of the device](#screen-actions-of-the-device)**
   - **[Push file into device](#push-file-into-device)**
+
 **[App management](#app-management)**
   - **[App install](#app-install)**
+
+**[Watcher introduction](#watcher)**
 
 **[Selector](#selector)**
   - **[Click settings](#click-settings)**
@@ -300,18 +305,17 @@ Note: click, swipe, drag support percent position. Example:
     ```
 
 ### Push file into device
-
-    ```python
-    # push into a folder
-    d.push("foo.txt", "/sdcard/")
-    # push and rename
-    d.push("foo.txt", "/sdcard/bar.txt")
-    # push fileobj
-    with open("foo.txt", 'rb') as f:
-        d.push(f, "/sdcard/")
-    # push and change file mode
-    d.push("foo.sh", "/data/local/tmp/", mode=0o755)
-    ```
+```python
+# push into a folder
+d.push("foo.txt", "/sdcard/")
+# push and rename
+d.push("foo.txt", "/sdcard/bar.txt")
+# push fileobj
+with open("foo.txt", 'rb') as f:
+    d.push(f, "/sdcard/")
+# push and change file mode
+d.push("foo.sh", "/data/local/tmp/", mode=0o755)
+```
 
 ### App management
 Include app install, launch and stop
@@ -319,30 +323,30 @@ Include app install, launch and stop
 #### App install
 Only support install from url for now.
 
-    ```python
-    d.app_install('http://some-domain.com/some.apk')
-    ```
+```python
+d.app_install('http://some-domain.com/some.apk')
+```
 
 #### App launch
-    ```python
-    d.app_start("com.example.hello_world") # start with package name
-    ```
+```python
+d.app_start("com.example.hello_world") # start with package name
+```
 
 #### App stop
-    ```python
-    # perform am force-stop
-    d.app_stop("com.example.hello_world") 
-    # perform pm clear
-    d.app_clear('com.example.hello_world')
-    ```
+```python
+# perform am force-stop
+d.app_stop("com.example.hello_world") 
+# perform pm clear
+d.app_clear('com.example.hello_world')
+```
 
 #### App stop all the runnings
-    ```python
-    # stop all
-    d.app_stop_all()
-    # stop all app except com.examples.demo
-    d.app_stop_all(excludes=['com.examples.demo'])
-    ```
+```python
+# stop all
+d.app_stop_all()
+# stop all app except com.examples.demo
+d.app_stop_all(excludes=['com.examples.demo'])
+```
 
 ### Selector
 
@@ -357,7 +361,7 @@ d(text='Clock', className='android.widget.TextView')
 ```python
 # set delay 1.5s after each UI click and click
 d.set_click_post_delay(1.5)
-"""
+```
 
 #### Child and sibling UI object
 * child
@@ -476,6 +480,88 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
     ```
 
     Default timeout is 10s
+
+### Watcher
+
+You can register [watcher](http://developer.android.com/tools/help/uiautomator/UiWatcher.html) to perform some actions when a selector can not find a match.
+
+
+* Register Watcher
+
+  When a selector can not find a match, uiautomator will run all registered watchers.
+
+  - Click target when conditions match
+
+  ```python
+  d.watcher("AUTO_FC_WHEN_ANR").when(text="ANR").when(text="Wait") \
+                               .click(text="Force Close")
+  # d.watcher(name) ## creates a new named watcher.
+  #  .when(condition)  ## the UiSelector condition of the watcher.
+  #  .click(target)  ## perform click action on the target UiSelector.
+  ```
+
+  - Press key when conditions match
+
+  ```python
+  d.watcher("AUTO_FC_WHEN_ANR").when(text="ANR").when(text="Wait") \
+                               .press("back", "home")
+  # d.watcher(name) ## creates a new named watcher.
+  #  .when(condition)  ## the UiSelector condition of the watcher.
+  #  .press(<keyname>, ..., <keyname>.()  ## press keys one by one in sequence.
+  ```
+
+* Check if the named watcher triggered
+
+  A watcher is triggered, which means the watcher was run and all its conditions matched.
+
+  ```python
+  d.watcher("watcher_name").triggered
+  # true in case of the specified watcher triggered, else false
+  ```
+
+* Remove named watcher
+
+  ```python
+  # remove the watcher
+  d.watcher("watcher_name").remove()
+  ```
+
+* List all watchers
+
+  ```python
+  d.watchers
+  # a list of all registered wachers' names
+  ```
+
+* Check if there is any watcher triggered
+
+  ```python
+  d.watchers.triggered
+  #  true in case of any watcher triggered
+  ```
+
+* Reset all triggered watchers
+
+  ```python
+  # reset all triggered watchers, after that, d.watchers.triggered will be false.
+  d.watchers.reset()
+  ```
+
+* Remvoe watchers
+
+  ```python
+  # remove all registered watchers
+  d.watchers.remove()
+  # remove the named watcher, same as d.watcher("watcher_name").remove()
+  d.watchers.remove("watcher_name")
+  ```
+
+* Force to run all watchers
+
+  ```python
+  # force to run all registered watchers
+  d.watchers.run()
+  ```
 
 另外文档还是有很多没有写，推荐直接去看源码[__init__.py](uiautomato2/__init__.py)
 
