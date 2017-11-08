@@ -278,6 +278,8 @@ class AutomatorServer(object):
             args += ['-n', '{}/{}'.format(pkg_name, activity)]
             self.adb_shell(*args) #'am', 'start', '-W', '-n', '{}/{}'.format(pkg_name, activity))
         else:
+            if stop:
+                self.app_stop(pkg_name)
             self.adb_shell('monkey', '-p', pkg_name, '-c', 'android.intent.category.LAUNCHER', '1')
     
     def app_stop(self, pkg_name):
