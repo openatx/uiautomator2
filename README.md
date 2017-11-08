@@ -76,7 +76,12 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
     ```bash
     $ python -m uiautomator2 clear-cache
     ```
-    
+
+- `app-stop-all`: 停止所有应用
+
+    ```bash
+    $ python -m uiautomator2 app-stop-all $device_ip
+    ```
 ## QUICK START
 Open python, input with the following code
 

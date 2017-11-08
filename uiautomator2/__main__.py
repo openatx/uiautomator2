@@ -25,7 +25,8 @@ from uiautomator2 import adbutils
 
 
 __apk_version__ = '1.0.5'
-__atx_agent_version__ = '0.0.7'
+__atx_agent_version__ = '0.0.8'
+
 
 def get_logger(name):
     logger = logging.getLogger(name)
@@ -213,18 +214,22 @@ class MyFire(object):
         if len(matches) == 0:
             log.warn("No avaliable android devices detected. See details from `adb devices`")
         
-    def install(self, device_ip, apk_url):
-        u = u2.connect('http://'+device_ip)
-        u.app_install(apk_url)
-    
-    def unlock(self, device_ip):
-        u = u2.connect('http://'+device_ip)
-        u.unlock()
-    
     def clear_cache(self):
         log.info("clear cache dir: %s", appdir)
         shutil.rmtree(appdir, ignore_errors=True)
 
+    def install(self, device_ip, apk_url):
+        u = u2.connect(device_ip)
+        u.app_install(apk_url)
+    
+    def unlock(self, device_ip):
+        u = u2.connect(device_ip)
+        u.unlock()
+    
+    def app_stop_all(self, device_ip):
+        u = u2.connect(device_ip)
+        u.app_stop_all()
+        
 
 def main():
     fire.Fire(MyFire)
