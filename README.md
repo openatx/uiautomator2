@@ -309,18 +309,29 @@ Note: click, swipe, drag support percent position. Example:
     d.open_quick_settings()
     ```
 
-### Push file into device
-```python
-# push into a folder
-d.push("foo.txt", "/sdcard/")
-# push and rename
-d.push("foo.txt", "/sdcard/bar.txt")
-# push fileobj
-with open("foo.txt", 'rb') as f:
-    d.push(f, "/sdcard/")
-# push and change file mode
-d.push("foo.sh", "/data/local/tmp/", mode=0o755)
-```
+### Push and pull file
+* push file into device
+
+    ```python
+    # push into a folder
+    d.push("foo.txt", "/sdcard/")
+    # push and rename
+    d.push("foo.txt", "/sdcard/bar.txt")
+    # push fileobj
+    with open("foo.txt", 'rb') as f:
+        d.push(f, "/sdcard/")
+    # push and change file mode
+    d.push("foo.sh", "/data/local/tmp/", mode=0o755)
+    ```
+
+* pull file from device
+
+    ```python
+    d.pull("/sdcard/tmp.txt", "tmp.txt")
+
+    # FileNotFoundError will raise if file not found in device
+    d.pull("/sdcard/some-file-not-exists.txt", "tmp.txt")
+    ```
 
 ### App management
 Include app install, launch and stop

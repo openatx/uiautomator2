@@ -14,6 +14,7 @@ import re
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
 import threading
+import shutil
 
 import six
 import humanize
@@ -208,8 +209,13 @@ class AutomatorServer(object):
     def app_install(self, url):
         """
         {u'message': u'downloading', u'id': u'2', u'titalSize': 407992690, u'copiedSize': 49152}
+
+        Raises:
+            RuntimeError
         """
         r = self._reqsess.post(self.path2url('/install'), data={'url': url})
+        if r.status_code != 200:
+            raise RuntimeError("app install error:", r.text)
         id = r.text.strip()
         interval = 1.0 # 2.0s
         next_refresh = time.time()
@@ -218,7 +224,11 @@ class AutomatorServer(object):
                 time.sleep(.2)
                 continue
             ret = self._reqsess.get(self.path2url('/install/'+id))
-            progress = ret.json()
+            progress = None
+            try:
+                progress = ret.json()
+            except:
+                raise RuntimeError("invalid json response:", ret.text)
             total_size = progress.get('totalSize') or progress.get('titalSize')
             copied_size = progress.get('copiedSize')
             message = progress.get('message')
@@ -328,7 +338,7 @@ class AutomatorServer(object):
             Since chmod may fail in android, the result "mode" may not same with input args(mode)
         
         Raises:
-            RuntimeError(if push got something wrong)
+            IOError(if push got something wrong)
         """
         modestr = oct(mode).replace('o', '')
         pathname = self.path2url('/upload/' + dst.lstrip('/'))
@@ -337,13 +347,23 @@ class AutomatorServer(object):
         r = self._reqsess.post(pathname, data={'mode': modestr}, files={'file': src})
         if r.status_code == 200:
             return r.json()
-        raise RuntimeError("push", r.text)
+        raise IOError("push", "%s -> %s" % (src, dst), r.text)
     
     def pull(self, src, dst):
         """
-        Pull file from device
+        Pull file from device to local
+
+        Raises:
+            FileNotFoundError
+
+        Require atx-agent >= 0.0.9
         """
-        raise NotImplementedError()
+        pathname = self.path2url("/raw/" + src.lstrip("/"))
+        r = self._reqsess.get(pathname, stream=True)
+        if r.status_code != 200:
+            raise FileNotFoundError("pull", src, r.text)
+        with open(dst, 'wb') as f:
+            shutil.copyfileobj(r.raw, f)
 
     @property
     def screenshot_uri(self):
