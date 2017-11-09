@@ -214,6 +214,9 @@ class AutomatorServer(object):
         """
         {u'message': u'downloading', u'id': u'2', u'titalSize': 407992690, u'copiedSize': 49152}
 
+        Returns:
+            packageName
+
         Raises:
             RuntimeError
         """
@@ -247,8 +250,7 @@ class AutomatorServer(object):
             if progress.get('error'):
                 raise RuntimeError(progress.get('error'), progress.get('message'))
             if message == 'success installed':
-                break
-        return True
+                return progress.get('extraData')
     
     def dump_hierarchy(self, compressed=False, pretty=False):
         content = self.jsonrpc.dumpWindowHierarchy(compressed, None)

@@ -224,7 +224,8 @@ class MyFire(object):
             device_ip (str): "" means local device
         """
         u = u2.connect(device_ip)
-        u.app_install(apk_url)
+        pkg_name = u.app_install(apk_url)
+        print("Installed", pkg_name)
     
     def unlock(self, device_ip=None):
         u = u2.connect(device_ip)
