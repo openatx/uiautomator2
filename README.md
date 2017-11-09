@@ -85,6 +85,8 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
 ## QUICK START
 Open python, input with the following code
 
+注: 当`device_ip`为空时，会先检查环境变量`ANDROID_DEVICE_IP`, 如果依然为空，会调用`connect_usb`方法
+
 ```python
 >>> import uiautomator2 as ut2
 >>> d = ut2.connect(device_ip)
@@ -92,7 +94,6 @@ Open python, input with the following code
 {'currentPackageName': 'com.android.systemui', 'displayHeight': 1920, 'displayRotation': 0, 'displaySizeDpX': 360, 'displaySizeDpY': 640, 'displayWidth': 1080, 'productName': 'surabaya', 'screenOn': False, 'sdkInt': 23, 'naturalOrientation': True}
 ```
 
-当`device_ip`为空时，会先检查环境变量`ANDROID_DEVICE_IP`,最后才设置成默认值`127.0.0.1`
 
 ## 一些常用但是不知道归到什么类里的函数
 先中文写着了，国外大佬们先用Google Translate顶着

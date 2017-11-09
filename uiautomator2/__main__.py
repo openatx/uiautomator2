@@ -219,17 +219,25 @@ class MyFire(object):
         shutil.rmtree(appdir, ignore_errors=True)
 
     def install(self, device_ip, apk_url):
+        """
+        Args:
+            device_ip (str): "" means local device
+        """
         u = u2.connect(device_ip)
         u.app_install(apk_url)
     
-    def unlock(self, device_ip):
+    def unlock(self, device_ip=None):
         u = u2.connect(device_ip)
         u.unlock()
     
-    def app_stop_all(self, device_ip):
+    def app_stop_all(self, device_ip=None):
         u = u2.connect(device_ip)
         u.app_stop_all()
-        
+    
+    def uninstall_all(self, device_ip=None):
+        u = u2.connect(device_ip)
+        u.app_uninstall_all(verbose=True)
+
 
 def main():
     fire.Fire(MyFire)

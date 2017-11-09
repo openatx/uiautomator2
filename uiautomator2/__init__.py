@@ -89,11 +89,15 @@ def connect(addr=None):
     Args:
         addr (str): uiautomator server address. default from env-var ANDROID_DEVICE_IP
     
+    If addr is empty, connect_usb will be called
+
     Example:
         connect("10.0.0.1")
     """
     if not addr:
-        addr = os.getenv('ANDROID_DEVICE_IP') or '127.0.0.1'
+        addr = os.getenv('ANDROID_DEVICE_IP')
+    if not addr:
+        return connect_usb()
     if '://' not in addr:
         addr = 'http://' + addr
     if addr.startswith('http://'):
@@ -304,9 +308,10 @@ class AutomatorServer(object):
         Returns:
             list of apps that been killed
         """
+        keeped_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
         pkgs = re.findall('package:([^\s]+)', self.adb_shell('pm', 'list', 'packages', '-3'))
         process_names = re.findall('([^\s]+)$', self.adb_shell('ps'), re.M)
-        kill_pkgs = set(pkgs).intersection(process_names).difference(['com.github.uiautomator'] + excludes)
+        kill_pkgs = set(pkgs).intersection(process_names).difference(keeped_apps + excludes)
         kill_pkgs = list(kill_pkgs)
         for pkg_name in kill_pkgs:
             self.app_stop(pkg_name)
@@ -315,6 +320,22 @@ class AutomatorServer(object):
     def app_clear(self, pkg_name):
         """ Stop and clear app data: pm clear """
         self.adb_shell('pm', 'clear', pkg_name)
+    
+    def app_uninstall(self, pkg_name):
+        """ Unistall app """
+        self.adb_shell("pm", "uninstall", pkg_name)
+    
+    def app_uninstall_all(self, excludes=[], verbose=False):
+        """ Uninstall all app """
+        keeped_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
+        pkgs = re.findall('package:([^\s]+)', self.adb_shell('pm', 'list', 'packages', '-3'))
+        pkgs = set(pkgs).difference(keeped_apps + excludes)
+        pkgs = list(pkgs)
+        for pkg_name in pkgs:
+            if verbose:
+                print("uninstall", pkg_name)
+            self.app_uninstall(pkg_name)
+        return pkgs
     
     def unlock(self):
         """ unlock screen """
