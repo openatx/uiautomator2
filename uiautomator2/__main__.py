@@ -25,7 +25,7 @@ from uiautomator2 import adbutils
 
 
 __apk_version__ = '1.0.5'
-__atx_agent_version__ = '0.0.8'
+__atx_agent_version__ = '0.0.9'
 
 
 def get_logger(name):
