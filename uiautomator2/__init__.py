@@ -204,11 +204,27 @@ class AutomatorServer(object):
         """
         raise NotImplementedError()
     
+    @property
+    def alive(self):
+        r = self._reqsess.get(self.path2url('/ping'))
+        return r.status_code == 200
+
     def healthcheck(self):
         """
         Check if uiautomator is running, if not launch again
+        
+        Raises:
+            RuntimeError
         """
-        return self._reqsess.post(self.path2url('/uiautomator')).text
+        self.app_start('com.github.uiautomator', '.MainActivity')
+        self.adb_shell('input', 'keyevent', 'HOME')
+        self._reqsess.post(self.path2url('/uiautomator'))
+        start = time.time()
+        while time.time() - start < 10.0:
+            if self.alive:
+                return True
+            time.sleep(.5)
+        raise RuntimeError("Uiautomator started failed.")
 
     def app_install(self, url):
         """
