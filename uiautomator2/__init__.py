@@ -359,6 +359,9 @@ class AutomatorServer(object):
         """ unlock screen """
         self.adb_shell('am', 'start', '-W', '-a', 'com.github.uiautomator.ACTION_IDENTIFY')
         self._default_session.press("home")
+    
+    def open_identify(self):
+        self.adb_shell('am', 'start', '-W', '-a', 'com.github.uiautomator.ACTION_IDENTIFY')
 
     def _pidof_app(self, pkg_name):
         return self.adb_shell('pidof', pkg_name).strip()
@@ -716,9 +719,9 @@ class UiObject(object):
         Usage:
         d(text="Clock").click()  # click on the center of the ui object
         '''
-        self.tap_nowait()
+        self.click_nowait()
 
-    def tap_nowait(self): # todo, the java layer wait a little longer(10s)
+    def click_nowait(self): # todo, the java layer wait a little longer(10s)
         """
         Tap element with no wait
 
