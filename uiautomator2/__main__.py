@@ -238,6 +238,10 @@ class MyFire(object):
     def uninstall_all(self, device_ip=None):
         u = u2.connect(device_ip)
         u.app_uninstall_all(verbose=True)
+    
+    def identify(self, device_ip=None, theme='black'):
+        u = u2.connect(device_ip)
+        u.open_identify(theme)
 
 
 def main():

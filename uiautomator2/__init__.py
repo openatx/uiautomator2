@@ -95,7 +95,7 @@ def connect(addr=None):
     Example:
         connect("10.0.0.1")
     """
-    if not addr:
+    if not addr or addr == '+':
         addr = os.getenv('ANDROID_DEVICE_IP')
     if not addr:
         return connect_usb()
@@ -366,11 +366,15 @@ class AutomatorServer(object):
     
     def unlock(self):
         """ unlock screen """
-        self.adb_shell('am', 'start', '-W', '-a', 'com.github.uiautomator.ACTION_IDENTIFY')
+        self.open_identify()
         self._default_session.press("home")
     
-    def open_identify(self):
-        self.adb_shell('am', 'start', '-W', '-a', 'com.github.uiautomator.ACTION_IDENTIFY')
+    def open_identify(self, theme='black'):
+        """
+        Args:
+            theme (str): black or red
+        """
+        self.adb_shell('am', 'start', '-W', '-a', 'com.github.uiautomator.ACTION_IDENTIFY', '-e', 'theme', theme)
 
     def _pidof_app(self, pkg_name):
         return self.adb_shell('pidof', pkg_name).strip()
