@@ -29,6 +29,7 @@ import requests
 from uiautomator2 import adbutils
 
 DEBUG = False
+HTTP_TIMEOUT = 30
 
 
 class UiaError(Exception):
@@ -115,11 +116,18 @@ def connect_usb(serial=None):
     return connect('127.0.0.1:'+str(lport))
 
 
+class TimeoutRequestsSession(requests.Session):
+    def request(self, *args, **kwargs):
+        if kwargs.get('timeout') is None:
+            kwargs['timeout'] = HTTP_TIMEOUT
+        return super(TimeoutRequestsSession, self).request(*args, **kwargs)
+
+
 class AutomatorServer(object):
     def __init__(self, host, port=7912):
         self._host = host
         self._port = port
-        self._reqsess = requests.Session() # use HTTP Keep-Alive to speed request
+        self._reqsess = TimeoutRequestsSession() # use requests.Session to enable HTTP Keep-Alive
         self._server_url = 'http://{}:{}'.format(host, port)
         self._server_jsonrpc_url = self._server_url + "/jsonrpc/0"
         self._default_session = Session(self, None)
@@ -259,12 +267,13 @@ class AutomatorServer(object):
                 next_refresh = time.time() + interval
             elif message == 'installing':
                 next_refresh = time.time() + interval*2
+
+            if progress.get('error'):
+                raise RuntimeError(progress.get('error'), progress.get('message'))
             log_print("{} {} / {}".format(
                 progress.get('message'),
                 humanize.naturalsize(copied_size),
                 humanize.naturalsize(total_size)))
-            if progress.get('error'):
-                raise RuntimeError(progress.get('error'), progress.get('message'))
             if message == 'success installed':
                 return progress.get('extraData')
     
