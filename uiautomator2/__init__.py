@@ -5,7 +5,6 @@ from __future__ import absolute_import, print_function
 
 import hashlib
 import time
-import datetime
 import functools
 import json
 import io
@@ -77,7 +76,7 @@ class UiObjectNotFoundError(JsonRpcError):
 
 def log_print(s):
     thread_name = threading.current_thread().getName()
-    print(thread_name + ": " + datetime.datetime.now().strftime('%H:%M:%S,%f')[:-3] + " " + s)
+    print(thread_name + ": " + datetime.now().strftime('%H:%M:%S,%f')[:-3] + " " + s)
 
 
 def U(x):
