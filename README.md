@@ -99,14 +99,14 @@ Open python, input with the following code
 先中文写着了，国外大佬们先用Google Translate顶着
 
 ### 检查并维持uiautomator处于运行状态
-```
+```python
 d.healthcheck()
 ```
 
 ### 连接本地的设备
 需要设备曾经使用`python -muiautomator2 init`初始化过
 
-```
+```python
 d = u2.connect_usb("{Your-Device-Serial}")
 ```
 
@@ -115,6 +115,19 @@ d = u2.connect_usb("{Your-Device-Serial}")
 
 ```python
 clicked = d(text='Skip').click_exists(timeout=10.0)
+```
+
+### 打开调试开关
+用于开发者或有经验的使用者定位问题
+
+```python
+>>> d.debug = True
+>>> d.info
+12:32:47.182 $ curl -X POST -d '{"jsonrpc": "2.0", "id": "b80d3a488580be1f3e9cb3e926175310", "method": "deviceInfo", "params": {}}' 'http://127.0.0.1:54179/jsonrpc/0'
+12:32:47.225 Response >>>
+{"jsonrpc":"2.0","id":"b80d3a488580be1f3e9cb3e926175310","result":{"currentPackageName":"com.android.mms","displayHeight":1920,"displayRotation":0,"displaySizeDpX":360,"displaySizeDpY":640,"displayWidth":1080,"productName"
+:"odin","screenOn":true,"sdkInt":25,"naturalOrientation":true}}
+<<< END
 ```
 
 **Notes:** In below examples, we use `d` represent the uiautomator2 connect object

@@ -15,10 +15,11 @@ import xml.dom.minidom
 import xml.etree.ElementTree as ET
 import threading
 import shutil
+from datetime import datetime
+from subprocess import list2cmdline
 
 import six
 import humanize
-from subprocess import list2cmdline
 
 if six.PY2:
     import urlparse
@@ -117,10 +118,18 @@ def connect_usb(serial=None):
 
 
 class TimeoutRequestsSession(requests.Session):
-    def request(self, *args, **kwargs):
+    def request(self, method, url, **kwargs):
         if kwargs.get('timeout') is None:
             kwargs['timeout'] = HTTP_TIMEOUT
-        return super(TimeoutRequestsSession, self).request(*args, **kwargs)
+        verbose = hasattr(self, 'debug') and self.debug
+        if verbose:
+            print(datetime.now().strftime("%H:%M:%S.%f")[:-3], "$ curl -X {method} -d '{data}' '{url}'".format(
+                method=method, url=url, data=kwargs.get('data').decode()
+            ))
+        resp = super(TimeoutRequestsSession, self).request(method, url, **kwargs)
+        if verbose:
+            print(datetime.now().strftime("%H:%M:%S.%f")[:-3], "Response >>>\n"+resp.text.rstrip()+"\n<<< END")
+        return resp
 
 
 class AutomatorServer(object):
@@ -134,6 +143,14 @@ class AutomatorServer(object):
         self._click_post_delay = None
         # TODO: check if server alive
 
+    @property
+    def debug(self):
+        return hasattr(self._reqsess, 'debug') and self._reqsess.debug
+
+    @debug.setter
+    def debug(self, value):
+        self._reqsess.debug = bool(value)
+    
     def path2url(self, path):
         return urlparse.urljoin(self._server_url, path)
 
