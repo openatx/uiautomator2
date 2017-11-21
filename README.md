@@ -1,7 +1,7 @@
 # uiautomator2
 [![Build Status](https://travis-ci.org/openatx/uiautomator2.svg?branch=master)](https://travis-ci.org/openatx/uiautomator2)
-[![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)]()
-[![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg)]()
+[![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2)
+![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg)
 
 Android Uiautomator2 Python Wrapper
 这是一个可以完成Android的UI自动化的python库。**该项目还在火热的开发中**
