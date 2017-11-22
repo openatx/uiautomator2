@@ -8,6 +8,7 @@ install:
 script:
 - echo "skip test"
 deploy:
+  skip_cleanup: true
   provider: pypi
   user: codeskyblue
   password:
