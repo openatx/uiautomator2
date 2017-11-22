@@ -79,6 +79,14 @@ def log_print(s):
     print(thread_name + ": " + datetime.now().strftime('%H:%M:%S,%f')[:-3] + " " + s)
 
 
+def intersect(rect1, rect2):
+    top = rect1["top"] if rect1["top"] > rect2["top"] else rect2["top"]
+    bottom = rect1["bottom"] if rect1["bottom"] < rect2["bottom"] else rect2["bottom"]
+    left = rect1["left"] if rect1["left"] > rect2["left"] else rect2["left"]
+    right = rect1["right"] if rect1["right"] < rect2["right"] else rect2["right"]
+    return left, top, right, bottom
+
+
 def U(x):
     if six.PY3:
         return x
@@ -835,10 +843,188 @@ class UiObject(object):
             self.selector.clone().sibling(**kwargs)
         )
     
+    child_selector, from_parent = child, sibling
+    
+    def child_by_text(self, txt, **kwargs):
+        if "allow_scroll_search" in kwargs:
+            allow_scroll_search = kwargs.pop("allow_scroll_search")
+            name = self.jsonrpc.childByText(
+                self.selector,
+                Selector(**kwargs),
+                txt,
+                allow_scroll_search
+            )
+        else:
+            name = self.jsonrpc.childByText(
+                self.selector,
+                Selector(**kwargs),
+                txt
+            )
+        return UiObject(self.session, name)
+
+    def child_by_description(self, txt, **kwargs):
+        # need test
+        if "allow_scroll_search" in kwargs:
+            allow_scroll_search = kwargs.pop("allow_scroll_search")
+            name = self.jsonrpc.childByDescription(
+                self.selector,
+                Selector(**kwargs),
+                txt,
+                allow_scroll_search
+            )
+        else:
+            name = self.jsonrpc.childByDescription(
+                self.selector,
+                Selector(**kwargs),
+                txt
+            )
+        return UiObject(self.session, name)
+
+    def child_by_instance(self, inst, **kwargs):
+        # need test
+        return UiObject(
+            self.session,
+            self.jsonrpc.childByInstance(self.selector, Selector(**kwargs), inst)
+        )
+    
     def __getitem__(self, index):
         selector = self.selector.clone()
         selector['instance'] = index
-        return UiObject(self.session, selector)    
+        return UiObject(self.session, selector)
+
+    @property
+    def count(self):
+        return self.jsonrpc.count(self.selector)
+
+    def __len__(self):
+        return self.count
+    
+    def __iter__(self):
+        obj, length = self, self.count
+
+        class Iter(object):
+            def __init__(self):
+                self.index = -1
+
+            def next(self):
+                self.index += 1
+                if self.index < length:
+                    return obj[self.index]
+                else:
+                    raise StopIteration()
+            __next__ = next
+
+        return Iter()
+
+    def right(self, **kwargs):
+        def onrightof(rect1, rect2):
+            left, top, right, bottom = intersect(rect1, rect2)
+            return rect2["left"] - rect1["right"] if top < bottom else -1
+        return self.__view_beside(onrightof, **kwargs)
+
+    def left(self, **kwargs):
+        def onleftof(rect1, rect2):
+            left, top, right, bottom = intersect(rect1, rect2)
+            return rect1["left"] - rect2["right"] if top < bottom else -1
+        return self.__view_beside(onleftof, **kwargs)
+
+    def up(self, **kwargs):
+        def above(rect1, rect2):
+            left, top, right, bottom = intersect(rect1, rect2)
+            return rect1["top"] - rect2["bottom"] if left < right else -1
+        return self.__view_beside(above, **kwargs)
+
+    def down(self, **kwargs):
+        def under(rect1, rect2):
+            left, top, right, bottom = intersect(rect1, rect2)
+            return rect2["top"] - rect1["bottom"] if left < right else -1
+        return self.__view_beside(under, **kwargs)
+
+    def __view_beside(self, onsideof, **kwargs):
+        bounds = self.info["bounds"]
+        min_dist, found = -1, None
+        for ui in UiObject(self.session, Selector(**kwargs)):
+            dist = onsideof(bounds, ui.info["bounds"])
+            if dist >= 0 and (min_dist < 0 or dist < min_dist):
+                min_dist, found = dist, ui
+        return found
+    
+    @property
+    def fling(self):
+        """
+        Args:
+            dimention (str): one of "vert", "vertically", "vertical", "horiz", "horizental", "horizentally"
+            action (str): one of "forward", "backward", "toBeginning", "toEnd", "to"
+        """
+        jsonrpc = self.jsonrpc
+        selector = self.selector
+
+        class _Fling(object):
+            def __init__(self):
+                self.vertical = True
+                self.action = 'forward'
+
+            def __getattr__(self, key):
+                if key in ["horiz", "horizental", "horizentally"]:
+                    self.vertical = False
+                    return self
+                if key in ['vert', 'vertically', 'vertical']:
+                    self.vertical = True
+                    return self
+                if key in ["forward", "backward", "toBeginning", "toEnd", "to"]:
+                    self.action = key
+                    return self
+                raise ValueError("invalid prop %s" % key)
+            
+            def __call__(self, max_swipes=500, **kwargs):
+                if self.action == "forward":
+                    return jsonrpc.flingForward(selector, self.vertical)
+                elif self.action == "backward":
+                    return jsonrpc.flingBackward(selector, self.vertical)
+                elif self.action == "toBeginning":
+                    return jsonrpc.flingToBeginning(selector, self.vertical, max_swipes)
+                elif self.action == "toEnd":
+                    return jsonrpc.flingToEnd(selector, self.vertical, max_swipes)
+        return _Fling()
+    
+    @property
+    def scroll(self):
+        """
+        Args:
+            dimention (str): one of "vert", "vertically", "vertical", "horiz", "horizental", "horizentally"
+            action (str): one of "forward", "backward", "toBeginning", "toEnd", "to"
+        """
+        selector = self.selector
+        jsonrpc = self.jsonrpc
+
+        class _Scroll(object):
+            def __init__(self):
+                self.vertical = True
+                self.action = 'forward'
+
+            def __getattr__(self, key):
+                if key in ["horiz", "horizental", "horizentally"]:
+                    self.vertical = False
+                    return self
+                if key in ['vert', 'vertically', 'vertical']:
+                    self.vertical = True
+                    return self
+                if key in ["forward", "backward", "toBeginning", "toEnd", "to"]:
+                    self.action = key
+                    return self
+                raise ValueError("invalid prop %s" % key)
+            
+            def __call__(self, steps=20, max_swipes=500, **kwargs):
+                if self.action in ["forward", "backward"]:
+                    method = jsonrpc.scrollForward if self.action == "forward" else jsonrpc.scrollBackward
+                    return method(selector, self.vertical, steps)
+                elif self.action == "toBeginning":
+                    return jsonrpc.scrollToBeginning(selector, self.vertical, max_swipes, steps)
+                elif self.action == "toEnd":
+                    return jsonrpc.scrollToEnd(selector, self.vertical, max_swipes, steps)
+                elif self.action == "to":
+                    return jsonrpc.scrollTo(selector, Selector(**kwargs), self.vertical)
+        return _Scroll()
 
 
 class Selector(dict):
@@ -911,5 +1097,3 @@ class Selector(dict):
         self[self.__childOrSibling].append("sibling")
         self[self.__childOrSiblingSelector].append(Selector(**kwargs))
         return self
-
-    child_selector, from_parent = child, sibling

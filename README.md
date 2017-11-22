@@ -139,7 +139,7 @@ clicked = d(text='Skip').click_exists(timeout=10.0)
   - **[Key Event Actions of the device](#key-event-actions-of-the-device)**
   - **[Gesture interaction of the device](#gesture-interaction-of-the-device)**
   - **[Screen Actions of the device](#screen-actions-of-the-device)**
-  - **[Push file into device](#push-file-into-device)**
+  - **[Push and pull file](#push-and-pull-file)**
 
 **[App management](#app-management)**
   - **[App install](#app-install)**
@@ -147,10 +147,12 @@ clicked = d(text='Skip').click_exists(timeout=10.0)
 **[Watcher introduction](#watcher)**
 
 **[Selector](#selector)**
-  - **[Click settings](#click-settings)**
   - **[Child and sibling UI object](#child-and-sibling-ui-object)**
   - **[Get the selected ui object status and its information](#get-the-selected-ui-object-status-and-its-information)**
   - **[Perform the click action on the seleted ui object](#perform-the-click-action-on-the-seleted-ui-object)**
+  - **[Gesture action for the specific ui object](#gesture-action-for-the-specific-ui-object)**
+  
+**[Click settings](#click-settings)**
 
 **[Contributors](#contributors)**
 
@@ -388,27 +390,6 @@ Selector is to identify specific ui object in current window.
 d(text='Clock', className='android.widget.TextView')
 ```
 
-#### Click settings
-```python
-# set delay 1.5s after each UI click and click
-d.set_click_post_delay(1.5)
-```
-
-#### Child and sibling UI object
-* child
-
-    ```python
-    # get the child or grandchild
-    d(className="android.widget.ListView").child(text="Bluetooth")
-    ```
-
-* sibling
-
-    ```python
-    # get sibling or child of sibling
-    d(text="Google").sibling(className="android.widget.ImageView")
-    ```
-
 Selector supports below parameters. Refer to [UiSelector java doc](http://developer.android.com/tools/help/uiautomator/UiSelector.html) for detailed information.
 
 *  `text`, `textContains`, `textMatches`, `textStartsWith`
@@ -419,6 +400,126 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
 *  `packageName`, `packageNameMatches`
 *  `resourceId`, `resourceIdMatches`
 *  `index`, `instance`
+
+#### Child and sibling UI object
+
+* child
+
+  ```python
+  # get the child or grandchild
+  d(className="android.widget.ListView").child(text="Bluetooth")
+  ```
+
+* sibling
+
+  ```python
+  # get sibling or child of sibling
+  d(text="Google").sibling(className="android.widget.ImageView")
+  ```
+
+* child by text or description or instance
+
+  ```python
+  # get the child match className="android.widget.LinearLayout"
+  # and also it or its child or grandchild contains text "Bluetooth"
+  d(className="android.widget.ListView", resourceId="android:id/list") \
+   .child_by_text("Bluetooth", className="android.widget.LinearLayout")
+
+  # allow scroll search to get the child
+  d(className="android.widget.ListView", resourceId="android:id/list") \
+   .child_by_text(
+      "Bluetooth",
+      allow_scroll_search=True,
+      className="android.widget.LinearLayout"
+    )
+  ```
+
+  - `child_by_description` is to find child which or which's grandchild contains
+      the specified description, others are the same as `child_by_text`.
+
+  - `child_by_instance` is to find child which has a child UI element anywhere
+      within its sub hierarchy that is at the instance specified. It is performed
+      on visible views without **scrolling**.
+
+  See below links for detailed information:
+
+  -   [UiScrollable](http://developer.android.com/tools/help/uiautomator/UiScrollable.html), `getChildByDescription`, `getChildByText`, `getChildByInstance`
+  -   [UiCollection](http://developer.android.com/tools/help/uiautomator/UiCollection.html), `getChildByDescription`, `getChildByText`, `getChildByInstance`
+
+  Above methods support chained invoking, e.g. for below hierarchy
+
+  ```xml
+  <node index="0" text="" resource-id="android:id/list" class="android.widget.ListView" ...>
+    <node index="0" text="WIRELESS & NETWORKS" resource-id="" class="android.widget.TextView" .../>
+    <node index="1" text="" resource-id="" class="android.widget.LinearLayout" ...>
+      <node index="1" text="" resource-id="" class="android.widget.RelativeLayout" ...>
+        <node index="0" text="Wi‑Fi" resource-id="android:id/title" class="android.widget.TextView" .../>
+      </node>
+      <node index="2" text="ON" resource-id="com.android.settings:id/switchWidget" class="android.widget.Switch" .../>
+    </node>
+    ...
+  </node>
+  ```
+  ![settings](https://raw.github.com/xiaocong/uiautomator/master/docs/img/settings.png)
+
+  We want to click the switch at the right side of text 'Wi‑Fi' to turn on/of Wi‑Fi.
+  As there are several switches with almost the same properties, so we can not use like
+  `d(className="android.widget.Switch")` to select the ui object. Instead, we can use
+  code below to select it.
+
+  ```python
+  d(className="android.widget.ListView", resourceId="android:id/list") \
+    .child_by_text("Wi‑Fi", className="android.widget.LinearLayout") \
+    .child(className="android.widget.Switch") \
+    .click()
+  ```
+
+* relative position
+
+  Also we can use the relative position methods to get the view: `left`, `right`, `top`, `bottom`.
+
+  -   `d(A).left(B)`, means selecting B on the left side of A.
+  -   `d(A).right(B)`, means selecting B on the right side of A.
+  -   `d(A).up(B)`, means selecting B above A.
+  -   `d(A).down(B)`, means selecting B under A.
+
+  So for above case, we can write code alternatively:
+
+  ```python
+  ## select "switch" on the right side of "Wi‑Fi"
+  d(text="Wi‑Fi").right(className="android.widget.Switch").click()
+  ```
+
+* Multiple instances
+
+  Sometimes the screen may contain multiple views with the same e.g. text, then you will
+  have to use "instance" properties in selector like below:
+
+  ```python
+  d(text="Add new", instance=0)  # which means the first instance with text "Add new"
+  ```
+
+  However, uiautomator provides list like methods to use it.
+
+  ```python
+  # get the count of views with text "Add new" on current screen
+  d(text="Add new").count
+
+  # same as count property
+  len(d(text="Add new"))
+
+  # get the instance via index
+  d(text="Add new")[0]
+  d(text="Add new")[1]
+  ...
+
+  # iterator
+  for view in d(text="Add new"):
+      view.info  # ...
+  ```
+
+  **Notes**: when you are using selector like a list, you must make sure the screen
+  keep unchanged, else you may get ui not found error.
 
 #### Get the selected ui object status and its information
 * Check if the specific ui object exists
@@ -512,6 +613,46 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
 
     Default timeout is 10s
 
+* Perform fling on the specific ui object(scrollable)
+
+  Possible properties:
+  - `horiz` or `vert`
+  - `forward` or `backward` or `toBeginning` or `toEnd`
+
+  ```python
+  # fling forward(default) vertically(default) 
+  d(scrollable=True).fling()
+  # fling forward horizentally
+  d(scrollable=True).fling.horiz.forward()
+  # fling backward vertically
+  d(scrollable=True).fling.vert.backward()
+  # fling to beginning horizentally
+  d(scrollable=True).fling.horiz.toBeginning(max_swipes=1000)
+  # fling to end vertically
+  d(scrollable=True).fling.toEnd()
+  ```
+
+* Perform scroll on the specific ui object(scrollable)
+
+  Possible properties:
+  - `horiz` or `vert`
+  - `forward` or `backward` or `toBeginning` or `toEnd`, or `to`
+
+  ```python
+  # scroll forward(default) vertically(default)
+  d(scrollable=True).scroll(steps=10)
+  # scroll forward horizentally
+  d(scrollable=True).scroll.horiz.forward(steps=100)
+  # scroll backward vertically
+  d(scrollable=True).scroll.vert.backward()
+  # scroll to beginning horizentally
+  d(scrollable=True).scroll.horiz.toBeginning(steps=100, max_swipes=1000)
+  # scroll to end vertically
+  d(scrollable=True).scroll.toEnd()
+  # scroll forward vertically until specific ui object appears
+  d(scrollable=True).scroll.to(text="Security")
+  ```
+  
 ### Watcher
 
 You can register [watcher](http://developer.android.com/tools/help/uiautomator/UiWatcher.html) to perform some actions when a selector can not find a match.
@@ -595,6 +736,12 @@ You can register [watcher](http://developer.android.com/tools/help/uiautomator/U
   ```
 
 另外文档还是有很多没有写，推荐直接去看源码[__init__.py](uiautomato2/__init__.py)
+
+### Click settings
+```python
+# set delay 1.5s after each UI click and click
+d.set_click_post_delay(1.5)
+```
 
 ## 测试方法
 ```bash
