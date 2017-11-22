@@ -15,3 +15,4 @@ deploy:
   on:
     distributions: sdist bdist_wheel
     repo: openatx/uiautomator2
+    all_branches: true
