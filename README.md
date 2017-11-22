@@ -610,6 +610,19 @@ $ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' localhost:9008/jsonrp
 4. Uiautomator2必须明确EditText框才能向里面输入文字，Uiautomator直接指定父类也可以在子类中输入文字
 5. Uiautomator2获取控件速度快写，而Uiautomator获取速度慢一些;
 
+## 常见问题
+1. 提示`502`错误
+
+    尝试手机连接PC，然后运行下面的命令
+    
+    ```
+    adb shell am instrument -w -r  -e debug false -e class com.github.uiautomator.stub.Stub \
+		com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner
+    ```
+    如果运行正常，启动测试之前增加一行代码`d.healthcheck()`
+
+    如果报错，可能是缺少某个apk没有安装，使用下面的命令重新初始化 `python -m uiautomator2 init --reinstall`
+    
 # ABOUT
 项目重构自 <https://github.com/openatx/atx-uiautomator>
 
