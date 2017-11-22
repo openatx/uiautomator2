@@ -88,8 +88,9 @@ Open python, input with the following code
 注: 当`device_ip`为空时，会先检查环境变量`ANDROID_DEVICE_IP`, 如果依然为空，会调用`connect_usb`方法
 
 ```python
->>> import uiautomator2 as ut2
->>> d = ut2.connect(device_ip)
+>>> import uiautomator2 as u2
+>>> d = u2.connect(device_ip) # 通过手机WiFi连接设备
+>>> # d = u2.connect_usb() # 连接电脑上连接的设备，暂时只支持一个电脑上插一个手机
 >>> print(d.info)
 {'currentPackageName': 'com.android.systemui', 'displayHeight': 1920, 'displayRotation': 0, 'displaySizeDpX': 360, 'displaySizeDpY': 640, 'displayWidth': 1080, 'productName': 'surabaya', 'screenOn': False, 'sdkInt': 23, 'naturalOrientation': True}
 ```
