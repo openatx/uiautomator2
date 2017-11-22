@@ -602,6 +602,26 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
     d(text="Settings").drag_to(text="Clock", duration=0.25)
     ```
 
+* Two point gesture from one point to another
+
+  ```python
+  d(text="Settings").gesture((sx1, sy1), (sx2, sy2), (ex1, ey1), (ex2, ey2))
+  ```
+
+* Two point gesture on the specific ui object
+
+  Supports two gestures:
+  - `In`, from edge to center
+  - `Out`, from center to edge
+
+  ```python
+  # notes : pinch can not be set until Android 4.3.
+  # from edge to center. here is "In" not "in"
+  d(text="Settings").pinch_in(percent=100, steps=10)
+  # from center to edge
+  d(text="Settings").pinch_out()
+  ```
+
 * Wait until the specific ui appears or gone
     
     ```python

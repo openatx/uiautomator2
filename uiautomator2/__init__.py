@@ -806,6 +806,26 @@ class UiObject(object):
             return drag2xy(*args, **kwargs)
         return self.jsonrpc.dragTo(self.selector, Selector(**kwargs), steps)
 
+    def gesture(self, start1, start2, end1, end2, steps=100):
+        '''
+        perform two point gesture.
+        Usage:
+        d().gesture(startPoint1, startPoint2, endPoint1, endPoint2, steps)
+        '''
+        def point(x=0, y=0):
+            return {"x": x, "y": y}
+
+        def ctp(pt):
+            return point(*pt) if type(pt) == tuple else pt
+        s1, s2, e1, e2 = ctp(start1), ctp(start2), ctp(end1), ctp(end2)
+        return self.jsonrpc.gesture(self.selector, s1, s2, e1, e2, steps)
+
+    def pinch_in(self, percent=100, steps=50):
+        return self.jsonrpc.pinchIn(self.selector, percent, steps)
+
+    def pinch_out(self, percent=100, steps=50):
+        return self.jsonrpc.pinchOut(self.selector, percent, steps)
+
     def wait(self, exists=True, timeout=10.0):
         """
         Wait until UI Element exists or gone
