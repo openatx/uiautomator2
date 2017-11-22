@@ -324,13 +324,16 @@ class AutomatorServer(object):
             raise RuntimeError("expect status 200, but got %d" % ret.status_code)
         return ret.json().get('output')
     
-    def app_start(self, pkg_name, activity=None, stop=False):
+    def app_start(self, pkg_name, activity=None, stop=False, unlock=False):
         """ Launch application
         Args:
             pkg_name (str): package name
             activity (str): app activity
             stop (str): Stop app before starting the activity. (require activity)
         """
+        if unlock:
+            self.unlock()
+            
         if activity:
             # -D: enable debugging
             # -W: wait for launch to complete
