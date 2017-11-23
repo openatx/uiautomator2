@@ -781,7 +781,7 @@ class UiObject(object):
         if not self.wait(timeout=timeout):
             return False
         try:
-            self.tap_nowait()
+            self.click_nowait()
             return True
         except UiObjectNotFoundError:
                 return False
@@ -910,6 +910,16 @@ class UiObject(object):
             self.jsonrpc.childByInstance(self.selector, Selector(**kwargs), inst)
         )
     
+    def parent(self):
+        # android-uiautomator-server not implemented
+        # In UIAutomator, UIObject2 has getParent() method
+        # https://developer.android.com/reference/android/support/test/uiautomator/UiObject2.html
+        raise NotImplementedError()
+        return UiObject(
+            self.session,
+            self.jsonrpc.getParent(self.selector)
+        )
+
     def __getitem__(self, index):
         selector = self.selector.clone()
         selector['instance'] = index
