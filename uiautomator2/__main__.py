@@ -109,6 +109,16 @@ class Installer(adbutils.Adb):
         url = minicap_base_url+self.abi+"/bin/minicap"
         path = cache_download(url)
         self.push(path, '/data/local/tmp/minicap', 0o755)
+
+    def install_minitouch(self):
+        """ Need test """
+        log.debug("install minitouch")
+        url = ''.join(["https://github.com/codeskyblue/stf-binaries",
+            "/raw/master/node_modules/minitouch-prebuilt/prebuilt/",
+            self.abi+"/bin/minitouch"])
+        print(url)
+        path = cache_download(url)
+        self.push(path, '/data/local/tmp/minitouch', 0o755)
     
     def install_uiautomator_apk(self, apk_version, reinstall=False):
         app_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % apk_version
