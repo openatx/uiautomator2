@@ -763,6 +763,15 @@ You can register [watcher](http://developer.android.com/tools/help/uiautomator/U
 d.set_click_post_delay(1.5)
 ```
 
+### 中文字符的输入
+这种方法通常用于不知道控件的情况下的输入。第一步需要切换输入法，然后发送adb广播命令，具体使用方法如下
+
+```python
+d.set_fastinput_ime(True) # 切换成FastInputIME输入法
+d.send_keys("你好123abcEFG") # adb广播输入
+d.set_fastinput_ime(False) # 切换成正常的输入法
+```
+
 ## 测试方法
 ```bash
 $ adb forward tcp:9008 tcp:9008

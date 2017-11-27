@@ -526,10 +526,16 @@ class Session(object):
             y = int(info['displayHeight'] * y)
         return x, y
 
-    def send_keys(self, text):
+    def set_fastinput_ime(self, enable=True):
+        """ Enable of Disable FastInputIME """
         fast_ime = 'com.github.uiautomator/.FastInputIME'
-        self.server.adb_shell('ime', 'enable', fast_ime)
-        self.server.adb_shell('ime', 'set', fast_ime)
+        if enable:
+            self.server.adb_shell('ime', 'enable', fast_ime)
+            self.server.adb_shell('ime', 'set', fast_ime)
+        else:
+            self.server.adb_shell('ime', 'disable', fast_ime)
+
+    def send_keys(self, text):
         base64text = base64.b64encode(text.encode('utf-8')).decode()
         self.server.adb_shell('am', 'broadcast', '-a', 'ADB_INPUT_TEXT', '--es', 'text', base64text)
 
