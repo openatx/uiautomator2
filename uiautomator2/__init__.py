@@ -3,6 +3,7 @@
 
 from __future__ import absolute_import, print_function
 
+import base64
 import hashlib
 import time
 import functools
@@ -524,6 +525,13 @@ class Session(object):
         if y < 1:
             y = int(info['displayHeight'] * y)
         return x, y
+
+    def send_keys(self, text):
+        fast_ime = 'com.github.uiautomator/.FastInputIME'
+        self.server.adb_shell('ime', 'enable', fast_ime)
+        self.server.adb_shell('ime', 'set', fast_ime)
+        base64text = base64.b64encode(text.encode('utf-8')).decode()
+        self.server.adb_shell('am', 'broadcast', '-a', 'ADB_INPUT_TEXT', '--es', 'text', base64text)
 
     def tap(self, x, y):
         """
