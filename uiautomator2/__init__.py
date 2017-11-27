@@ -517,7 +517,7 @@ class Session(object):
 
     def pos_rel2abs(self, x, y):
         info = None
-        if x < 1 or y < 1:
+        if 0 < x < 1 or 0 < y < 1:
             info = self.info
         if x < 1:
             x = int(info['displayWidth'] * x)
@@ -802,6 +802,7 @@ class UiObject(object):
         steps = int(duration*200)
         if len(args) >= 2 or "x" in kwargs or "y" in kwargs:
             def drag2xy(x, y):
+                x, y = self.session.pos_rel2abs(x, y) # convert percent position
                 return self.jsonrpc.dragTo(self.selector, x, y, steps)
             return drag2xy(*args, **kwargs)
         return self.jsonrpc.dragTo(self.selector, Selector(**kwargs), steps)
@@ -813,6 +814,7 @@ class UiObject(object):
         d().gesture(startPoint1, startPoint2, endPoint1, endPoint2, steps)
         '''
         def point(x=0, y=0):
+            x, y = self.session.pos_rel2abs(x, y)
             return {"x": x, "y": y}
 
         def ctp(pt):
@@ -843,6 +845,10 @@ class UiObject(object):
         """ wait until ui gone """
         return self.wait(exists=False)
     
+    def send_keys(self, text):
+        """ alias of set_text """
+        return self.set_text(text)
+
     @wait_exists_wrap
     def set_text(self, text):
         if not text:
