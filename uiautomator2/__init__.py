@@ -547,6 +547,31 @@ class Session(object):
         ret = self.jsonrpc.click(x, y)
         if self.server._click_post_delay:
             time.sleep(self.server._click_post_delay)
+    
+    @property
+    def touch(self):
+        """
+        ACTION_DOWN: 0 ACTION_MOVE: 2
+        touch.down(x, y)
+        touch.move(x, y)
+        touch.up()
+        """
+        ACTION_DOWN = 0
+        ACTION_MOVE = 2
+        ACTION_UP = 1
+
+        obj = self
+        class _Touch(object):
+            def down(self, x, y):
+                obj.jsonrpc.injectInputEvent(ACTION_DOWN, x, y, 0)
+            
+            def move(self, x, y):
+                obj.jsonrpc.injectInputEvent(ACTION_MOVE, x, y, 0)
+
+            def up(self, x, y):
+                obj.jsonrpc.injectInputEvent(ACTION_UP, x, y, 0)
+
+        return _Touch()
 
     def click(self, x, y):
         """
@@ -557,7 +582,10 @@ class Session(object):
     def long_click(self, x, y, duration=0.5):
         '''long click at arbitrary coordinates.'''
         x, y = self.pos_rel2abs(x, y)
-        return self.swipe(x, y, x + 1, y + 1, duration)
+        self.touch.down(x, y)
+        time.sleep(duration)
+        self.touch.up(x, y)
+        return self
     
     def swipe(self, fx, fy, tx, ty, duration=0.5):
         """
