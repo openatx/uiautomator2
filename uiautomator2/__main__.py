@@ -100,23 +100,22 @@ class Installer(adbutils.Adb):
         sdk = self.sdk
         if self.pre and self.pre != "0":
             sdk = sdk + self.pre
-        minicap_base_url = "https://github.com/codeskyblue/stf-binaries/raw/master/node_modules/minicap-prebuilt/prebuilt/"
+        base_url = "https://github.com/codeskyblue/stf-binaries/raw/master/node_modules/minicap-prebuilt/prebuilt/"
         log.debug("install minicap.so")
-        url = minicap_base_url+self.abi+"/lib/android-"+sdk+"/minicap.so"
+        url = base_url+self.abi+"/lib/android-"+sdk+"/minicap.so"
         path = cache_download(url)
         self.push(path, '/data/local/tmp/minicap.so')
-        log.debug("install minicap")
-        url = minicap_base_url+self.abi+"/bin/minicap"
+        log.info("install minicap")
+        url = base_url+self.abi+"/bin/minicap"
         path = cache_download(url)
         self.push(path, '/data/local/tmp/minicap', 0o755)
 
     def install_minitouch(self):
         """ Need test """
-        log.debug("install minitouch")
+        log.info("install minitouch")
         url = ''.join(["https://github.com/codeskyblue/stf-binaries",
             "/raw/master/node_modules/minitouch-prebuilt/prebuilt/",
             self.abi+"/bin/minitouch"])
-        print(url)
         path = cache_download(url)
         self.push(path, '/data/local/tmp/minitouch', 0o755)
     
@@ -220,6 +219,7 @@ class MyFire(object):
             ins = Installer(serial)
             ins.server_addr = server
             ins.install_minicap()
+            ins.install_minitouch()
             ins.install_uiautomator_apk(apk_version, reinstall)
             ins.install_atx_agent(agent_version, reinstall)
             ins.launch_and_check()

@@ -592,7 +592,7 @@ class Session(object):
 
     def screenshot(self, filename=None):
         """
-        Image format is PNG
+        Image format is JPEG
         """
         r = requests.get(self.server.screenshot_uri)
         if filename:
