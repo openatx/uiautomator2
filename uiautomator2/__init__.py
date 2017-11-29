@@ -259,12 +259,47 @@ class AutomatorServer(object):
             time.sleep(.5)
         raise RuntimeError("Uiautomator started failed.")
 
-    def app_install_local(self, file):
-        dst = '/sdcard/tmp.apk'
-        self.push(file, dst)
-        return self.adb_shell('pm', 'install', '-r', dst)
+    def app_install_remote(self, filepath, verify_hook=None):
+        """
+        Args:
+            filepath(str): apk path on the device
+        
+        Raises:
+            RuntimeError
+        """
+        r = self._reqsess.post(self.path2url("/install"), data={"filepath": filepath})
+        if r.status_code != 200:
+            raise RuntimeError("app install error:", r.text)
+        id = r.text.strip()
+        interval = 1.0 # 2.0s
+        next_refresh = time.time()
+        while True:
+            if time.time() < next_refresh:
+                time.sleep(.2)
+                continue
+            ret = self._reqsess.get(self.path2url('/install/'+id))
+            progress = None
+            try:
+                progress = ret.json()
+            except:
+                raise RuntimeError("invalid json response:", ret.text)
+            message = progress.get('message')
+            if progress.get('error'):
+                raise RuntimeError(progress.get('error'), progress.get('message'))
+            elif message == 'apk parsing':
+                next_refresh = time.time() + interval
+            elif message == 'installing':
+                next_refresh = time.time() + interval*2
+                if callable(verify_hook):
+                    verify_hook(self)
+            elif message == 'success installed':
+                log_print("Successfully installed")
+                return progress.get('extraData')
 
-    def app_install(self, url_or_filename):
+            log_print(message)
+
+
+    def app_install(self, url, verify_hook=None):
         """
         {u'message': u'downloading', u'id': u'2', u'titalSize': 407992690, u'copiedSize': 49152}
 
@@ -274,10 +309,6 @@ class AutomatorServer(object):
         Raises:
             RuntimeError
         """
-        if not re.match(r'^https?://.+', url_or_filename):
-            return self.app_install_local(url_or_filename)
-        
-        url = url_or_filename
         r = self._reqsess.post(self.path2url('/install'), data={'url': url})
         if r.status_code != 200:
             raise RuntimeError("app install error:", r.text)
@@ -301,6 +332,8 @@ class AutomatorServer(object):
                 next_refresh = time.time() + interval
             elif message == 'installing':
                 next_refresh = time.time() + interval*2
+                if callable(verify_hook):
+                    verify_hook(self)
 
             if progress.get('error'):
                 raise RuntimeError(progress.get('error'), progress.get('message'))
