@@ -207,7 +207,7 @@ class MyFire(object):
             log.setLevel(logging.DEBUG)
 
         output = subprocess.check_output(['adb', 'devices'])
-        pattern = re.compile(r'(?P<serial>[\w\d-]+)\t(?P<status>device|offline)')
+        pattern = re.compile(r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
         matches = pattern.findall(output.decode())
         for m in matches:
             serial, status = m[0], m[1]

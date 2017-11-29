@@ -259,7 +259,12 @@ class AutomatorServer(object):
             time.sleep(.5)
         raise RuntimeError("Uiautomator started failed.")
 
-    def app_install(self, url):
+    def app_install_local(self, file):
+        dst = '/sdcard/tmp.apk'
+        self.push(file, dst)
+        return self.adb_shell('pm', 'install', '-r', dst)
+
+    def app_install(self, url_or_filename):
         """
         {u'message': u'downloading', u'id': u'2', u'titalSize': 407992690, u'copiedSize': 49152}
 
@@ -269,6 +274,10 @@ class AutomatorServer(object):
         Raises:
             RuntimeError
         """
+        if not re.match(r'^https?://.+', url_or_filename):
+            return self.app_install_local(url_or_filename)
+        
+        url = url_or_filename
         r = self._reqsess.post(self.path2url('/install'), data={'url': url})
         if r.status_code != 200:
             raise RuntimeError("app install error:", r.text)
@@ -406,7 +415,7 @@ class AutomatorServer(object):
 
     def _pidof_app(self, pkg_name):
         return self.adb_shell('pidof', pkg_name).strip()
-    
+
     def push(self, src, dst, mode=0o644):
         """
         Args:
