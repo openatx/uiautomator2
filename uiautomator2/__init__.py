@@ -608,9 +608,10 @@ class Session(object):
     def swipe_points(self, points, duration=0.5):
         ppoints = []
         for p in points:
-            ppoints.append(p[0])
-            ppoints.append(p[1])
-        return self.jsonrpc.swipePoints(ppoints, int(duration)*200)
+            x, y = self.pos_rel2abs(p[0], p[1])
+            ppoints.append(x)
+            ppoints.append(y)
+        return self.jsonrpc.swipePoints(ppoints, int(duration*200))
 
     def drag(self, sx, sy, ex, ey, duration=0.5):
         '''Swipe from one point to another point.'''
