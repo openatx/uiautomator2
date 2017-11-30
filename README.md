@@ -42,15 +42,7 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
     python -m uiautomator2 init
     ```
 
-3. 最后的测试
-
-    Test if install successfully
-
-    ```bash
-    $ adb forward tcp:7912 tcp:7912 # 转发手机的7912端口到PC上
-    $ adb shell 'echo $(curl -s localhost:7912/version)'
-    # expect: 0.0.?
-    ```
+    安装提示`success`即可
 
 # Usage 使用指南
 下文中我们用`device_ip`这个变量来定义手机的IP，通常来说安装完`atx-agent`的时候会自动提示你手机的IP是多少。
