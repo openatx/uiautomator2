@@ -30,7 +30,7 @@ import requests
 from uiautomator2 import adbutils
 
 DEBUG = False
-HTTP_TIMEOUT = 30
+HTTP_TIMEOUT = 60
 
 
 class UiaError(Exception):
@@ -188,12 +188,13 @@ class AutomatorServer(object):
                 return self
 
             def __call__(self, *args, **kwargs):
+                http_timeout = kwargs.pop('http_timeout', HTTP_TIMEOUT)
                 params = args if args else kwargs
-                return self.server.jsonrpc_call(self.method, params)
+                return self.server.jsonrpc_call(self.method, params, http_timeout)
         
         return JSONRpcWrapper(self)
 
-    def jsonrpc_call(self, method, params=[]):
+    def jsonrpc_call(self, method, params=[], http_timeout=60):
         """ jsonrpc2 call
         Refs:
             - http://www.jsonrpc.org/specification
@@ -207,7 +208,7 @@ class AutomatorServer(object):
         data = json.dumps(data).encode('utf-8')
         res = self._reqsess.post(self._server_jsonrpc_url,
             headers={"Content-Type": "application/json"},
-            timeout=60,
+            timeout=http_timeout,
             data=data)
         if DEBUG:
             print("Shell$ curl -X POST -d '{}' {}".format(data, self._server_jsonrpc_url))
@@ -921,14 +922,15 @@ class UiObject(object):
             d(text="Clock").wait()
             d(text="Settings").wait("gone") # wait until it's gone
         """
+        http_wait = timeout+30
         if exists:
-            return self.jsonrpc.waitForExists(self.selector, int(timeout*1000))
+            return self.jsonrpc.waitForExists(self.selector, int(timeout*1000), http_timeout=http_wait)
         else:
-            return self.jsonrpc.waitUntilGone(self.selector, int(timeout*1000))
+            return self.jsonrpc.waitUntilGone(self.selector, int(timeout*1000), http_timeout=http_wait)
     
     def wait_gone(self, timeout=10.0):
         """ wait until ui gone """
-        return self.wait(exists=False)
+        return self.wait(exists=False, timeout=timeout)
     
     def send_keys(self, text):
         """ alias of set_text """
