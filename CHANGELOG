@@ -1,0 +1,80 @@
+CHANGES
+=======
+
+0.0.2
+-----
+
+* update doc
+* support oppo auto install
+* add app\_install\_local, handle serial contains &
+* swipe\_points support percent points
+* long click support seconds
+* add minitouch install support
+* add minitouch but not tested
+* add FastInputIME
+* add send\_keys method
+* guesture relative pos to real, close #12
+* fix click\_exists
+* add gesture and pinch
+* add select count and fling, scroll
+* update ABOUT.rst addr
+* setup travis build on all\_branches
+
+0.0.1
+-----
+
+* add skip cleanup
+* update doc again
+* check com.github.uiautotor.test when init
+* update badge link
+* fix datetime error
+* add debug
+* add identify method
+* add default timeout to requests
+* update to new version
+* change healthcheck logic, launch com.github.uiautomator and then HOME
+* update atx-agent version to 0.0.9
+* sync with atx-agent code
+* when device ip is empty, connect\_usb will be called
+* add pull support
+* support stop in app\_start
+* add app-stop-all method
+* add unlock cli
+* add watcher support
+* update install guide
+* add pypi version badge
+* add readme
+* am\_start add stop param
+* click when exists
+* add healthcheck and connect\_usb, close #3
+* add unlock method
+* add delay after click
+* fix abilist is empty error
+* add session check(check if app is alive when test is running
+* fix atx-agent install error
+* add clear cache support
+* add pushfile support
+* support kill all apps
+* support percent positions
+* fix detect device from adb devices -l error
+* remove useless print
+* support init multi devices
+* support percent tap, recode init logic
+* fix raise UiObjectNotFoundError error
+* fix incompatible in py3
+* tired, want to sleep
+* add output
+* fix auto install method
+* add auto install requirements scripts
+* update document
+* screenshot return PIL.Image
+* ref |> update function app\_start(..) can input packagename and activity to start app
+* update doc to lastest
+* add selector long\_click, update some doc
+* add example test
+* set default port to 7912
+* update readme
+* add connect(..) and add some doc
+* fix some error
+* initial project
+* Initial commit
