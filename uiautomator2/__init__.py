@@ -559,15 +559,18 @@ class Session(object):
     def jsonrpc(self):
         return self.server.jsonrpc
 
-    def pos_rel2abs(self, x, y):
-        info = None
-        if 0 < x < 1 or 0 < y < 1:
-            info = self.info
-        if x < 1:
-            x = int(info['displayWidth'] * x)
-        if y < 1:
-            y = int(info['displayHeight'] * y)
-        return x, y
+    @property
+    def pos_rel2abs(self):
+        info = {}
+        def convert(x, y):
+            if (0 < x < 1 or 0 < y < 1) and not info:
+                info.update(self.info)
+            if x < 1:
+                x = int(info['displayWidth'] * x)
+            if y < 1:
+                y = int(info['displayHeight'] * y)
+            return x, y
+        return convert
 
     def set_fastinput_ime(self, enable=True):
         """ Enable of Disable FastInputIME """
@@ -644,22 +647,25 @@ class Session(object):
         Links:
             https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe%28int,%20int,%20int,%20int,%20int%29
         """
-        fx, fy = self.pos_rel2abs(fx, fy)
-        tx, ty = self.pos_rel2abs(tx, ty)
+        rel2abs = self.pos_rel2abs
+        fx, fy = rel2abs(fx, fy)
+        tx, ty = rel2abs(tx, ty)
         return self.jsonrpc.swipe(fx, fy, tx, ty, int(duration*200))
     
     def swipe_points(self, points, duration=0.5):
         ppoints = []
+        rel2abs = self.pos_rel2abs
         for p in points:
-            x, y = self.pos_rel2abs(p[0], p[1])
+            x, y = rel2abs(p[0], p[1])
             ppoints.append(x)
             ppoints.append(y)
         return self.jsonrpc.swipePoints(ppoints, int(duration*200))
 
     def drag(self, sx, sy, ex, ey, duration=0.5):
         '''Swipe from one point to another point.'''
-        sx, sy = self.pos_rel2abs(sx, sy)
-        ex, ey = self.pos_rel2abs(ex, ey)
+        rel2abs = self.pos_rel2abs
+        sx, sy = rel2abs(sx, sy)
+        ex, ey = rel2abs(ex, ey)
         return self.jsonrpc.drag(sx, sy, ex, ey, int(duration*200))
 
     def screenshot(self, filename=None):
@@ -899,8 +905,9 @@ class UiObject(object):
         Usage:
         d().gesture(startPoint1, startPoint2, endPoint1, endPoint2, steps)
         '''
+        rel2abs = self.session.pos_rel2abs
         def point(x=0, y=0):
-            x, y = self.session.pos_rel2abs(x, y)
+            x, y = rel2abs(x, y)
             return {"x": x, "y": y}
 
         def ctp(pt):
