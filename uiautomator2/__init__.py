@@ -149,6 +149,7 @@ class AutomatorServer(object):
         self._server_jsonrpc_url = self._server_url + "/jsonrpc/0"
         self._default_session = Session(self, None)
         self._click_post_delay = None
+        self.__devinfo = None
         # TODO: check if server alive
 
     @property
@@ -250,6 +251,7 @@ class AutomatorServer(object):
         Raises:
             RuntimeError
         """
+        self.open_identify()
         self.app_start('com.github.uiautomator', '.MainActivity')
         self.adb_shell('input', 'keyevent', 'HOME')
         self._reqsess.post(self.path2url('/uiautomator'))
@@ -495,6 +497,13 @@ class AutomatorServer(object):
     def screenshot_uri(self):
         return 'http://%s:%d/screenshot/0' % (self._host, self._port)
 
+    @property
+    def device_info(self):
+        if self.__devinfo:
+            return self.__devinfo
+        self.__devinfo = self._reqsess.get(self.path2url('/info')).json()
+        return self.__devinfo
+
     def session(self, pkg_name):
         """
         Context context = InstrumentationRegistry.getInstrumentation().getContext();
@@ -564,7 +573,17 @@ class Session(object):
         info = {}
         def convert(x, y):
             if (0 < x < 1 or 0 < y < 1) and not info:
-                info.update(self.info)
+                uiautomator_info = self.info
+                display = self.server.device_info.get('display', {})
+                if display:
+                    w, h = display['width'], display['height']
+                    rotation = uiautomator_info['displayRotation']
+                    if rotation in [1, 3]:
+                        w, h = h, w
+                    info['displayWidth'] = w
+                    info['displayHeight'] = h
+                else:
+                    info.update(uiautomator_info)
             if x < 1:
                 x = int(info['displayWidth'] * x)
             if y < 1:
