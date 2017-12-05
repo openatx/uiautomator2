@@ -790,7 +790,10 @@ $ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' localhost:9008/jsonrp
     如果运行正常，启动测试之前增加一行代码`d.healthcheck()`
 
     如果报错，可能是缺少某个apk没有安装，使用下面的命令重新初始化 `python -m uiautomator2 init --reinstall`
-    
+
+## 尝鲜功能
+手机`python -muiautomator2 init`之后，浏览器输入 <手机IP:7912>，会发现一个远程控制功能，延迟非常低噢。^_^
+
 # ABOUT
 项目重构自 <https://github.com/openatx/atx-uiautomator>
 

@@ -25,7 +25,8 @@ from uiautomator2 import adbutils
 
 
 __apk_version__ = '1.0.6'
-__atx_agent_version__ = '0.1.0'
+__atx_agent_version__ = '0.1.1'
+# 0.1.1 minicap buildin
 
 
 def get_logger(name):
