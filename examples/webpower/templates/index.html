@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Battery</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.5.3/dist/vue.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@3.8.5/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js"></script>
+</head>
+
+<body>
+  使用前需要安装<a href="https://github.com/openatx/uiautomator2" target="_blank">uiautomator2</a>
+  <div>
+    手机IP: <input id="ip" type="text">
+  </div>
+  <div id="main" style="height:400px;"></div>
+  <script type="text/javascript">
+    // 基于准备好的dom，初始化echarts实例
+    var myChart = echarts.init(document.getElementById('main'));
+
+    var data = [];
+
+
+
+    // 指定图表的配置项和数据
+    var option = {
+      title: {
+        text: '电池电量'
+      },
+      tooltip: {
+        trigger: 'axis',
+        alwaysShowContent: true,
+      },
+      xAxis: {
+        type: 'time',
+      },
+      yAxis: {
+        type: 'value',
+        max: 100,
+        scale: true,
+        axisLabel: {
+          formatter: function(val) {
+            return val + '%';
+          }
+        },
+      },
+      series: [{
+        name: '电量',
+        type: 'line',
+        step: 'end',
+        data: data,
+      }]
+    };
+
+    var lastValue = -1;
+
+    function pushNewValue() {
+      var ip = $('#ip').val();
+      if (!ip) {
+        return;
+      }
+      $.ajax({
+        method: 'get',
+        url: '/battery_level/' + ip,
+        type: 'json',
+      }).then(function(value) {
+        data.pop();
+        if (lastValue != value) {
+          lastValue = value;
+          data.push([new Date(), value])
+          data.push([new Date(), value])
+        } else {
+          data.push([new Date(), value])
+        }
+
+        myChart.setOption({
+          series: [{
+            data: data
+          }]
+        });
+      })
+    }
+    setInterval(pushNewValue, 1000);
+
+    // 使用刚指定的配置项和数据显示图表。
+    myChart.setOption(option);
+
+    window.onresize = function() {
+      myChart.resize();
+    }
+  </script>
+</body>
+
+</html>
