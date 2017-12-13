@@ -96,8 +96,8 @@ class Adb(object):
             self.execute('install', '-d', '-r', '-g', apk_path)
     
     def uninstall(self, pkg_name):
-        return self.execute('uninstall', pkg_name)
-    
+        return self.execute('uninstall', pkg_name, raise_error=False)
+
     def package_info(self, pkg_name):
         output = self.shell('dumpsys', 'package', pkg_name)
         m = re.compile(r'versionName=(?P<name>[\d.]+)').search(output)
