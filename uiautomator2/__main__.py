@@ -95,9 +95,13 @@ class Installer(adbutils.Adb):
         self.sdk = self.getprop('ro.build.version.sdk')
         self.abi = self.getprop('ro.product.cpu.abi')
         self.pre = self.getprop('ro.build.version.preview_sdk')
+        self.arch = self.getprop('ro.arch')
         self.server_addr = None
 
     def install_minicap(self):
+        if self.arch == 'x86':
+            log.info("skip install minicap on emulator")
+            return
         sdk = self.sdk
         if self.pre and self.pre != "0":
             sdk = sdk + self.pre
@@ -156,6 +160,7 @@ class Installer(adbutils.Adb):
             'armeabi-v7a': 'atx-agent_{v}_linux_armv7.tar.gz',
             'arm64-v8a': 'atx-agent_{v}_linux_armv7.tar.gz',
             'armeabi': 'atx-agent_{v}_linux_armv6.tar.gz',
+            'x86': 'atx-agent_{v}_linux_386.tar.gz',
         }
         abis = self.shell('getprop', 'ro.product.cpu.abilist').strip() or self.abi
         name = None
