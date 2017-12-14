@@ -208,11 +208,15 @@ class Installer(adbutils.Adb):
 
 
 class MyFire(object):
-    def init(self, server=None, apk_version=__apk_version__, agent_version=__atx_agent_version__, verbose=False, reinstall=False):
+    def init(self, server=None, apk_version=__apk_version__, agent_version=__atx_agent_version__, verbose=False, reinstall=False, proxy=None):
         if verbose:
             log.setLevel(logging.DEBUG)
         if server:
             log.info("atx-server addr %s", server)
+
+        if proxy:
+            os.environ['HTTP_PROXY'] = proxy
+            os.environ['HTTPS_PROXY'] = proxy
 
         output = subprocess.check_output(['adb', 'devices'])
         pattern = re.compile(r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
