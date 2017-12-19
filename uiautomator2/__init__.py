@@ -23,6 +23,7 @@ import humanize
 
 if six.PY2:
     import urlparse
+    FileNotFoundError = OSError
 else: # for py3
     import urllib.parse as urlparse
 
@@ -452,6 +453,44 @@ class AutomatorServer(object):
     def _pidof_app(self, pkg_name):
         return self.adb_shell('pidof', pkg_name).strip()
 
+    def push_url(self, url, dst, mode=0o644):
+        """
+        Args:
+            url (str): http url address
+            dst (str): destination
+            mode (str): file mode
+        
+        Raises:
+            FileNotFoundError(py3) OSError(py2)
+        """
+        modestr = oct(mode).replace('o', '')
+        r = self._reqsess.post(self.path2url('/download'), data={'url': url, 'filepath': dst, 'mode': modestr})
+        if r.status_code != 200:
+            raise IOError("push-url", "%s -> %s" % (url, dst), r.text)
+        key = r.text.strip()
+        while 1:
+            r = self._reqsess.get(self.path2url('/download/'+key))
+            jdata = r.json()
+            message = jdata.get('message')
+            if message == 'downloaded':
+                log_print("downloaded")
+                break
+            elif message == 'downloading':
+                progress = jdata.get('progress')
+                if progress:
+                    copied_size = progress.get('copiedSize')
+                    total_size = progress.get('totalSize')
+                    log_print("{} {} / {}".format(
+                        message,
+                        humanize.naturalsize(copied_size),
+                        humanize.naturalsize(total_size)))
+                else:
+                    log_print("downloading")
+            else:
+                log_print("unknown json:" + str(jdata))
+                raise IOError(message)
+            time.sleep(1)
+
     def push(self, src, dst, mode=0o644):
         """
         Args:
@@ -461,7 +500,7 @@ class AutomatorServer(object):
         Returns:
             dict object, for example:
                 
-                {"mode":"0660","size":63,"target":"/sdcard/ABOUT.rst"}
+                {"mode": "0660", "size": 63, "target": "/sdcard/ABOUT.rst"}
             
             Since chmod may fail in android, the result "mode" may not same with input args(mode)
         
@@ -482,7 +521,7 @@ class AutomatorServer(object):
         Pull file from device to local
 
         Raises:
-            FileNotFoundError
+            FileNotFoundError(py3) OSError(py2)
 
         Require atx-agent >= 0.0.9
         """
