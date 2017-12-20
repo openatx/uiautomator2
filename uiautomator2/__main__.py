@@ -25,7 +25,8 @@ from uiautomator2 import adbutils
 
 
 __apk_version__ = '1.0.6'
-__atx_agent_version__ = '0.1.1'
+__atx_agent_version__ = '0.1.2'
+# 0.1.2 /download support
 # 0.1.1 minicap buildin
 
 
@@ -132,13 +133,13 @@ class Installer(adbutils.Adb):
         # For test_pkg_info has no versionName or versionCode
         # Just check if the com.github.uiautomator.test apk is installed
         if not reinstall and pkg_info and pkg_info['version_name'] == apk_version and test_pkg_info:
-            log.info("apk already installed, skip")
+            log.info("apk(%s) already installed, skip", apk_version)
             return
         if pkg_info or test_pkg_info:
             log.debug("uninstall old apks")
             self.uninstall('com.github.uiautomator')
             self.uninstall('com.github.uiautomator.test')
-        log.info("app-uiautomator.apk installing ...")
+        log.info("app-uiautomator.apk(%s) installing ...", apk_version)
         path = cache_download(app_url)
         self.install(path)
         log.debug("app-uiautomator.apk installed")
@@ -148,20 +149,24 @@ class Installer(adbutils.Adb):
         log.debug("app-uiautomator-test.apk installed")
     
     def install_atx_agent(self, agent_version, reinstall=False):
-        log.info("atx-agent is installing, please be patient")
-        current_agent_version = self.shell('/data/local/tmp/atx-agent', '-v', raise_error=False).strip()
+        version_output = self.shell('/data/local/tmp/atx-agent', '-v', raise_error=False).strip()
+        m = re.search(r"\d+\.\d+\.\d+", version_output)
+        current_agent_version = m.group(0) if m else None
         if current_agent_version == agent_version:
-            log.info("atx-agent already installed, skip")
+            log.info("atx-agent(%s) already installed, skip", agent_version)
             return
         if current_agent_version == 'dev' and not reinstall:
             log.warn("atx-agent develop version, skip")
             return
+        if current_agent_version:
+            log.info("atx-agent(%s) need to update", current_agent_version)
         files = {
             'armeabi-v7a': 'atx-agent_{v}_linux_armv7.tar.gz',
             'arm64-v8a': 'atx-agent_{v}_linux_armv7.tar.gz',
             'armeabi': 'atx-agent_{v}_linux_armv6.tar.gz',
             'x86': 'atx-agent_{v}_linux_386.tar.gz',
         }
+        log.info("atx-agent(%s) is installing, please be patient", agent_version)
         abis = self.shell('getprop', 'ro.product.cpu.abilist').strip() or self.abi
         name = None
         for abi in abis.split(','):
