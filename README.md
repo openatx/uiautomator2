@@ -34,7 +34,7 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
     pip install pillow
     ```
 
-2. 安装依赖(apk, atx-agent, minicap)到手机
+2. Push and install (apk, atx-agent, minicap, minitouch) to device
 
     电脑连接上一个手机或多个手机, 确保adb已经添加到环境变量中，执行下面的命令会自动安装[uiautomator-apk](https://github.com/openatx/android-uiautomator-server/releases) 以及 [atx-agent](https://github.com/openatx/atx-agent)
 
@@ -77,16 +77,30 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
 ## QUICK START
 Open python, input with the following code
 
-注: 当`device_ip`为空时，会先检查环境变量`ANDROID_DEVICE_IP`, 如果依然为空，会调用`connect_usb`方法
+There are two ways to connect to the device.
+
+1. Through WIFI (recommend)
+Suppose device IP is `10.0.0.1` and your PC is in the same network.
 
 ```python
->>> import uiautomator2 as u2
->>> d = u2.connect(device_ip) # 通过手机WiFi连接设备
->>> # d = u2.connect_usb() # 连接电脑上连接的设备，暂时只支持一个电脑上插一个手机
->>> print(d.info)
-{'currentPackageName': 'com.android.systemui', 'displayHeight': 1920, 'displayRotation': 0, 'displaySizeDpX': 360, 'displaySizeDpY': 640, 'displayWidth': 1080, 'productName': 'surabaya', 'screenOn': False, 'sdkInt': 23, 'naturalOrientation': True}
+import uiautomator2 as u2
+
+d = u2.connect('10.0.0.1') # same as call with u2.connect_wifi('10.0.0.1')
+print(d.info)
 ```
 
+2. Through USB
+Suppose device serial is `123456f`
+
+```python
+import uiautomator2 as u2
+
+d = u2.connect('123456f') # same as call with u2.connect_usb('123456f')
+print(d.info)
+```
+
+If just call `u2.connect()` with no arguments, env-var `ANDROID_DEVICE_IP` will first check.
+if env-var is empty, `connect_usb` will be called. you need to make sure there is only one device connected with your computer.
 
 ## 一些常用但是不知道归到什么类里的函数
 先中文写着了，国外大佬们先用Google Translate顶着

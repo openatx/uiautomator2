@@ -98,17 +98,28 @@ def U(x):
 def connect(addr=None):
     """
     Args:
-        addr (str): uiautomator server address. default from env-var ANDROID_DEVICE_IP
-    
-    If addr is empty, connect_usb will be called
+        addr (str): uiautomator server address or serial number. default from env-var ANDROID_DEVICE_IP
 
     Example:
         connect("10.0.0.1")
+        connect("some-serial-no")
+        connect("cff1123ea)
     """
     if not addr or addr == '+':
         addr = os.getenv('ANDROID_DEVICE_IP')
-    if not addr:
-        return connect_usb()
+    if addr and re.match(r"(http://)?(\d+\.\d+\.\d+\.\d+)(:\d+)?", addr):
+        return connect_wifi(addr)
+    return connect_usb(addr)
+
+
+def connect_wifi(addr=None):
+    """
+    Args:
+        addr (str) uiautomator server address.
+    
+    Examples:
+        connect_wifi("10.0.0.1")
+    """
     if '://' not in addr:
         addr = 'http://' + addr
     if addr.startswith('http://'):
@@ -121,6 +132,10 @@ def connect(addr=None):
 
 
 def connect_usb(serial=None):
+    """
+    Args:
+        serial (str): android device serial
+    """
     adb = adbutils.Adb(serial)
     lport = adb.forward_port(7912)
     return connect('127.0.0.1:'+str(lport))
