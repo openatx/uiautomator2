@@ -310,12 +310,16 @@ Note: click, swipe, drag support percent position. Example:
 * Take screenshot
 
     ```python
-    # take screenshot and save to local file "home.png", can not work until Android 4.2.
-    d.screenshot("home.png")
-    # get png as raw data
-    png_raw = d.screenshot()
-    with open('home.png', 'wb') as f:
-        f.write(png_raw)
+    # take screenshot and save to local file "home.jpg", can not work until Android 4.2.
+    d.screenshot("home.jpg")
+    # get PIL.Image format, need install pillow first
+    image = d.screenshot()
+    image.save("home.jpg") # or home.png
+
+    # get opencv format, need install numpy and cv2
+    import cv2
+    image = d.screenshot(format='opencv')
+    cv2.imwrite('home.jpg', image)
     ```
 
 * Dump Window Hierarchy

@@ -741,19 +741,33 @@ class Session(object):
         ex, ey = rel2abs(ex, ey)
         return self.jsonrpc.drag(sx, sy, ex, ey, int(duration*200))
 
-    def screenshot(self, filename=None):
+    def screenshot(self, filename=None, format='pillow'):
         """
         Image format is JPEG
+
+        Args:
+            filename (str): saved filename
+            format (string): used when filename is empty. one of "pillow" or "opencv"
+        
+        Examples:
+            screenshot("saved.jpg")
+            screenshot().save("saved.png")
+            cv2.imwrite('saved.jpg', screenshot(format='opencv'))
         """
         r = requests.get(self.server.screenshot_uri)
         if filename:
             with open(filename, 'wb') as f:
                 f.write(r.content)
             return filename
-        else:
+        elif format == 'pillow':
             from PIL import Image
             buff = io.BytesIO(r.content)
             return Image.open(buff)
+        elif format == 'opencv':
+            import cv2
+            import numpy as np
+            nparr = np.fromstring(r.content, np.uint8)
+            return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
     def freeze_rotation(self, freeze=True):
         '''freeze or unfreeze the device rotation in current status.'''
