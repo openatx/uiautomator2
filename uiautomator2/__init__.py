@@ -20,6 +20,7 @@ from subprocess import list2cmdline
 
 import six
 import humanize
+from retry import retry
 
 if six.PY2:
     import urlparse
@@ -741,6 +742,7 @@ class Session(object):
         ex, ey = rel2abs(ex, ey)
         return self.jsonrpc.drag(sx, sy, ex, ey, int(duration*200))
 
+    @retry(IOError, delay=.5, tries=5)
     def screenshot(self, filename=None, format='pillow'):
         """
         Image format is JPEG
@@ -749,6 +751,9 @@ class Session(object):
             filename (str): saved filename
             format (string): used when filename is empty. one of "pillow" or "opencv"
         
+        Raises:
+            IOError
+
         Examples:
             screenshot("saved.jpg")
             screenshot().save("saved.png")
