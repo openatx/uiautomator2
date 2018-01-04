@@ -206,7 +206,7 @@ class UIAutomatorServer(object):
         Args:
             seconds (float): seconds
         """
-        warnings.warn("deprecated, will remove in 0.1.4, Please use d.click_post_delay = %d instead" % seconds, DeprecationWarning, stacklevel=2)
+        warnings.warn("Deprecated, will remove in 0.1.4 Use d.click_post_delay = ? instead", DeprecationWarning, stacklevel=2)
         self.click_post_delay = seconds
 
     @property
