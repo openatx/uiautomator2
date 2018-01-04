@@ -158,7 +158,7 @@ clicked = d(text='Skip').click_exists(timeout=10.0)
   - **[Perform the click action on the seleted ui object](#perform-the-click-action-on-the-seleted-ui-object)**
   - **[Gesture action for the specific ui object](#gesture-action-for-the-specific-ui-object)**
   
-**[Click settings](#click-settings)**
+**[Global settings](#global-settings)**
 
 **[Contributors](#contributors)**
 
@@ -641,7 +641,7 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
     d(text="Settings").wait_gone(timeout=1.0)
     ```
 
-    Default timeout is 10s
+    Default timeout is 20s. see **global settings** for more details
 
 * Perform fling on the specific ui object(scrollable)
 
@@ -767,10 +767,13 @@ You can register [watcher](http://developer.android.com/tools/help/uiautomator/U
 
 另外文档还是有很多没有写，推荐直接去看源码[__init__.py](uiautomato2/__init__.py)
 
-### Click settings
+### Global settings
 ```python
 # set delay 1.5s after each UI click and click
 d.set_click_post_delay(1.5)
+
+# set default element wait timeout (seconds)
+d.wait_timeout = 30.0 # default 20.0
 ```
 
 ### 中文字符的输入

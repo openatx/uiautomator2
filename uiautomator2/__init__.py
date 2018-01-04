@@ -127,7 +127,7 @@ def connect_wifi(addr=None):
         u = urlparse.urlparse(addr)
         host = u.hostname
         port = u.port or 7912
-        return AutomatorServer(host, port)
+        return UIAutomatorServer(host, port)
     else:
         raise RuntimeError("address should startswith http://")
 
@@ -157,7 +157,9 @@ class TimeoutRequestsSession(requests.Session):
         return resp
 
 
-class AutomatorServer(object):
+class UIAutomatorServer(object):
+    __isfrozen = False
+
     def __init__(self, host, port=7912):
         self._host = host
         self._port = port
@@ -168,6 +170,21 @@ class AutomatorServer(object):
         self._click_post_delay = None
         self.__devinfo = None
         # TODO: check if server alive
+
+        # wait element timeout
+        self.wait_timeout = 20.0
+
+        # prevent creating new attrs
+        self._freeze()
+
+    def _freeze(self):
+        self.__isfrozen = True
+
+    def __setattr__(self, key, value):
+        """ Prevent creating new attributes outside __init__ """
+        if self.__isfrozen and not hasattr(self, key):
+            raise TypeError("Key %s is not exist in class %r" % (key, self))
+        object.__setattr__(self, key, value)
 
     @property
     def debug(self):
@@ -924,7 +941,10 @@ class UiObject(object):
         self.session = session
         self.selector = selector
         self.jsonrpc = session.jsonrpc
-        self.wait_timeout = 20
+    
+    @property
+    def wait_timeout(self):
+        return self.session.server.wait_timeout
 
     @property
     def exists(self):
@@ -1013,22 +1033,30 @@ class UiObject(object):
     def pinch_out(self, percent=100, steps=50):
         return self.jsonrpc.pinchOut(self.selector, percent, steps)
 
-    def wait(self, exists=True, timeout=10.0):
+    def wait(self, exists=True, timeout=None):
         """
         Wait until UI Element exists or gone
         
+        Args:
+            timeout (float): wait element timeout
+
         Example:
             d(text="Clock").wait()
             d(text="Settings").wait("gone") # wait until it's gone
         """
-        http_wait = timeout+30
+        timeout = timeout or self.wait_timeout
+        http_wait = timeout + 20
         if exists:
             return self.jsonrpc.waitForExists(self.selector, int(timeout*1000), http_timeout=http_wait)
         else:
             return self.jsonrpc.waitUntilGone(self.selector, int(timeout*1000), http_timeout=http_wait)
     
-    def wait_gone(self, timeout=10.0):
-        """ wait until ui gone """
+    def wait_gone(self, timeout=None):
+        """ wait until ui gone
+        Args:
+            timeout (float): wait element gone timeout
+        """
+        timeout = timeout or self.wait_timeout
         return self.wait(exists=False, timeout=timeout)
     
     def send_keys(self, text):
