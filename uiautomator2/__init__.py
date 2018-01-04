@@ -15,6 +15,7 @@ import xml.dom.minidom
 import xml.etree.ElementTree as ET
 import threading
 import shutil
+import warnings
 from datetime import datetime
 from subprocess import list2cmdline
 
@@ -167,12 +168,11 @@ class UIAutomatorServer(object):
         self._server_url = 'http://{}:{}'.format(host, port)
         self._server_jsonrpc_url = self._server_url + "/jsonrpc/0"
         self._default_session = Session(self, None)
-        self._click_post_delay = None
         self.__devinfo = None
         # TODO: check if server alive
 
-        # wait element timeout
-        self.wait_timeout = 20.0
+        self.wait_timeout = 20.0 # wait element timeout
+        self.click_post_delay = None # wait after each click
 
         # prevent creating new attrs
         self._freeze()
@@ -197,6 +197,8 @@ class UIAutomatorServer(object):
     def path2url(self, path):
         return urlparse.urljoin(self._server_url, path)
 
+    # deprecated
+    # TODO: remove in 0.1.4
     def set_click_post_delay(self, seconds):
         """
         Set delay seconds after click
@@ -204,7 +206,8 @@ class UIAutomatorServer(object):
         Args:
             seconds (float): seconds
         """
-        self._click_post_delay = seconds
+        warnings.warn("deprecated, will remove in 0.1.4, Please use d.click_post_delay = %d instead" % seconds, DeprecationWarning, stacklevel=2)
+        self.click_post_delay = seconds
 
     @property
     def jsonrpc(self):
@@ -682,8 +685,8 @@ class Session(object):
         """
         x, y = self.pos_rel2abs(x, y)
         ret = self.jsonrpc.click(x, y)
-        if self.server._click_post_delay:
-            time.sleep(self.server._click_post_delay)
+        if self.server.click_post_delay:
+            time.sleep(self.server.click_post_delay)
     
     @property
     def touch(self):
@@ -973,7 +976,7 @@ class UiObject(object):
             UiObjectNotFoundError
         """
         self.jsonrpc.click(self.selector)
-        post_delay = self.session.server._click_post_delay
+        post_delay = self.session.server.click_post_delay
         if post_delay:
             time.sleep(post_delay)
 

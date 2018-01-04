@@ -770,7 +770,7 @@ You can register [watcher](http://developer.android.com/tools/help/uiautomator/U
 ### Global settings
 ```python
 # set delay 1.5s after each UI click and click
-d.set_click_post_delay(1.5)
+d.click_post_delay = 1.5 # default no delay
 
 # set default element wait timeout (seconds)
 d.wait_timeout = 30.0 # default 20.0
