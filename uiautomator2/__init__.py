@@ -289,7 +289,7 @@ class UIAutomatorServer(object):
             RuntimeError
         """
         self.open_identify()
-        self.app_start('com.github.uiautomator', '.MainActivity')
+        self.app_start('com.github.uiautomator', '.MainActivity', stop=True)
         self.adb_shell('input', 'keyevent', 'HOME')
         self._reqsess.post(self.path2url('/uiautomator'))
         start = time.time()
