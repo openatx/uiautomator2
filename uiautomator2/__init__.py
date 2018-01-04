@@ -484,7 +484,7 @@ class UIAutomatorServer(object):
         Args:
             theme (str): black or red
         """
-        self.adb_shell('am', 'start', '-W', '-a', 'com.github.uiautomator.ACTION_IDENTIFY', '-e', 'theme', theme)
+        self.adb_shell('am', 'start', '-W', '-n', 'com.github.uiautomator/.IdentifyActivity', '-e', 'theme', theme)
 
     def _pidof_app(self, pkg_name):
         return self.adb_shell('pidof', pkg_name).strip()
