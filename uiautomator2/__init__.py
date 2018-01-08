@@ -169,6 +169,7 @@ class UIAutomatorServer(object):
         self._server_jsonrpc_url = self._server_url + "/jsonrpc/0"
         self._default_session = Session(self, None)
         self.__devinfo = None
+        self.platform = None # hot fix for weditor
         # TODO: check if server alive
 
         self.wait_timeout = 20.0 # wait element timeout
