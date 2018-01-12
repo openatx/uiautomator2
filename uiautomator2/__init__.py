@@ -1,6 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""
+::Timeout
+
+atx-agent:ReverseProxy use http.DefaultTransport. Default Timeout: 30s
+
+|-- Dial --|-- TLS handshake --|-- Request --|-- Resp.headers --|-- Respose.body --|
+|------------------------------ http.Client.Timeout -------------------------------|
+
+Refs:
+    - https://golang.org/pkg/net/http/#RoundTripper
+    - http://colobu.com/2016/07/01/the-complete-guide-to-golang-net-http-timeouts
+"""
+
 from __future__ import absolute_import, print_function
 
 import base64
@@ -38,6 +51,16 @@ HTTP_TIMEOUT = 60
 
 class UiaError(Exception):
     pass
+
+
+class GatewayError(UiaError):
+    def __init__(self, response, description):
+        self.response = response
+        self.description = description
+
+    def __str__(self):
+        return "uiautomator2.GatewayError(" + self.description + ")"
+
 
 class JsonRpcError(UiaError):
     @staticmethod
@@ -149,8 +172,11 @@ class TimeoutRequestsSession(requests.Session):
             kwargs['timeout'] = HTTP_TIMEOUT
         verbose = hasattr(self, 'debug') and self.debug
         if verbose:
+            data = kwargs.get('data') or ''
+            if isinstance(data, dict):
+                data = 'dict:' + json.dumps(data)
             print(datetime.now().strftime("%H:%M:%S.%f")[:-3], "$ curl -X {method} -d '{data}' '{url}'".format(
-                method=method, url=url, data=kwargs.get('data').decode()
+                method=method, url=url, data=data.decode()
             ))
         resp = super(TimeoutRequestsSession, self).request(method, url, **kwargs)
         if verbose:
@@ -229,15 +255,24 @@ class UIAutomatorServer(object):
             def __call__(self, *args, **kwargs):
                 http_timeout = kwargs.pop('http_timeout', HTTP_TIMEOUT)
                 params = args if args else kwargs
-                return self.server.jsonrpc_call(self.method, params, http_timeout)
-        
+                return self.server.jsonrpc_retry_call(self.method, params, http_timeout)
+
         return JSONRpcWrapper(self)
+
+    def jsonrpc_retry_call(self, *args, **kwargs): #method, params=[], http_timeout=60):
+        try:
+            return self.jsonrpc_call(*args, **kwargs)
+        except GatewayError:
+            warnings.warn("uiautomator2 is down, try to restarted.", RuntimeWarning, stacklevel=1)
+            self.healthcheck(unlock=False)
+            return self.jsonrpc_call(*args, **kwargs)
 
     def jsonrpc_call(self, method, params=[], http_timeout=60):
         """ jsonrpc2 call
         Refs:
             - http://www.jsonrpc.org/specification
         """
+        request_start = time.time()
         data = {
             "jsonrpc": "2.0",
             "id": self._jsonrpc_id(method),
@@ -252,6 +287,8 @@ class UIAutomatorServer(object):
         if DEBUG:
             print("Shell$ curl -X POST -d '{}' {}".format(data, self._server_jsonrpc_url))
             print("Output> " + res.text)
+        if res.status_code == 502:
+            raise GatewayError(res, "gateway error, time used %.1fs" % (time.time() - request_start))
         if res.status_code != 200:
             raise UiaError(self._server_jsonrpc_url, data, res.status_code, res.text, "HTTP Return code is not 200", res.text)
         jsondata = res.json()
@@ -282,16 +319,17 @@ class UIAutomatorServer(object):
         r = self._reqsess.get(self.path2url('/ping'))
         return r.status_code == 200
 
-    def healthcheck(self):
+    def healthcheck(self, unlock=True):
         """
         Check if uiautomator is running, if not launch again
         
         Raises:
             RuntimeError
         """
-        self.open_identify()
+        if unlock:
+            self.open_identify()
         self.app_start('com.github.uiautomator', '.MainActivity', stop=True)
-        self.adb_shell('input', 'keyevent', 'HOME')
+        self.adb_shell('input', 'keyevent', 'BACK')
         self._reqsess.post(self.path2url('/uiautomator'))
         start = time.time()
         while time.time() - start < 10.0:
@@ -408,7 +446,7 @@ class UIAutomatorServer(object):
             raise RuntimeError("expect status 200, but got %d" % ret.status_code)
         return ret.json().get('output')
     
-    def app_start(self, pkg_name, activity=None, stop=False, unlock=False):
+    def app_start(self, pkg_name, activity=None, extras={}, wait=True, stop=False, unlock=False):
         """ Launch application
         Args:
             pkg_name (str): package name
@@ -424,10 +462,25 @@ class UIAutomatorServer(object):
             # -S: force stop the target app before starting the activity
             # --user <USER_ID> | current: Specify which user to run as; if not
             #    specified then run as the current user.
-            args = ['am', 'start', '-W']
+            # -e <EXTRA_KEY> <EXTRA_STRING_VALUE>
+            # --ei <EXTRA_KEY> <EXTRA_INT_VALUE>
+            # --ez <EXTRA_KEY> <EXTRA_BOOLEAN_VALUE>
+            args = ['am', 'start']
+            if wait:
+                args.append('-W')
             if stop:
                 args.append('-S')
             args += ['-n', '{}/{}'.format(pkg_name, activity)]
+            # -e --ez
+            extra_args = []
+            for k, v in extras.items():
+                if isinstance(v, bool):
+                    extra_args.extend(['--ez', k, 'true' if v else 'false'])
+                elif isinstance(v, int):
+                    extra_args.extend(['--ei', k, str(v)])
+                else:
+                    extra_args.extend(['-e', k, v])
+            args += extra_args
             self.adb_shell(*args) #'am', 'start', '-W', '-n', '{}/{}'.format(pkg_name, activity))
         else:
             if stop:
@@ -780,7 +833,7 @@ class Session(object):
             screenshot().save("saved.png")
             cv2.imwrite('saved.jpg', screenshot(format='opencv'))
         """
-        r = requests.get(self.server.screenshot_uri)
+        r = requests.get(self.server.screenshot_uri, timeout=10)
         if filename:
             with open(filename, 'wb') as f:
                 f.write(r.content)
@@ -1049,7 +1102,7 @@ class UiObject(object):
             d(text="Settings").wait("gone") # wait until it's gone
         """
         timeout = timeout or self.wait_timeout
-        http_wait = timeout + 20
+        http_wait = timeout + 10
         if exists:
             return self.jsonrpc.waitForExists(self.selector, int(timeout*1000), http_timeout=http_wait)
         else:

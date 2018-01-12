@@ -788,7 +788,10 @@ d.set_fastinput_ime(False) # 切换成正常的输入法
 ## 测试方法
 ```bash
 $ adb forward tcp:9008 tcp:9008
-$ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' localhost:9008/jsonrpc/0
+$ curl 127.0.0.1:9008/ping
+# expect: pong
+
+$ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' 127.0.0.1:9008/jsonrpc/0
 # expect JSON output
 ```
 
