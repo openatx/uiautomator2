@@ -146,6 +146,7 @@ clicked = d(text='Skip').click_exists(timeout=10.0)
   - **[Gesture interaction of the device](#gesture-interaction-of-the-device)**
   - **[Screen Actions of the device](#screen-actions-of-the-device)**
   - **[Push and pull file](#push-and-pull-file)**
+  - **[Input method](#input-method)**
 
 **[App management](#app-management)**
   - **[App install](#app-install)**
@@ -776,12 +777,13 @@ d.click_post_delay = 1.5 # default no delay
 d.wait_timeout = 30.0 # default 20.0
 ```
 
-### 中文字符的输入
+### Input method
 这种方法通常用于不知道控件的情况下的输入。第一步需要切换输入法，然后发送adb广播命令，具体使用方法如下
 
 ```python
 d.set_fastinput_ime(True) # 切换成FastInputIME输入法
 d.send_keys("你好123abcEFG") # adb广播输入
+d.clear_text() # 清除输入框所有内容(Require android-uiautomator.apk version >= 1.0.7)
 d.set_fastinput_ime(False) # 切换成正常的输入法
 ```
 

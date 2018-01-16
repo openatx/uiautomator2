@@ -24,7 +24,9 @@ import uiautomator2 as u2
 from uiautomator2 import adbutils
 
 
-__apk_version__ = '1.0.6'
+__apk_version__ = '1.0.7'
+# 1.0.7 new input method, some bug fix
+
 __atx_agent_version__ = '0.1.4'
 # 0.1.4 phone remote control
 # 0.1.2 /download support

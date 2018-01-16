@@ -48,6 +48,8 @@ from uiautomator2 import adbutils
 DEBUG = False
 HTTP_TIMEOUT = 60
 
+_INPUT_METHOD_RE = re.compile(r'mCurMethodId=([-_./\w]+)')
+
 
 class UiaError(Exception):
     pass
@@ -730,8 +732,54 @@ class Session(object):
             self.server.adb_shell('ime', 'disable', fast_ime)
 
     def send_keys(self, text):
+        """
+        Raises:
+            EnvironmentError
+        """
+        self.wait_fastinput_ime()
         base64text = base64.b64encode(text.encode('utf-8')).decode()
         self.server.adb_shell('am', 'broadcast', '-a', 'ADB_INPUT_TEXT', '--es', 'text', base64text)
+
+    def clear_text(self):
+        """ clear text
+        Raises:
+            EnvironmentError
+        """
+        self.wait_fastinput_ime()
+        self.server.adb_shell('am', 'broadcast', '-a', 'ADB_CLEAR_TEXT')
+    
+    def wait_fastinput_ime(self, timeout=5.0):
+        """ wait FastInputIME is ready
+        Args:
+            timeout(float): maxium wait time
+        Raises:
+            EnvironmentError
+        """
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            ime_id, shown = self.current_ime()
+            if ime_id != "com.github.uiautomator/.FastInputIME":
+                self.set_fastinput_ime(True)
+                time.sleep(0.5)
+                continue
+            if shown:
+                return True
+            time.sleep(0.2)
+        raise EnvironmentError("FastInputIME started failed")
+
+    def current_ime(self):
+        """ Current input method
+        Returns:
+            (method_id(str), shown(bool)
+        
+        Example output:
+            ("com.github.uiautomator/.FastInputIME", True)
+        """
+        dim = self.server.adb_shell('dumpsys', 'input_method')
+        m = _INPUT_METHOD_RE.search(dim)
+        method_id = None if not m else m.group(1)
+        shown = "mInputShown=true" in dim
+        return (method_id, shown)
 
     def tap(self, x, y):
         """
