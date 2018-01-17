@@ -24,7 +24,8 @@ import uiautomator2 as u2
 from uiautomator2 import adbutils
 
 
-__apk_version__ = '1.0.6'
+__apk_version__ = '1.0.9'
+# 1.0.9 fix apk version code and version name
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
