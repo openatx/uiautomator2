@@ -237,6 +237,11 @@ class UIAutomatorServer(object):
         """
         warnings.warn("Deprecated, will remove in 0.1.4 Use d.click_post_delay = ? instead", DeprecationWarning, stacklevel=2)
         self.click_post_delay = seconds
+    
+    def window_size(self):
+        """ return (width, height) """
+        info = self._reqsess.get(self.path2url('/info')).json()
+        return info['display']['width'], info['display']['height']
 
     @property
     def jsonrpc(self):

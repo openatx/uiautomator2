@@ -192,6 +192,13 @@ Below is a possible result:
 }
 ```
 
+Get window size
+
+```python
+print(d.window_size())
+# expect eg: (1920, 1080)
+```
+
 ### Key Event Actions of the device
 
 * Tun on/off screen
