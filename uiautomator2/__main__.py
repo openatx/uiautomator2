@@ -24,9 +24,9 @@ import uiautomator2 as u2
 from uiautomator2 import adbutils
 
 
-__apk_version__ = '1.0.8'
-# 1.0.8 show ip on notification
-# 1.0.7 new input method, some bug fix
+__apk_version__ = '1.0.6'
+# ERR: 1.0.8 bad version number. show ip on notification
+# ERR: 1.0.7 bad version number. new input method, some bug fix
 
 __atx_agent_version__ = '0.1.5'
 # 0.1.5 add singlefight for minicap and minitouch, proxy dial-timeout change 30 to 10
