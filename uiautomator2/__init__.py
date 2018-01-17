@@ -264,7 +264,7 @@ class UIAutomatorServer(object):
     def jsonrpc_retry_call(self, *args, **kwargs): #method, params=[], http_timeout=60):
         try:
             return self.jsonrpc_call(*args, **kwargs)
-        except (GatewayError, requests.exceptions.ReadTimeout):
+        except (GatewayError,):
             warnings.warn("uiautomator2 is down, try to restarted.", RuntimeWarning, stacklevel=1)
             # for XiaoMi, want to recover uiautomator2 must start app:com.github.uiautomator
             self.healthcheck(unlock=False)
