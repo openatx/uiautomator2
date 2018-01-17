@@ -172,6 +172,8 @@ This part show the normal actions of the device through some simple examples
 
 ### Retrive the device info
 
+Get common information
+
 ```python
 d.info
 ```
@@ -197,6 +199,15 @@ Get window size
 ```python
 print(d.window_size())
 # expect eg: (1920, 1080)
+```
+
+Get current app info. In some android device may get empty result. see *Output example 3*
+
+```python
+print(current_app())
+# Output example 1: {'activity': '.Client', 'package': 'com.netease.example', 'pid': 23710}
+# Output example 2: {'activity': '.Client', 'package': 'com.netease.example'}
+# Output example 3: {'activity': None, 'package': None}
 ```
 
 ### Key Event Actions of the device

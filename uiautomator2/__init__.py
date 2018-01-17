@@ -510,8 +510,6 @@ class UIAutomatorServer(object):
     def current_app(self):
         """
         Return: dict(package, activity, pid?)
-        Raises:
-            RuntimeError
         """
         # try: adb shell dumpsys activity top
         _activityRE = re.compile(r'ACTIVITY (?P<package>[^/]+)/(?P<activity>[^/\s]+) \w+ pid=(?P<pid>\d+)')
@@ -524,7 +522,9 @@ class UIAutomatorServer(object):
         m = _focusedRE.search(self.adb_shell('dumpsys', 'window', 'windows'))
         if m:
             return dict(package=m.group('package'), activity=m.group('activity'))
-        raise RuntimeError("Couldn't get focused app")
+        # empty result
+        warnings.warn("Couldn't get focused app", stacklevel=2)
+        return dict(package=None, activity=None)
 
     def app_stop(self, pkg_name):
         """ Stop application: am force-stop"""
