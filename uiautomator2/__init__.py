@@ -264,8 +264,9 @@ class UIAutomatorServer(object):
     def jsonrpc_retry_call(self, *args, **kwargs): #method, params=[], http_timeout=60):
         try:
             return self.jsonrpc_call(*args, **kwargs)
-        except GatewayError:
+        except (GatewayError, requests.exceptions.ReadTimeout):
             warnings.warn("uiautomator2 is down, try to restarted.", RuntimeWarning, stacklevel=1)
+            # for XiaoMi, want to recover uiautomator2 must start app:com.github.uiautomator
             self.healthcheck(unlock=False)
             return self.jsonrpc_call(*args, **kwargs)
 
@@ -318,8 +319,11 @@ class UIAutomatorServer(object):
     
     @property
     def alive(self):
-        r = self._reqsess.get(self.path2url('/ping'))
-        return r.status_code == 200
+        try:
+            r = self._reqsess.get(self.path2url('/ping'), timeout=2)
+            return r.status_code == 200
+        except requests.exceptions.ReadTimeout:
+            return False
 
     def healthcheck(self, unlock=True):
         """
@@ -330,12 +334,21 @@ class UIAutomatorServer(object):
         """
         if unlock:
             self.open_identify()
-        self.app_start('com.github.uiautomator', '.MainActivity', stop=True)
-        self.adb_shell('input', 'keyevent', 'BACK')
+        wait = not unlock # should not wait IdentifyActivity open or it will stuck sometimes
+        self.app_start('com.github.uiautomator', '.MainActivity', wait=wait, stop=True)
+
+        # launch atx-agent uiautomator keeper
         self._reqsess.post(self.path2url('/uiautomator'))
-        start = time.time()
-        while time.time() - start < 10.0:
+
+        # wait until uiautomator2 service working
+        deadline = time.time() + 10.0
+        while time.time() < deadline:
             if self.alive:
+                # keyevent BACK if current is com.github.uiautomator
+                if self.current_app()['package'] != 'com.github.uiautomator':
+                    return True
+                time.sleep(0.5)
+                self.adb_shell('input', 'keyevent', 'BACK')
                 return True
             time.sleep(.5)
         raise RuntimeError("Uiautomator started failed.")
@@ -489,6 +502,25 @@ class UIAutomatorServer(object):
                 self.app_stop(pkg_name)
             self.adb_shell('monkey', '-p', pkg_name, '-c', 'android.intent.category.LAUNCHER', '1')
     
+    def current_app(self):
+        """
+        Return: dict(package, activity, pid?)
+        Raises:
+            RuntimeError
+        """
+        # try: adb shell dumpsys activity top
+        _activityRE = re.compile(r'ACTIVITY (?P<package>[^/]+)/(?P<activity>[^/\s]+) \w+ pid=(?P<pid>\d+)')
+        m = _activityRE.search(self.adb_shell('dumpsys', 'activity', 'top'))
+        if m:
+            return dict(package=m.group('package'), activity=m.group('activity'), pid=int(m.group('pid')))
+
+        # try: adb shell dumpsys window windows
+        _focusedRE = re.compile('mFocusedApp=.*ActivityRecord{\w+ \w+ (?P<package>.*)/(?P<activity>.*) .*')
+        m = _focusedRE.search(self.adb_shell('dumpsys', 'window', 'windows'))
+        if m:
+            return dict(package=m.group('package'), activity=m.group('activity'))
+        raise RuntimeError("Couldn't get focused app")
+
     def app_stop(self, pkg_name):
         """ Stop application: am force-stop"""
         self.adb_shell('am', 'force-stop', pkg_name)
