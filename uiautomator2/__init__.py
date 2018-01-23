@@ -350,11 +350,16 @@ class UIAutomatorServer(object):
         while time.time() < deadline:
             if self.alive:
                 # keyevent BACK if current is com.github.uiautomator
+                # XiaoMi uiautomator will kill the app(com.github.uiautomator) when launch
+                #   it is better to start a service to make uiautomator live longer
                 if self.current_app()['package'] != 'com.github.uiautomator':
+                    self.adb_shell('am', 'startservice', '-n', 'com.github.uiautomator/.Service')
+                    time.sleep(.5)
                     return True
-                time.sleep(0.5)
-                self.adb_shell('input', 'keyevent', 'BACK')
-                return True
+                else:
+                    time.sleep(0.5)
+                    self.adb_shell('input', 'keyevent', 'BACK')
+                    return True
             time.sleep(.5)
         raise RuntimeError("Uiautomator started failed.")
 
