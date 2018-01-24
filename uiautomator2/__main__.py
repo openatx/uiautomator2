@@ -5,23 +5,22 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 import fire
-import os
-import logging
-import subprocess
 import shutil
 import tarfile
 import hashlib
 import re
 import time
-import socket
 import progress.bar
-from contextlib import closing
 
 import humanize
 import requests
 
 import uiautomator2 as u2
-from uiautomator2 import adbutils
+
+from uiautomator2.adbutils import Client as AdbClient
+
+import os
+import logging
 
 
 __apk_version__ = '1.0.9'
@@ -35,7 +34,6 @@ __atx_agent_version__ = '0.1.5'
 # 0.1.2 /download support
 # 0.1.1 minicap buildin
 
-
 def get_logger(name):
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
@@ -45,6 +43,7 @@ def get_logger(name):
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     return logger
+
 
 log = get_logger('uiautomator2')
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
@@ -58,7 +57,7 @@ class DownloadBar(progress.bar.Bar):
     @property
     def total_size(self):
         return humanize.naturalsize(self.max, binary=True)
-    
+
     @property
     def current_size(self):
         return humanize.naturalsize(self.index, binary=True)
@@ -83,8 +82,8 @@ def cache_download(url, filename=None):
         raise Exception("status code", r.status_code)
     file_size = int(r.headers.get("Content-Length"))
     bar = DownloadBar(filename, max=file_size)
-    with open(storepath+'.tmp', 'wb') as f:
-        chunk_length = 16*1024
+    with open(storepath + '.tmp', 'wb') as f:
+        chunk_length = 16 * 1024
         while 1:
             buf = r.raw.read(chunk_length)
             if not buf:
@@ -92,17 +91,18 @@ def cache_download(url, filename=None):
             f.write(buf)
             bar.next(len(buf))
         bar.finish()
-    shutil.move(storepath+'.tmp', storepath)
+    shutil.move(storepath + '.tmp', storepath)
     return storepath
 
 
-class Installer(adbutils.Adb):
-    def __init__(self, serial=None):
-        super(Installer, self).__init__(serial)
-        self.sdk = self.getprop('ro.build.version.sdk')
-        self.abi = self.getprop('ro.product.cpu.abi')
-        self.pre = self.getprop('ro.build.version.preview_sdk')
-        self.arch = self.getprop('ro.arch')
+class Installer:
+    def __init__(self, adb_device):
+        self._adb = adb_device
+
+        self.sdk = self._adb.getprop('ro.build.version.sdk')
+        self.abi = self._adb.getprop('ro.product.cpu.abi')
+        self.pre = self._adb.getprop('ro.build.version.preview_sdk')
+        self.arch = self._adb.getprop('ro.arch')
         self.server_addr = None
 
     def install_minicap(self):
@@ -114,28 +114,28 @@ class Installer(adbutils.Adb):
             sdk = sdk + self.pre
         base_url = "https://github.com/codeskyblue/stf-binaries/raw/master/node_modules/minicap-prebuilt/prebuilt/"
         log.debug("install minicap.so")
-        url = base_url+self.abi+"/lib/android-"+sdk+"/minicap.so"
+        url = base_url + self.abi + "/lib/android-" + sdk + "/minicap.so"
         path = cache_download(url)
-        self.push(path, '/data/local/tmp/minicap.so')
+        self._adb.push(path, '/data/local/tmp/minicap.so')
         log.info("install minicap")
-        url = base_url+self.abi+"/bin/minicap"
+        url = base_url + self.abi + "/bin/minicap"
         path = cache_download(url)
-        self.push(path, '/data/local/tmp/minicap', 0o755)
+        self._adb.push(path, '/data/local/tmp/minicap', 0o755)
 
     def install_minitouch(self):
         """ Need test """
         log.info("install minitouch")
         url = ''.join(["https://github.com/codeskyblue/stf-binaries",
-            "/raw/master/node_modules/minitouch-prebuilt/prebuilt/",
-            self.abi+"/bin/minitouch"])
+                       "/raw/master/node_modules/minitouch-prebuilt/prebuilt/",
+                       self.abi + "/bin/minitouch"])
         path = cache_download(url)
-        self.push(path, '/data/local/tmp/minitouch', 0o755)
-    
+        self._adb.push(path, '/data/local/tmp/minitouch', 0o755)
+
     def install_uiautomator_apk(self, apk_version, reinstall=False):
         app_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % apk_version
         app_test_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator-test.apk' % apk_version
-        pkg_info = self.package_info('com.github.uiautomator')
-        test_pkg_info = self.package_info('com.github.uiautomator.test')
+        pkg_info = self._adb.package_info('com.github.uiautomator')
+        test_pkg_info = self._adb.package_info('com.github.uiautomator.test')
         # For test_pkg_info has no versionName or versionCode
         # Just check if the com.github.uiautomator.test apk is installed
         if not reinstall and pkg_info and pkg_info['version_name'] == apk_version and test_pkg_info:
@@ -143,19 +143,19 @@ class Installer(adbutils.Adb):
             return
         if pkg_info or test_pkg_info:
             log.debug("uninstall old apks")
-            self.uninstall('com.github.uiautomator')
-            self.uninstall('com.github.uiautomator.test')
+            self._adb.uninstall('com.github.uiautomator')
+            self._adb.uninstall('com.github.uiautomator.test')
         log.info("app-uiautomator.apk(%s) installing ...", apk_version)
         path = cache_download(app_url)
-        self.install(path)
+        self._adb.install(path)
         log.debug("app-uiautomator.apk installed")
         log.debug("app-uiautomator-test.apk installing ...")
         path = cache_download(app_test_url)
-        self.install(path)
+        self._adb.install(path)
         log.debug("app-uiautomator-test.apk installed")
-    
+
     def install_atx_agent(self, agent_version, reinstall=False):
-        version_output = self.shell('/data/local/tmp/atx-agent', '-v', raise_error=False).strip()
+        version_output = self._adb.shell('/data/local/tmp/atx-agent', '-v').strip()
         m = re.search(r"\d+\.\d+\.\d+", version_output)
         current_agent_version = m.group(0) if m else None
         if current_agent_version == agent_version:
@@ -173,7 +173,7 @@ class Installer(adbutils.Adb):
             'x86': 'atx-agent_{v}_linux_386.tar.gz',
         }
         log.info("atx-agent(%s) is installing, please be patient", agent_version)
-        abis = self.shell('getprop', 'ro.product.cpu.abilist').strip() or self.abi
+        abis = self._adb.shell('getprop', 'ro.product.cpu.abilist').strip() or self.abi
         name = None
         for abi in abis.split(','):
             name = files.get(abi)
@@ -189,7 +189,7 @@ class Installer(adbutils.Adb):
         tar = tarfile.open(path, 'r:gz')
         bin_path = os.path.join(os.path.dirname(path), 'atx-agent')
         tar.extract('atx-agent', os.path.dirname(bin_path))
-        self.push(bin_path, '/data/local/tmp/atx-agent', 0o755)
+        self._adb.push(bin_path, '/data/local/tmp/atx-agent', 0o755)
         log.debug("atx-agent installed")
 
     def launch_and_check(self):
@@ -198,8 +198,8 @@ class Installer(adbutils.Adb):
         if self.server_addr:
             args.append('-t')
             args.append(self.server_addr)
-        output = self.shell(*args)
-        lport = self.forward_port(7912)
+        output = self._adb.shell(*args)
+        lport = self._adb.forward_port(7912)
         log.debug("forward device(port:7912) -> %d", lport)
         time.sleep(.5)
         cnt = 0
@@ -219,7 +219,8 @@ class Installer(adbutils.Adb):
 
 
 class MyFire(object):
-    def init(self, server=None, apk_version=__apk_version__, agent_version=__atx_agent_version__, verbose=False, reinstall=False, proxy=None):
+    def init(self, server=None, apk_version=__apk_version__, agent_version=__atx_agent_version__, verbose=False,
+             reinstall=False, proxy=None):
         if verbose:
             log.setLevel(logging.DEBUG)
         if server:
@@ -229,30 +230,25 @@ class MyFire(object):
             os.environ['HTTP_PROXY'] = proxy
             os.environ['HTTPS_PROXY'] = proxy
 
-        output = subprocess.check_output(['adb', 'devices'])
-        pattern = re.compile(r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
-        matches = pattern.findall(output.decode())
-        for m in matches:
-            serial, status = m[0], m[1]
-            if status == 'offline':
-                log.warn("device(%s) is offline, skip", serial)
-                continue
-            
-            log.info("Device(%s) initialing ...", serial)
-            ins = Installer(serial)
+        adb_client = AdbClient()
+        devices = adb_client.devices()
+        for device in devices:
+            log.info("Device(%s) initialing ...", device.serial)
+            ins = Installer(device)
             ins.server_addr = server
             ins.install_minicap()
             ins.install_minitouch()
             ins.install_uiautomator_apk(apk_version, reinstall)
             ins.install_atx_agent(agent_version, reinstall)
             ins.launch_and_check()
-        if len(matches) == 0:
+
+        if len(devices) == 0:
             log.warn("No avaliable android devices detected. See details from `adb devices`")
-        
+
     def clear_cache(self):
         log.info("clear cache dir: %s", appdir)
         shutil.rmtree(appdir, ignore_errors=True)
-    
+
     def cleanup(self):
         raise NotImplementedError()
 
@@ -264,19 +260,19 @@ class MyFire(object):
         u = u2.connect(device_ip)
         pkg_name = u.app_install(apk_url)
         print("Installed", pkg_name)
-    
+
     def unlock(self, device_ip=None):
         u = u2.connect(device_ip)
         u.unlock()
-    
+
     def app_stop_all(self, device_ip=None):
         u = u2.connect(device_ip)
         u.app_stop_all()
-    
+
     def uninstall_all(self, device_ip=None):
         u = u2.connect(device_ip)
         u.app_uninstall_all(verbose=True)
-    
+
     def identify(self, device_ip=None, theme='black'):
         u = u2.connect(device_ip)
         u.open_identify(theme)
@@ -288,4 +284,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    
