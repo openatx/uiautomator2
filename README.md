@@ -1,42 +1,38 @@
-# uiautomator2
-[![Build Status](https://travis-ci.org/openatx/uiautomator2.svg?branch=master)](https://travis-ci.org/openatx/uiautomator2)
-[![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2)
-![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg)
+# uiautomator2 [![Build Status](https://travis-ci.org/openatx/uiautomator2.svg?branch=master)](https://travis-ci.org/openatx/uiautomator2) [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2) ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg)
+**该项目正在火热的开发中**
 
-Android Uiautomator2 Python Wrapper
-这是一个可以完成Android的UI自动化的python库。**该项目还在火热的开发中**
+uiautomator2 是一个可以使用Python对Android设备进行UI自动化的库。其底层基于Google uiautomator，Google提供的[uiautomator](https://developer.android.com/training/testing/ui-automator.html)库可以获取屏幕上任意一个APP的任意一个控件属性，并对其进行任意操作，但有两个缺点：1. 测试脚本只能使用Java语言 2. 测试脚本必须每次被上传到设备上运行。
+我们希望测试能够用一个更脚本化的语言，例如Python编写，同时可以每次所见即所得地修改测试、运行测试。这里要非常感谢 Xiaocong He ([@xiaocong][])，他将这个想法实现了出来（见[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)），原理是在手机上运行了一个http服务器，将uiautomator中的功能开放出来，然后再将这些http接口，封装成Python库。
+我们的uiautomator2项目是对[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)的增强，主要有以下部分：
 
-google提供的uiautomator库功能做起安卓自动化来非常强大，唯独有两个缺点：1. 只能在手机上运行 2. 只能使用java语言。
-所以为了能更简单快捷的使用uiautomator，这个项目通过在手机上运行了一个http服务的方法，将uiautomator中的函数开放了出来。然后再将这些http接口，封装成了python库。这里要非常感谢 Xiaocong He ([@xiaocong][])，他将这个想法实现了出来，uiautomator2这个项目则是对原有xiaocong的项目[uiautomator](https://github.com/xiaocong/uiautomator)进行了bug的修改，功能进行了加强。具体有以下
-
-* 修复uiautomator经常性退出的问题
+* 设备和开发机可以脱离数据线，通过Wifi互联（基于[atx-agent](https://github.com/openatx/atx-agent)）
+* 集成了[openstf/minicap](https://github.com/openstf/minicap)加快截图速度
+* 集成了[openstf/minitouch](https://github.com/openstf/minitouch)达到精确实时控制设备
+* 修复了xiaocong/uiautomator经常性退出的问题
 * 代码进行了重构和精简，方便维护
-* 增加了脱离数据线运行测试的功能
-* 通过[minicap](https://github.com/openstf/minicap)加快截图速度
 
 虽然我说的很简单，但是实现起来用到了很多的技术和技巧，功能非常强，唯独文档有点少。哈哈
 
 # Installation
-1. Install python library
+1. Install uiautomator2
 
     ```bash
-    # Since uiautomator2 is still developing, you have to add --pre to install development version
+    # Since uiautomator2 is still under development, you have to add --pre to install the development version
     pip install --pre uiautomator2
 
-    # Or you can install from source
+    # Or you can install directly from github source
     git clone https://github.com/openatx/uiautomator2
     pip install -e uiautomator2
     ```
 
-    Optional, used in screenshot()
+    Optionally, `pillow` is needed to process screenshot data.
     
     ```bash
     pip install pillow
     ```
 
-2. Push and install (apk, atx-agent, minicap, minitouch) to device
-
-    电脑连接上一个手机或多个手机, 确保adb已经添加到环境变量中，执行下面的命令会自动安装[uiautomator-apk](https://github.com/openatx/android-uiautomator-server/releases) 以及 [atx-agent](https://github.com/openatx/atx-agent)
+2. Deploy associated daemons to a device 
+    电脑连接上一个手机或多个手机, 确保adb已经添加到环境变量中，执行下面的命令会自动安装本库所需要的设备端程序：[uiautomator-server](https://github.com/openatx/android-uiautomator-server/releases) 、[atx-agent](https://github.com/openatx/atx-agent)、[openstf/minicap](https://github.com/openstf/minicap)、[openstf/minitouch](https://github.com/openstf/minitouch)
 
     ```bash
     python -m uiautomator2 init
@@ -45,16 +41,13 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
     安装提示`success`即可
 
 # Usage 使用指南
-下文中我们用`device_ip`这个变量来定义手机的IP，通常来说安装完`atx-agent`的时候会自动提示你手机的IP是多少。
+部署 `atx-agent`之后，设备可以和电脑通过WiFi链接，设备上的`atx-agent`安装完成后会自动提示手机的IP是多少。下文中我们用`device_ip`这个变量来表示手机的IP，这个IP唯一标示一个设备。
 
-如果手机的WIFI跟电脑不是一个网段的，需要先通过数据线将手机连接到电脑上，使用命令`adb forward tcp:7912 tcp:7912` 将手机上的服务端口7912转发到PC上。这个时候连接地址使用`127.0.0.1`即可。
+如果手机的WiFi跟电脑不是一个网段的，不能使用WiFi互联功能，需要通过数据线将手机连接到电脑上，使用命令`adb forward tcp:7912 tcp:7912` 将手机上的服务端口7912转发到PC上，然后使用`device_ip=127.0.0.1`连接该手机。
 
 ## 命令行使用
-- init: 初始化设备的atx-agent等
-
-    Installation部分已经介绍过，这里就不写了
-
-- install: 通过URL安装应用
+- init: 为设备安装所需要的程序
+- install: 安装apk，apk通过URL给出
 
     ```bash
     $ python -m uiautomator2 install $device_ip https://example.org/some.apk
@@ -75,32 +68,30 @@ google提供的uiautomator库功能做起安卓自动化来非常强大，唯独
     $ python -m uiautomator2 app-stop-all $device_ip
     ```
 ## QUICK START
-Open python, input with the following code
+There are two ways to connect to the device. Run the following Python code in a python 2.7/3+ interpreter:
 
-There are two ways to connect to the device.
-
-1. Through WIFI (recommend)
+1. Through WIFI (recommended)
 Suppose device IP is `10.0.0.1` and your PC is in the same network.
 
 ```python
 import uiautomator2 as u2
 
-d = u2.connect('10.0.0.1') # same as call with u2.connect_wifi('10.0.0.1')
+d = u2.connect('10.0.0.1') # alias for u2.connect_wifi('10.0.0.1')
 print(d.info)
 ```
 
 2. Through USB
-Suppose device serial is `123456f`
+Suppose the device serial is `123456f` (seen from `adb devices`)
 
 ```python
 import uiautomator2 as u2
 
-d = u2.connect('123456f') # same as call with u2.connect_usb('123456f')
+d = u2.connect('123456f') # alias for u2.connect_usb('123456f')
 print(d.info)
 ```
 
-If just call `u2.connect()` with no arguments, env-var `ANDROID_DEVICE_IP` will first check.
-if env-var is empty, `connect_usb` will be called. you need to make sure there is only one device connected with your computer.
+Calling `u2.connect()` with no argument, `uiautomator2` will obtain device IP from the environment variable `ANDROID_DEVICE_IP`.
+If this environment variable is empty, uiautomator will fall back to `connect_usb` and you need to make sure that there is only one device connected to the computer.
 
 ## 一些常用但是不知道归到什么类里的函数
 先中文写着了，国外大佬们先用Google Translate顶着
@@ -137,7 +128,7 @@ clicked = d(text='Skip').click_exists(timeout=10.0)
 <<< END
 ```
 
-**Notes:** In below examples, we use `d` represent the uiautomator2 connect object
+**Notes:** In below examples, we use `d` to represent the uiautomator2 object for the connected device.
 
 # Table of Contents
 **[Basic API Usage](#basic-api-usages)**
@@ -168,17 +159,17 @@ clicked = d(text='Skip').click_exists(timeout=10.0)
 **TODO**
 
 ## Basic API Usages
-This part show the normal actions of the device through some simple examples
+This part showcases how to perform common device operations:
 
 ### Retrive the device info
 
-Get common information
+Get basic information
 
 ```python
 d.info
 ```
 
-Below is a possible result:
+Below is a possible output:
 
 ```
 { 
@@ -201,7 +192,7 @@ print(d.window_size())
 # expect eg: (1920, 1080)
 ```
 
-Get current app info. In some android device may get empty result. see *Output example 3*
+Get current app info. For some android devices, the output could be empty (see *Output example 3*)
 
 ```python
 print(current_app())
@@ -210,30 +201,30 @@ print(current_app())
 # Output example 3: {'activity': None, 'package': None}
 ```
 
-### Key Event Actions of the device
+### Key Events
 
-* Tun on/off screen
+* Turn on/off screen
 
     ```python
-    d.screen_on() # turn on screen
-    d.screen_off() # turn off screen
+    d.screen_on() # turn on the screen
+    d.screen_off() # turn off the screen
     ```
 
-* Get screen on/off status
+* Get current screen status
 
     ```python
-    d.info.get('screenOn') # require android >= 4.4
+    d.info.get('screenOn') # require Android >= 4.4
     ```
 
 * Press hard/soft key
 
     ```python
-    d.press("home") # press home key
-    d.press("back") # the normal way to press back key
+    d.press("home") # press the home key, with key name
+    d.press("back") # press the back key, with key name
     d.press(0x07, 0x02) # press keycode 0x07('0') with META ALT(0x02)
     ```
 
-* Next keys are currently supported:
+* These key names are currently supported:
 
     - home
     - back
@@ -259,18 +250,19 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
 
     ```python
     d.unlock()
+    # This is equivalent to
     # 1. launch activity: com.github.uiautomator.ACTION_IDENTIFY
-    # 2. press "home"
+    # 2. press the "home" key
     ```
 
-### Gesture interaction of the device
-* Click the screen
+### Gesture interaction with the device
+* Click on the screen
 
     ```python
     d.click(x, y)
     ```
 
-* Long click the screen
+* Long click on the screen
 
     ```python
     d.long_click(x, y)
@@ -290,14 +282,14 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
     d.drag(sx, sy, ex, ey)
     d.drag(sx, sy, ex, ey, 0.5) # swipe for 0.5s(default)
 
-Note: click, swipe, drag support percent position. Example:
+Note: click, swipe, drag operations support percentage position values. Example:
 
 `d.long_click(0.5, 0.5)` means long click center of screen
 
-### Screen Actions of the device
-* Retrieve/Set Orientation
+### Screen-related
+* Retrieve/Set device orientation
 
-    The possible orientation is:
+    The possible orientations:
 
     -   `natural` or `n`
     -   `left` or `l`
@@ -305,19 +297,19 @@ Note: click, swipe, drag support percent position. Example:
     -   `upsidedown` or `u` (can not be set)
 
     ```python
-    # retrieve orientation, it may be "natural" or "left" or "right" or "upsidedown"
+    # retrieve orientation. the output could be "natural" or "left" or "right" or "upsidedown"
     orientation = d.orientation
 
     # WARNING: not pass testing in my TT-M1
     # set orientation and freeze rotation.
-    # notes: "upsidedown" can not be set until Android 4.3.
+    # notes: setting "upsidedown" requires Android>=4.3.
     d.set_orientation('l') # or "left"
     d.set_orientation("l") # or "left"
     d.set_orientation("r") # or "right"
     d.set_orientation("n") # or "natural"
     ```
 
-* Freeze/Un-Freeze rotation
+* Freeze/Un-freeze rotation
 
     ```python
     # freeze rotation
@@ -329,22 +321,23 @@ Note: click, swipe, drag support percent position. Example:
 * Take screenshot
 
     ```python
-    # take screenshot and save to local file "home.jpg", can not work until Android 4.2.
+    # take screenshot and save to a file on the computer, require Android>=4.2.
     d.screenshot("home.jpg")
-    # get PIL.Image format, need install pillow first
+    
+    # get PIL.Image formatted images. Naturally, you need pillow installed first
     image = d.screenshot()
-    image.save("home.jpg") # or home.png
+    image.save("home.jpg") # or home.png. Currently, only png and jpg are supported
 
-    # get opencv format, need install numpy and cv2
+    # get opencv formatted images. Naturally, you need numpy and cv2 installed first
     import cv2
     image = d.screenshot(format='opencv')
     cv2.imwrite('home.jpg', image)
     ```
 
-* Dump Window Hierarchy
+* Dump UI hierarchy
 
     ```python
-    # or get the dumped content(unicode) from return.
+    # get the UI hierarchy dump content (unicoded).
     xml = d.dump_hierarchy()
     ```
 
@@ -355,67 +348,66 @@ Note: click, swipe, drag support percent position. Example:
     d.open_quick_settings()
     ```
 
-### Push and pull file
-* push file into device
+### Push and pull files
+* push a file to the device
 
     ```python
-    # push into a folder
+    # push to a folder
     d.push("foo.txt", "/sdcard/")
     # push and rename
     d.push("foo.txt", "/sdcard/bar.txt")
     # push fileobj
     with open("foo.txt", 'rb') as f:
         d.push(f, "/sdcard/")
-    # push and change file mode
+    # push and change file access mode
     d.push("foo.sh", "/data/local/tmp/", mode=0o755)
     ```
 
-* pull file from device
+* pull a file from the device
 
     ```python
     d.pull("/sdcard/tmp.txt", "tmp.txt")
 
-    # FileNotFoundError will raise if file not found in device
+    # FileNotFoundError will raise if the file is not found on the device
     d.pull("/sdcard/some-file-not-exists.txt", "tmp.txt")
     ```
 
 ### App management
-Include app install, launch and stop
 
-#### App install
-Only support install from url for now.
+#### Install app
+We only support installing an APK from a URL
 
 ```python
 d.app_install('http://some-domain.com/some.apk')
 ```
 
-#### App launch
+#### Launch app
 ```python
 d.app_start("com.example.hello_world") # start with package name
 ```
 
-#### App stop
+#### Stop app
 ```python
-# perform am force-stop
+# equivalent to `am force-stop`, thus you could lose data
 d.app_stop("com.example.hello_world") 
-# perform pm clear
+# equivalent to `pm clear`
 d.app_clear('com.example.hello_world')
 ```
 
-#### App stop all the runnings
+#### Stop all running apps
 ```python
 # stop all
 d.app_stop_all()
-# stop all app except com.examples.demo
+# stop all app except for com.examples.demo
 d.app_stop_all(excludes=['com.examples.demo'])
 ```
 
 ### Selector
 
-Selector is to identify specific ui object in current window.
+Selector is a handy mechanism to identify a specific UI object in the current window.
 
 ```python
-# To seleted the object ,text is 'Clock' and its className is 'android.widget.TextView'
+# Select the object with text 'Clock' and its className is 'android.widget.TextView'
 d(text='Clock', className='android.widget.TextView')
 ```
 
@@ -430,31 +422,31 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
 *  `resourceId`, `resourceIdMatches`
 *  `index`, `instance`
 
-#### Child and sibling UI object
+#### Children and siblings
 
-* child
+* children
 
   ```python
-  # get the child or grandchild
+  # get the children or grandchildren
   d(className="android.widget.ListView").child(text="Bluetooth")
   ```
 
-* sibling
+* siblings
 
   ```python
-  # get sibling or child of sibling
+  # get siblings
   d(text="Google").sibling(className="android.widget.ImageView")
   ```
 
-* child by text or description or instance
+* children by text or description or instance
 
   ```python
-  # get the child match className="android.widget.LinearLayout"
-  # and also it or its child or grandchild contains text "Bluetooth"
+  # get the child matching the condition className="android.widget.LinearLayout"
+  # and also its children or grandchildren with text "Bluetooth"
   d(className="android.widget.ListView", resourceId="android:id/list") \
    .child_by_text("Bluetooth", className="android.widget.LinearLayout")
 
-  # allow scroll search to get the child
+  # get children by allowing scroll search
   d(className="android.widget.ListView", resourceId="android:id/list") \
    .child_by_text(
       "Bluetooth",
@@ -463,12 +455,12 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
     )
   ```
 
-  - `child_by_description` is to find child which or which's grandchild contains
-      the specified description, others are the same as `child_by_text`.
+  - `child_by_description` is to find children whose grandchildren have
+      the specified description, other parameters being simular to `child_by_text`.
 
-  - `child_by_instance` is to find child which has a child UI element anywhere
+  - `child_by_instance` is to find children with has a child UI element anywhere
       within its sub hierarchy that is at the instance specified. It is performed
-      on visible views without **scrolling**.
+      on visible views **without scrolling**.
 
   See below links for detailed information:
 
@@ -503,16 +495,16 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
     .click()
   ```
 
-* relative position
+* relative positioning
 
-  Also we can use the relative position methods to get the view: `left`, `right`, `top`, `bottom`.
+  Also we can use the relative positioning methods to get the view: `left`, `right`, `top`, `bottom`.
 
-  -   `d(A).left(B)`, means selecting B on the left side of A.
-  -   `d(A).right(B)`, means selecting B on the right side of A.
-  -   `d(A).up(B)`, means selecting B above A.
-  -   `d(A).down(B)`, means selecting B under A.
+  -   `d(A).left(B)`, selects B on the left side of A.
+  -   `d(A).right(B)`, selects B on the right side of A.
+  -   `d(A).up(B)`, selects B above A.
+  -   `d(A).down(B)`, selects B under A.
 
-  So for above case, we can write code alternatively:
+  So for above cases, we can alternatively select it with:
 
   ```python
   ## select "switch" on the right side of "Wi‑Fi"
@@ -521,14 +513,14 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
 
 * Multiple instances
 
-  Sometimes the screen may contain multiple views with the same e.g. text, then you will
-  have to use "instance" properties in selector like below:
+  Sometimes the screen may contain multiple views with the same properties, e.g. text, then you will
+  have to use the "instance" property in the selector to pick one of qualifying instances, like below:
 
   ```python
   d(text="Add new", instance=0)  # which means the first instance with text "Add new"
   ```
 
-  However, uiautomator provides list like methods to use it.
+  In addition, uiautomator provides a list-like API (similar to jQuery):
 
   ```python
   # get the count of views with text "Add new" on current screen
@@ -547,24 +539,24 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
       view.info  # ...
   ```
 
-  **Notes**: when you are using selector like a list, you must make sure the screen
-  keep unchanged, else you may get ui not found error.
+  **Notes**: when using selectors in a list fashion, you must ensure that the UI elements on the screen
+  keep unchanged. Otherwise, when Element-Not-Found error could occur when iterating through the list.
 
 #### Get the selected ui object status and its information
-* Check if the specific ui object exists
+* Check if the specific UI object exists
 
     ```python
     d(text="Settings").exists # True if exists, else False
     d.exists(text="Settings") # alias of above property.
     ```
 
-* Retrieve the info of the specific ui object
+* Retrieve the info of the specific UI object
 
     ```python
     d(text="Settings").info
     ```
 
-    Below is a possible result:
+    Below is a possible output:
 
     ```
     { u'contentDescription': u'',
@@ -591,53 +583,52 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
     u'checkable': False
     }
     ```
-* Set/Clear text of editable field
+* Set/Clear text of an editable field (e.g., EditText widgets)
 
     ```python
     d(text="Settings").clear_text()  # clear the text
     d(text="Settings").set_text("My text...")  # set the text
     ```
 
-#### Perform the click action on the seleted ui object
-* Perform click on the specific ui object
+#### Perform the click action on the seleted UI object
+* Perform click on the specific   object
 
     ```python
     # click on the center of the specific ui object
     d(text="Settings").click()
-    # wait element show for 10 seconds(Default)
+    # wait element to appear for at most 10 seconds and then click
     d(text="Settings").click(timeout=10)
     # alias of click
-    # short name for quick type with keyboard
     d(text="Settings").tap()
-    # wait element show for 0 seconds
-    d(text="Settings").tap_nowait()
+    # tap immediately
+    d(text="Settings").tap_nowait()
     ```
 
-* Perform long click on the specific ui object
+* Perform long click on the specific UI object
 
     ```python
-    # long click on the center of the specific ui object
+    # long click on the center of the specific UI object
     d(text="Settings").long_click()
     ```
 
-#### Gesture action for the specific ui object
-* Drag the ui object to another point or ui object 
+#### Gesture actions for the specific UI object
+* Drag the UI object towards another point or another UI object 
 
     ```python
-    # notes : drag can not be set until Android 4.3.
-    # drag the ui object to point (x, y)
+    # notes : drag can not be used for Android<4.3.
+    # drag the UI object to a screen point (x, y), in 0.5 second
     d(text="Settings").drag_to(x, y, duration=0.5)
-    # drag the ui object to another ui object(center)
+    # drag the UI object to (the center postion of) another UI object, in 0.25 second
     d(text="Settings").drag_to(text="Clock", duration=0.25)
     ```
 
-* Two point gesture from one point to another
+* Two-point gesture from one point to another
 
   ```python
   d(text="Settings").gesture((sx1, sy1), (sx2, sy2), (ex1, ey1), (ex2, ey2))
   ```
 
-* Two point gesture on the specific ui object
+* Two-point gesture on the specific UI object
 
   Supports two gestures:
   - `In`, from edge to center
@@ -651,7 +642,7 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
   d(text="Settings").pinch_out()
   ```
 
-* Wait until the specific ui appears or gone
+* Wait until the specific UI appears or disappears
     
     ```python
     # wait until the ui object appears
@@ -660,7 +651,7 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
     d(text="Settings").wait_gone(timeout=1.0)
     ```
 
-    Default timeout is 20s. see **global settings** for more details
+    The default timeout is 20s. see **global settings** for more details
 
 * Perform fling on the specific ui object(scrollable)
 
@@ -721,7 +712,7 @@ You can register [watcher](http://developer.android.com/tools/help/uiautomator/U
   #  .click(target)  ## perform click action on the target UiSelector.
   ```
 
-  - Press key when conditions match
+  - Press key when a condition becomes true
 
   ```python
   d.watcher("AUTO_FC_WHEN_ANR").when(text="ANR").when(text="Wait") \
@@ -740,7 +731,7 @@ You can register [watcher](http://developer.android.com/tools/help/uiautomator/U
   # true in case of the specified watcher triggered, else false
   ```
 
-* Remove named watcher
+* Remove a named watcher
 
   ```python
   # remove the watcher
@@ -754,7 +745,7 @@ You can register [watcher](http://developer.android.com/tools/help/uiautomator/U
   # a list of all registered wachers' names
   ```
 
-* Check if there is any watcher triggered
+* Check for any triggered watcher
 
   ```python
   d.watchers.triggered
@@ -815,12 +806,12 @@ $ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' 127.0.0.1:9008/jsonrp
 # expect JSON output
 ```
 
-## Uiautomator与Uiautomator2的区别
-1. api不同但也差不多
-2. Uiautomator2是安卓项目，而Uiautomator是java项目
-3. Uiautomator2可以输入中文，而Uiautomator的java工程需借助utf7输入法才能输入中文
-4. Uiautomator2必须明确EditText框才能向里面输入文字，Uiautomator直接指定父类也可以在子类中输入文字
-5. Uiautomator2获取控件速度快写，而Uiautomator获取速度慢一些;
+## Google uiautomator与uiautomator2的区别
+1. API相似但是不完全兼容
+2. uiautomator2是安卓项目，而uiautomator是Java项目
+3. uiautomator2可以输入中文，而uiautomator的Java工程需借助utf7输入法才能输入中文
+4. uiautomator2必须明确EditText框才能向里面输入文字，uiautomator直接指定父类也可以在子类中输入文字
+5. uiautomator2获取控件速度比uiautomator快
 
 ## 常见问题
 1. 提示`502`错误
@@ -833,12 +824,12 @@ $ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' 127.0.0.1:9008/jsonrp
     ```
     如果运行正常，启动测试之前增加一行代码`d.healthcheck()`
 
-    如果报错，可能是缺少某个apk没有安装，使用下面的命令重新初始化 `python -m uiautomator2 init --reinstall`
+    如果报错，可能是缺少某个设备组件没有安装，使用下面的命令重新初始化 `python -m uiautomator2 init --reinstall`
 
 ## 尝鲜功能
-手机`python -muiautomator2 init`之后，浏览器输入 <手机IP:7912>，会发现一个远程控制功能，延迟非常低噢。^_^
+手机`python -muiautomator2 init`之后，浏览器输入 <device_ip:7912>，会发现一个远程控制功能，延迟非常低噢。^_^
 
-# ABOUT
+# 项目历史
 项目重构自 <https://github.com/openatx/atx-uiautomator>
 
 # CHANGELOG
@@ -865,7 +856,7 @@ Auto generated by pbr: [CHANGELOG](CHANGELOG)
 [@mingyuan-xia]: https://github.com/mingyuan-xia
 [@artikz]: https://github.com/artikz
 
-Others [contributors](https://github.com/openatx/uiautomator2/graphs/contributors)
+Other [contributors](https://github.com/openatx/uiautomator2/graphs/contributors)
 
 # LICENSE
-Under [MIT](LICENSE)
+[MIT](LICENSE)
