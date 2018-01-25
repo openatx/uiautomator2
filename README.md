@@ -5,7 +5,7 @@ uiautomator2 是一个可以使用Python对Android设备进行UI自动化的库�
 我们希望测试能够用一个更脚本化的语言，例如Python编写，同时可以每次所见即所得地修改测试、运行测试。这里要非常感谢 Xiaocong He ([@xiaocong][])，他将这个想法实现了出来（见[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)），原理是在手机上运行了一个http服务器，将uiautomator中的功能开放出来，然后再将这些http接口，封装成Python库。
 我们的uiautomator2项目是对[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)的增强，主要有以下部分：
 
-* 设备和开发机可以脱离数据线，通过Wifi互联（基于[atx-agent](https://github.com/openatx/atx-agent)）
+* 设备和开发机可以脱离数据线，通过WiFi互联（基于[atx-agent](https://github.com/openatx/atx-agent)）
 * 集成了[openstf/minicap](https://github.com/openstf/minicap)加快截图速度
 * 集成了[openstf/minitouch](https://github.com/openstf/minitouch)达到精确实时控制设备
 * 修复了xiaocong/uiautomator经常性退出的问题
@@ -43,7 +43,7 @@ uiautomator2 是一个可以使用Python对Android设备进行UI自动化的库�
 # Usage 使用指南
 部署 `atx-agent`之后，设备可以和电脑通过WiFi链接，设备上的`atx-agent`安装完成后会自动提示手机的IP是多少。下文中我们用`device_ip`这个变量来表示手机的IP，这个IP唯一标示一个设备。
 
-如果手机的WiFi跟电脑不是一个网段的，不能使用WiFi互联功能，需要通过数据线将手机连接到电脑上，使用命令`adb forward tcp:7912 tcp:7912` 将手机上的服务端口7912转发到PC上，然后使用`device_ip=127.0.0.1`连接该手机。
+如果手机的WiFi跟电脑不是一个网段的，不能使用WiFi互联功能，需要通过数据线将手机连接到电脑上，使用命令`adb forward tcp:7912 tcp:7912` 将手机上的服务端口7912转发到电脑上，然后使用`device_ip=127.0.0.1`连接该手机。
 
 ## 命令行使用
 - init: 为设备安装所需要的程序
@@ -68,9 +68,9 @@ uiautomator2 是一个可以使用Python对Android设备进行UI自动化的库�
     $ python -m uiautomator2 app-stop-all $device_ip
     ```
 ## QUICK START
-There are two ways to connect to the device. Run the following Python code in a python 2.7/3+ interpreter:
+There are two ways to connect to the device. Run the following Python code in a Python 2.7/3+ interpreter:
 
-1. Through WIFI (recommended)
+1. Through WiFi (recommended)
 Suppose device IP is `10.0.0.1` and your PC is in the same network.
 
 ```python
@@ -96,13 +96,13 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 ## 一些常用但是不知道归到什么类里的函数
 先中文写着了，国外大佬们先用Google Translate顶着
 
-### 检查并维持uiautomator处于运行状态
+### 检查并维持设备端守护进程处于运行状态
 ```python
 d.healthcheck()
 ```
 
-### 连接本地的设备
-需要设备曾经使用`python -muiautomator2 init`初始化过
+### 连接本地USB设备
+需要设备曾经使用`python -m uiautomator2 init`初始化过
 
 ```python
 d = u2.connect_usb("{Your-Device-Serial}")
@@ -132,7 +132,7 @@ clicked = d(text='Skip').click_exists(timeout=10.0)
 
 # Table of Contents
 **[Basic API Usage](#basic-api-usages)**
-  - **[Retrive the device info](#retrive-the-device-info)**
+  - **[Retrieve the device info](#retrive-the-device-info)**
   - **[Key Event Actions of the device](#key-event-actions-of-the-device)**
   - **[Gesture interaction of the device](#gesture-interaction-of-the-device)**
   - **[Screen Actions of the device](#screen-actions-of-the-device)**
@@ -161,7 +161,7 @@ clicked = d(text='Skip').click_exists(timeout=10.0)
 ## Basic API Usages
 This part showcases how to perform common device operations:
 
-### Retrive the device info
+### Retrieve the device info
 
 Get basic information
 
@@ -200,6 +200,23 @@ print(current_app())
 # Output example 2: {'activity': '.Client', 'package': 'com.netease.example'}
 # Output example 3: {'activity': None, 'package': None}
 ```
+
+### Shell commands
+* Run a short-lived shell command with a timeout protection
+   ```python
+    d.adb_shell('pwd')
+    d.adb_shell('ls', '-l')
+    d.adb_shell('ls -l')
+   ```
+   This returns a UTF-8 encoded string for stdout merged with stderr. Note for binary mode stdouts, the output is encoded as a UTF-8 string not a bytearray.
+   If the command is a blocking command, `adb_shell` will also block until the command is completed or the timeout kicks in. No partial output will be received during the execution of the command. This API is not suitable for long-running commands. The shell command given runs in a similar environment of `adb shell`, which has a Linux permission level of `adb` or `shell` (higher than an app permission).
+
+* Run a long-running shell command
+**TODO: not implemented yet**
+    ```python
+    d.adb_shell_longrunning('getevent', '-lt')
+    ```
+    This API returns a generator.
 
 ### Key Events
 
@@ -374,19 +391,19 @@ Note: click, swipe, drag operations support percentage position values. Example:
 
 ### App management
 
-#### Install app
+#### Install an app
 We only support installing an APK from a URL
 
 ```python
 d.app_install('http://some-domain.com/some.apk')
 ```
 
-#### Launch app
+#### Launch an app
 ```python
 d.app_start("com.example.hello_world") # start with package name
 ```
 
-#### Stop app
+#### Stop an app
 ```python
 # equivalent to `am force-stop`, thus you could lose data
 d.app_stop("com.example.hello_world") 
@@ -411,7 +428,7 @@ Selector is a handy mechanism to identify a specific UI object in the current wi
 d(text='Clock', className='android.widget.TextView')
 ```
 
-Selector supports below parameters. Refer to [UiSelector java doc](http://developer.android.com/tools/help/uiautomator/UiSelector.html) for detailed information.
+Selector supports below parameters. Refer to [UiSelector Java doc](http://developer.android.com/tools/help/uiautomator/UiSelector.html) for detailed information.
 
 *  `text`, `textContains`, `textMatches`, `textStartsWith`
 *  `className`, `classNameMatches`
@@ -456,7 +473,7 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
   ```
 
   - `child_by_description` is to find children whose grandchildren have
-      the specified description, other parameters being simular to `child_by_text`.
+      the specified description, other parameters being similar to `child_by_text`.
 
   - `child_by_instance` is to find children with has a child UI element anywhere
       within its sub hierarchy that is at the instance specified. It is performed
@@ -483,10 +500,7 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
   ```
   ![settings](https://raw.github.com/xiaocong/uiautomator/master/docs/img/settings.png)
 
-  We want to click the switch at the right side of text 'Wi‑Fi' to turn on/of Wi‑Fi.
-  As there are several switches with almost the same properties, so we can not use like
-  `d(className="android.widget.Switch")` to select the ui object. Instead, we can use
-  code below to select it.
+  To click the switch widget right to the TextView 'Wi‑Fi', we need to select the switch widgets first. However, according to the UI hierarchy, more than one switch widgets exist and have almost the same properties. Selecting by className will not work. Alternatively, the below selecting strategy would help:
 
   ```python
   d(className="android.widget.ListView", resourceId="android:id/list") \
@@ -520,7 +534,7 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
   d(text="Add new", instance=0)  # which means the first instance with text "Add new"
   ```
 
-  In addition, uiautomator provides a list-like API (similar to jQuery):
+  In addition, uiautomator2 provides a list-like API (similar to jQuery):
 
   ```python
   # get the count of views with text "Add new" on current screen
@@ -590,7 +604,7 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
     d(text="Settings").set_text("My text...")  # set the text
     ```
 
-#### Perform the click action on the seleted UI object
+#### Perform the click action on the selected UI object
 * Perform click on the specific   object
 
     ```python
@@ -618,7 +632,7 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
     # notes : drag can not be used for Android<4.3.
     # drag the UI object to a screen point (x, y), in 0.5 second
     d(text="Settings").drag_to(x, y, duration=0.5)
-    # drag the UI object to (the center postion of) another UI object, in 0.25 second
+    # drag the UI object to (the center position of) another UI object, in 0.25 second
     d(text="Settings").drag_to(text="Clock", duration=0.25)
     ```
 
@@ -662,11 +676,11 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
   ```python
   # fling forward(default) vertically(default) 
   d(scrollable=True).fling()
-  # fling forward horizentally
+  # fling forward horizontally
   d(scrollable=True).fling.horiz.forward()
   # fling backward vertically
   d(scrollable=True).fling.vert.backward()
-  # fling to beginning horizentally
+  # fling to beginning horizontally
   d(scrollable=True).fling.horiz.toBeginning(max_swipes=1000)
   # fling to end vertically
   d(scrollable=True).fling.toEnd()
@@ -681,11 +695,11 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
   ```python
   # scroll forward(default) vertically(default)
   d(scrollable=True).scroll(steps=10)
-  # scroll forward horizentally
+  # scroll forward horizontally
   d(scrollable=True).scroll.horiz.forward(steps=100)
   # scroll backward vertically
   d(scrollable=True).scroll.vert.backward()
-  # scroll to beginning horizentally
+  # scroll to beginning horizontally
   d(scrollable=True).scroll.horiz.toBeginning(steps=100, max_swipes=1000)
   # scroll to end vertically
   d(scrollable=True).scroll.toEnd()
@@ -695,12 +709,12 @@ Selector supports below parameters. Refer to [UiSelector java doc](http://develo
   
 ### Watcher
 
-You can register [watcher](http://developer.android.com/tools/help/uiautomator/UiWatcher.html) to perform some actions when a selector can not find a match.
+You can register [watchers](http://developer.android.com/tools/help/uiautomator/UiWatcher.html) to perform some actions when a selector does not find a match.
 
 
 * Register Watcher
 
-  When a selector can not find a match, uiautomator will run all registered watchers.
+  When a selector can not find a match, uiautomator2 will run all registered watchers.
 
   - Click target when conditions match
 
@@ -742,7 +756,7 @@ You can register [watcher](http://developer.android.com/tools/help/uiautomator/U
 
   ```python
   d.watchers
-  # a list of all registered wachers' names
+  # a list of all registered watchers
   ```
 
 * Check for any triggered watcher
@@ -759,7 +773,7 @@ You can register [watcher](http://developer.android.com/tools/help/uiautomator/U
   d.watchers.reset()
   ```
 
-* Remvoe watchers
+* Remove watchers
 
   ```python
   # remove all registered watchers
@@ -775,7 +789,8 @@ You can register [watcher](http://developer.android.com/tools/help/uiautomator/U
   d.watchers.run()
   ```
 
-另外文档还是有很多没有写，推荐直接去看源码[__init__.py](uiautomato2/__init__.py)
+
+另外文档还是有很多没有写，推荐直接去看源码[__init__.py](uiautomator2/__init__.py)
 
 ### Global settings
 ```python
@@ -819,7 +834,7 @@ $ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' 127.0.0.1:9008/jsonrp
     尝试手机连接PC，然后运行下面的命令
     
     ```
-    adb shell am instrument -w -r  -e debug false -e class com.github.uiautomator.stub.Stub \
+    adb shell am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub \
 		com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner
     ```
     如果运行正常，启动测试之前增加一行代码`d.healthcheck()`
@@ -827,13 +842,12 @@ $ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' 127.0.0.1:9008/jsonrp
     如果报错，可能是缺少某个设备组件没有安装，使用下面的命令重新初始化 `python -m uiautomator2 init --reinstall`
 
 ## 尝鲜功能
-手机`python -muiautomator2 init`之后，浏览器输入 <device_ip:7912>，会发现一个远程控制功能，延迟非常低噢。^_^
+手机`python -m uiautomator2 init`之后，浏览器输入 <device_ip:7912>，会发现一个远程控制功能，延迟非常低噢。^_^
 
 # 项目历史
 项目重构自 <https://github.com/openatx/atx-uiautomator>
 
-# CHANGELOG
-Auto generated by pbr: [CHANGELOG](CHANGELOG)
+# [CHANGELOG (generated by pbr)](CHANGELOG)
 
 # 依赖项目
 - uiautomator守护程序 <https://github.com/openatx/atx-agent>

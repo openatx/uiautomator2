@@ -128,9 +128,11 @@ def connect(addr=None):
         addr (str): uiautomator server address or serial number. default from env-var ANDROID_DEVICE_IP
 
     Example:
-        connect("10.0.0.1")
-        connect("some-serial-no")
-        connect("cff1123ea)
+        connect("10.0.0.1:7912")
+        connect("10.0.0.1") # use default 7912 port
+        connect("http://10.0.0.1")
+        connect("http://10.0.0.1:7912")
+        connect("cff1123ea")  # adb device serial number
     """
     if not addr or addr == '+':
         addr = os.getenv('ANDROID_DEVICE_IP')
@@ -155,7 +157,7 @@ def connect_wifi(addr=None):
         port = u.port or 7912
         return UIAutomatorServer(host, port)
     else:
-        raise RuntimeError("address should startswith http://")
+        raise RuntimeError("address should start with http://")
 
 
 def connect_usb(serial=None):
@@ -165,7 +167,7 @@ def connect_usb(serial=None):
     """
     adb = adbutils.Adb(serial)
     lport = adb.forward_port(7912)
-    return connect('127.0.0.1:'+str(lport))
+    return connect_wifi('127.0.0.1:'+str(lport))
 
 
 class TimeoutRequestsSession(requests.Session):
@@ -189,7 +191,7 @@ class TimeoutRequestsSession(requests.Session):
 class UIAutomatorServer(object):
     __isfrozen = False
 
-    def __init__(self, host, port=7912):
+    def __init__(self, host, port=7912, healthCheck=False):
         self._host = host
         self._port = port
         self._reqsess = TimeoutRequestsSession() # use requests.Session to enable HTTP Keep-Alive
@@ -198,7 +200,6 @@ class UIAutomatorServer(object):
         self._default_session = Session(self, None)
         self.__devinfo = None
         self.platform = None # hot fix for weditor
-        # TODO: check if server alive
 
         self.wait_timeout = 20.0 # wait element timeout
         self.click_post_delay = None # wait after each click
@@ -206,14 +207,23 @@ class UIAutomatorServer(object):
         # prevent creating new attrs
         self._freeze()
 
+        # check if server is alive
+        if healthCheck: self.healthcheck()
+
     def _freeze(self):
         self.__isfrozen = True
 
     def __setattr__(self, key, value):
         """ Prevent creating new attributes outside __init__ """
         if self.__isfrozen and not hasattr(self, key):
-            raise TypeError("Key %s is not exist in class %r" % (key, self))
+            raise TypeError("Key %s does not exist in class %r" % (key, self))
         object.__setattr__(self, key, value)
+
+    def __str__(self):
+        return 'uiautomator2 object for %s:%d' % (self._host, self._port)
+
+    def __repr__(self):
+        return str(self)
 
     @property
     def debug(self):
@@ -463,12 +473,12 @@ class UIAutomatorServer(object):
             adb_shell('ls -l')
 
         Returns:
-            shell output
+            a UTF-8 encoded string for stdout merged with stderr, after the entire shell command is completed.
         """
         cmdline = args[0] if len(args) == 1 else list2cmdline(args)
         ret = self._reqsess.post(self.path2url('/shell'), data={'command': cmdline})
         if ret.status_code != 200:
-            raise RuntimeError("expect status 200, but got %d" % ret.status_code)
+            raise RuntimeError("device agent responds with an error code %d" % ret.status_code)
         return ret.json().get('output')
     
     def app_start(self, pkg_name, activity=None, extras={}, wait=True, stop=False, unlock=False):
@@ -532,7 +542,7 @@ class UIAutomatorServer(object):
         return dict(package=None, activity=None)
 
     def app_stop(self, pkg_name):
-        """ Stop application: am force-stop"""
+        """ Stop one application: am force-stop"""
         self.adb_shell('am', 'force-stop', pkg_name)
     
     def app_stop_all(self, excludes=[]):
@@ -541,12 +551,12 @@ class UIAutomatorServer(object):
             excludes (list): apps that do now want to kill
         
         Returns:
-            list of apps that been killed
+            a list of killed apps
         """
-        keeped_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
+        our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
         pkgs = re.findall('package:([^\s]+)', self.adb_shell('pm', 'list', 'packages', '-3'))
         process_names = re.findall('([^\s]+)$', self.adb_shell('ps'), re.M)
-        kill_pkgs = set(pkgs).intersection(process_names).difference(keeped_apps + excludes)
+        kill_pkgs = set(pkgs).intersection(process_names).difference(our_apps + excludes)
         kill_pkgs = list(kill_pkgs)
         for pkg_name in kill_pkgs:
             self.app_stop(pkg_name)
@@ -557,18 +567,18 @@ class UIAutomatorServer(object):
         self.adb_shell('pm', 'clear', pkg_name)
     
     def app_uninstall(self, pkg_name):
-        """ Unistall app """
+        """ Uninstall an app """
         self.adb_shell("pm", "uninstall", pkg_name)
     
     def app_uninstall_all(self, excludes=[], verbose=False):
-        """ Uninstall all app """
-        keeped_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
+        """ Uninstall all apps """
+        our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
         pkgs = re.findall('package:([^\s]+)', self.adb_shell('pm', 'list', 'packages', '-3'))
-        pkgs = set(pkgs).difference(keeped_apps + excludes)
+        pkgs = set(pkgs).difference(our_apps + excludes)
         pkgs = list(pkgs)
         for pkg_name in pkgs:
             if verbose:
-                print("uninstall", pkg_name)
+                print("uninstalling", pkg_name)
             self.app_uninstall(pkg_name)
         return pkgs
     
