@@ -4,7 +4,7 @@ python:
 - '3.5'
 - '3.6'
 install:
-- pip install -r requirements.txt
+- pip install -r requirements.txt --ignore-installed urllib3
 before_script:
   - echo no | android create avd --force -n test -t android-21 --abi armeabi-v7a
   - emulator -avd test -no-audio -no-window &
