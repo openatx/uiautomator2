@@ -34,6 +34,7 @@ from subprocess import list2cmdline
 
 import six
 import humanize
+import progress.bar
 from retry import retry
 
 if six.PY2:
@@ -44,6 +45,8 @@ else: # for py3
 
 import requests
 from uiautomator2 import adbutils
+from uiautomator2.version import __apk_version__, __atx_agent_version__
+
 
 DEBUG = False
 HTTP_TIMEOUT = 60
@@ -99,8 +102,18 @@ class JsonRpcError(UiaError):
 class SessionBrokenError(UiaError):
     pass
 
+
 class UiObjectNotFoundError(JsonRpcError):
     pass
+
+
+class _ProgressBar(progress.bar.Bar):
+    message = "progress"
+    suffix = '%(percent)d%% [%(eta_td)s, %(speed)s]'
+
+    @property
+    def speed(self):
+        return humanize.naturalsize(self.elapsed and self.index/self.elapsed, gnu=True) + '/s'
 
 
 def log_print(s):
@@ -191,7 +204,15 @@ class TimeoutRequestsSession(requests.Session):
 class UIAutomatorServer(object):
     __isfrozen = False
 
-    def __init__(self, host, port=7912, healthCheck=False):
+    def __init__(self, host, port=7912):
+        """
+        Args:
+            host (str): host address
+            port (int): port number
+        
+        Raises:
+            EnvironmentError
+        """
         self._host = host
         self._port = port
         self._reqsess = TimeoutRequestsSession() # use requests.Session to enable HTTP Keep-Alive
@@ -204,11 +225,8 @@ class UIAutomatorServer(object):
         self.wait_timeout = 20.0 # wait element timeout
         self.click_post_delay = None # wait after each click
 
-        # prevent creating new attrs
-        self._freeze()
-
-        # check if server is alive
-        if healthCheck: self.healthcheck()
+        self._freeze() # prevent creating new attrs
+        self._atx_agent_check()
 
     def _freeze(self):
         self.__isfrozen = True
@@ -225,6 +243,15 @@ class UIAutomatorServer(object):
     def __repr__(self):
         return str(self)
 
+    def _atx_agent_check(self):
+        """ check atx-agent health status and version """
+        try:
+            version = self._reqsess.get(self.path2url('/version'), timeout=1).text
+            if version != __atx_agent_version__:
+                warnings.warn('Version dismatch, expect "%s" actually "%s"' %(__atx_agent_version__, version), Warning, stacklevel=2)
+        except (requests.ConnectionError,) as e:
+            raise EnvironmentError("atx-agent is not responding")
+
     @property
     def debug(self):
         return hasattr(self._reqsess, 'debug') and self._reqsess.debug
@@ -236,18 +263,6 @@ class UIAutomatorServer(object):
     def path2url(self, path):
         return urlparse.urljoin(self._server_url, path)
 
-    # deprecated
-    # TODO: remove in 0.1.4
-    def set_click_post_delay(self, seconds):
-        """
-        Set delay seconds after click
-
-        Args:
-            seconds (float): seconds
-        """
-        warnings.warn("Deprecated, will remove in 0.1.4 Use d.click_post_delay = ? instead", DeprecationWarning, stacklevel=2)
-        self.click_post_delay = seconds
-    
     def window_size(self):
         """ return (width, height) """
         info = self._reqsess.get(self.path2url('/info')).json()
@@ -280,7 +295,7 @@ class UIAutomatorServer(object):
         try:
             return self.jsonrpc_call(*args, **kwargs)
         except (GatewayError,):
-            warnings.warn("uiautomator2 is down, try to restarted.", RuntimeWarning, stacklevel=1)
+            warnings.warn("uiautomator2 is down, restart.", RuntimeWarning, stacklevel=1)
             # for XiaoMi, want to recover uiautomator2 must start app:com.github.uiautomator
             self.healthcheck(unlock=False)
             return self.jsonrpc_call(*args, **kwargs)
@@ -325,13 +340,6 @@ class UIAutomatorServer(object):
         m.update(("%s at %f" % (method, time.time())).encode("utf-8"))
         return m.hexdigest()
     
-    def touch_action(self, x, y):
-        """
-        Returns:
-            TouchAction
-        """
-        raise NotImplementedError()
-    
     @property
     def alive(self):
         try:
@@ -373,49 +381,9 @@ class UIAutomatorServer(object):
             time.sleep(.5)
         raise RuntimeError("Uiautomator started failed.")
 
-    def app_install_remote(self, filepath, verify_hook=None):
+    def app_install(self, url, installing_callback=None):
         """
-        Args:
-            filepath(str): apk path on the device
-        
-        Raises:
-            RuntimeError
-        """
-        r = self._reqsess.post(self.path2url("/install"), data={"filepath": filepath})
-        if r.status_code != 200:
-            raise RuntimeError("app install error:", r.text)
-        id = r.text.strip()
-        interval = 1.0 # 2.0s
-        next_refresh = time.time()
-        while True:
-            if time.time() < next_refresh:
-                time.sleep(.2)
-                continue
-            ret = self._reqsess.get(self.path2url('/install/'+id))
-            progress = None
-            try:
-                progress = ret.json()
-            except:
-                raise RuntimeError("invalid json response:", ret.text)
-            message = progress.get('message')
-            if progress.get('error'):
-                raise RuntimeError(progress.get('error'), progress.get('message'))
-            elif message == 'apk parsing':
-                next_refresh = time.time() + interval
-            elif message == 'installing':
-                next_refresh = time.time() + interval*2
-                if callable(verify_hook):
-                    verify_hook(self)
-            elif message == 'success installed':
-                log_print("Successfully installed")
-                return progress.get('extraData')
-
-            log_print(message)
-
-
-    def app_install(self, url, verify_hook=None):
-        """
-        {u'message': u'downloading', u'id': u'2', u'titalSize': 407992690, u'copiedSize': 49152}
+        {u'message': u'downloading', "progress": {u'titalSize': 407992690, u'copiedSize': 49152}}
 
         Returns:
             packageName
@@ -427,36 +395,43 @@ class UIAutomatorServer(object):
         if r.status_code != 200:
             raise RuntimeError("app install error:", r.text)
         id = r.text.strip()
-        interval = 1.0 # 2.0s
-        next_refresh = time.time()
-        while True:
-            if time.time() < next_refresh:
-                time.sleep(.2)
-                continue
-            ret = self._reqsess.get(self.path2url('/install/'+id))
-            progress = None
-            try:
-                progress = ret.json()
-            except:
-                raise RuntimeError("invalid json response:", ret.text)
-            total_size = progress.get('totalSize') or progress.get('titalSize')
-            copied_size = progress.get('copiedSize')
-            message = progress.get('message')
-            if message == 'downloading':
-                next_refresh = time.time() + interval
-            elif message == 'installing':
-                next_refresh = time.time() + interval*2
-                if callable(verify_hook):
-                    verify_hook(self)
+        print(time.strftime('%H:%M:%S'), "id:", id)
+        return self._wait_install_finished(id, installing_callback)
 
-            if progress.get('error'):
-                raise RuntimeError(progress.get('error'), progress.get('message'))
-            log_print("{} {} / {}".format(
-                progress.get('message'),
-                humanize.naturalsize(copied_size),
-                humanize.naturalsize(total_size)))
+    def _wait_install_finished(self, id, installing_callback):     
+        bar = None
+        while True:
+            resp = self._reqsess.get(self.path2url('/install/'+id))
+            resp.raise_for_status()
+            jdata = resp.json()
+            message = jdata['message']
+
+            if message == 'downloading' and jdata['progress']:
+                bar = bar if bar else _ProgressBar(time.strftime('%H:%M:%S') + ' downloading', max=jdata['progress']['totalSize'])
+                written = jdata['progress']['copiedSize']
+                bar.next(written - bar.index)
+            else:
+                if bar:
+                    bar.next(jdata['progress']['copiedSize']-bar.index) if jdata['progress'] else None
+                    bar.finish()
+                    bar = None
+                print(time.strftime('%H:%M:%S'), message)
+            if message == 'installing':
+                if callable(installing_callback):
+                    installing_callback(self)
             if message == 'success installed':
-                return progress.get('extraData')
+                return jdata.get('packageName')
+            
+            if jdata.get('error'):
+                raise RuntimeError("error", jdata.get('error'))
+
+            try:
+                time.sleep(1)
+            except KeyboardInterrupt:
+                bar.finish() if bar else None
+                print("keyboard interrupt catched")
+                self._reqsess.delete(self.path2url('/install/'+id))
+                raise
     
     def dump_hierarchy(self, compressed=False, pretty=False):
         content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
@@ -835,13 +810,10 @@ class Session(object):
 
     def tap(self, x, y):
         """
-        Tap position
+        alias of click
         """
-        x, y = self.pos_rel2abs(x, y)
-        ret = self.jsonrpc.click(x, y)
-        if self.server.click_post_delay:
-            time.sleep(self.server.click_post_delay)
-    
+        self.click(x, y)
+        
     @property
     def touch(self):
         """
@@ -869,9 +841,12 @@ class Session(object):
 
     def click(self, x, y):
         """
-        Alias of tap
+        click position
         """
-        return self.tap(x, y)
+        x, y = self.pos_rel2abs(x, y)
+        ret = self.jsonrpc.click(x, y)
+        if self.server.click_post_delay: # click code delay
+            time.sleep(self.server.click_post_delay)
     
     def long_click(self, x, y, duration=0.5):
         '''long click at arbitrary coordinates.'''
