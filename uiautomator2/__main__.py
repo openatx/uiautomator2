@@ -46,11 +46,11 @@ class DownloadBar(progress.bar.Bar):
 
     @property
     def total_size(self):
-        return humanize.naturalsize(self.max, binary=True)
+        return humanize.naturalsize(self.max, gnu=True)
     
     @property
     def current_size(self):
-        return humanize.naturalsize(self.index, binary=True)
+        return humanize.naturalsize(self.index, gnu=True)
 
 
 def cache_download(url, filename=None):
@@ -137,10 +137,19 @@ class Installer(adbutils.Adb):
         log.info("app-uiautomator.apk(%s) installing ...", apk_version)
         path = cache_download(app_url)
         self.install(path)
+        pkg_info = self.package_info("com.github.uiautomator")
+        if not pkg_info:
+            raise EnvironmentError("package com.github.uiautomator not installed")
+        if pkg_info['version_name'] != apk_version:
+            raise EnvironmentError("package com.github.uiautomator version expect \"%s\" got \"%s\"" % (apk_version, pkg_info['version_name']))
         log.debug("app-uiautomator.apk installed")
+
         log.debug("app-uiautomator-test.apk installing ...")
         path = cache_download(app_test_url)
         self.install(path)
+        pkg_test_info = self.package_info("com.github.uiautomator")
+        if not pkg_test_info:
+            raise EnvironmentError("package com.github.uiautomator.test not installed")
         log.debug("app-uiautomator-test.apk installed")
     
     def install_atx_agent(self, agent_version, reinstall=False):
@@ -182,7 +191,7 @@ class Installer(adbutils.Adb):
         log.debug("atx-agent installed")
 
     def launch_and_check(self):
-        log.debug("launch atx-agent daemon")
+        log.info("launch atx-agent daemon")
         args = ['/data/local/tmp/atx-agent', '-d']
         if self.server_addr:
             args.append('-t')
@@ -201,7 +210,7 @@ class Installer(adbutils.Adb):
                 log.info("success")
                 break
             except requests.exceptions.ConnectionError:
-                time.sleep(1.0)
+                time.sleep(.5)
                 cnt += 1
         else:
             log.error("failure")
@@ -269,6 +278,14 @@ class MyFire(object):
     def identify(self, device_ip=None, theme='black'):
         u = u2.connect(device_ip)
         u.open_identify(theme)
+    
+    def upgrade_apk(self, device_ip):
+        """ update com.github.uiautomator apk remotely """
+        app_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % __apk_version__
+        app_test_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator-test.apk' % __apk_version__
+        u = u2.connect(device_ip)
+        u.app_install(app_url)
+        u.app_install(app_test_url)
 
 
 def main():

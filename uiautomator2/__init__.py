@@ -24,10 +24,11 @@ import json
 import io
 import os
 import re
+import sys
+import shutil
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
 import threading
-import shutil
 import warnings
 from datetime import datetime
 from subprocess import list2cmdline
@@ -246,9 +247,11 @@ class UIAutomatorServer(object):
     def _atx_agent_check(self):
         """ check atx-agent health status and version """
         try:
-            version = self._reqsess.get(self.path2url('/version'), timeout=1).text
+            version = self._reqsess.get(self.path2url('/version'), timeout=5).text
             if version != __atx_agent_version__:
                 warnings.warn('Version dismatch, expect "%s" actually "%s"' %(__atx_agent_version__, version), Warning, stacklevel=2)
+            # launch service to prevent uiautomator killed by Android system
+            self.adb_shell('am', 'startservice', '-n', 'com.github.uiautomator/.Service')
         except (requests.ConnectionError,) as e:
             raise EnvironmentError("atx-agent is not responding")
 
@@ -344,6 +347,9 @@ class UIAutomatorServer(object):
     def alive(self):
         try:
             r = self._reqsess.get(self.path2url('/ping'), timeout=2)
+            if r.status_code != 200:
+                return False
+            r = self._reqsess.post(self.path2url('/jsonrpc/0'), data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "deviceInfo"}), timeout=2)
             return r.status_code == 200
         except requests.exceptions.ReadTimeout:
             return False
@@ -355,10 +361,12 @@ class UIAutomatorServer(object):
         Raises:
             RuntimeError
         """
+        self._reqsess.delete(self.path2url('/uiautomator')) # stop uiautomator keeper first
         if unlock:
             self.open_identify()
         wait = not unlock # should not wait IdentifyActivity open or it will stuck sometimes
         self.app_start('com.github.uiautomator', '.MainActivity', wait=wait, stop=True)
+        time.sleep(.5)
 
         # launch atx-agent uiautomator keeper
         self._reqsess.post(self.path2url('/uiautomator'))
@@ -375,7 +383,7 @@ class UIAutomatorServer(object):
                     time.sleep(.5)
                     return True
                 else:
-                    time.sleep(0.5)
+                    time.sleep(.5)
                     self.adb_shell('input', 'keyevent', 'BACK')
                     return True
             time.sleep(.5)
@@ -400,21 +408,41 @@ class UIAutomatorServer(object):
 
     def _wait_install_finished(self, id, installing_callback):     
         bar = None
+        downloaded = True
+
         while True:
             resp = self._reqsess.get(self.path2url('/install/'+id))
             resp.raise_for_status()
             jdata = resp.json()
             message = jdata['message']
+            pg = jdata.get('progress')
 
-            if message == 'downloading' and jdata['progress']:
-                bar = bar if bar else _ProgressBar(time.strftime('%H:%M:%S') + ' downloading', max=jdata['progress']['totalSize'])
-                written = jdata['progress']['copiedSize']
-                bar.next(written - bar.index)
+            def notty_print_progress(pg):
+                written = pg['copiedSize']
+                total = pg['totalSize']
+                print(time.strftime('%H:%M:%S'), 'downloading %.1f%% [%s/%s]' % (
+                    100.0*written/total, humanize.naturalsize(written, gnu=True), humanize.naturalsize(total, gnu=True)))
+
+            if message == 'downloading':
+                downloaded = False
+                if pg: # if there is a progress
+                    if sys.stdout.isatty():
+                        if not bar:
+                            bar = _ProgressBar(time.strftime('%H:%M:%S') + ' downloading', max=pg['totalSize'])
+                        written = pg['copiedSize']
+                        bar.next(written - bar.index)
+                    else:
+                        notty_print_progress(pg)
+                else:
+                    print(time.strftime('%H:%M:%S'), "download initialing")
             else:
-                if bar:
-                    bar.next(jdata['progress']['copiedSize']-bar.index) if jdata['progress'] else None
-                    bar.finish()
-                    bar = None
+                if not downloaded:
+                    downloaded = True
+                    if bar: # bar only set in atty
+                        bar.next(pg['copiedSize']-bar.index) if pg else None
+                        bar.finish()
+                    else:
+                        print(time.strftime('%H:%M:%S'), "download 100%")
                 print(time.strftime('%H:%M:%S'), message)
             if message == 'installing':
                 if callable(installing_callback):
@@ -429,7 +457,7 @@ class UIAutomatorServer(object):
                 time.sleep(1)
             except KeyboardInterrupt:
                 bar.finish() if bar else None
-                print("keyboard interrupt catched")
+                print("keyboard interrupt catched, cancel install id", id)
                 self._reqsess.delete(self.path2url('/install/'+id))
                 raise
     
