@@ -286,6 +286,10 @@ class MyFire(object):
         u = u2.connect(device_ip)
         u.app_install(app_url)
         u.app_install(app_test_url)
+    
+    def tkgui(self, device_ip=None):
+        from uiautomator2 import tkgui
+        tkgui.main(device_ip)
 
 
 def main():

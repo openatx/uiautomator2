@@ -250,8 +250,9 @@ class UIAutomatorServer(object):
             version = self._reqsess.get(self.path2url('/version'), timeout=5).text
             if version != __atx_agent_version__:
                 warnings.warn('Version dismatch, expect "%s" actually "%s"' %(__atx_agent_version__, version), Warning, stacklevel=2)
+            # Cancel bellow code to make connect() return faster.
             # launch service to prevent uiautomator killed by Android system
-            self.adb_shell('am', 'startservice', '-n', 'com.github.uiautomator/.Service')
+            # self.adb_shell('am', 'startservice', '-n', 'com.github.uiautomator/.Service')
         except (requests.ConnectionError,) as e:
             raise EnvironmentError("atx-agent is not responding")
 
@@ -263,13 +264,20 @@ class UIAutomatorServer(object):
     def debug(self, value):
         self._reqsess.debug = bool(value)
     
+    @property
+    def serial(self):
+        return self.adb_shell('getprop', 'ro.serialno').strip()
+    
     def path2url(self, path):
         return urlparse.urljoin(self._server_url, path)
 
     def window_size(self):
         """ return (width, height) """
         info = self._reqsess.get(self.path2url('/info')).json()
-        return info['display']['width'], info['display']['height']
+        w, h = info['display']['width'], info['display']['height']
+        if (w > h) != (self.info["displayRotation"]%2 == 1):
+            w, h = h, w
+        return w, h
 
     @property
     def jsonrpc(self):

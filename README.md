@@ -245,16 +245,24 @@ Get window size
 
 ```python
 print(d.window_size())
-# expect eg: (1920, 1080)
+# device upright output example: (1080, 1920)
+# device horizontal output example: (1920, 1080)
 ```
 
 Get current app info. For some android devices, the output could be empty (see *Output example 3*)
 
 ```python
-print(current_app())
+print(d.current_app())
 # Output example 1: {'activity': '.Client', 'package': 'com.netease.example', 'pid': 23710}
 # Output example 2: {'activity': '.Client', 'package': 'com.netease.example'}
 # Output example 3: {'activity': None, 'package': None}
+```
+
+Get device serial number
+
+```python
+print(d.serial)
+# output example: 74aAEDR428Z9
 ```
 
 ### Shell commands
