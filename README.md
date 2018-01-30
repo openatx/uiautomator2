@@ -131,32 +131,88 @@ clicked = d(text='Skip').click_exists(timeout=10.0)
 **Notes:** In below examples, we use `d` to represent the uiautomator2 object for the connected device.
 
 # Table of Contents
-**[Basic API Usage](#basic-api-usages)**
-  - **[Retrieve the device info](#retrive-the-device-info)**
-  - **[Key Event Actions of the device](#key-event-actions-of-the-device)**
-  - **[Gesture interaction of the device](#gesture-interaction-of-the-device)**
-  - **[Screen Actions of the device](#screen-actions-of-the-device)**
-  - **[Push and pull file](#push-and-pull-file)**
+**[App management](#app-management)**
+  - **[Install an app](#install-an-app)**
+  - **[Launch an app](#launch-an-app)**
+  - **[Stop an app](#stop-an-app)**
+  - **[Stop all running apps](#stop-all-running-apps)**
+  - **[Push and pull files](#push-and-pull-files)**
+
+**[Basic API Usages](#basic-api-usages)**
+  - **[Retrieve the device info](#retrieve-the-device-info)**
+  - **[Shell commands](#shell-commands)**
+  - **[Key Events](#key-events)**
+  - **[Gesture interaction with the device](#gesture-interaction-with-the-device)**
+  - **[Screen-related](#screen-related)**
+  - **[Selector](#selector)**
+  - **[Watcher](#watcher)**
+  - **[Global settings](#global-settings)**
   - **[Input method](#input-method)**
 
-**[App management](#app-management)**
-  - **[App install](#app-install)**
+**[测试方法](#测试方法)**
 
-**[Watcher introduction](#watcher)**
+**[Google uiautomator与uiautomator2的区别](#google-uiautomator与uiautomator2的区别)**
 
-**[Selector](#selector)**
-  - **[Child and sibling UI object](#child-and-sibling-ui-object)**
-  - **[Get the selected ui object status and its information](#get-the-selected-ui-object-status-and-its-information)**
-  - **[Perform the click action on the seleted ui object](#perform-the-click-action-on-the-seleted-ui-object)**
-  - **[Gesture action for the specific ui object](#gesture-action-for-the-specific-ui-object)**
-  
-**[Global settings](#global-settings)**
+**[常见问题](#常见问题)**
 
 **[Contributors](#contributors)**
 
 **[LICENSE](#license)**
 
-**TODO**
+## App management
+This part showcases how to perform app management
+
+### Install an app
+We only support installing an APK from a URL
+
+```python
+d.app_install('http://some-domain.com/some.apk')
+```
+
+### Launch an app
+```python
+d.app_start("com.example.hello_world") # start with package name
+```
+
+### Stop an app
+```python
+# equivalent to `am force-stop`, thus you could lose data
+d.app_stop("com.example.hello_world") 
+# equivalent to `pm clear`
+d.app_clear('com.example.hello_world')
+```
+
+### Stop all running apps
+```python
+# stop all
+d.app_stop_all()
+# stop all app except for com.examples.demo
+d.app_stop_all(excludes=['com.examples.demo'])
+```
+
+### Push and pull files
+* push a file to the device
+
+    ```python
+    # push to a folder
+    d.push("foo.txt", "/sdcard/")
+    # push and rename
+    d.push("foo.txt", "/sdcard/bar.txt")
+    # push fileobj
+    with open("foo.txt", 'rb') as f:
+        d.push(f, "/sdcard/")
+    # push and change file access mode
+    d.push("foo.sh", "/data/local/tmp/", mode=0o755)
+    ```
+
+* pull a file from the device
+
+    ```python
+    d.pull("/sdcard/tmp.txt", "tmp.txt")
+
+    # FileNotFoundError will raise if the file is not found on the device
+    d.pull("/sdcard/some-file-not-exists.txt", "tmp.txt")
+    ```
 
 ## Basic API Usages
 This part showcases how to perform common device operations:
@@ -364,60 +420,6 @@ Note: click, swipe, drag operations support percentage position values. Example:
     d.open_notification()
     d.open_quick_settings()
     ```
-
-### Push and pull files
-* push a file to the device
-
-    ```python
-    # push to a folder
-    d.push("foo.txt", "/sdcard/")
-    # push and rename
-    d.push("foo.txt", "/sdcard/bar.txt")
-    # push fileobj
-    with open("foo.txt", 'rb') as f:
-        d.push(f, "/sdcard/")
-    # push and change file access mode
-    d.push("foo.sh", "/data/local/tmp/", mode=0o755)
-    ```
-
-* pull a file from the device
-
-    ```python
-    d.pull("/sdcard/tmp.txt", "tmp.txt")
-
-    # FileNotFoundError will raise if the file is not found on the device
-    d.pull("/sdcard/some-file-not-exists.txt", "tmp.txt")
-    ```
-
-### App management
-
-#### Install an app
-We only support installing an APK from a URL
-
-```python
-d.app_install('http://some-domain.com/some.apk')
-```
-
-#### Launch an app
-```python
-d.app_start("com.example.hello_world") # start with package name
-```
-
-#### Stop an app
-```python
-# equivalent to `am force-stop`, thus you could lose data
-d.app_stop("com.example.hello_world") 
-# equivalent to `pm clear`
-d.app_clear('com.example.hello_world')
-```
-
-#### Stop all running apps
-```python
-# stop all
-d.app_stop_all()
-# stop all app except for com.examples.demo
-d.app_stop_all(excludes=['com.examples.demo'])
-```
 
 ### Selector
 
