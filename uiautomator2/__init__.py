@@ -194,7 +194,7 @@ class TimeoutRequestsSession(requests.Session):
             if isinstance(data, dict):
                 data = 'dict:' + json.dumps(data)
             print(datetime.now().strftime("%H:%M:%S.%f")[:-3], "$ curl -X {method} -d '{data}' '{url}'".format(
-                method=method, url=url, data=data.decode()
+                method=method, url=url, data=data
             ))
         resp = super(TimeoutRequestsSession, self).request(method, url, **kwargs)
         if verbose:
@@ -365,13 +365,21 @@ class UIAutomatorServer(object):
     def healthcheck(self, unlock=True):
         """
         Check if uiautomator is running, if not launch again
+
+        Args:
+            unlock (bool): unlock screen before
         
         Raises:
             RuntimeError
         """
-        self._reqsess.delete(self.path2url('/uiautomator')) # stop uiautomator keeper first
         if unlock:
             self.open_identify()
+        
+        if self.alive:
+            self.adb_shell('input', 'keyevent', 'BACK')
+            return True
+
+        self._reqsess.delete(self.path2url('/uiautomator')) # stop uiautomator keeper first
         wait = not unlock # should not wait IdentifyActivity open or it will stuck sometimes
         self.app_start('com.github.uiautomator', '.MainActivity', wait=wait, stop=True)
         time.sleep(.5)
@@ -764,25 +772,20 @@ class Session(object):
 
     @property
     def pos_rel2abs(self):
-        info = {}
+        size = []
         def convert(x, y):
-            if (0 < x < 1 or 0 < y < 1) and not info:
-                uiautomator_info = self.info
-                display = self.server.device_info.get('display', {})
-                if display:
-                    w, h = display['width'], display['height']
-                    rotation = uiautomator_info['displayRotation']
-                    if rotation in [1, 3]:
-                        w, h = h, w
-                    info['displayWidth'] = w
-                    info['displayHeight'] = h
-                else:
-                    info.update(uiautomator_info)
+            assert x >= 0
+            assert y >= 0
+
+            if (x < 1 or y < 1) and not size:
+                size.extend(self.server.window_size()) # size will be [width, height]
+            
             if x < 1:
-                x = int(info['displayWidth'] * x)
+                x = int(size[0] * x)
             if y < 1:
-                y = int(info['displayHeight'] * y)
+                y = int(size[1] * y)
             return x, y
+
         return convert
 
     def set_fastinput_ime(self, enable=True):
@@ -799,9 +802,13 @@ class Session(object):
         Raises:
             EnvironmentError
         """
-        self.wait_fastinput_ime()
-        base64text = base64.b64encode(text.encode('utf-8')).decode()
-        self.server.adb_shell('am', 'broadcast', '-a', 'ADB_INPUT_TEXT', '--es', 'text', base64text)
+        try:
+            self.wait_fastinput_ime()
+            base64text = base64.b64encode(text.encode('utf-8')).decode()
+            self.server.adb_shell('am', 'broadcast', '-a', 'ADB_INPUT_TEXT', '--es', 'text', base64text)
+        except EnvironmentError:
+            warnings.warn("set FastInputIME failed. use \"adb shell input text\" instead", Warning)
+            self.server.adb_shell("input", "text", text.replace(" ", "%s"))
 
     def clear_text(self):
         """ clear text
