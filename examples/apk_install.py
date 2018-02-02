@@ -30,7 +30,7 @@ def oppo_verify(u):
 def main():
     u = u2.connect()
     u.open_identify()
-    u.app_install('https://some-gameapp.apk', verify_hook=oppo_verify)
+    u.app_install('https://some-gameapp.apk', installing_callback=oppo_verify)
 
 
 

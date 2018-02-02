@@ -23,6 +23,7 @@ import requests
 import uiautomator2 as u2
 from uiautomator2 import adbutils
 from uiautomator2.version import __apk_version__, __atx_agent_version__
+from uiautomator2 import popup
 
 
 def get_logger(name):
@@ -137,20 +138,23 @@ class Installer(adbutils.Adb):
         log.info("app-uiautomator.apk(%s) installing ...", apk_version)
         path = cache_download(app_url)
         self.install(path)
-        pkg_info = self.package_info("com.github.uiautomator")
-        if not pkg_info:
-            raise EnvironmentError("package com.github.uiautomator not installed")
-        if pkg_info['version_name'] != apk_version:
-            raise EnvironmentError("package com.github.uiautomator version expect \"%s\" got \"%s\"" % (apk_version, pkg_info['version_name']))
         log.debug("app-uiautomator.apk installed")
 
-        log.debug("app-uiautomator-test.apk installing ...")
+        # FIXME(ssx): check immediatelly sometimes got None
+        # pkg_info = self.package_info("com.github.uiautomator")
+        # if not pkg_info:
+        #     raise EnvironmentError("package com.github.uiautomator not installed")
+        # if pkg_info['version_name'] != apk_version:
+        #     raise EnvironmentError("package com.github.uiautomator version expect \"%s\" got \"%s\"" % (apk_version, pkg_info['version_name']))
+
+        log.info("app-uiautomator-test.apk installing ...")
         path = cache_download(app_test_url)
         self.install(path)
-        pkg_test_info = self.package_info("com.github.uiautomator")
-        if not pkg_test_info:
-            raise EnvironmentError("package com.github.uiautomator.test not installed")
         log.debug("app-uiautomator-test.apk installed")
+
+        # pkg_test_info = self.package_info("com.github.uiautomator")
+        # if not pkg_test_info:
+        #     raise EnvironmentError("package com.github.uiautomator.test not installed")
     
     def install_atx_agent(self, agent_version, reinstall=False):
         version_output = self.shell('/data/local/tmp/atx-agent', '-v', raise_error=False).strip()
@@ -286,10 +290,6 @@ class MyFire(object):
         u = u2.connect(device_ip)
         u.app_install(app_url)
         u.app_install(app_test_url)
-    
-    def tkgui(self, device_ip=None):
-        from uiautomator2 import tkgui
-        tkgui.main(device_ip)
 
 
 def main():

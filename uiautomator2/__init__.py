@@ -108,6 +108,10 @@ class UiObjectNotFoundError(JsonRpcError):
     pass
 
 
+class UiAutomationNotConnectedError(JsonRpcError):
+    pass
+
+
 class _ProgressBar(progress.bar.Bar):
     message = "progress"
     suffix = '%(percent)d%% [%(eta_td)s, %(speed)s]'
@@ -254,7 +258,7 @@ class UIAutomatorServer(object):
             # launch service to prevent uiautomator killed by Android system
             # self.adb_shell('am', 'startservice', '-n', 'com.github.uiautomator/.Service')
         except (requests.ConnectionError,) as e:
-            raise EnvironmentError("atx-agent is not responding")
+            raise EnvironmentError("atx-agent is not responding, need to init device first")
 
     @property
     def debug(self):
@@ -305,7 +309,7 @@ class UIAutomatorServer(object):
     def jsonrpc_retry_call(self, *args, **kwargs): #method, params=[], http_timeout=60):
         try:
             return self.jsonrpc_call(*args, **kwargs)
-        except (GatewayError,):
+        except (GatewayError, UiAutomationNotConnectedError):
             warnings.warn("uiautomator2 is down, restart.", RuntimeWarning, stacklevel=1)
             # for XiaoMi, want to recover uiautomator2 must start app:com.github.uiautomator
             self.healthcheck(unlock=False)
@@ -344,6 +348,8 @@ class UIAutomatorServer(object):
         err = JsonRpcError(error)
         if 'UiObjectNotFoundException' in err.exception_name:
             err.__class__ = UiObjectNotFoundError
+        if 'UiAutomation not connected' in err.message:
+            err.__class__ = UiAutomationNotConnectedError
         raise err
     
     def _jsonrpc_id(self, method):
@@ -358,7 +364,11 @@ class UIAutomatorServer(object):
             if r.status_code != 200:
                 return False
             r = self._reqsess.post(self.path2url('/jsonrpc/0'), data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "deviceInfo"}), timeout=2)
-            return r.status_code == 200
+            if r.status_code != 200:
+                return False
+            if r.json().get('error'):
+                return False
+            return True
         except requests.exceptions.ReadTimeout:
             return False
 
@@ -375,9 +385,9 @@ class UIAutomatorServer(object):
         if unlock:
             self.open_identify()
         
-        if self.alive:
-            self.adb_shell('input', 'keyevent', 'BACK')
-            return True
+        # if self.alive:
+        #     self.adb_shell('input', 'keyevent', 'BACK')
+        #     return True
 
         self._reqsess.delete(self.path2url('/uiautomator')) # stop uiautomator keeper first
         wait = not unlock # should not wait IdentifyActivity open or it will stuck sometimes
