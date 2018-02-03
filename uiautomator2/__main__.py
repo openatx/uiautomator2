@@ -23,7 +23,7 @@ import requests
 import uiautomator2 as u2
 from uiautomator2 import adbutils
 from uiautomator2.version import __apk_version__, __atx_agent_version__
-from uiautomator2 import popup
+
 
 
 def get_logger(name):
