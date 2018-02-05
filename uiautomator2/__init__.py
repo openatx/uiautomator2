@@ -197,12 +197,13 @@ class TimeoutRequestsSession(requests.Session):
             data = kwargs.get('data') or ''
             if isinstance(data, dict):
                 data = 'dict:' + json.dumps(data)
+            time_start = time.time()
             print(datetime.now().strftime("%H:%M:%S.%f")[:-3], "$ curl -X {method} -d '{data}' '{url}'".format(
                 method=method, url=url, data=data
             ))
         resp = super(TimeoutRequestsSession, self).request(method, url, **kwargs)
         if verbose:
-            print(datetime.now().strftime("%H:%M:%S.%f")[:-3], "Response >>>\n"+resp.text.rstrip()+"\n<<< END")
+            print(datetime.now().strftime("%H:%M:%S.%f")[:-3], "Response (%d ms) >>>\n" %((time.time() - time_start)*1000) + resp.text.rstrip()+"\n<<< END")
         return resp
 
 
@@ -231,7 +232,7 @@ class UIAutomatorServer(object):
         self.click_post_delay = None # wait after each click
 
         self._freeze() # prevent creating new attrs
-        self._atx_agent_check()
+        # self._atx_agent_check()
 
     def _freeze(self):
         self.__isfrozen = True

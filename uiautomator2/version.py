@@ -6,7 +6,8 @@ __apk_version__ = '1.0.9'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__atx_agent_version__ = '0.1.7'
+__atx_agent_version__ = '0.1.8'
+# 0.1.8 fix screenshot always the same image. (BUG in 0.1.7), add /shell/stream add timeout for /shell
 # 0.1.7 fix dns resolve error in /install
 # 0.1.6 change download logic. auto fix orientation
 # 0.1.5 add singlefight for minicap and minitouch, proxy dial-timeout change 30 to 10

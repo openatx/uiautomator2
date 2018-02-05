@@ -258,11 +258,16 @@ class MyFire(object):
     def cleanup(self):
         raise NotImplementedError()
 
-    def install(self, device_ip, apk_url):
+    def install(self, arg1, arg2=None):
         """
-        Args:
-            device_ip (str): "" means local device
+        Example:
+            install "http://some-host.apk"
+            install "$serial" "http://some-host.apk"
         """
+        if arg2 is None:
+            device_ip, apk_url = None, arg1
+        else:
+            device_ip, apk_url = arg1, arg2
         u = u2.connect(device_ip)
         pkg_name = u.app_install(apk_url)
         print("Installed", pkg_name)
