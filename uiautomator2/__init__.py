@@ -945,7 +945,7 @@ class Session(object):
         ex, ey = rel2abs(ex, ey)
         return self.jsonrpc.drag(sx, sy, ex, ey, int(duration*200))
 
-    @retry(IOError, delay=.5, tries=5)
+    @retry((IOError, SyntaxError), delay=.5, tries=5, jitter=0.1, max_delay=1) # delay .5, .6, .7, .8 ...
     def screenshot(self, filename=None, format='pillow'):
         """
         Image format is JPEG
@@ -955,7 +955,7 @@ class Session(object):
             format (string): used when filename is empty. one of "pillow" or "opencv"
         
         Raises:
-            IOError
+            IOError, SyntaxError
 
         Examples:
             screenshot("saved.jpg")
