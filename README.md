@@ -139,8 +139,9 @@ clicked = d(text='Skip').click_exists(timeout=10.0)
   - **[Push and pull files](#push-and-pull-files)**
 
 **[Basic API Usages](#basic-api-usages)**
-  - **[Retrieve the device info](#retrieve-the-device-info)**
   - **[Shell commands](#shell-commands)**
+  - **[Session](#session)**
+  - **[Retrieve the device info](#retrieve-the-device-info)**
   - **[Key Events](#key-events)**
   - **[Gesture interaction with the device](#gesture-interaction-with-the-device)**
   - **[Screen-related](#screen-related)**
@@ -217,6 +218,56 @@ d.app_stop_all(excludes=['com.examples.demo'])
 ## Basic API Usages
 This part showcases how to perform common device operations:
 
+### Shell commands
+* Run a short-lived shell command with a timeout protection. (Default timeout 10 minutes)
+
+   ```python
+    d.adb_shell('pwd')
+    d.adb_shell('ls', '-l')
+    d.adb_shell('ls -l')
+   ```
+   This returns a UTF-8 encoded string for stdout merged with stderr. Note for binary mode stdouts, the output is encoded as a UTF-8 string not a bytearray.
+   If the command is a blocking command, `adb_shell` will also block until the command is completed or the timeout kicks in. No partial output will be received during the execution of the command. This API is not suitable for long-running commands. The shell command given runs in a similar environment of `adb shell`, which has a Linux permission level of `adb` or `shell` (higher than an app permission).
+
+* Run a long-running shell command
+**TODO: not implemented yet**
+    ```python
+    d.adb_shell_longrunning('getevent', '-lt')
+    ```
+    This API returns a generator.
+
+### Session
+Session represent an app lifestyle. Can be used to start app, detect app crash.
+
+* Launch app
+
+    ```python
+    sess = d.session("com.netease.cloudmusic") # start 网易云音乐
+    ```
+
+* Attach to the running app
+
+    ```python
+    sess = d.session("com.netease.cloudmusic", attach=True)
+    ```
+
+* Detect app crash
+
+    ```python
+    # When app is still running
+    sess(text="Music").click() # operation goes normal
+
+    # If app crash or quit
+    sess(text="Music").click() # raise SessionBrokenError
+    # other function calls under session will raise SessionBrokenError too
+    ```
+
+    ```python
+    # check if session is ok.
+    # Warning: function name may change in the future
+    sess.running() # True or False
+    ```
+
 ### Retrieve the device info
 
 Get basic information
@@ -264,23 +315,6 @@ Get device serial number
 print(d.serial)
 # output example: 74aAEDR428Z9
 ```
-
-### Shell commands
-* Run a short-lived shell command with a timeout protection
-   ```python
-    d.adb_shell('pwd')
-    d.adb_shell('ls', '-l')
-    d.adb_shell('ls -l')
-   ```
-   This returns a UTF-8 encoded string for stdout merged with stderr. Note for binary mode stdouts, the output is encoded as a UTF-8 string not a bytearray.
-   If the command is a blocking command, `adb_shell` will also block until the command is completed or the timeout kicks in. No partial output will be received during the execution of the command. This API is not suitable for long-running commands. The shell command given runs in a similar environment of `adb shell`, which has a Linux permission level of `adb` or `shell` (higher than an app permission).
-
-* Run a long-running shell command
-**TODO: not implemented yet**
-    ```python
-    d.adb_shell_longrunning('getevent', '-lt')
-    ```
-    This API returns a generator.
 
 ### Key Events
 

@@ -291,21 +291,32 @@ class UIAutomatorServer(object):
         For example:
             self.jsonrpc.pressKey("home")
         """
+        return self.setup_jsonrpc()
+    
+    def setup_jsonrpc(self, jsonrpc_url=None):
+        """
+        Wrap jsonrpc call into object
+        Usage example:
+            self.setup_jsonrpc().pressKey("home")
+        """
+        if not jsonrpc_url:
+            jsonrpc_url = self._server_jsonrpc_url
         class JSONRpcWrapper():
             def __init__(self, server):
                 self.server = server
                 self.method = None
             
             def __getattr__(self, method):
-                self.method = method
+                self.method = method # jsonrpc function name
                 return self
 
             def __call__(self, *args, **kwargs):
                 http_timeout = kwargs.pop('http_timeout', HTTP_TIMEOUT)
                 params = args if args else kwargs
-                return self.server.jsonrpc_retry_call(self.method, params, http_timeout)
+                return self.server.jsonrpc_retry_call(jsonrpc_url, self.method, params, http_timeout)
 
         return JSONRpcWrapper(self)
+
 
     def jsonrpc_retry_call(self, *args, **kwargs): #method, params=[], http_timeout=60):
         try:
@@ -316,7 +327,7 @@ class UIAutomatorServer(object):
             self.healthcheck(unlock=False)
             return self.jsonrpc_call(*args, **kwargs)
 
-    def jsonrpc_call(self, method, params=[], http_timeout=60):
+    def jsonrpc_call(self, jsonrpc_url, method, params=[], http_timeout=60):
         """ jsonrpc2 call
         Refs:
             - http://www.jsonrpc.org/specification
@@ -329,17 +340,19 @@ class UIAutomatorServer(object):
             "params": params,
         }
         data = json.dumps(data).encode('utf-8')
-        res = self._reqsess.post(self._server_jsonrpc_url,
+        res = self._reqsess.post(jsonrpc_url,
             headers={"Content-Type": "application/json"},
             timeout=http_timeout,
             data=data)
         if DEBUG:
-            print("Shell$ curl -X POST -d '{}' {}".format(data, self._server_jsonrpc_url))
+            print("Shell$ curl -X POST -d '{}' {}".format(data, jsonrpc_url))
             print("Output> " + res.text)
         if res.status_code == 502:
             raise GatewayError(res, "gateway error, time used %.1fs" % (time.time() - request_start))
+        if res.status_code == 410: # http status gone: session broken
+            raise SessionBrokenError("app quit or crash", jsonrpc_url, res.text)
         if res.status_code != 200:
-            raise UiaError(self._server_jsonrpc_url, data, res.status_code, res.text, "HTTP Return code is not 200", res.text)
+            raise UiaError(jsonrpc_url, data, res.status_code, res.text, "HTTP Return code is not 200", res.text)
         jsondata = res.json()
         error = jsondata.get('error')
         if not error:
@@ -625,7 +638,12 @@ class UIAutomatorServer(object):
         self.adb_shell('am', 'start', '-W', '-n', 'com.github.uiautomator/.IdentifyActivity', '-e', 'theme', theme)
 
     def _pidof_app(self, pkg_name):
-        return self.adb_shell('pidof', pkg_name).strip()
+        """
+        Return pid of package name
+        """
+        text = self._reqsess.get(self.path2url('/pidof/' + pkg_name)).text
+        if text.isdigit():
+            return int(text)
 
     def push_url(self, url, dst, mode=0o644):
         """
@@ -717,22 +735,29 @@ class UIAutomatorServer(object):
         self.__devinfo = self._reqsess.get(self.path2url('/info')).json()
         return self.__devinfo
 
-    def session(self, pkg_name):
+    def session(self, pkg_name, attach=False):
         """
-        Context context = InstrumentationRegistry.getInstrumentation().getContext();
-        Intent intent = context.getPackageManager().getLaunchIntentForPackage(YOUR_APP_PACKAGE_NAME);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        context.startActivity(intent);
+        Create a new session
 
-        It is also possible to get pid, and use pid to get package name
+        Args:
+            pkg_name (str): android package name
+            attach (bool): attach to already running app
+
+        Raises:
+            requests.HTTPError, SessionBrokenError
         """
-        self.app_start(pkg_name)
-        time.sleep(0.5)
+        if not attach:
+            resp = self._reqsess.post(self.path2url("/session/"+pkg_name), data={"flags": "-W -S"})
+            resp.raise_for_status()
+            jsondata = resp.json()
+            if not jsondata["success"]:
+                raise SessionBrokenError("app launch failed", jsondata["error"], jsondata["output"])
+        
+            time.sleep(0.5) # wait launch finished, maybe no need
         pid = self._pidof_app(pkg_name)
         if not pid:
             raise SessionBrokenError(pkg_name)
         return Session(self, pkg_name, pid)
-        # raise NotImplementedError()
 
     def dismiss_apps(self):
         """
@@ -752,7 +777,7 @@ class UIAutomatorServer(object):
 def check_alive(fn):
     @functools.wraps(fn)
     def inner(self, *args, **kwargs):
-        if not self._check_alive():
+        if not self.running():
             raise SessionBrokenError(self._pkg_name)
         return fn(self, *args, **kwargs)
     return inner
@@ -770,16 +795,29 @@ class Session(object):
         self.server = server
         self._pkg_name = pkg_name
         self._pid = pid
+        self._jsonrpc = server.jsonrpc
+        if pid and pkg_name:
+            jsonrpc_url = server.path2url('/session/%d:%s/jsonrpc/0' % (pid, pkg_name))
+            self._jsonrpc = server.setup_jsonrpc(jsonrpc_url)
+    
+    def __repr__(self):
+        if self._pid and self._pkg_name:
+            return "<uiautomator2.Session pid:%d pkgname:%s>" % (self._pid, self._pkg_name)
+        return super(Session, self).__repr__()
 
-    def _check_alive(self):
-        if self._pid is None:
-            return True
-        return self.server.adb_shell('pidof', self._pkg_name).strip() == self._pid
+    def running(self):
+        """
+        Check is session is running. return bool
+        """
+        if self._pid and self._pkg_name:
+            ping_url = self.server.path2url('/session/%d:%s/ping' % (self._pid, self._pkg_name))
+            return self.server._reqsess.get(ping_url).text.strip() == 'pong'
+        # warnings.warn("pid and pkg_name is not set, ping will always return True", Warning, stacklevel=1)
+        return True
 
     @property
-    @check_alive
     def jsonrpc(self):
-        return self.server.jsonrpc
+        return self._jsonrpc
 
     @property
     def pos_rel2abs(self):
@@ -799,6 +837,7 @@ class Session(object):
 
         return convert
 
+    @check_alive
     def set_fastinput_ime(self, enable=True):
         """ Enable of Disable FastInputIME """
         fast_ime = 'com.github.uiautomator/.FastInputIME'
@@ -808,6 +847,7 @@ class Session(object):
         else:
             self.server.adb_shell('ime', 'disable', fast_ime)
 
+    @check_alive
     def send_keys(self, text):
         """
         Raises:
@@ -821,6 +861,7 @@ class Session(object):
             warnings.warn("set FastInputIME failed. use \"adb shell input text\" instead", Warning)
             self.server.adb_shell("input", "text", text.replace(" ", "%s"))
 
+    @check_alive
     def clear_text(self):
         """ clear text
         Raises:
@@ -1255,6 +1296,11 @@ class UiObject(object):
             return self.jsonrpc.clearTextField(self.selector)
         else:
             return self.jsonrpc.setText(self.selector, text)
+    
+    @wait_exists_wrap
+    def get_text(self):
+        """ get text from field """
+        return self.jsonrpc.getText(self.selector)
     
     @wait_exists_wrap
     def clear_text(self):

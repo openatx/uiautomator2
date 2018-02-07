@@ -101,3 +101,6 @@ ENV/
 .mypy_cache/
 AUTHORS
 ChangeLog
+
+.vscode/
+*.apk
