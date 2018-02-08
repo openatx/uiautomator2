@@ -93,7 +93,7 @@ class HTMLReport(object):
         stack = None
         for stk in inspect.stack()[1:]:
             filename = stk[1]
-            if not issyslibfile(filename) and stk[3] != 'patched_func':
+            if not issyslibfile(filename): # and stk[3] != 'patched_func':
                 stack = stk
                 break
                 # 0: the frame object
@@ -102,8 +102,7 @@ class HTMLReport(object):
                 # 3: the function name
                 # 4: a list of lines of context from the source code
                 # 5: the index of the current line within that list.
-        code = '%s:%d\n%s' % (stack[1], stack[2], ''.join(stack[4]))
-        print('stack:', stack[3], code)
+        code = '%s:%d\n%s' % (stack[1], stack[2], ''.join(stack[4] or [])) if stack else 'Empty'
 
         steps = self._steps
         base_data = {
