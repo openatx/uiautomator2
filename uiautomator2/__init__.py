@@ -1155,10 +1155,12 @@ class Session(object):
         return UiObject(self, Selector(**kwargs))
 
 
-def wait_exists_wrap(fn):
+def wrap_wait_exists(fn):
     @functools.wraps(fn)
     def inner(self, *args, **kwargs):
-        self.wait(timeout=self.wait_timeout)
+        timeout = kwargs.pop('timeout', self.wait_timeout)
+        if not self.wait(timeout=timeout):
+            raise UiObjectNotFoundError({'code': -32002, 'message': str(self.selector)})
         return fn(self, *args, **kwargs)
     return inner
 
@@ -1183,30 +1185,29 @@ class UiObject(object):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
 
-    @wait_exists_wrap
-    def tap(self):
-        '''
-        click on the ui object.
-        Usage:
-        d(text="Clock").click()  # click on the center of the ui object
-        '''
-        self.click_nowait()
-
-    def click_nowait(self): # todo, the java layer wait a little longer(10s)
+    @wrap_wait_exists
+    def click(self):
         """
-        Tap element with no wait
-
+        Click UI element. 
+        
+        The click method does the same logic as java uiautomator does.
+        1. waitForExists 2. get VisibleBounds center 3. send click event
+        
         Raises:
             UiObjectNotFoundError
         """
-        self.jsonrpc.click(self.selector)
-        post_delay = self.session.server.click_post_delay
-        if post_delay:
-            time.sleep(post_delay)
+        info = self.info
+        bounds = self.info.get('visibleBounds') or info.get("bounds")
+        x = (bounds['left'] + bounds['right']) / 2
+        y = (bounds['top'] + bounds['bottom']) / 2
 
-    def click(self):
-        """ Alias of tap """
-        return self.tap()
+        # ext.htmlreport need to comment bellow code
+        # if info['clickable']:
+        #     return self.jsonrpc.click(self.selector)
+        self.session.click(x, y)
+        delay = self.session.server.click_post_delay
+        if delay:
+            time.sleep(delay)
 
     def click_exists(self, timeout=0):
         if not self.wait(timeout=timeout):
@@ -1215,9 +1216,9 @@ class UiObject(object):
             self.click_nowait()
             return True
         except UiObjectNotFoundError:
-                return False
+            return False
     
-    @wait_exists_wrap
+    @wrap_wait_exists
     def long_click(self):
         info = self.info
         if info['longClickable']:
@@ -1227,7 +1228,7 @@ class UiObject(object):
         y = (bounds["top"] + bounds["bottom"]) / 2
         return self.session.long_click(x, y)
 
-    @wait_exists_wrap
+    @wrap_wait_exists
     def drag_to(self, *args, **kwargs):
         duration = kwargs.pop('duration', 0.5)
         steps = int(duration*200)
@@ -1260,7 +1261,7 @@ class UiObject(object):
     def pinch_out(self, percent=100, steps=50):
         return self.jsonrpc.pinchOut(self.selector, percent, steps)
 
-    def wait(self, exists=True, timeout=None):
+    def wait(self, exists=True, timeout=10):
         """
         Wait until UI Element exists or gone
         
@@ -1271,7 +1272,6 @@ class UiObject(object):
             d(text="Clock").wait()
             d(text="Settings").wait("gone") # wait until it's gone
         """
-        timeout = timeout or self.wait_timeout
         http_wait = timeout + 10
         if exists:
             return self.jsonrpc.waitForExists(self.selector, int(timeout*1000), http_timeout=http_wait)
@@ -1290,19 +1290,19 @@ class UiObject(object):
         """ alias of set_text """
         return self.set_text(text)
 
-    @wait_exists_wrap
+    @wrap_wait_exists
     def set_text(self, text):
         if not text:
             return self.jsonrpc.clearTextField(self.selector)
         else:
             return self.jsonrpc.setText(self.selector, text)
     
-    @wait_exists_wrap
+    @wrap_wait_exists
     def get_text(self):
         """ get text from field """
         return self.jsonrpc.getText(self.selector)
     
-    @wait_exists_wrap
+    @wrap_wait_exists
     def clear_text(self):
         return self.set_text(None)
 
@@ -1550,6 +1550,18 @@ class Selector(dict):
         super(Selector, self).__setitem__(self.__childOrSiblingSelector, [])
         for k in kwargs:
             self[k] = kwargs[k]
+    
+    def __str__(self):
+        """ remove useless part for easily debugger """
+        selector = self.copy()
+        selector.pop('mask')
+        for key in ('childOrSibling', 'childOrSiblingSelector'):
+            if not selector.get(key):
+                selector.pop(key)
+        args = []
+        for (k, v) in selector.items():
+            args.append(k + '=' + str(v))
+        return 'Selector [' + ', '.join(args) + ']'
 
     def __setitem__(self, k, v):
         if k in self.__fields:

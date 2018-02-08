@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- <link rel="icon" href="/static/favicon.png?v=2" type="image/x-icon" /> -->
+  <title>U2 Report</title>
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/bootstrap/3.3.6/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/fancybox/2.1.5/jquery.fancybox.min.css">
+  <!-- 
+  <link rel="stylesheet" href="http://gohttp.nie.netease.com/qard-libs/libs/bootstrap/3.3.5/css/bootstrap.min.css">
+  <link rel="stylesheet" href="http://gohttp.nie.netease.com/qard-libs/libs/fancybox/2.1.5/jquery.fancybox.min.css">
+  <link rel="stylesheet" href="//cdn.bootcss.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
+  -->
+  <style>
+    body {
+      padding-top: 70px;
+    }
+    
+    .img-screenshot {
+      max-height: 400px;
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container-fluid">
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+        <a class="navbar-brand" href="/">测试过程记录</a>
+      </div>
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class="nav navbar-nav">
+          <!-- <li class="dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+              列表 <span class="caret"></span>
+            </a>
+            <ul class="dropdown-menu" role="menu">
+              <li v-for="step in steps">
+                <a href="#{{step.time}}">{{step.time}} {{step.action}}  {{step.description}}</a>
+              </li>
+            </ul>
+          </li> -->
+        </ul>
+      </div>
+    </div>
+  </nav>
+  <div class="container-fluid" id="app">
+    <div class="row">
+      <div v-for="v, index in steps">
+        <div class="col-md-4">
+          <div style="margin-bottom: 20px; padding: 5px; background-color:aliceblue; position: relative">
+            <div><b style="color: black;">{{index+1}}</b> {{v.time}}</div>
+            <img style="margin-bottom: 5px" class="img-thumbnail img-screenshot" :src="v.screenshot" style="max-height:200px">
+            <pre style="text-overflow: ellipsis; overflow: hidden; font-size: 8px">{{v.code}}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+    <blockquote class="code-font">
+      <p>Make mobile test automated, free testers from endless work.</p>
+      <footer>Powered by
+        <a href="https://github.com/openatx/uiautomator2">
+          <cite title="Shortcut">atx uiautomator2</cite>
+        </a>
+      </footer>
+    </blockquote>
+  </div>
+</body>
+<script src="https://cdn.jsdelivr.net/jquery/1.11.3/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/mousewheel/3.1.13/jquery.mousewheel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/fancybox/2.1.5/jquery.fancybox.pack.js"></script>
+<script src="https://cdn.jsdelivr.net/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/vue/2.3.2/vue.min.js"></script>
+<!-- <script src="//cdn.rawgit.com/notifyjs/notifyjs/master/dist/notify.js"></script> -->
+<script>
+  $.getJSON("record.json")
+    .then(function(ret) {
+      console.log(ret)
+
+      // $(".panel-heading").on('click', function() {
+      //   $(this).next().toggle();
+      // })
+      var json = ret;
+      // try {
+      //   json = $$data$$;
+      // } catch (ReferenceError) {
+      //   console.log("Load test data");
+      //   json = {
+      //     steps: [{
+      //       time: "2018/1/25 10:25:00",
+      //       code: 'n("uictr_skill_normal_btn").click_exists(2)"',
+      //       screenshot: './s1.jpg',
+      //     }]
+      //   }
+      // }
+
+      new Vue({
+        el: '#app',
+        data: json,
+        computed: {}
+      })
+    })
+</script>
+
+</html>

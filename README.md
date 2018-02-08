@@ -641,11 +641,12 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
     u'checkable': False
     }
     ```
-* Set/Clear text of an editable field (e.g., EditText widgets)
+* Get/Set/Clear text of an editable field (e.g., EditText widgets)
 
     ```python
-    d(text="Settings").clear_text()  # clear the text
+    d(text="Settings").get_text()  # get widget text
     d(text="Settings").set_text("My text...")  # set the text
+    d(text="Settings").clear_text()  # clear the text
     ```
 
 #### Perform the click action on the selected UI object
