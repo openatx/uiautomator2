@@ -121,6 +121,19 @@ d = u2.connect_usb("{Your-Device-Serial}")
 clicked = d(text='Skip').click_exists(timeout=10.0)
 ```
 
+### 如何停用UiAutomator的守护程序
+因为有`atx-agent`的存在，Uiautomator会被一直守护着，如果退出了就会被重新启动起来。但是Uiautomator又是霸道的，一旦它在运行，手机上的辅助功能、电脑上的uiautomatorviewer 就都不能用了，除非关掉该框架本身的uiautomator。下面就说下两种关闭方法
+
+方法1：
+
+直接打开`uiautomator` app（init成功后，就会安装上的），点击`关闭UIAutomator`
+
+方法2:
+
+```python
+d.service("uiautomator").stop()
+```
+
 ### 打开调试开关
 用于开发者或有经验的使用者定位问题
 

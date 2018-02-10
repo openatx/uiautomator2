@@ -386,6 +386,30 @@ class UIAutomatorServer(object):
         except requests.exceptions.ReadTimeout:
             return False
 
+    def service(self, name):
+        """ Manage service start or stop
+
+        Example:
+            d.service("uiautomator").start()
+            d.service("uiautomator").stop()
+        """
+        u2obj = self
+        class _Service(object):
+            def __init__(self, name):
+                self.name = name
+                assert name == 'uiautomator' # FIXME(ssx): support other service: minicap, minitouch
+            
+            def start(self):
+                res = u2obj._reqsess.post(u2obj.path2url('/uiautomator'))
+                res.raise_for_status()
+            
+            def stop(self):
+                res = u2obj._reqsess.delete(u2obj.path2url('/uiautomator'))
+                if res.status_code != 200:
+                    warnings.warn(res.text)
+
+        return _Service(name)
+
     def healthcheck(self, unlock=True):
         """
         Check if uiautomator is running, if not launch again
