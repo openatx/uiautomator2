@@ -140,6 +140,12 @@ def U(x):
     return x.decode('utf-8') if type(x) is str else x
 
 
+def E(x):
+    if six.PY3:
+        return x
+    return x.encode('utf-8') if type(x) is unicode else x
+
+
 def connect(addr=None):
     """
     Args:
@@ -1184,7 +1190,7 @@ def wrap_wait_exists(fn):
     def inner(self, *args, **kwargs):
         timeout = kwargs.pop('timeout', self.wait_timeout)
         if not self.wait(timeout=timeout):
-            raise UiObjectNotFoundError({'code': -32002, 'message': str(self.selector)})
+            raise UiObjectNotFoundError({'code': -32002, 'message': E(self.selector.__str__())})
         return fn(self, *args, **kwargs)
     return inner
 
@@ -1582,7 +1588,7 @@ class Selector(dict):
                 selector.pop(key)
         args = []
         for (k, v) in selector.items():
-            args.append('{0}={1}'.format(k, v))
+            args.append(k + '=' + U(v))
         return 'Selector [' + ', '.join(args) + ']'
 
     def __setitem__(self, k, v):
