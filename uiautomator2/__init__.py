@@ -1234,10 +1234,8 @@ class UiObject(object):
             time.sleep(delay)
 
     def click_exists(self, timeout=0):
-        if not self.wait(timeout=timeout):
-            return False
         try:
-            self.click_nowait()
+            self.click(timeout=timeout)
             return True
         except UiObjectNotFoundError:
             return False
@@ -1584,7 +1582,7 @@ class Selector(dict):
                 selector.pop(key)
         args = []
         for (k, v) in selector.items():
-            args.append(k + '=' + str(v))
+            args.append('{0}={1}'.format(k, v))
         return 'Selector [' + ', '.join(args) + ']'
 
     def __setitem__(self, k, v):
