@@ -905,8 +905,12 @@ $ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' 127.0.0.1:9008/jsonrp
 
     如果报错，可能是缺少某个设备组件没有安装，使用下面的命令重新初始化 `python -m uiautomator2 init --reinstall`
 
-## 尝鲜功能
+## 实验室功能
+### 远程查看
 手机`python -m uiautomator2 init`之后，浏览器输入 <device_ip:7912>，会发现一个远程控制功能，延迟非常低噢。^_^
+
+### 手机USB连接后，自动调用init命令
+[adbkit-init](examples/adbkit-init)
 
 # 项目历史
 项目重构自 <https://github.com/openatx/atx-uiautomator>

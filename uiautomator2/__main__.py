@@ -221,7 +221,7 @@ class Installer(adbutils.Adb):
 
 
 class MyFire(object):
-    def init(self, server=None, apk_version=__apk_version__, agent_version=__atx_agent_version__, verbose=False, reinstall=False, proxy=None):
+    def init(self, server=None, apk_version=__apk_version__, agent_version=__atx_agent_version__, verbose=False, reinstall=False, proxy=None, serial=None):
         if verbose:
             log.setLevel(logging.DEBUG)
         if server:
@@ -231,26 +231,28 @@ class MyFire(object):
             os.environ['HTTP_PROXY'] = proxy
             os.environ['HTTPS_PROXY'] = proxy
 
-        output = subprocess.check_output(['adb', 'devices'])
-        pattern = re.compile(r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
-        matches = pattern.findall(output.decode())
-        for m in matches:
-            serial, status = m[0], m[1]
-            if status == 'offline':
-                log.warn("device(%s) is offline, skip", serial)
-                continue
-            
-            log.info("Device(%s) initialing ...", serial)
-            ins = Installer(serial)
-            ins.server_addr = server
-            ins.install_minicap()
-            ins.install_minitouch()
-            ins.install_uiautomator_apk(apk_version, reinstall)
-            ins.install_atx_agent(agent_version, reinstall)
-            ins.launch_and_check()
-        if len(matches) == 0:
-            log.warn("No avaliable android devices detected. See details from `adb devices`")
+        if not serial:
+            output = subprocess.check_output(['adb', 'devices'])
+            pattern = re.compile(r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
+            matches = pattern.findall(output.decode())
+            valid_serials = [m[0] for m in matches if m[1] == 'device']
+            if len(valid_serials) == 0:
+                log.warning("No avaliable android devices detected.")
+                return
+            if len(valid_serials) > 1:
+                log.warning("More then 1 device detected, you must specify android serial")
+                return
+            serial = valid_serials[0]
         
+        log.info("Device(%s) initialing ...", serial)
+        ins = Installer(serial)
+        ins.server_addr = server
+        ins.install_minicap()
+        ins.install_minitouch()
+        ins.install_uiautomator_apk(apk_version, reinstall)
+        ins.install_atx_agent(agent_version, reinstall)
+        ins.launch_and_check()
+
     def clear_cache(self):
         log.info("clear cache dir: %s", appdir)
         shutil.rmtree(appdir, ignore_errors=True)

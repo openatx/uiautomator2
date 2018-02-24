@@ -1,0 +1,15 @@
+{
+  "name": "adbkit-init",
+  "version": "1.0.0",
+  "description": "run `python -m uiautomator2 init` once android device plugin.",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "adbkit": "^2.11.0",
+    "minimist": "^1.2.0"
+  }
+}

@@ -1,7 +1,8 @@
 # coding: utf-8
 #
 
-__apk_version__ = '1.0.9'
+__apk_version__ = '1.0.10'
+# 1.0.10 fix service not started bug
 # 1.0.9 fix apk version code and version name
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
