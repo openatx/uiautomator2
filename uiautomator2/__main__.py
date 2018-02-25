@@ -211,6 +211,8 @@ class Installer(adbutils.Adb):
                 log.debug("atx-agent version: %s", r.text)
                 # todo finish the retry logic
                 log.info("atx-agent output: %s", output.strip())
+                # open uiautomator2 github URL
+                self.shell("am", "start", "-a", "android.intent.action.VIEW", "-d", "https://github.com/openatx/uiautomator2")
                 log.info("success")
                 break
             except requests.exceptions.ConnectionError:
