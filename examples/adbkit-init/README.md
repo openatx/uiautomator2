@@ -2,9 +2,12 @@
 run `python -m uiautomator2 init` once android device plugin.
 
 ## Installation
-```bash
-npm install .
-```
+1. Install nodejs
+2. Install dependencies by npm
+
+    ```bash
+    npm install
+    ```
 
 ## Usage
 ```bash

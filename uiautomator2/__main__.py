@@ -140,21 +140,23 @@ class Installer(adbutils.Adb):
         self.install(path)
         log.debug("app-uiautomator.apk installed")
 
-        # FIXME(ssx): check immediatelly sometimes got None
-        # pkg_info = self.package_info("com.github.uiautomator")
-        # if not pkg_info:
-        #     raise EnvironmentError("package com.github.uiautomator not installed")
-        # if pkg_info['version_name'] != apk_version:
-        #     raise EnvironmentError("package com.github.uiautomator version expect \"%s\" got \"%s\"" % (apk_version, pkg_info['version_name']))
-
         log.info("app-uiautomator-test.apk installing ...")
         path = cache_download(app_test_url)
         self.install(path)
         log.debug("app-uiautomator-test.apk installed")
+    
+    def check_apk_installed(self, apk_version):
+        """ in OPPO device, if you check immediatelly, package_info will return None """
+        pkg_info = self.package_info("com.github.uiautomator")
+        if not pkg_info:
+            raise EnvironmentError("package com.github.uiautomator not installed")
+        if pkg_info['version_name'] != apk_version:
+            raise EnvironmentError("package com.github.uiautomator version expect \"%s\" got \"%s\"" % (apk_version, pkg_info['version_name']))
+        # test apk
+        pkg_test_info = self.package_info("com.github.uiautomator.test")
+        if not pkg_test_info:
+            raise EnvironmentError("package com.github.uiautomator.test not installed")
 
-        # pkg_test_info = self.package_info("com.github.uiautomator")
-        # if not pkg_test_info:
-        #     raise EnvironmentError("package com.github.uiautomator.test not installed")
     
     def install_atx_agent(self, agent_version, reinstall=False):
         version_output = self.shell('/data/local/tmp/atx-agent', '-v', raise_error=False).strip()
@@ -253,6 +255,7 @@ class MyFire(object):
         ins.install_minitouch()
         ins.install_uiautomator_apk(apk_version, reinstall)
         ins.install_atx_agent(agent_version, reinstall)
+        ins.check_apk_installed(apk_version)
         ins.launch_and_check()
 
     def clear_cache(self):
