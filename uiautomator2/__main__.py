@@ -198,7 +198,7 @@ class Installer(adbutils.Adb):
 
     def launch_and_check(self):
         log.info("launch atx-agent daemon")
-        args = ['/data/local/tmp/atx-agent', '-d']
+        args = ['TMPDIR=/sdcard', '/data/local/tmp/atx-agent', '-d']
         if self.server_addr:
             args.append('-t')
             args.append(self.server_addr)
