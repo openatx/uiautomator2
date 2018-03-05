@@ -1588,7 +1588,7 @@ class Selector(dict):
                 selector.pop(key)
         args = []
         for (k, v) in selector.items():
-            args.append(k + '=' + U(v))
+            args.append(k + '=' + repr(v))
         return 'Selector [' + ', '.join(args) + ']'
 
     def __setitem__(self, k, v):
