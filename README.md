@@ -156,6 +156,7 @@ d.service("uiautomator").stop()
   - **[Stop an app](#stop-an-app)**
   - **[Stop all running apps](#stop-all-running-apps)**
   - **[Push and pull files](#push-and-pull-files)**
+  - **[Auto click permission dialogs](#auto-click-permission-dialogs)**
 
 **[Basic API Usages](#basic-api-usages)**
   - **[Shell commands](#shell-commands)**
@@ -233,6 +234,16 @@ d.app_stop_all(excludes=['com.examples.demo'])
     # FileNotFoundError will raise if the file is not found on the device
     d.pull("/sdcard/some-file-not-exists.txt", "tmp.txt")
     ```
+
+### Auto click permission dialogs
+Import in version 0.1.1
+
+```python
+d.disable_popups() # automatic skip popups
+d.disable_popups(False) # disable automatic skip popups
+```
+
+![popup](docs/img/popup.png)
 
 ## Basic API Usages
 This part showcases how to perform common device operations:

@@ -765,6 +765,29 @@ class UIAutomatorServer(object):
         self.__devinfo = self._reqsess.get(self.path2url('/info')).json()
         return self.__devinfo
 
+    def set_accessibility_patterns(self, patterns):
+        """
+        Args:
+            patterns (dict): key is package name, value is button text
+        
+        Example value of patterns:
+            {"com.android.packageinstaller": [u"确定", u"安装"]}
+        """
+        self.jsonrpc.setAccessibilityPatterns(patterns)
+    
+    def disable_popups(self, enable=True):
+        """
+        Automatic click all popups
+        """
+        if enable:
+            self.jsonrpc.setAccessibilityPatterns({
+                "com.android.packageinstaller": [u"确定", u"安装", u"下一步", u"好", u"允许", u"我知道"],
+                "com.miui.securitycenter": [u"继续安装"],
+                "com.lbe.security.miui": [u"允许"],
+            })
+        else:
+            self.jsonrpc.setAccessibilityPatterns({})
+
     def session(self, pkg_name, attach=False):
         """
         Create a new session
