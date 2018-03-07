@@ -782,8 +782,9 @@ class UIAutomatorServer(object):
         if enable:
             self.jsonrpc.setAccessibilityPatterns({
                 "com.android.packageinstaller": [u"确定", u"安装", u"下一步", u"好", u"允许", u"我知道"],
-                "com.miui.securitycenter": [u"继续安装"],
-                "com.lbe.security.miui": [u"允许"],
+                "com.miui.securitycenter": [u"继续安装"], # xiaomi
+                "com.lbe.security.miui": [u"允许"], # xiaomi
+                "android": [u"好", u"安装"], # vivo
             })
         else:
             self.jsonrpc.setAccessibilityPatterns({})

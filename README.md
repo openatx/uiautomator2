@@ -245,6 +245,15 @@ d.disable_popups(False) # disable automatic skip popups
 
 ![popup](docs/img/popup.png)
 
+If this method is not working on your device, You can make a pull request or create an issue to enhance this function. I'll show you how to do it.
+
+1. Open `uiautomatorviewer.bat`
+2. Get popup hierarchy
+
+![hierarchy](docs/img/uiautomatorviewer-popup.png)
+
+Now you know the button text and current package name. Make a pull request by update function `disable_popups` or create an [issue](https://github.com/openatx/uiautomator2/issues) if you are not familar with git and python.
+
 ## Basic API Usages
 This part showcases how to perform common device operations:
 
