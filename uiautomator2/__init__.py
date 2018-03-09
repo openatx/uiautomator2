@@ -891,6 +891,14 @@ class Session(object):
 
         return convert
 
+    def make_toast(self, text, duration=1.0):
+        """ Show toast
+        Args:
+            text (str): text to show
+            duration (float): seconds of display
+        """
+        return self.jsonrpc.makeToast(text, duration * 1000)
+
     @check_alive
     def set_fastinput_ime(self, enable=True):
         """ Enable of Disable FastInputIME """
