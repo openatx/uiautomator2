@@ -785,6 +785,7 @@ class UIAutomatorServer(object):
                 "com.miui.securitycenter": [u"继续安装"], # xiaomi
                 "com.lbe.security.miui": [u"允许"], # xiaomi
                 "android": [u"好", u"安装"], # vivo
+                "com.huawei.systemmanager": [u"立即删除"], # huawei
             })
         else:
             self.jsonrpc.setAccessibilityPatterns({})
