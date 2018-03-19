@@ -1006,8 +1006,13 @@ class Session(object):
         if self.server.click_post_delay: # click code delay
             time.sleep(self.server.click_post_delay)
     
-    def long_click(self, x, y, duration=0.5):
-        '''long click at arbitrary coordinates.'''
+    def long_click(self, x, y, duration=None):
+        '''long click at arbitrary coordinates.
+        Args:
+            duration (float): seconds of pressed
+        '''
+        if not duration:
+            duration = 0.5
         x, y = self.pos_rel2abs(x, y)
         self.touch.down(x, y)
         time.sleep(duration)
@@ -1280,14 +1285,18 @@ class UiObject(object):
             return False
     
     @wrap_wait_exists
-    def long_click(self):
+    def long_click(self, duration=None):
+        """
+        Args:
+            duration (float): seconds of pressed
+        """
         info = self.info
-        if info['longClickable']:
+        if info['longClickable'] and not duration:
             return self.jsonrpc.longClick(self.selector)
         bounds = info.get("visibleBounds") or info.get("bounds")
         x = (bounds["left"] + bounds["right"]) / 2
         y = (bounds["top"] + bounds["bottom"]) / 2
-        return self.session.long_click(x, y)
+        return self.session.long_click(x, y, duration)
 
     @wrap_wait_exists
     def drag_to(self, *args, **kwargs):
