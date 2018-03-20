@@ -1,7 +1,8 @@
 # coding: utf-8
 #
 
-__apk_version__ = '1.0.11'
+__apk_version__ = '1.0.12'
+# 1.0.12 add toast support
 # 1.0.11 add auto install support
 # 1.0.10 fix service not started bug
 # 1.0.9 fix apk version code and version name

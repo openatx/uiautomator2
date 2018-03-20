@@ -169,6 +169,7 @@ d.service("uiautomator").stop()
   - **[Watcher](#watcher)**
   - **[Global settings](#global-settings)**
   - **[Input method](#input-method)**
+  - **[Toast](#toast)**
 
 **[测试方法](#测试方法)**
 
@@ -893,6 +894,14 @@ d.set_fastinput_ime(True) # 切换成FastInputIME输入法
 d.send_keys("你好123abcEFG") # adb广播输入
 d.clear_text() # 清除输入框所有内容(Require android-uiautomator.apk version >= 1.0.7)
 d.set_fastinput_ime(False) # 切换成正常的输入法
+```
+
+### Toast
+显示Toast
+
+```python
+d.make_toast("Hello world")
+d.make_toast("Hello world", 1.5) # show for 1.5s
 ```
 
 ## 测试方法
