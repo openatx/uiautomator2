@@ -1,6 +1,8 @@
 # coding: utf-8
 #
 
+from __future__ import print_function
+
 import re
 import socket
 import subprocess
@@ -28,7 +30,7 @@ class Adb(object):
             return subprocess.check_output(
                 cmdline, stderr=subprocess.STDOUT, shell=True).decode('utf-8')
         except subprocess.CalledProcessError as e:
-            print("Error output:", e.output)
+            print("Error output:", e.output.decode('utf-8', errors='ignore'))
             if kwargs.get('raise_error', True):
                 raise e
             return ''
