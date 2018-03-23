@@ -236,7 +236,9 @@ d.app_stop_all(excludes=['com.examples.demo'])
     d.pull("/sdcard/some-file-not-exists.txt", "tmp.txt")
     ```
 
-### Auto click permission dialogs
+### ~~Auto click permission dialogs~~
+**注意注意** `disable_popups`函数，检测发现很不稳定，暂时不要使用，等候通知。
+
 Import in version 0.1.1
 
 ```python

@@ -778,7 +778,10 @@ class UIAutomatorServer(object):
     def disable_popups(self, enable=True):
         """
         Automatic click all popups
+        TODO: need fix
         """
+        raise NotImplementedError()
+
         if enable:
             self.jsonrpc.setAccessibilityPatterns({
                 "com.android.packageinstaller": [u"确定", u"安装", u"下一步", u"好", u"允许", u"我知道"],
