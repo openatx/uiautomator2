@@ -86,7 +86,7 @@ class JsonRpcError(UiaError):
 
     def __init__(self, error={}):
         self.code = error.get('code')
-        self.message = error.get('message')
+        self.message = error.get('message', '')
         self.data = error.get('data')
         self.exception_name = (self.data or {}).get('exceptionTypeName', 'Unknown')
 
