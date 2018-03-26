@@ -245,6 +245,7 @@ class MyFire(object):
              agent_version=__atx_agent_version__,
              verbose=False,
              reinstall=False,
+             ignore_apk_check=False,
              proxy=None,
              serial=None):
         if verbose:
@@ -268,7 +269,7 @@ class MyFire(object):
             log.info("Detect pluged devices: %s", valid_serials)
             for serial in valid_serials:
                 self.init_with_serial(serial, server, apk_version,
-                                      agent_version, reinstall)
+                                      agent_version, reinstall, ignore_apk_check)
             # if len(valid_serials) > 1:
             #     log.warning(
             #         "More then 1 device detected, you must specify android serial"
@@ -280,7 +281,7 @@ class MyFire(object):
                                   reinstall)
 
     def init_with_serial(self, serial, server, apk_version, agent_version,
-                         reinstall):
+                         reinstall, ignore_apk_check):
         log.info("Device(%s) initialing ...", serial)
         ins = Installer(serial)
         ins.server_addr = server
@@ -288,7 +289,8 @@ class MyFire(object):
         ins.install_minitouch()
         ins.install_uiautomator_apk(apk_version, reinstall)
         ins.install_atx_agent(agent_version, reinstall)
-        ins.check_apk_installed(apk_version)
+        if not ignore_apk_check:
+            ins.check_apk_installed(apk_version)
         ins.launch_and_check()
 
     def clear_cache(self):

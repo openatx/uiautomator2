@@ -1,3 +1,9 @@
+注，代码或者日志请使用[Markdown](http://wowubuntu.com/markdown/)语法，看完删掉
+
+```
+Your code or log here
+```
+
 ## Versions (版本)
 通过`pip show uiautomator2`可以获取到
 
