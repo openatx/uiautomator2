@@ -439,6 +439,17 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
     d.drag(sx, sy, ex, ey)
     d.drag(sx, sy, ex, ey, 0.5) # swipe for 0.5s(default)
 
+* Swipe points
+
+    ```python
+    # swipe from point(x0, y0) to point(x1, y1) then to point(x2, y2)
+    # time will speed 0.2s bwtween two points
+    d.swipe((x0, y0), (x1, y1), (x2, y2), 0.2)
+    ```
+
+    多用于九宫格解锁，提前获取到每个点的相对坐标（这里支持百分比），
+    更详细的使用参考这个帖子 [使用u2实现九宫图案解锁](https://testerhome.com/topics/11034)
+
 Note: click, swipe, drag operations support percentage position values. Example:
 
 `d.long_click(0.5, 0.5)` means long click center of screen
