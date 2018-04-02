@@ -268,7 +268,7 @@ class MyFire(object):
                 return
             log.info("Detect pluged devices: %s", valid_serials)
             for serial in valid_serials:
-                self.init_with_serial(serial, server, apk_version,
+                self._init_with_serial(serial, server, apk_version,
                                       agent_version, reinstall,
                                       ignore_apk_check)
             # if len(valid_serials) > 1:
