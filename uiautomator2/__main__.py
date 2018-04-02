@@ -269,7 +269,8 @@ class MyFire(object):
             log.info("Detect pluged devices: %s", valid_serials)
             for serial in valid_serials:
                 self.init_with_serial(serial, server, apk_version,
-                                      agent_version, reinstall, ignore_apk_check)
+                                      agent_version, reinstall,
+                                      ignore_apk_check)
             # if len(valid_serials) > 1:
             #     log.warning(
             #         "More then 1 device detected, you must specify android serial"
@@ -277,11 +278,11 @@ class MyFire(object):
             #     return
             # serial = valid_serials[0]
         else:
-            self.init_with_serial(serial, server, apk_version, agent_version,
-                                  reinstall)
+            self._init_with_serial(serial, server, apk_version, agent_version,
+                                   reinstall, ignore_apk_check)
 
-    def init_with_serial(self, serial, server, apk_version, agent_version,
-                         reinstall, ignore_apk_check):
+    def _init_with_serial(self, serial, server, apk_version, agent_version,
+                          reinstall, ignore_apk_check):
         log.info("Device(%s) initialing ...", serial)
         ins = Installer(serial)
         ins.server_addr = server

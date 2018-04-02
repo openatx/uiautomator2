@@ -789,6 +789,7 @@ class UIAutomatorServer(object):
                 "com.lbe.security.miui": [u"允许"], # xiaomi
                 "android": [u"好", u"安装"], # vivo
                 "com.huawei.systemmanager": [u"立即删除"], # huawei
+                "com.android.systemui": [u"同意"], # 锤子
             })
         else:
             self.jsonrpc.setAccessibilityPatterns({})
@@ -1042,6 +1043,14 @@ class Session(object):
         return self.jsonrpc.swipe(fx, fy, tx, ty, int(duration*200))
     
     def swipe_points(self, points, duration=0.5):
+        """
+        Args:
+            points: is point array containg at least one point object. eg [[200, 300], [210, 320]]
+            duration: duration to inject between two points
+            
+        Links:
+            https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe(android.graphics.Point[], int)
+        """
         ppoints = []
         rel2abs = self.pos_rel2abs
         for p in points:
