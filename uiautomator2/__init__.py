@@ -924,9 +924,12 @@ class Session(object):
             self.wait_fastinput_ime()
             base64text = base64.b64encode(text.encode('utf-8')).decode()
             self.server.adb_shell('am', 'broadcast', '-a', 'ADB_INPUT_TEXT', '--es', 'text', base64text)
+            return True
         except EnvironmentError:
-            warnings.warn("set FastInputIME failed. use \"adb shell input text\" instead", Warning)
-            self.server.adb_shell("input", "text", text.replace(" ", "%s"))
+            warnings.warn("set FastInputIME failed. use \"d(focused=True).set_text instead\"", Warning)
+            return self(focused=True).set_text(text)
+            # warnings.warn("set FastInputIME failed. use \"adb shell input text\" instead", Warning)
+            # self.server.adb_shell("input", "text", text.replace(" ", "%s"))
 
     @check_alive
     def clear_text(self):
@@ -934,8 +937,12 @@ class Session(object):
         Raises:
             EnvironmentError
         """
-        self.wait_fastinput_ime()
-        self.server.adb_shell('am', 'broadcast', '-a', 'ADB_CLEAR_TEXT')
+        try:
+            self.wait_fastinput_ime()
+            self.server.adb_shell('am', 'broadcast', '-a', 'ADB_CLEAR_TEXT')
+        except EnvironmentError:
+            # for Android simulator
+            self(focused=True).clear_text()
     
     def wait_fastinput_ime(self, timeout=5.0):
         """ wait FastInputIME is ready
@@ -944,6 +951,9 @@ class Session(object):
         Raises:
             EnvironmentError
         """
+        if not self.server.serial: # maybe simulator eg: genymotion, 海马玩模拟器
+            raise EnvironmentError("Android simulator detected.")
+        
         deadline = time.time() + timeout
         while time.time() < deadline:
             ime_id, shown = self.current_ime()
