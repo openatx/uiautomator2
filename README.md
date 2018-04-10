@@ -67,6 +67,12 @@ uiautomator2 是一个可以使用Python对Android设备进行UI自动化的库�
     ```bash
     $ python -m uiautomator2 app-stop-all $device_ip
     ```
+
+- screenshot: 截图
+
+    ```bash
+    $ python -m uiautomator2 screenshot $device_ip screenshot.jpg
+    ```
 ## QUICK START
 There are two ways to connect to the device. Run the following Python code in a Python 2.7/3+ interpreter:
 

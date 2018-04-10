@@ -269,8 +269,8 @@ class MyFire(object):
             log.info("Detect pluged devices: %s", valid_serials)
             for serial in valid_serials:
                 self._init_with_serial(serial, server, apk_version,
-                                      agent_version, reinstall,
-                                      ignore_apk_check)
+                                       agent_version, reinstall,
+                                       ignore_apk_check)
             # if len(valid_serials) > 1:
             #     log.warning(
             #         "More then 1 device detected, you must specify android serial"
@@ -330,6 +330,10 @@ class MyFire(object):
     def identify(self, device_ip=None, theme='black'):
         u = u2.connect(device_ip)
         u.open_identify(theme)
+
+    def screenshot(self, device_ip, filename):
+        u = u2.connect(device_ip)
+        u.screenshot(filename)
 
     def upgrade_apk(self, device_ip):
         """ update com.github.uiautomator apk remotely """

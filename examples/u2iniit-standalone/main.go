@@ -126,7 +126,7 @@ func initUiAutomatorAPK(device *goadb.Device) (err error) {
 	_, er1 := device.StatPackage("com.github.uiautomator")
 	_, er2 := device.StatPackage("com.github.uiautomator.test")
 	if er1 == nil && er2 == nil {
-		log.Println("APK already installed, Skip. Unistall apk manually if you want to reinstall apk")
+		log.Println("APK already installed, Skip. Uninstall apk manually if you want to reinstall apk")
 		return
 	}
 	err = installAPK(device, "vendor/app-uiautomator.apk")
