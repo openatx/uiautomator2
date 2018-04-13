@@ -13,6 +13,8 @@ uiautomator2 是一个可以使用Python对Android设备进行UI自动化的库�
 
 虽然我说的很简单，但是实现起来用到了很多的技术和技巧，功能非常强，唯独文档有点少。哈哈
 
+![QQ Icon](docs/img/qq-internation-icon-32.png) QQ沟通群: *499563266*
+
 # Installation
 1. Install uiautomator2
 
@@ -104,6 +106,7 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 
 ### 感觉肯定用得着的资料链接
 
+- [Question and Answers (FAQ)](https://testerhome.com/topics/12025)
 - [浅谈自动化测试工具python-uiautomator2](https://testerhome.com/topics/11357)
 - [weditor](https://github.com/openatx/weditor) 用于查看UI层次结构，方便写脚本用。
 - [htmlreport](uiautomator2/ext/htmlreport) 记录测试过程的测试报告（实验性质）
