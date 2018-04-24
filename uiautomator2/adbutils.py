@@ -6,6 +6,7 @@ from __future__ import print_function
 import re
 import socket
 import subprocess
+import whichcraft
 from collections import defaultdict
 
 
@@ -22,8 +23,13 @@ class Adb(object):
     def __init__(self, serial=None):
         self._serial = serial
 
+    def adb_path(self):
+        return whichcraft.which("adb")
+
     def execute(self, *args, **kwargs):
-        cmds = ['adb', '-s', self._serial] if self._serial else ['adb']
+        adb_path = self.adb_path()
+        assert adb_path is not None
+        cmds = [adb_path, '-s', self._serial] if self._serial else [adb_path]
         cmds.extend(args)
         cmdline = subprocess.list2cmdline(map(str, cmds))
         try:
