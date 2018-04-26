@@ -13,7 +13,7 @@ uiautomator2 是一个可以使用Python对Android设备进行UI自动化的库�
 
 虽然我说的很简单，但是实现起来用到了很多的技术和技巧，功能非常强，唯独文档有点少。哈哈
 
-![QQ Icon](docs/img/qq-internation-icon-32.png) QQ沟通群: *499563266*
+![QQ Icon](docs/img/qq-international-icon-32.png) QQ沟通群: *499563266*
 
 # Installation
 1. Install uiautomator2
