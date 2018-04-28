@@ -27,6 +27,10 @@ class Adb(object):
         return whichcraft.which("adb")
 
     def execute(self, *args, **kwargs):
+        """
+        Raises:
+            EnvironmentError
+        """
         adb_path = self.adb_path()
         assert adb_path is not None
         cmds = [adb_path, '-s', self._serial] if self._serial else [adb_path]
@@ -36,9 +40,13 @@ class Adb(object):
             return subprocess.check_output(
                 cmdline, stderr=subprocess.STDOUT, shell=True).decode('utf-8')
         except subprocess.CalledProcessError as e:
-            print("Error output:", e.output.decode('utf-8', errors='ignore'))
             if kwargs.get('raise_error', True):
-                raise e
+                raise EnvironmentError("subprocess", cmdline,
+                                       e.output.decode(
+                                           'utf-8', errors='ignore'))
+            else:
+                print("Error output:", e.output.decode(
+                    'utf-8', errors='ignore'))
             return ''
 
     @property
