@@ -82,7 +82,13 @@ class HTMLReport(object):
         """
         codelines = []
         for stk in inspect.stack()[1:]:
-            filename = os.path.relpath(stk[1])
+            filename = stk[1]
+            try:
+                filename = os.path.relpath(filename)
+            except ValueError:  # Windows: maybe on other driver, eg: C:/ F:/
+                continue
+            if filename.find("/site-packages/") != -1:  # Linux
+                continue
             if filename.startswith(".."):  # only select files under curdir
                 continue
             # --- stack ---
@@ -145,7 +151,14 @@ class HTMLReport(object):
             self._record_screenshot((x, y))  # write image and record.json
             return obj.click.oldfunc(obj, x, y)
 
+        def _mock_long_click(obj, x, y, duration=None):
+            x, y = obj.pos_rel2abs(x, y)
+            self._record_screenshot((x, y))  # write image and record.json
+            return obj.long_click.oldfunc(obj, x, y, duration)
+
         self._patch_class_func(uiautomator2.Session, 'click', _mock_click)
+        self._patch_class_func(uiautomator2.Session, 'long_click',
+                               _mock_long_click)
 
     def unpatch_click(self):
         """
