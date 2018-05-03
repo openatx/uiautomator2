@@ -14,6 +14,8 @@ import (
 
 var adb *goadb.Adb
 
+const stfBinariesDir = "vendor/stf-binaries-master/node_modules"
+
 func init() {
 	var err error
 	adb, err = goadb.New()
@@ -87,22 +89,22 @@ func writeFileToDevice(device *goadb.Device, src, dst string, mode os.FileMode) 
 }
 
 func initMiniTouch(device *goadb.Device, abi string) error {
-	srcPath := fmt.Sprintf("vendor/minitouch-prebuilt/prebuilt/%s/bin/minitouch", abi)
+	srcPath := fmt.Sprintf(stfBinariesDir+"/minitouch-prebuilt/prebuilt/%s/bin/minitouch", abi)
 	return writeFileToDevice(device, srcPath, "/data/local/tmp/minitouch", 0755)
 }
 
 func initSTFMiniTools(device *goadb.Device, abi, sdk string) error {
-	soSrcPath := fmt.Sprintf("vendor/minicap-prebuilt/prebuilt/%s/lib/android-%s/minicap.so", abi, sdk)
+	soSrcPath := fmt.Sprintf(stfBinariesDir+"/minicap-prebuilt/prebuilt/%s/lib/android-%s/minicap.so", abi, sdk)
 	err := writeFileToDevice(device, soSrcPath, "/data/local/tmp/minicap.so", 0644)
 	if err != nil {
 		return err
 	}
-	binSrcPath := fmt.Sprintf("vendor/minicap-prebuilt/prebuilt/%s/bin/minicap", abi)
+	binSrcPath := fmt.Sprintf(stfBinariesDir+"/minicap-prebuilt/prebuilt/%s/bin/minicap", abi)
 	err = writeFileToDevice(device, binSrcPath, "/data/local/tmp/minicap", 0755)
 	if err != nil {
 		return err
 	}
-	touchSrcPath := fmt.Sprintf("vendor/minitouch-prebuilt/prebuilt/%s/bin/minitouch", abi)
+	touchSrcPath := fmt.Sprintf(stfBinariesDir+"/minitouch-prebuilt/prebuilt/%s/bin/minitouch", abi)
 	return writeFileToDevice(device, touchSrcPath, "/data/local/tmp/minitouch", 0755)
 }
 
@@ -141,23 +143,14 @@ func startService(device *goadb.Device) (err error) {
 	return err
 }
 
-func main() {
-	serverAddr := flag.String("server", "", "atx-server address(must be ip:port) eg: 10.0.0.1:7700")
-	flag.Parse()
-
-	fmt.Println("u2init created at 2018/03/30")
-	wd, _ := os.Getwd()
-	log.Println("Add adb.exe to PATH +=", filepath.Join(wd, "vendor"))
-	newPath := fmt.Sprintf("%s%s%s", os.Getenv("PATH"), string(os.PathListSeparator), filepath.Join(wd, "vendor"))
-	os.Setenv("PATH", newPath)
-
+func watchAndInit(serverAddr string) {
 	watcher := adb.NewDeviceWatcher()
 	for event := range watcher.C() {
 		if event.CameOnline() {
 			log.Printf("Device %s came online", event.Serial)
 			device := adb.Device(goadb.DeviceWithSerial(event.Serial))
 			log.Printf("Init device")
-			if err := initUiAutomator2(device, *serverAddr); err != nil {
+			if err := initUiAutomator2(device, serverAddr); err != nil {
 				log.Printf("Init error: %v", err)
 				continue
 			} else {
@@ -172,4 +165,17 @@ func main() {
 	if watcher.Err() != nil {
 		log.Fatal(watcher.Err())
 	}
+}
+
+func main() {
+	serverAddr := flag.String("server", "", "atx-server address(must be ip:port) eg: 10.0.0.1:7700")
+	flag.Parse()
+
+	fmt.Println("u2init version 20180330")
+	wd, _ := os.Getwd()
+	log.Println("Add adb.exe to PATH +=", filepath.Join(wd, "vendor"))
+	newPath := fmt.Sprintf("%s%s%s", os.Getenv("PATH"), string(os.PathListSeparator), filepath.Join(wd, "vendor"))
+	os.Setenv("PATH", newPath)
+
+	watchAndInit(*serverAddr)
 }
