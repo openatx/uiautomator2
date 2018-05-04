@@ -207,10 +207,14 @@ class TimeoutRequestsSession(requests.Session):
             print(datetime.now().strftime("%H:%M:%S.%f")[:-3], "$ curl -X {method} -d '{data}' '{url}'".format(
                 method=method, url=url, data=data
             ))
-        resp = super(TimeoutRequestsSession, self).request(method, url, **kwargs)
-        if verbose:
-            print(datetime.now().strftime("%H:%M:%S.%f")[:-3], "Response (%d ms) >>>\n" %((time.time() - time_start)*1000) + resp.text.rstrip()+"\n<<< END")
-        return resp
+        try:
+            resp = super(TimeoutRequestsSession, self).request(method, url, **kwargs)
+        except requests.ConnectionError:
+            raise EnvironmentError("atx-agent is not running. Fix it with following steps.\n1. Plugin device into computer.\n2. Run command \"python -m uiautomator2 init\"")
+        else:
+            if verbose:
+                print(datetime.now().strftime("%H:%M:%S.%f")[:-3], "Response (%d ms) >>>\n" %((time.time() - time_start)*1000) + resp.text.rstrip()+"\n<<< END")
+            return resp
 
 
 class UIAutomatorServer(object):
@@ -328,7 +332,7 @@ class UIAutomatorServer(object):
         try:
             return self.jsonrpc_call(*args, **kwargs)
         except (GatewayError, UiAutomationNotConnectedError):
-            warnings.warn("uiautomator2 is down, restart.", RuntimeWarning, stacklevel=1)
+            warnings.warn("uiautomator2 is not reponding, restart uiautomator2 automatically", RuntimeWarning, stacklevel=1)
             # for XiaoMi, want to recover uiautomator2 must start app:com.github.uiautomator
             self.healthcheck(unlock=False)
             return self.jsonrpc_call(*args, **kwargs)
