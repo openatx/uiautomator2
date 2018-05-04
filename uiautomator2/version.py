@@ -1,7 +1,8 @@
 # coding: utf-8
 #
 
-__apk_version__ = '1.0.12'
+__apk_version__ = '1.0.13'
+# 1.0.13 whatsinput suppoort, but not very well
 # 1.0.12 add toast support
 # 1.0.11 add auto install support
 # 1.0.10 fix service not started bug

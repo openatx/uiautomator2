@@ -1020,6 +1020,16 @@ class Session(object):
         if self.server.click_post_delay: # click code delay
             time.sleep(self.server.click_post_delay)
     
+    def double_click(self, x, y, duration=0.1):
+        """
+        double click position
+        """
+        x, y = self.pos_rel2abs(x, y)
+        self.touch.down(x, y)
+        self.touch.up(x, y)
+        time.sleep(duration)
+        self.click(x, y) # use click last is for htmlreport
+    
     def long_click(self, x, y, duration=None):
         '''long click at arbitrary coordinates.
         Args:

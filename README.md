@@ -428,6 +428,13 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
     d.click(x, y)
     ```
 
+* Double click
+
+    ```python
+    d.double_click(x, y)
+    d.double_click(x, y, 0.1) # default duration between two click is 0.1s
+    ```
+
 * Long click on the screen
 
     ```python
