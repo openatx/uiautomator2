@@ -9,6 +9,7 @@ import (
 	"github.com/koding/websocketproxy"
 )
 
+// TODO(ssx): not tested yet.
 type HTTPWSProxy struct {
 	forwardedAddr string
 	wsProxy       *websocketproxy.WebsocketProxy
@@ -35,8 +36,4 @@ func (p *HTTPWSProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("proxy http", r.RequestURI)
 	p.httpProxy.ServeHTTP(w, r)
-}
-
-func init() {
-
 }
