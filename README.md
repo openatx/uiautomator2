@@ -726,10 +726,10 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
     d(text="Settings").click()
     # wait element to appear for at most 10 seconds and then click
     d(text="Settings").click(timeout=10)
-    # alias of click
-    d(text="Settings").tap()
-    # tap immediately
-    d(text="Settings").tap_nowait()
+    # click when exists in 10s, default timeout 0s
+    clicked = d(text='Skip').click_exists(timeout=10.0)
+    # click until element gone, return bool
+    is_gone = d(text="Skip").click_gone(maxretry=10, interval=1.0) # maxretry default 10, interval default 1.0
     ```
 
 * Perform long click on the specific UI object
