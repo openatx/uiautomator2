@@ -335,6 +335,10 @@ class MyFire(object):
         u = u2.connect(device_ip)
         u.screenshot(filename)
 
+    def healthcheck(self, device_ip):
+        u = u2.connect(device_ip)
+        u.healthcheck()
+
     def upgrade_apk(self, device_ip):
         """ update com.github.uiautomator apk remotely """
         app_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % __apk_version__
