@@ -10,7 +10,8 @@ __apk_version__ = '1.0.13'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__atx_agent_version__ = '0.3.0'
+__atx_agent_version__ = '0.3.2'
+# 0.3.2 fix dns resolve error when network changes
 # 0.3.0 use github.com/codeskyblue/heartbeat library instead of websocket, add /whatsinput
 # 0.2.1 support occupy /minicap connection
 # 0.2.0 add session support
