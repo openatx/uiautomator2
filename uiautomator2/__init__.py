@@ -397,6 +397,13 @@ class UIAutomatorServer(object):
             err.__class__ = UiObjectNotFoundError
         if err.message and 'UiAutomation not connected' in err.message:
             err.__class__ = UiAutomationNotConnectedError
+
+        # StaleObjectException
+        # https://developer.android.com/reference/android/support/test/uiautomator/StaleObjectException.html
+        # A StaleObjectException exception is thrown when a UiObject2 is used after the underlying View has been destroyed.
+        # In this case, it is necessary to call findObject(BySelector) to obtain a new UiObject2 instance.
+        if err.message and 'android.support.test.uiautomator.StaleObjectException' in err.message:
+            pass
         raise err
 
     def _jsonrpc_id(self, method):
