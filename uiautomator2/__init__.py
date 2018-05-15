@@ -845,15 +845,15 @@ class UIAutomatorServer(object):
         self.__devinfo = self._reqsess.get(self.path2url('/info')).json()
         return self.__devinfo
 
-    def set_accessibility_patterns(self, patterns):
-        """
-        Args:
-            patterns (dict): key is package name, value is button text
+    # def set_accessibility_patterns(self, patterns):
+    #     """
+    #     Args:
+    #         patterns (dict): key is package name, value is button text
         
-        Example value of patterns:
-            {"com.android.packageinstaller": [u"确定", u"安装"]}
-        """
-        self.jsonrpc.setAccessibilityPatterns(patterns)
+    #     Example value of patterns:
+    #         {"com.android.packageinstaller": [u"确定", u"安装"]}
+    #     """
+    #     self.jsonrpc.setAccessibilityPatterns(patterns)
 
     def disable_popups(self, enable=True):
         """
@@ -861,6 +861,7 @@ class UIAutomatorServer(object):
         TODO: need fix
         """
         raise NotImplementedError()
+        # self.watcher
 
         if enable:
             self.jsonrpc.setAccessibilityPatterns({

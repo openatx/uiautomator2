@@ -114,7 +114,7 @@ class Adb(object):
         try:
             # some device is missing -g
             self.execute('install', '-d', '-r', '-g', apk_path)
-        except subprocess.CalledProcessError:
+        except EnvironmentError:
             self.execute('install', '-d', '-r', apk_path)
 
     def uninstall(self, pkg_name):
