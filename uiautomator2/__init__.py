@@ -108,6 +108,12 @@ class UiObjectNotFoundError(JsonRpcError):
 class UiAutomationNotConnectedError(JsonRpcError):
     pass
 
+class NullExceptionError(JsonRpcError):
+    pass
+
+class StaleObjectExceptionError(JsonRpcError):
+    pass
+
 
 class _ProgressBar(progress.bar.Bar):
     message = "progress"
@@ -355,6 +361,13 @@ class UIAutomatorServer(object):
             # for XiaoMi, want to recover uiautomator2 must start app:com.github.uiautomator
             self.healthcheck(unlock=False)
             return self.jsonrpc_call(*args, **kwargs)
+        except (NullExceptionError, StaleObjectExceptionError) as e:
+            warnings.warn(
+                "uiautomator2 raise exception %s, and run code again" % e,
+                RuntimeWarning,
+                stacklevel=1)
+            time.sleep(1)
+            return self.jsonrpc_call(*args, **kwargs)
 
     def jsonrpc_call(self, jsonrpc_url, method, params=[], http_timeout=60):
         """ jsonrpc2 call
@@ -393,17 +406,20 @@ class UIAutomatorServer(object):
 
         # error happends
         err = JsonRpcError(error)
+
         if err.exception_name and 'UiObjectNotFoundException' in err.exception_name:
             err.__class__ = UiObjectNotFoundError
-        if err.message and 'UiAutomation not connected' in err.message:
-            err.__class__ = UiAutomationNotConnectedError
-
-        # StaleObjectException
-        # https://developer.android.com/reference/android/support/test/uiautomator/StaleObjectException.html
-        # A StaleObjectException exception is thrown when a UiObject2 is used after the underlying View has been destroyed.
-        # In this case, it is necessary to call findObject(BySelector) to obtain a new UiObject2 instance.
-        if err.message and 'android.support.test.uiautomator.StaleObjectException' in err.message:
-            pass
+        if err.message:
+            if 'UiAutomation not connected' in err.message:
+                err.__class__ = UiAutomationNotConnectedError
+            elif 'android.support.test.uiautomator.StaleObjectException' in err.message:
+                # StaleObjectException
+                # https://developer.android.com/reference/android/support/test/uiautomator/StaleObjectException.html
+                # A StaleObjectException exception is thrown when a UiObject2 is used after the underlying View has been destroyed.
+                # In this case, it is necessary to call findObject(BySelector) to obtain a new UiObject2 instance.
+                err.__class__ = StaleObjectExceptionError
+            elif 'java.lang.NullObjectException' in err.message:
+                err.__class__ = NullExceptionError
         raise err
 
     def _jsonrpc_id(self, method):
