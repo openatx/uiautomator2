@@ -717,6 +717,7 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
     u'checkable': False
     }
     ```
+
 * Get/Set/Clear text of an editable field (e.g., EditText widgets)
 
     ```python
@@ -725,6 +726,12 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
     d(text="Settings").clear_text()  # clear the text
     ```
 
+* Get Widget center point
+
+    ```python
+    x, y = d(text="Settings").center()
+    ```
+    
 #### Perform the click action on the selected UI object
 * Perform click on the specific   object
 

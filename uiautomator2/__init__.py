@@ -75,6 +75,7 @@ class JsonRpcError(UiaError):
             -32601: 'Method not found',
             -32602: 'Invalid params',
             -32603: 'Internal error',
+            -32001: 'Jsonrpc error',
         }
         if errcode in m:
             return m[errcode]
@@ -85,13 +86,11 @@ class JsonRpcError(UiaError):
     def __init__(self, error={}):
         self.code = error.get('code')
         self.message = error.get('message', '')
-        self.data = error.get('data')
-        self.exception_name = (self.data or {}).get('exceptionTypeName',
-                                                    'Unknown')
+        self.data = error.get('data', '')
 
     def __str__(self):
         return '%d %s: %s' % (self.code, self.format_errcode(self.code),
-                              '%s <%s>' % (self.exception_name, self.message))
+                              '<%s> data: %s' % (self.message, self.data))
 
     def __repr__(self):
         return repr(str(self))
@@ -407,11 +406,11 @@ class UIAutomatorServer(object):
         # error happends
         err = JsonRpcError(error)
 
-        if err.exception_name and 'UiObjectNotFoundException' in err.exception_name:
-            err.__class__ = UiObjectNotFoundError
         if err.message:
             if 'UiAutomation not connected' in err.message:
                 err.__class__ = UiAutomationNotConnectedError
+            elif 'uiautomator.UiObjectNotFoundException' in err.message:
+                err.__class__ = UiObjectNotFoundError
             elif 'android.support.test.uiautomator.StaleObjectException' in err.message:
                 # StaleObjectException
                 # https://developer.android.com/reference/android/support/test/uiautomator/StaleObjectException.html
@@ -1414,11 +1413,7 @@ class UiObject(object):
         Raises:
             UiObjectNotFoundError
         """
-        info = self.info
-        bounds = self.info.get('visibleBounds') or info.get("bounds")
-        x = (bounds['left'] + bounds['right']) / 2
-        y = (bounds['top'] + bounds['bottom']) / 2
-
+        x, y = self.center()
         # ext.htmlreport need to comment bellow code
         # if info['clickable']:
         #     return self.jsonrpc.click(self.selector)
@@ -1426,6 +1421,17 @@ class UiObject(object):
         delay = self.session.server.click_post_delay
         if delay:
             time.sleep(delay)
+
+    def center(self):
+        """
+        Return:
+            center point (x, y)
+        """
+        info = self.info
+        bounds = info.get('visibleBounds') or info.get("bounds")
+        x = (bounds['left'] + bounds['right']) / 2
+        y = (bounds['top'] + bounds['bottom']) / 2
+        return (x, y)
 
     def click_gone(self, maxretry=10, interval=1.0):
         """
@@ -1460,12 +1466,10 @@ class UiObject(object):
         Args:
             duration (float): seconds of pressed
         """
-        info = self.info
-        if info['longClickable'] and not duration:
-            return self.jsonrpc.longClick(self.selector)
-        bounds = info.get("visibleBounds") or info.get("bounds")
-        x = (bounds["left"] + bounds["right"]) / 2
-        y = (bounds["top"] + bounds["bottom"]) / 2
+        
+        # if info['longClickable'] and not duration:
+        #     return self.jsonrpc.longClick(self.selector)
+        x, y = self.center()
         return self.session.long_click(x, y, duration)
 
     @wrap_wait_exists

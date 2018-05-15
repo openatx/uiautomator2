@@ -1,7 +1,8 @@
 # coding: utf-8
 #
 
-__apk_version__ = '1.0.13'
+__apk_version__ = '1.0.14'
+# 1.0.14 catch NullException, add gps mock support
 # 1.0.13 whatsinput suppoort, but not very well
 # 1.0.12 add toast support
 # 1.0.11 add auto install support
