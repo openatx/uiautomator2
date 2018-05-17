@@ -698,6 +698,37 @@ class UIAutomatorServer(object):
         warnings.warn("Couldn't get focused app", stacklevel=2)
         return dict(package=None, activity=None)
 
+    def wait_activity(self, activity, timeout, interval=1, ignored_exceptions=None):
+        """Wait for an activity
+        :Agrs:
+         - activity - target activity
+         - timeout - max wait time, in seconds
+         - interval - sleep interval between retries, in seconds
+         Example output:
+            (False, True)
+        """
+        IGNORED_EXCEPTIONS = (NullExceptionError,)
+        exceptions = list(IGNORED_EXCEPTIONS)
+        if ignored_exceptions is not None:
+            try:
+                exceptions.extend(iter(ignored_exceptions))
+            except TypeError:  # ignored_exceptions is not iterable
+                exceptions.append(ignored_exceptions)
+        _ignored_exceptions = tuple(exceptions)
+
+        end_time = time.time() + timeout
+        while True:
+            try:
+                if self.current_app().get('activity') == activity:
+                    return True
+            except _ignored_exceptions as exc:
+                screen = getattr(exc, 'screen', None)
+                stacktrace = getattr(exc, 'stacktrace', None)
+            time.sleep(interval)
+            if time.time() > end_time:
+                break
+        return False
+
     def app_stop(self, pkg_name):
         """ Stop one application: am force-stop"""
         self.adb_shell('am', 'force-stop', pkg_name)
@@ -1291,10 +1322,20 @@ class Session(object):
     def exists(self, **kwargs):
         return self(**kwargs).exists
 
-    def xpath_findall(self, xpath):
+    def xpath_center(self, xpath):
         xml = self.server.dump_hierarchy()
-        root = ET.fromstring(xml)
-        return root.findall(xpath)
+        root = ET.fromstring(xml.encode('utf-8'))
+
+        elem = root.findall(xpath)
+        if elem is None or len(elem) < 1:
+            raise ValueError("Invalid XPATH %s" % xpath)
+        elif len(elem) == 1:
+            bounds = re.findall("\d+", elem[0].attrib.get('bounds'))
+            x = (int(bounds[0]) + int(bounds[2])) / 2
+            y = (int(bounds[1]) + int(bounds[3])) / 2
+            return (x, y)
+        else:
+            raise ValueError("XPATH %s 元素过多，不够精确" % xpath)
 
     def watcher(self, name):
         obj = self

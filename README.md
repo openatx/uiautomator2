@@ -947,6 +947,30 @@ d.make_toast("Hello world")
 d.make_toast("Hello world", 1.5) # show for 1.5s
 ```
 
+### 通过XPath获取控件位置并操作
+
+* XPath正确填写可参考 [XPath](https://en.wikipedia.org/wiki/XPath)
+* 实现原理，可参考 [用 ElementTree 在 Python 中解析 XML](http://pycoders-weekly-chinese.readthedocs.io/en/latest/issue6/processing-xml-in-python-with-element-tree.html)
+
+* 使用方法：
+    >   使用小技巧，需要先确认某个activity页面已经加载完成，然后使用XPath进行点击
+
+    *  查看当前页面所处activity
+
+    ```python
+    print d.current_app().get("activity")
+    ```
+
+    *  确认所属activity加载完毕，然后使用xpath_center获取坐标值，然后进行点击
+    ```python
+    if driver.wait_activity("com.sport.in.MainActivity", 5):
+        x, y = driver.xpath_center(".//*[@resource-id='button_change_mode_to_normal']")
+        driver.click(x, y)
+    else:
+        raise Exception(u"出错了，不在xxx界面")
+
+    ```
+
 ## 测试方法
 ```bash
 $ adb forward tcp:9008 tcp:9008
