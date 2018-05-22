@@ -44,9 +44,9 @@ class Adb(object):
                 raise EnvironmentError("subprocess", cmdline,
                                        e.output.decode(
                                            'utf-8', errors='ignore'))
-            else:
-                print("Error output:", e.output.decode(
-                    'utf-8', errors='ignore'))
+            # else:
+            #     print("Error output:", e.output.decode(
+            #         'utf-8', errors='ignore'))
             return ''
 
     @property
