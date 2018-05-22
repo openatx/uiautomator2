@@ -126,4 +126,6 @@ class Adb(object):
         version_name = m.group('name') if m else None
         m = re.search(r'PackageSignatures\{(.*?)\}', output)
         signature = m.group(1) if m else None
+        if version_name is None and signature is None:
+            return None
         return dict(version_name=version_name, signature=signature)
