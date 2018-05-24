@@ -107,8 +107,10 @@ class UiObjectNotFoundError(JsonRpcError):
 class UiAutomationNotConnectedError(JsonRpcError):
     pass
 
+
 class NullExceptionError(JsonRpcError):
     pass
+
 
 class StaleObjectExceptionError(JsonRpcError):
     pass
@@ -603,8 +605,11 @@ class UIAutomatorServer(object):
             content = U(xml_text.toprettyxml(indent='  '))
         return content
 
-    def adb_shell(self, *args):
+    def adb_shell(self, *args, stream=False):
         """
+        Args:
+            stream: bool set to True to support long running command
+
         Example:
             adb_shell('pwd')
             adb_shell('ls', '-l')
@@ -614,6 +619,12 @@ class UIAutomatorServer(object):
             a UTF-8 encoded string for stdout merged with stderr, after the entire shell command is completed.
         """
         cmdline = args[0] if len(args) == 1 else list2cmdline(args)
+        if stream:
+            return self._reqsess.get(
+                self.path2url("/shell/stream"),
+                params={"command": cmdline},
+                stream=True)
+
         ret = self._reqsess.post(
             self.path2url('/shell'), data={'command': cmdline})
         if ret.status_code != 200:
@@ -864,7 +875,7 @@ class UIAutomatorServer(object):
     #     """
     #     Args:
     #         patterns (dict): key is package name, value is button text
-        
+
     #     Example value of patterns:
     #         {"com.android.packageinstaller": [u"确定", u"安装"]}
     #     """
@@ -1466,7 +1477,7 @@ class UiObject(object):
         Args:
             duration (float): seconds of pressed
         """
-        
+
         # if info['longClickable'] and not duration:
         #     return self.jsonrpc.longClick(self.selector)
         x, y = self.center()

@@ -288,12 +288,22 @@ This part showcases how to perform common device operations:
    If the command is a blocking command, `adb_shell` will also block until the command is completed or the timeout kicks in. No partial output will be received during the execution of the command. This API is not suitable for long-running commands. The shell command given runs in a similar environment of `adb shell`, which has a Linux permission level of `adb` or `shell` (higher than an app permission).
 
 * Run a long-running shell command
-**TODO: not implemented yet**
-    ```python
-    d.adb_shell_longrunning('getevent', '-lt')
-    ```
-    This API returns a generator.
 
+    add stream=True will return `requests.models.Response` object. More info see [requests stream](http://docs.python-requests.org/zh_CN/latest/user/quickstart.html#id5)
+
+    ```python
+    r = d.adb_shell("logcat", stream=True)
+    # r: requests.models.Response
+    deadline = time.time() + 10 # run maxium 10s
+    try:
+        for line in r.iter_lines() # r.iter_lines(chunk_size=512, decode_unicode=None, delimiter=None)
+            if time.time() > deadline:
+                break
+            print("Read:", line.decode('utf-8'))
+    finally:
+        r.close() # this method must be called
+    ```
+    
 ### Session
 Session represent an app lifestyle. Can be used to start app, detect app crash.
 
