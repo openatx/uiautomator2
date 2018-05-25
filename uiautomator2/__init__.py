@@ -302,7 +302,7 @@ class UIAutomatorServer(object):
 
     @property
     def serial(self):
-        return self.adb_shell('getprop', 'ro.serialno').strip()
+        return self.shell(['getprop', 'ro.serialno'])[0].strip()
 
     def path2url(self, path):
         return urlparse.urljoin(self._server_url, path)
@@ -510,13 +510,15 @@ class UIAutomatorServer(object):
                 # XiaoMi uiautomator will kill the app(com.github.uiautomator) when launch
                 #   it is better to start a service to make uiautomator live longer
                 if self.current_app()['package'] != 'com.github.uiautomator':
-                    self.adb_shell('am', 'startservice', '-n',
-                                   'com.github.uiautomator/.Service')
+                    self.shell([
+                        'am', 'startservice', '-n',
+                        'com.github.uiautomator/.Service'
+                    ])
                     time.sleep(.5)
                     return True
                 else:
                     time.sleep(.5)
-                    self.adb_shell('input', 'keyevent', 'BACK')
+                    self.shell(['input', 'keyevent', 'BACK'])
                     return True
             time.sleep(.5)
         raise RuntimeError("Uiautomator started failed.")
@@ -605,32 +607,61 @@ class UIAutomatorServer(object):
             content = U(xml_text.toprettyxml(indent='  '))
         return content
 
-    def adb_shell(self, *args, stream=False):
+    def shell(self, cmdargs, stream=False, timeout=60):
         """
-        Args:
-            stream: bool set to True to support long running command
+        Run adb shell command with arguments and return its output. Require atx-agent >=0.3.3
 
+        Args:
+            cmdargs: str or list, example: "ls -l" or ["ls", "-l"]
+            timeout: seconds of command run, works on when stream is False
+            stream: bool used for long running process.
+        
+        Returns:
+            (output, exit_code) when stream is False
+            requests.Response when stream is True, you have to close it after using
+        
+        Raises:
+            RuntimeError
+        
+        For atx-agent is not support return exit code now.
+        When command got something wrong, exit_code is always 1, otherwise exit_code is always 0
+        """
+        if isinstance(cmdargs, (list, tuple)):
+            cmdargs = list2cmdline(cmdargs)
+        if stream:
+            return self._reqsess.get(
+                self.path2url("/shell/stream"),
+                params={"command": cmdargs},
+                stream=True)
+        ret = self._reqsess.post(
+            self.path2url('/shell'),
+            data={
+                'command': cmdargs,
+                'timeout': str(timeout)
+            })
+        if ret.status_code != 200:
+            raise RuntimeError("device agent responds with an error code %d" %
+                               ret.status_code, ret.text)
+        resp = ret.json()
+        exit_code = 1 if resp.get('error') else 0
+        exit_code = resp.get('exitCode', exit_code)
+        return resp.get('output'), exit_code
+
+    def adb_shell(self, *args):
+        """
         Example:
             adb_shell('pwd')
             adb_shell('ls', '-l')
             adb_shell('ls -l')
 
         Returns:
-            a UTF-8 encoded string for stdout merged with stderr, after the entire shell command is completed.
+            string for stdout merged with stderr, after the entire shell command is completed.
         """
+        # print(
+        #     "DeprecatedWarning: adb_shell is deprecated, use: output, exit_code = shell(['ls', '-l']) instead"
+        # )
         cmdline = args[0] if len(args) == 1 else list2cmdline(args)
-        if stream:
-            return self._reqsess.get(
-                self.path2url("/shell/stream"),
-                params={"command": cmdline},
-                stream=True)
-
-        ret = self._reqsess.post(
-            self.path2url('/shell'), data={'command': cmdline})
-        if ret.status_code != 200:
-            raise RuntimeError("device agent responds with an error code %d" %
-                               ret.status_code)
-        return ret.json().get('output')
+        return self.shell(cmdline)[0]
 
     def app_start(self,
                   pkg_name,
@@ -673,14 +704,15 @@ class UIAutomatorServer(object):
                 else:
                     extra_args.extend(['-e', k, v])
             args += extra_args
-            self.adb_shell(
-                *args
-            )  #'am', 'start', '-W', '-n', '{}/{}'.format(pkg_name, activity))
+            #'am', 'start', '-W', '-n', '{}/{}'.format(pkg_name, activity))
+            self.shell(args)
         else:
             if stop:
                 self.app_stop(pkg_name)
-            self.adb_shell('monkey', '-p', pkg_name, '-c',
-                           'android.intent.category.LAUNCHER', '1')
+            self.shell([
+                'monkey', '-p', pkg_name, '-c',
+                'android.intent.category.LAUNCHER', '1'
+            ])
 
     def current_app(self):
         """
@@ -690,7 +722,7 @@ class UIAutomatorServer(object):
         _activityRE = re.compile(
             r'ACTIVITY (?P<package>[^/]+)/(?P<activity>[^/\s]+) \w+ pid=(?P<pid>\d+)'
         )
-        m = _activityRE.search(self.adb_shell('dumpsys', 'activity', 'top'))
+        m = _activityRE.search(self.shell(['dumpsys', 'activity', 'top'])[0])
         if m:
             return dict(
                 package=m.group('package'),
@@ -701,7 +733,7 @@ class UIAutomatorServer(object):
         _focusedRE = re.compile(
             'mFocusedApp=.*ActivityRecord{\w+ \w+ (?P<package>.*)/(?P<activity>.*) .*'
         )
-        m = _focusedRE.search(self.adb_shell('dumpsys', 'window', 'windows'))
+        m = _focusedRE.search(self.shell(['dumpsys', 'window', 'windows']))
         if m:
             return dict(
                 package=m.group('package'), activity=m.group('activity'))
@@ -711,10 +743,10 @@ class UIAutomatorServer(object):
 
     def app_stop(self, pkg_name):
         """ Stop one application: am force-stop"""
-        self.adb_shell('am', 'force-stop', pkg_name)
+        self.shell(['am', 'force-stop', pkg_name])
 
     def app_stop_all(self, excludes=[]):
-        """ Stop all applications
+        """ Stop all third party applications
         Args:
             excludes (list): apps that do now want to kill
         
@@ -722,9 +754,9 @@ class UIAutomatorServer(object):
             a list of killed apps
         """
         our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
-        pkgs = re.findall('package:([^\s]+)',
-                          self.adb_shell('pm', 'list', 'packages', '-3'))
-        process_names = re.findall('([^\s]+)$', self.adb_shell('ps'), re.M)
+        output, _ = self.shell(['pm', 'list', 'packages', '-3'])
+        pkgs = re.findall('package:([^\s]+)', output)
+        process_names = re.findall('([^\s]+)$', self.shell('ps')[0], re.M)
         kill_pkgs = set(pkgs).intersection(process_names).difference(
             our_apps + excludes)
         kill_pkgs = list(kill_pkgs)
@@ -734,17 +766,17 @@ class UIAutomatorServer(object):
 
     def app_clear(self, pkg_name):
         """ Stop and clear app data: pm clear """
-        self.adb_shell('pm', 'clear', pkg_name)
+        self.shell(['pm', 'clear', pkg_name])
 
     def app_uninstall(self, pkg_name):
         """ Uninstall an app """
-        self.adb_shell("pm", "uninstall", pkg_name)
+        self.shell(["pm", "uninstall", pkg_name])
 
     def app_uninstall_all(self, excludes=[], verbose=False):
         """ Uninstall all apps """
         our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
-        pkgs = re.findall('package:([^\s]+)',
-                          self.adb_shell('pm', 'list', 'packages', '-3'))
+        output, _ = self.shell(['pm', 'list', 'packages', '-3'])
+        pkgs = re.findall('package:([^\s]+)', output)
         pkgs = set(pkgs).difference(our_apps + excludes)
         pkgs = list(pkgs)
         for pkg_name in pkgs:
@@ -763,9 +795,10 @@ class UIAutomatorServer(object):
         Args:
             theme (str): black or red
         """
-        self.adb_shell('am', 'start', '-W', '-n',
-                       'com.github.uiautomator/.IdentifyActivity', '-e',
-                       'theme', theme)
+        self.shell([
+            'am', 'start', '-W', '-n',
+            'com.github.uiautomator/.IdentifyActivity', '-e', 'theme', theme
+        ])
 
     def _pidof_app(self, pkg_name):
         """
@@ -1022,10 +1055,10 @@ class Session(object):
         """ Enable of Disable FastInputIME """
         fast_ime = 'com.github.uiautomator/.FastInputIME'
         if enable:
-            self.server.adb_shell('ime', 'enable', fast_ime)
-            self.server.adb_shell('ime', 'set', fast_ime)
+            self.server.shell(['ime', 'enable', fast_ime])
+            self.server.shell(['ime', 'set', fast_ime])
         else:
-            self.server.adb_shell('ime', 'disable', fast_ime)
+            self.server.shell(['ime', 'disable', fast_ime])
 
     @check_alive
     def send_keys(self, text):
@@ -1036,8 +1069,10 @@ class Session(object):
         try:
             self.wait_fastinput_ime()
             base64text = base64.b64encode(text.encode('utf-8')).decode()
-            self.server.adb_shell('am', 'broadcast', '-a', 'ADB_INPUT_TEXT',
-                                  '--es', 'text', base64text)
+            self.server.shell([
+                'am', 'broadcast', '-a', 'ADB_INPUT_TEXT', '--es', 'text',
+                base64text
+            ])
             return True
         except EnvironmentError:
             warnings.warn(
@@ -1055,7 +1090,7 @@ class Session(object):
         """
         try:
             self.wait_fastinput_ime()
-            self.server.adb_shell('am', 'broadcast', '-a', 'ADB_CLEAR_TEXT')
+            self.server.shell(['am', 'broadcast', '-a', 'ADB_CLEAR_TEXT'])
         except EnvironmentError:
             # for Android simulator
             self(focused=True).clear_text()
@@ -1090,7 +1125,7 @@ class Session(object):
         Example output:
             ("com.github.uiautomator/.FastInputIME", True)
         """
-        dim = self.server.adb_shell('dumpsys', 'input_method')
+        dim = self.server.shell(['dumpsys', 'input_method'])
         m = _INPUT_METHOD_RE.search(dim)
         method_id = None if not m else m.group(1)
         shown = "mInputShown=true" in dim

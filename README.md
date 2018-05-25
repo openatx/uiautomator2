@@ -277,32 +277,48 @@ Now you know the button text and current package name. Make a pull request by up
 This part showcases how to perform common device operations:
 
 ### Shell commands
-* Run a short-lived shell command with a timeout protection. (Default timeout 10 minutes)
+* Run a short-lived shell command with a timeout protection. (Default timeout 60s)
 
-   ```python
-    d.adb_shell('pwd')
-    d.adb_shell('ls', '-l')
-    d.adb_shell('ls -l')
-   ```
-   This returns a UTF-8 encoded string for stdout merged with stderr. Note for binary mode stdouts, the output is encoded as a UTF-8 string not a bytearray.
-   If the command is a blocking command, `adb_shell` will also block until the command is completed or the timeout kicks in. No partial output will be received during the execution of the command. This API is not suitable for long-running commands. The shell command given runs in a similar environment of `adb shell`, which has a Linux permission level of `adb` or `shell` (higher than an app permission).
+    Note: timeout support require `atx-agent >=0.3.3`
+
+    `adb_shell` function is deprecated. Use `shell` instead.
+
+    Simple usage
+
+    ```python
+    output, exit_code = d.shell("pwd", timeout=60) # timeout 60s (Default)
+    # output: "/\n", exit_code: 0
+    # Similar to command: adb shell pwd
+    ```
+
+    The first argument can be list. for example
+
+    ```python
+    output, exit_code = d.shell(["ls", "-l"])
+    # output: "/....", exit_code: 0
+    ```
+
+   This returns a string for stdout merged with stderr.
+   If the command is a blocking command, `shell` will also block until the command is completed or the timeout kicks in. No partial output will be received during the execution of the command. This API is not suitable for long-running commands. The shell command given runs in a similar environment of `adb shell`, which has a Linux permission level of `adb` or `shell` (higher than an app permission).
 
 * Run a long-running shell command
 
     add stream=True will return `requests.models.Response` object. More info see [requests stream](http://docs.python-requests.org/zh_CN/latest/user/quickstart.html#id5)
 
     ```python
-    r = d.adb_shell("logcat", stream=True)
+    r = d.shell("logcat", stream=True)
     # r: requests.models.Response
     deadline = time.time() + 10 # run maxium 10s
     try:
-        for line in r.iter_lines() # r.iter_lines(chunk_size=512, decode_unicode=None, delimiter=None)
+        for line in r.iter_lines(): # r.iter_lines(chunk_size=512, decode_unicode=None, delimiter=None)
             if time.time() > deadline:
                 break
             print("Read:", line.decode('utf-8'))
     finally:
         r.close() # this method must be called
     ```
+
+    Command will be terminated when `r.close()` called.
     
 ### Session
 Session represent an app lifestyle. Can be used to start app, detect app crash.
