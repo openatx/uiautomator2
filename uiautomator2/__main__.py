@@ -96,6 +96,7 @@ class Installer(adbutils.Adb):
         self.abi = self.getprop('ro.product.cpu.abi')
         self.pre = self.getprop('ro.build.version.preview_sdk')
         self.arch = self.getprop('ro.arch')
+        self.brand = self.getprop('ro.product.brand')
         self.server_addr = None
 
     def install_minicap(self):
@@ -113,7 +114,10 @@ class Installer(adbutils.Adb):
         log.info("install minicap")
         url = base_url + self.abi + "/bin/minicap"
         path = cache_download(url)
-        self.push(path, '/data/local/tmp/minicap', 0o755)
+        if self.brand.upper() in ['ZUK']:
+            self.push(path, '/data/data/com.android.shell', 0o755)
+        else:
+            self.push(path, '/data/local/tmp/minicap', 0o755)
 
     def install_minitouch(self):
         """ Need test """
@@ -124,7 +128,10 @@ class Installer(adbutils.Adb):
             self.abi + "/bin/minitouch"
         ])
         path = cache_download(url)
-        self.push(path, '/data/local/tmp/minitouch', 0o755)
+        if self.brand.upper() in ['ZUK']:
+            self.push(path, '/data/data/com.android.shell', 0o755)
+        else:
+            self.push(path, '/data/local/tmp/minitouch', 0o755)
 
     def download_uiautomator_apk(self, apk_version):
         app_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % apk_version
@@ -172,6 +179,13 @@ class Installer(adbutils.Adb):
             raise EnvironmentError(
                 "package com.github.uiautomator.test not installed")
 
+    def install_atx_agent_dev(self):
+        if self.brand.upper() in ['ZUK']:
+            self.push("./lib/agent/atx-agent", '/data/data/com.android.shell', 0o755)
+        else:
+            self.push("./lib/agent/atx-agent", '/data/local/tmp/atx-agent', 0o755)
+        log.debug("atx-agent installed")
+
     def install_atx_agent(self, agent_version, reinstall=False):
         version_output = self.shell(
             '/data/local/tmp/atx-agent', '-v', raise_error=False).strip()
@@ -216,7 +230,10 @@ class Installer(adbutils.Adb):
 
     def launch_and_check(self):
         log.info("launch atx-agent daemon")
-        args = ['TMPDIR=/sdcard', '/data/local/tmp/atx-agent', '-d']
+        if self.brand.upper() in ['ZUK']:
+            args = ['TMPDIR=/sdcard', '/data/data/com.android.shell/atx-agent', '-d']
+        else:
+            args = ['TMPDIR=/sdcard', '/data/local/tmp/atx-agent', '-d']
         if self.server_addr:
             args.append('-t')
             args.append(self.server_addr)
@@ -295,7 +312,8 @@ class MyFire(object):
         ins.install_minicap()
         ins.install_minitouch()
         ins.install_uiautomator_apk(apk_version, reinstall)
-        ins.install_atx_agent(agent_version, reinstall)
+        ins.install_atx_agent_dev()
+        # ins.install_atx_agent(agent_version, reinstall)
         if not ignore_apk_check:
             ins.check_apk_installed(apk_version)
         ins.launch_and_check()
