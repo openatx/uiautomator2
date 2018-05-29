@@ -13,6 +13,8 @@ uiautomator2 是一个可以使用Python对Android设备进行UI自动化的库�
 
 虽然我说的很简单，但是实现起来用到了很多的技术和技巧，功能非常强，唯独文档有点少。哈哈
 
+![QQ Icon](docs/img/qq-international-icon-32.png) QQ沟通群: *499563266*
+
 # Installation
 1. Install uiautomator2
 
@@ -67,6 +69,19 @@ uiautomator2 是一个可以使用Python对Android设备进行UI自动化的库�
     ```bash
     $ python -m uiautomator2 app-stop-all $device_ip
     ```
+
+- screenshot: 截图
+
+    ```bash
+    $ python -m uiautomator2 screenshot $device_ip screenshot.jpg
+    ```
+
+- healthcheck: 健康检查
+
+    ```bash
+    $ python -m uiautomator2 healthcheck $device_ip
+    ```
+    
 ## QUICK START
 There are two ways to connect to the device. Run the following Python code in a Python 2.7/3+ interpreter:
 
@@ -98,6 +113,7 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 
 ### 感觉肯定用得着的资料链接
 
+- [Question and Answers (FAQ)](https://testerhome.com/topics/12025)
 - [浅谈自动化测试工具python-uiautomator2](https://testerhome.com/topics/11357)
 - [weditor](https://github.com/openatx/weditor) 用于查看UI层次结构，方便写脚本用。
 - [htmlreport](uiautomator2/ext/htmlreport) 记录测试过程的测试报告（实验性质）
@@ -236,7 +252,9 @@ d.app_stop_all(excludes=['com.examples.demo'])
     d.pull("/sdcard/some-file-not-exists.txt", "tmp.txt")
     ```
 
-### Auto click permission dialogs
+### ~~Auto click permission dialogs~~
+**注意注意** `disable_popups`函数，检测发现很不稳定，暂时不要使用，等候通知。
+
 Import in version 0.1.1
 
 ```python
@@ -259,23 +277,49 @@ Now you know the button text and current package name. Make a pull request by up
 This part showcases how to perform common device operations:
 
 ### Shell commands
-* Run a short-lived shell command with a timeout protection. (Default timeout 10 minutes)
+* Run a short-lived shell command with a timeout protection. (Default timeout 60s)
 
-   ```python
-    d.adb_shell('pwd')
-    d.adb_shell('ls', '-l')
-    d.adb_shell('ls -l')
-   ```
-   This returns a UTF-8 encoded string for stdout merged with stderr. Note for binary mode stdouts, the output is encoded as a UTF-8 string not a bytearray.
-   If the command is a blocking command, `adb_shell` will also block until the command is completed or the timeout kicks in. No partial output will be received during the execution of the command. This API is not suitable for long-running commands. The shell command given runs in a similar environment of `adb shell`, which has a Linux permission level of `adb` or `shell` (higher than an app permission).
+    Note: timeout support require `atx-agent >=0.3.3`
+
+    `adb_shell` function is deprecated. Use `shell` instead.
+
+    Simple usage
+
+    ```python
+    output, exit_code = d.shell("pwd", timeout=60) # timeout 60s (Default)
+    # output: "/\n", exit_code: 0
+    # Similar to command: adb shell pwd
+    ```
+
+    The first argument can be list. for example
+
+    ```python
+    output, exit_code = d.shell(["ls", "-l"])
+    # output: "/....", exit_code: 0
+    ```
+
+   This returns a string for stdout merged with stderr.
+   If the command is a blocking command, `shell` will also block until the command is completed or the timeout kicks in. No partial output will be received during the execution of the command. This API is not suitable for long-running commands. The shell command given runs in a similar environment of `adb shell`, which has a Linux permission level of `adb` or `shell` (higher than an app permission).
 
 * Run a long-running shell command
-**TODO: not implemented yet**
-    ```python
-    d.adb_shell_longrunning('getevent', '-lt')
-    ```
-    This API returns a generator.
 
+    add stream=True will return `requests.models.Response` object. More info see [requests stream](http://docs.python-requests.org/zh_CN/latest/user/quickstart.html#id5)
+
+    ```python
+    r = d.shell("logcat", stream=True)
+    # r: requests.models.Response
+    deadline = time.time() + 10 # run maxium 10s
+    try:
+        for line in r.iter_lines(): # r.iter_lines(chunk_size=512, decode_unicode=None, delimiter=None)
+            if time.time() > deadline:
+                break
+            print("Read:", line.decode('utf-8'))
+    finally:
+        r.close() # this method must be called
+    ```
+
+    Command will be terminated when `r.close()` called.
+    
 ### Session
 Session represent an app lifestyle. Can be used to start app, detect app crash.
 
@@ -417,6 +461,13 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
     d.click(x, y)
     ```
 
+* Double click
+
+    ```python
+    d.double_click(x, y)
+    d.double_click(x, y, 0.1) # default duration between two click is 0.1s
+    ```
+
 * Long click on the screen
 
     ```python
@@ -436,6 +487,17 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
     ```python
     d.drag(sx, sy, ex, ey)
     d.drag(sx, sy, ex, ey, 0.5) # swipe for 0.5s(default)
+
+* Swipe points
+
+    ```python
+    # swipe from point(x0, y0) to point(x1, y1) then to point(x2, y2)
+    # time will speed 0.2s bwtween two points
+    d.swipe((x0, y0), (x1, y1), (x2, y2), 0.2)
+    ```
+
+    多用于九宫格解锁，提前获取到每个点的相对坐标（这里支持百分比），
+    更详细的使用参考这个帖子 [使用u2实现九宫图案解锁](https://testerhome.com/topics/11034)
 
 Note: click, swipe, drag operations support percentage position values. Example:
 
@@ -681,6 +743,7 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
     u'checkable': False
     }
     ```
+
 * Get/Set/Clear text of an editable field (e.g., EditText widgets)
 
     ```python
@@ -689,6 +752,12 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
     d(text="Settings").clear_text()  # clear the text
     ```
 
+* Get Widget center point
+
+    ```python
+    x, y = d(text="Settings").center()
+    ```
+    
 #### Perform the click action on the selected UI object
 * Perform click on the specific   object
 
@@ -697,10 +766,10 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
     d(text="Settings").click()
     # wait element to appear for at most 10 seconds and then click
     d(text="Settings").click(timeout=10)
-    # alias of click
-    d(text="Settings").tap()
-    # tap immediately
-    d(text="Settings").tap_nowait()
+    # click when exists in 10s, default timeout 0s
+    clicked = d(text='Skip').click_exists(timeout=10.0)
+    # click until element gone, return bool
+    is_gone = d(text="Skip").click_gone(maxretry=10, interval=1.0) # maxretry default 10, interval default 1.0
     ```
 
 * Perform long click on the specific UI object
