@@ -177,7 +177,7 @@ def connect_wifi(addr=None):
     """
     Args:
         addr (str) uiautomator server address.
-    
+
     Examples:
         connect_wifi("10.0.0.1")
     """
@@ -239,7 +239,7 @@ class UIAutomatorServer(object):
         Args:
             host (str): host address
             port (int): port number
-        
+
         Raises:
             EnvironmentError
         """
@@ -351,7 +351,7 @@ class UIAutomatorServer(object):
         return JSONRpcWrapper(self)
 
     def jsonrpc_retry_call(self, *args,
-                           **kwargs):  #method, params=[], http_timeout=60):
+                           **kwargs):  # method, params=[], http_timeout=60):
         try:
             return self.jsonrpc_call(*args, **kwargs)
         except (GatewayError, UiAutomationNotConnectedError):
@@ -462,7 +462,8 @@ class UIAutomatorServer(object):
         class _Service(object):
             def __init__(self, name):
                 self.name = name
-                assert name == 'uiautomator'  # FIXME(ssx): support other service: minicap, minitouch
+                # FIXME(ssx): support other service: minicap, minitouch
+                assert name == 'uiautomator'
 
             def start(self):
                 res = u2obj._reqsess.post(u2obj.path2url('/uiautomator'))
@@ -481,7 +482,7 @@ class UIAutomatorServer(object):
 
         Args:
             unlock (bool): unlock screen before
-        
+
         Raises:
             RuntimeError
         """
@@ -615,14 +616,14 @@ class UIAutomatorServer(object):
             cmdargs: str or list, example: "ls -l" or ["ls", "-l"]
             timeout: seconds of command run, works on when stream is False
             stream: bool used for long running process.
-        
+
         Returns:
             (output, exit_code) when stream is False
             requests.Response when stream is True, you have to close it after using
-        
+
         Raises:
             RuntimeError
-        
+
         For atx-agent is not support return exit code now.
         When command got something wrong, exit_code is always 1, otherwise exit_code is always 0
         """
@@ -704,7 +705,7 @@ class UIAutomatorServer(object):
                 else:
                     extra_args.extend(['-e', k, v])
             args += extra_args
-            #'am', 'start', '-W', '-n', '{}/{}'.format(pkg_name, activity))
+            # 'am', 'start', '-W', '-n', '{}/{}'.format(pkg_name, activity))
             self.shell(args)
         else:
             if stop:
@@ -749,7 +750,7 @@ class UIAutomatorServer(object):
         """ Stop all third party applications
         Args:
             excludes (list): apps that do now want to kill
-        
+
         Returns:
             a list of killed apps
         """
@@ -814,7 +815,7 @@ class UIAutomatorServer(object):
             url (str): http url address
             dst (str): destination
             mode (str): file mode
-        
+
         Raises:
             FileNotFoundError(py3) OSError(py2)
         """
@@ -856,14 +857,14 @@ class UIAutomatorServer(object):
         Args:
             src (path or fileobj): source file
             dst (str): destination can be folder or file path
-        
+
         Returns:
             dict object, for example:
-                
+
                 {"mode": "0660", "size": 63, "target": "/sdcard/ABOUT.rst"}
-            
+
             Since chmod may fail in android, the result "mode" may not same with input args(mode)
-        
+
         Raises:
             IOError(if push got something wrong)
         """
@@ -1121,11 +1122,11 @@ class Session(object):
         """ Current input method
         Returns:
             (method_id(str), shown(bool)
-        
+
         Example output:
             ("com.github.uiautomator/.FastInputIME", True)
         """
-        dim = self.server.shell(['dumpsys', 'input_method'])
+        dim, _ = self.server.shell(['dumpsys', 'input_method'])
         m = _INPUT_METHOD_RE.search(dim)
         method_id = None if not m else m.group(1)
         shown = "mInputShown=true" in dim
@@ -1201,11 +1202,11 @@ class Session(object):
             fx, fy: from position
             tx, ty: to position
             duration (float): duration
-        
+
         Documents:
             uiautomator use steps instead of duration
             As the document say: Each step execution is throttled to 5ms per step.
-        
+
         Links:
             https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe%28int,%20int,%20int,%20int,%20int%29
         """
@@ -1219,7 +1220,7 @@ class Session(object):
         Args:
             points: is point array containg at least one point object. eg [[200, 300], [210, 320]]
             duration: duration to inject between two points
-            
+
         Links:
             https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe(android.graphics.Point[], int)
         """
@@ -1248,7 +1249,7 @@ class Session(object):
         Args:
             filename (str): saved filename
             format (string): used when filename is empty. one of "pillow" or "opencv"
-        
+
         Raises:
             IOError, SyntaxError
 
@@ -1452,10 +1453,10 @@ class UiObject(object):
     def click(self):
         """
         Click UI element. 
-        
+
         The click method does the same logic as java uiautomator does.
         1. waitForExists 2. get VisibleBounds center 3. send click event
-        
+
         Raises:
             UiObjectNotFoundError
         """
@@ -1559,7 +1560,7 @@ class UiObject(object):
     def wait(self, exists=True, timeout=10):
         """
         Wait until UI Element exists or gone
-        
+
         Args:
             timeout (float): wait element timeout
 
