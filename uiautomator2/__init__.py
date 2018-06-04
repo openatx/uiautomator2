@@ -564,15 +564,18 @@ class UIAutomatorServer(object):
             if message == 'downloading':
                 downloaded = False
                 if pg:  # if there is a progress
-                    if sys.stdout.isatty():
-                        if not bar:
-                            bar = _ProgressBar(
-                                time.strftime('%H:%M:%S') + ' downloading',
-                                max=pg['totalSize'])
-                        written = pg['copiedSize']
-                        bar.next(written - bar.index)
+                    if hasattr(sys.stdout, 'isatty'):
+                        if sys.stdout.isatty():
+                            if not bar:
+                                bar = _ProgressBar(
+                                    time.strftime('%H:%M:%S') + ' downloading',
+                                    max=pg['totalSize'])
+                            written = pg['copiedSize']
+                            bar.next(written - bar.index)
+                        else:
+                            notty_print_progress(pg)
                     else:
-                        notty_print_progress(pg)
+                        pass
                 else:
                     print(time.strftime('%H:%M:%S'), "download initialing")
             else:
