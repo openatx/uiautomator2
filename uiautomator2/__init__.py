@@ -724,9 +724,9 @@ class UIAutomatorServer(object):
         """
         # try: adb shell dumpsys activity top
         _activityRE = re.compile(
-            r'ACTIVITY (?P<package>[^/]+)/(?P<activity>[^/\s]+) \w+ pid=(?P<pid>\d+)'
+            r'(?P<package>[^/]+)/(?P<activity>[^/\s]+) \w+ pid=(?P<pid>\d+)'
         )
-        m = _activityRE.search(self.shell(['dumpsys', 'activity', 'top'])[0])
+        m = _activityRE.search(self.shell('dumpsys activity top | grep ACTIVITY')[0].split('ACTIVITY')[-1])
         if m:
             return dict(
                 package=m.group('package'),
