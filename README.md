@@ -955,6 +955,28 @@ d.click_post_delay = 1.5 # default no delay
 d.wait_timeout = 30.0 # default 20.0
 ```
 
+UiAutomator中的超时设置(隐藏方法)
+
+```python
+>> d.jsonrpc.getConfigurator()
+{'actionAcknowledgmentTimeout': 3000,
+ 'keyInjectionDelay': 0,
+ 'scrollAcknowledgmentTimeout': 200,
+ 'waitForIdleTimeout': 10000,
+ 'waitForSelectorTimeout': 10000}
+
+>> d.jsonrpc.setConfigurator({"waitForIdleTimeout": 100})
+{'actionAcknowledgmentTimeout': 3000,
+ 'keyInjectionDelay': 0,
+ 'scrollAcknowledgmentTimeout': 200,
+ 'waitForIdleTimeout': 100,
+ 'waitForSelectorTimeout': 10000}
+```
+
+为了防止客户端程序响应超时，`waitForIdleTimeout`和`waitForSelectorTimeout`目前已改为`0`
+
+Refs: [Google uiautomator Configurator](https://developer.android.com/reference/android/support/test/uiautomator/Configurator)
+
 ### Input method
 这种方法通常用于不知道控件的情况下的输入。第一步需要切换输入法，然后发送adb广播命令，具体使用方法如下
 

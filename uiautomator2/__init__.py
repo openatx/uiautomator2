@@ -177,7 +177,7 @@ def connect_wifi(addr=None):
     """
     Args:
         addr (str) uiautomator server address.
-    
+
     Examples:
         connect_wifi("10.0.0.1")
     """
@@ -239,7 +239,7 @@ class UIAutomatorServer(object):
         Args:
             host (str): host address
             port (int): port number
-        
+
         Raises:
             EnvironmentError
         """
@@ -351,7 +351,7 @@ class UIAutomatorServer(object):
         return JSONRpcWrapper(self)
 
     def jsonrpc_retry_call(self, *args,
-                           **kwargs):  #method, params=[], http_timeout=60):
+                           **kwargs):  # method, params=[], http_timeout=60):
         try:
             return self.jsonrpc_call(*args, **kwargs)
         except (GatewayError, UiAutomationNotConnectedError):
@@ -462,7 +462,8 @@ class UIAutomatorServer(object):
         class _Service(object):
             def __init__(self, name):
                 self.name = name
-                assert name == 'uiautomator'  # FIXME(ssx): support other service: minicap, minitouch
+                # FIXME(ssx): support other service: minicap, minitouch
+                assert name == 'uiautomator'
 
             def start(self):
                 res = u2obj._reqsess.post(u2obj.path2url('/uiautomator'))
@@ -481,22 +482,21 @@ class UIAutomatorServer(object):
 
         Args:
             unlock (bool): unlock screen before
-        
+
         Raises:
             RuntimeError
         """
         if unlock:
             self.open_identify()
 
-        # if self.alive:
-        #     self.adb_shell('input', 'keyevent', 'BACK')
-        #     return True
-
         self._reqsess.delete(
             self.path2url('/uiautomator'))  # stop uiautomator keeper first
         wait = not unlock  # should not wait IdentifyActivity open or it will stuck sometimes
-        self.app_start(
-            'com.github.uiautomator', '.MainActivity', wait=wait, stop=True)
+        self.app_start(  # may also stuck here.
+            'com.github.uiautomator',
+            '.MainActivity',
+            wait=False,
+            stop=True)
         time.sleep(.5)
 
         # launch atx-agent uiautomator keeper
@@ -505,6 +505,7 @@ class UIAutomatorServer(object):
         # wait until uiautomator2 service working
         deadline = time.time() + 10.0
         while time.time() < deadline:
+            print(time.ctime(), "wait uiautomator is ready.")
             if self.alive:
                 # keyevent BACK if current is com.github.uiautomator
                 # XiaoMi uiautomator will kill the app(com.github.uiautomator) when launch
@@ -520,7 +521,7 @@ class UIAutomatorServer(object):
                     time.sleep(.5)
                     self.shell(['input', 'keyevent', 'BACK'])
                     return True
-            time.sleep(.5)
+            time.sleep(1)
         raise RuntimeError("Uiautomator started failed.")
 
     def app_install(self, url, installing_callback=None):
@@ -618,14 +619,14 @@ class UIAutomatorServer(object):
             cmdargs: str or list, example: "ls -l" or ["ls", "-l"]
             timeout: seconds of command run, works on when stream is False
             stream: bool used for long running process.
-        
+
         Returns:
             (output, exit_code) when stream is False
             requests.Response when stream is True, you have to close it after using
-        
+
         Raises:
             RuntimeError
-        
+
         For atx-agent is not support return exit code now.
         When command got something wrong, exit_code is always 1, otherwise exit_code is always 0
         """
@@ -707,7 +708,7 @@ class UIAutomatorServer(object):
                 else:
                     extra_args.extend(['-e', k, v])
             args += extra_args
-            #'am', 'start', '-W', '-n', '{}/{}'.format(pkg_name, activity))
+            # 'am', 'start', '-W', '-n', '{}/{}'.format(pkg_name, activity))
             self.shell(args)
         else:
             if stop:
@@ -719,27 +720,35 @@ class UIAutomatorServer(object):
 
     def current_app(self):
         """
-        Return: dict(package, activity, pid?)
-        """
-        # try: adb shell dumpsys activity top
-        _activityRE = re.compile(
-            r'(?P<package>[^/]+)/(?P<activity>[^/\s]+) \w+ pid=(?P<pid>\d+)'
-        )
-        m = _activityRE.search(self.shell('dumpsys activity top | grep ACTIVITY')[0].split('ACTIVITY')[-1])
-        if m:
-            return dict(
-                package=m.group('package'),
-                activity=m.group('activity'),
-                pid=int(m.group('pid')))
+        Returns:
+            dict(package, activity, pid?)
 
+        For developer:
+            Function healthcheck need this function, so can't use jsonrpc here.
+        """
         # try: adb shell dumpsys window windows
         _focusedRE = re.compile(
-            'mFocusedApp=.*ActivityRecord{\w+ \w+ (?P<package>.*)/(?P<activity>.*) .*'
+            r'mFocusedApp=.*ActivityRecord{\w+ \w+ (?P<package>.*)/(?P<activity>.*) .*'
         )
-        m = _focusedRE.search(self.shell(['dumpsys', 'window', 'windows']))
+        m = _focusedRE.search(self.shell(['dumpsys', 'window', 'windows'])[0])
         if m:
             return dict(
                 package=m.group('package'), activity=m.group('activity'))
+
+        # try: adb shell dumpsys activity top
+        _activityRE = re.compile(
+            r'ACTIVITY (?P<package>[^/]+)/(?P<activity>[^/\s]+) \w+ pid=(?P<pid>\d+)'
+        )
+        output, _ = self.shell(['dumpsys', 'activity', 'top'])
+        ms = _activityRE.finditer(output)
+        ret = None
+        for m in ms:
+            ret = dict(
+                package=m.group('package'),
+                activity=m.group('activity'),
+                pid=int(m.group('pid')))
+        if ret:
+            return ret
         # empty result
         warnings.warn("Couldn't get focused app", stacklevel=2)
         return dict(package=None, activity=None)
@@ -752,7 +761,7 @@ class UIAutomatorServer(object):
         """ Stop all third party applications
         Args:
             excludes (list): apps that do now want to kill
-        
+
         Returns:
             a list of killed apps
         """
@@ -817,7 +826,7 @@ class UIAutomatorServer(object):
             url (str): http url address
             dst (str): destination
             mode (str): file mode
-        
+
         Raises:
             FileNotFoundError(py3) OSError(py2)
         """
@@ -859,14 +868,14 @@ class UIAutomatorServer(object):
         Args:
             src (path or fileobj): source file
             dst (str): destination can be folder or file path
-        
+
         Returns:
             dict object, for example:
-                
+
                 {"mode": "0660", "size": 63, "target": "/sdcard/ABOUT.rst"}
-            
+
             Since chmod may fail in android, the result "mode" may not same with input args(mode)
-        
+
         Raises:
             IOError(if push got something wrong)
         """
@@ -1124,11 +1133,11 @@ class Session(object):
         """ Current input method
         Returns:
             (method_id(str), shown(bool)
-        
+
         Example output:
             ("com.github.uiautomator/.FastInputIME", True)
         """
-        dim = self.server.shell(['dumpsys', 'input_method'])
+        dim, _ = self.server.shell(['dumpsys', 'input_method'])
         m = _INPUT_METHOD_RE.search(dim)
         method_id = None if not m else m.group(1)
         shown = "mInputShown=true" in dim
@@ -1204,11 +1213,11 @@ class Session(object):
             fx, fy: from position
             tx, ty: to position
             duration (float): duration
-        
+
         Documents:
             uiautomator use steps instead of duration
             As the document say: Each step execution is throttled to 5ms per step.
-        
+
         Links:
             https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe%28int,%20int,%20int,%20int,%20int%29
         """
@@ -1222,7 +1231,7 @@ class Session(object):
         Args:
             points: is point array containg at least one point object. eg [[200, 300], [210, 320]]
             duration: duration to inject between two points
-            
+
         Links:
             https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe(android.graphics.Point[], int)
         """
@@ -1251,7 +1260,7 @@ class Session(object):
         Args:
             filename (str): saved filename
             format (string): used when filename is empty. one of "pillow" or "opencv"
-        
+
         Raises:
             IOError, SyntaxError
 
@@ -1455,10 +1464,10 @@ class UiObject(object):
     def click(self):
         """
         Click UI element. 
-        
+
         The click method does the same logic as java uiautomator does.
         1. waitForExists 2. get VisibleBounds center 3. send click event
-        
+
         Raises:
             UiObjectNotFoundError
         """
@@ -1562,7 +1571,7 @@ class UiObject(object):
     def wait(self, exists=True, timeout=10):
         """
         Wait until UI Element exists or gone
-        
+
         Args:
             timeout (float): wait element timeout
 
