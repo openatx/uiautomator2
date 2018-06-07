@@ -489,15 +489,14 @@ class UIAutomatorServer(object):
         if unlock:
             self.open_identify()
 
-        # if self.alive:
-        #     self.adb_shell('input', 'keyevent', 'BACK')
-        #     return True
-
         self._reqsess.delete(
             self.path2url('/uiautomator'))  # stop uiautomator keeper first
         wait = not unlock  # should not wait IdentifyActivity open or it will stuck sometimes
-        self.app_start(
-            'com.github.uiautomator', '.MainActivity', wait=wait, stop=True)
+        self.app_start(  # may also stuck here.
+            'com.github.uiautomator',
+            '.MainActivity',
+            wait=False,
+            stop=True)
         time.sleep(.5)
 
         # launch atx-agent uiautomator keeper
@@ -506,6 +505,7 @@ class UIAutomatorServer(object):
         # wait until uiautomator2 service working
         deadline = time.time() + 10.0
         while time.time() < deadline:
+            print(time.ctime(), "wait uiautomator is ready.")
             if self.alive:
                 # keyevent BACK if current is com.github.uiautomator
                 # XiaoMi uiautomator will kill the app(com.github.uiautomator) when launch
@@ -521,7 +521,7 @@ class UIAutomatorServer(object):
                     time.sleep(.5)
                     self.shell(['input', 'keyevent', 'BACK'])
                     return True
-            time.sleep(.5)
+            time.sleep(1)
         raise RuntimeError("Uiautomator started failed.")
 
     def app_install(self, url, installing_callback=None):
@@ -720,27 +720,35 @@ class UIAutomatorServer(object):
 
     def current_app(self):
         """
-        Return: dict(package, activity, pid?)
+        Returns:
+            dict(package, activity, pid?)
+
+        For developer:
+            Function healthcheck need this function, so can't use jsonrpc here.
         """
+        # try: adb shell dumpsys window windows
+        _focusedRE = re.compile(
+            r'mFocusedApp=.*ActivityRecord{\w+ \w+ (?P<package>.*)/(?P<activity>.*) .*'
+        )
+        m = _focusedRE.search(self.shell(['dumpsys', 'window', 'windows'])[0])
+        if m:
+            return dict(
+                package=m.group('package'), activity=m.group('activity'))
+
         # try: adb shell dumpsys activity top
         _activityRE = re.compile(
             r'ACTIVITY (?P<package>[^/]+)/(?P<activity>[^/\s]+) \w+ pid=(?P<pid>\d+)'
         )
-        m = _activityRE.search(self.shell(['dumpsys', 'activity', 'top'])[0])
-        if m:
-            return dict(
+        output, _ = self.shell(['dumpsys', 'activity', 'top'])
+        ms = _activityRE.finditer(output)
+        ret = None
+        for m in ms:
+            ret = dict(
                 package=m.group('package'),
                 activity=m.group('activity'),
                 pid=int(m.group('pid')))
-
-        # try: adb shell dumpsys window windows
-        _focusedRE = re.compile(
-            'mFocusedApp=.*ActivityRecord{\w+ \w+ (?P<package>.*)/(?P<activity>.*) .*'
-        )
-        m = _focusedRE.search(self.shell(['dumpsys', 'window', 'windows']))
-        if m:
-            return dict(
-                package=m.group('package'), activity=m.group('activity'))
+        if ret:
+            return ret
         # empty result
         warnings.warn("Couldn't get focused app", stacklevel=2)
         return dict(package=None, activity=None)
