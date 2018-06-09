@@ -449,6 +449,8 @@ class UIAutomatorServer(object):
             return True
         except requests.exceptions.ReadTimeout:
             return False
+        except EnvironmentError:
+            return False
 
     def service(self, name):
         """ Manage service start or stop
@@ -1415,6 +1417,19 @@ class Session(object):
             def run(self):
                 obj.server.jsonrpc.runWatchers()
                 return self
+
+            @property
+            def watched(self):
+                raise NotImplementedError()
+
+            @watched.setter
+            def watched(self, b):
+                """
+                Args:
+                    b: boolean
+                """
+                assert isinstance(b, bool)
+                obj.server.jsonrpc.runWatchersOnWindowsChanged(b)
 
         return Watchers()
 
