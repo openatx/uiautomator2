@@ -918,16 +918,6 @@ class UIAutomatorServer(object):
         self.__devinfo = self._reqsess.get(self.path2url('/info')).json()
         return self.__devinfo
 
-    # def set_accessibility_patterns(self, patterns):
-    #     """
-    #     Args:
-    #         patterns (dict): key is package name, value is button text
-
-    #     Example value of patterns:
-    #         {"com.android.packageinstaller": [u"确定", u"安装"]}
-    #     """
-    #     self.jsonrpc.setAccessibilityPatterns(patterns)
-
     def disable_popups(self, enable=True):
         """
         Automatic click all popups
@@ -969,19 +959,11 @@ class UIAutomatorServer(object):
                 raise SessionBrokenError("app launch failed",
                                          jsondata["error"], jsondata["output"])
 
-            time.sleep(0.5)  # wait launch finished, maybe no need
+            time.sleep(2.5)  # wait launch finished, maybe no need
         pid = self._pidof_app(pkg_name)
         if not pid:
             raise SessionBrokenError(pkg_name)
         return Session(self, pkg_name, pid)
-
-    def dismiss_apps(self):
-        """
-        UiDevice.getInstance().pressRecentApps();
-        UiObject recentapp = new UiObject(new UiSelector().resourceId("com.android.systemui:id/dismiss_task"));
-        """
-        raise NotImplementedError()
-        self.press("recent")
 
     def __getattr__(self, attr):
         return getattr(self._default_session, attr)
@@ -1062,7 +1044,46 @@ class Session(object):
             text (str): text to show
             duration (float): seconds of display
         """
+        warnings.warn(
+            "Use d.toast.show(text, duration) instead.",
+            DeprecationWarning,
+            stacklevel=2)
         return self.jsonrpc.makeToast(text, duration * 1000)
+
+    @property
+    def toast(self):
+        obj = self
+
+        class _Toast(object):
+            def get_message(self,
+                            wait_timeout=10,
+                            cache_timeout=10,
+                            default=None):
+                """
+                Args:
+                    wait_timeout: seconds of max wait time if toast now show right now
+                    cache_timeout: return immediately if toast showed in recent $cache_timeout
+                    default: default messsage to return when no toast show up
+
+                Returns:
+                    None or toast message
+                """
+                deadline = time.time() + wait_timeout
+                while 1:
+                    message = obj.jsonrpc.getLastToast(cache_timeout * 1000)
+                    if message:
+                        return message
+                    if time.time() > deadline:
+                        return default
+                    time.sleep(.5)
+
+            def reset(self):
+                return obj.jsonrpc.clearLastToast()
+
+            def show(self, text, duration=1.0):
+                return obj.jsonrpc.makeToast(text, duration * 1000)
+
+        return _Toast()
 
     @check_alive
     def set_fastinput_ime(self, enable=True):

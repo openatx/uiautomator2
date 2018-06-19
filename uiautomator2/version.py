@@ -1,7 +1,8 @@
 # coding: utf-8
 #
 
-__apk_version__ = '1.1.0'
+__apk_version__ = '1.1.1'
+# 1.1.1 support toast capture
 # 1.1.0 update uiautomator-v18:2.1.2 -> uiautomator-v18:2.1.3 (This version fixed setWaitIdleTimeout not working bug)
 # 1.0.14 catch NullException, add gps mock support
 # 1.0.13 whatsinput suppoort, but not very well

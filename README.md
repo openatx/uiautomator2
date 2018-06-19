@@ -943,6 +943,21 @@ You can register [watchers](http://developer.android.com/tools/help/uiautomator/
   d.watchers.run()
   ```
 
+* Run all watchers when page update.
+
+  通常可以用来自动点击权限确认框，或者自动安装
+
+  ```python
+  d.watcher("OK").when(text="OK").click(text="OK")
+  # enable auto trigger watchers
+  d.watchers.watched = True
+
+  # disable auto trigger watchers
+  d.watchers.watched = False
+
+  # get current trigger watchers status
+  assert d.watchers.watched == False
+  ```
 
 另外文档还是有很多没有写，推荐直接去看源码[__init__.py](uiautomator2/__init__.py)
 
@@ -988,11 +1003,28 @@ d.set_fastinput_ime(False) # 切换成正常的输入法
 ```
 
 ### Toast
-显示Toast
+Show Toast
 
 ```python
-d.make_toast("Hello world")
-d.make_toast("Hello world", 1.5) # show for 1.5s
+d.toast.show("Hello world")
+d.toast.show("Hello world", 1.0) # show for 1.0s, default 1.0s
+```
+
+Get Toast
+
+```python
+# [Args]
+# 5.0: max wait timeout. Default 10.0
+# 10.0: cache time. return cache toast if already toast already show up in recent 10 seconds. Default 10.0 (Maybe change in the furture)
+# "default message": return if no toast finally get. Default None
+d.toast.get_message(5.0, 10.0, "default message")
+
+# common usage
+assert "Short message" in d.toast.get_message(5.0, default="")
+
+# clear cached toast
+d.toast.reset()
+# Now d.toast.get_message(0) is None
 ```
 
 ## 测试方法
