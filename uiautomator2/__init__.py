@@ -408,10 +408,10 @@ class UIAutomatorServer(object):
         # error happends
         err = JsonRpcError(error)
 
-        if err.message:
-            if 'UiAutomation not connected' in err.message:
-                err.__class__ = UiAutomationNotConnectedError
-            elif 'uiautomator.UiObjectNotFoundException' in err.message:
+        if err.data and 'UiAutomation not connected' in err.data:
+            err.__class__ = UiAutomationNotConnectedError
+        elif err.message:
+            if 'uiautomator.UiObjectNotFoundException' in err.message:
                 err.__class__ = UiObjectNotFoundError
             elif 'android.support.test.uiautomator.StaleObjectException' in err.message:
                 # StaleObjectException
@@ -1054,7 +1054,7 @@ class Session(object):
     def toast(self):
         obj = self
 
-        class _Toast(object):
+        class Toast(object):
             def get_message(self,
                             wait_timeout=10,
                             cache_timeout=10,
@@ -1083,7 +1083,7 @@ class Session(object):
             def show(self, text, duration=1.0):
                 return obj.jsonrpc.makeToast(text, duration * 1000)
 
-        return _Toast()
+        return Toast()
 
     @check_alive
     def set_fastinput_ime(self, enable=True):
@@ -1351,9 +1351,6 @@ class Session(object):
         else:
             raise ValueError("Invalid orientation.")
 
-    # @orientation.setter
-    # def orientation(self, value):
-
     @property
     def last_traversed_text(self):
         '''get last traversed text. used in webview for highlighted text.'''
@@ -1371,6 +1368,13 @@ class Session(object):
 
     def exists(self, **kwargs):
         return self(**kwargs).exists
+
+    def xpath(self, xpath):
+        """
+        Returns:
+            XPathSelector
+        """
+        return XPathSelector(xpath, self.server)
 
     def xpath_findall(self, xpath):
         xml = self.server.dump_hierarchy()
@@ -1963,3 +1967,39 @@ class Exists(object):
 
     def __repr__(self):
         return str(bool(self))
+
+
+class XPathSelector(object):
+    """ TODO(ssx): not finished yet """
+
+    def __init__(self, xpath, server):
+        if xpath[:1] == "/":
+            xpath = "." + xpath
+        self.xpath = xpath
+        self.server = server
+
+    def wait(self, timeout):
+        xml = self.server.dump_hierarchy()
+        root = ET.fromstring(xml)
+        for node in root.findall(".//node"):
+            node.tag = node.attrib.pop('class')
+        elems = root.findall(self.xpath)
+        if elems:
+            return XMLElement(elems[0])
+
+    def click(self, timeout=10.0):
+        elem = self.wait(timeout)
+        if not elem:
+            raise UiObjectNotFoundError(self.xpath[1:])
+        x, y = elem.center()
+        self.server.click(x, y)
+
+
+class XMLElement(object):
+    def __init__(self, elem):
+        self.elem = elem
+
+    def center(self):
+        bounds = self.elem.attrib.get("bounds")
+        lx, ly, rx, ry = map(int, re.findall("\d+", bounds))
+        return (lx + rx) // 2, (ly + ry) // 2
