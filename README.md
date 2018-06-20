@@ -708,6 +708,9 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
     ```python
     d(text="Settings").exists # True if exists, else False
     d.exists(text="Settings") # alias of above property.
+
+    # advanced usage
+    d(text="Settings").exists(timeout=3) # wait Settings appear in 3s, same as .wait(3)
     ```
 
 * Retrieve the info of the specific UI object

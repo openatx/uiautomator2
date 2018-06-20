@@ -507,7 +507,7 @@ class UIAutomatorServer(object):
         # wait until uiautomator2 service working
         deadline = time.time() + 10.0
         while time.time() < deadline:
-            print(time.ctime(), "wait uiautomator is ready.")
+            print(time.ctime(), "wait uiautomator is ready ...")
             if self.alive:
                 # keyevent BACK if current is com.github.uiautomator
                 # XiaoMi uiautomator will kill the app(com.github.uiautomator) when launch
@@ -1441,7 +1441,7 @@ class Session(object):
 
             @property
             def watched(self):
-                raise NotImplementedError()
+                return obj.server.jsonrpc.hasWatchedOnWindowsChange()
 
             @watched.setter
             def watched(self, b):
@@ -1450,7 +1450,7 @@ class Session(object):
                     b: boolean
                 """
                 assert isinstance(b, bool)
-                obj.server.jsonrpc.runWatchersOnWindowsChanged(b)
+                obj.server.jsonrpc.runWatchersOnWindowsChange(b)
 
         return Watchers()
 
@@ -1489,7 +1489,7 @@ class UiObject(object):
     @property
     def exists(self):
         '''check if the object exists in current window.'''
-        return self.jsonrpc.exist(self.selector)
+        return Exists(self.jsonrpc, self.selector)
 
     @property
     def info(self):
@@ -1935,3 +1935,31 @@ class Selector(dict):
         self[self.__childOrSibling].append("sibling")
         self[self.__childOrSiblingSelector].append(Selector(**kwargs))
         return self
+
+
+class Exists(object):
+    """Exists object with magic methods."""
+
+    def __init__(self, jsonrpc, selector):
+        self.jsonrpc = jsonrpc
+        self.selector = selector
+
+    def __nonzero__(self):
+        """Magic method for bool(self) python2 """
+        return self.jsonrpc.exist(self.selector)
+
+    def __bool__(self):
+        """ Magic method for bool(self) python3 """
+        return self.__nonzero__()
+
+    def __call__(self, timeout=0):
+        """Magic method for self(args).
+
+        Args:
+            timeout (float): exists in seconds
+        """
+        return self.jsonrpc.waitForExists(
+            self.selector, timeout * 1000, http_timeout=timeout + 10)
+
+    def __repr__(self):
+        return str(bool(self))
