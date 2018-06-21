@@ -347,6 +347,25 @@ class MyFire(object):
         u.app_install(app_url)
         u.app_install(app_test_url)
 
+    def restart(self, serial=None):
+        """ re launch atx-agent daemon """
+        if not serial:
+            output = subprocess.check_output(['adb', 'devices'])
+            pattern = re.compile(
+                r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
+            matches = pattern.findall(output.decode())
+            valid_serials = [m[0] for m in matches if m[1] == 'device']
+            if len(valid_serials) == 0:
+                log.warning("No avaliable android devices detected.")
+                return
+            log.info("Detect pluged devices: %s", valid_serials)
+            for serial in valid_serials:
+                self._restart_with_serial(serial)
+
+    def _restart_with_serial(self, serial):
+        ins = Installer(serial)
+        ins.launch_and_check()
+
 
 def main():
     fire.Fire(MyFire)
