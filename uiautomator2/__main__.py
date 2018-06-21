@@ -361,10 +361,15 @@ class MyFire(object):
             log.info("Detect pluged devices: %s", valid_serials)
             for serial in valid_serials:
                 self._restart_with_serial(serial)
+        else:
+            self._restart_with_serial(serial)
 
     def _restart_with_serial(self, serial):
-        ins = Installer(serial)
-        ins.launch_and_check()
+        """ support multi devices, use `,` to split """
+        serial_list = serial.split(',')
+        for each_serial in serial_list:
+            ins = Installer(each_serial)
+            ins.launch_and_check()
 
 
 def main():
