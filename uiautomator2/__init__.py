@@ -199,7 +199,12 @@ def connect_usb(serial=None):
     """
     adb = adbutils.Adb(serial)
     lport = adb.forward_port(7912)
-    return connect_wifi('127.0.0.1:' + str(lport))
+    device = connect_wifi('127.0.0.1:' + str(lport))
+    if not device.alive:
+        warnings.warn("atx-agent is not alive, start again ...", RuntimeWarning)
+        adb.execute("shell", "/data/local/tmp/atx-agent", "-d")
+        device.healthcheck()
+    return device
 
 
 class TimeoutRequestsSession(requests.Session):
@@ -354,7 +359,7 @@ class UIAutomatorServer(object):
                            **kwargs):  # method, params=[], http_timeout=60):
         try:
             return self.jsonrpc_call(*args, **kwargs)
-        except (GatewayError, UiAutomationNotConnectedError):
+        except (GatewayError,):
             warnings.warn(
                 "uiautomator2 is not reponding, restart uiautomator2 automatically",
                 RuntimeWarning,
@@ -362,6 +367,9 @@ class UIAutomatorServer(object):
             # for XiaoMi, want to recover uiautomator2 must start app:com.github.uiautomator
             self.healthcheck(unlock=False)
             return self.jsonrpc_call(*args, **kwargs)
+        except UiAutomationNotConnectedError:
+            warnings.warn("UiAutomation not connected", RuntimeWarning, stacklevel=1)
+            raise
         except (NullExceptionError, StaleObjectExceptionError) as e:
             warnings.warn(
                 "uiautomator2 raise exception %s, and run code again" % e,
@@ -507,7 +515,7 @@ class UIAutomatorServer(object):
         # wait until uiautomator2 service working
         deadline = time.time() + 10.0
         while time.time() < deadline:
-            print(time.ctime(), "wait uiautomator is ready ...")
+            print(time.strftime("%Y-%m-%d %H:%M:%S"), "wait uiautomator is ready ...")
             if self.alive:
                 # keyevent BACK if current is com.github.uiautomator
                 # XiaoMi uiautomator will kill the app(com.github.uiautomator) when launch
@@ -1376,10 +1384,10 @@ class Session(object):
         """
         return XPathSelector(xpath, self.server)
 
-    def xpath_findall(self, xpath):
-        xml = self.server.dump_hierarchy()
-        root = ET.fromstring(xml)
-        return root.findall(xpath)
+    # def xpath_findall(self, xpath):
+    #     xml = self.server.dump_hierarchy()
+    #     root = ET.fromstring(xml)
+    #     return root.findall(xpath)
 
     def watcher(self, name):
         obj = self

@@ -976,19 +976,19 @@ d.wait_timeout = 30.0 # default 20.0
 UiAutomator中的超时设置(隐藏方法)
 
 ```python
->> d.jsonrpc.getConfigurator()
-{'actionAcknowledgmentTimeout': 3000,
+>> d.jsonrpc.getConfigurator() 
+{'actionAcknowledgmentTimeout': 500,
  'keyInjectionDelay': 0,
  'scrollAcknowledgmentTimeout': 200,
- 'waitForIdleTimeout': 10000,
- 'waitForSelectorTimeout': 10000}
+ 'waitForIdleTimeout': 0,
+ 'waitForSelectorTimeout': 0}
 
 >> d.jsonrpc.setConfigurator({"waitForIdleTimeout": 100})
-{'actionAcknowledgmentTimeout': 3000,
+{'actionAcknowledgmentTimeout': 500,
  'keyInjectionDelay': 0,
  'scrollAcknowledgmentTimeout': 200,
  'waitForIdleTimeout': 100,
- 'waitForSelectorTimeout': 10000}
+ 'waitForSelectorTimeout': 0}
 ```
 
 为了防止客户端程序响应超时，`waitForIdleTimeout`和`waitForSelectorTimeout`目前已改为`0`

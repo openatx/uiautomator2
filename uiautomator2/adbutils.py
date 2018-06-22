@@ -28,6 +28,9 @@ class Adb(object):
 
     def execute(self, *args, **kwargs):
         """
+        Example:
+            output = execute("ls", "-l")
+        
         Raises:
             EnvironmentError
         """
