@@ -961,6 +961,8 @@ class UIAutomatorServer(object):
         if not attach:
             resp = self._reqsess.post(
                 self.path2url("/session/" + pkg_name), data={"flags": "-W -S"})
+            if resp.status_code == 410: # Gone
+                raise SessionBrokenError(pkg_name, resp.text)
             resp.raise_for_status()
             jsondata = resp.json()
             if not jsondata["success"]:
@@ -1408,8 +1410,9 @@ class Session(object):
                 return self
 
             def click(self, **kwargs):
+                target = Selector(**kwargs) if kwargs else self.__selectors[-1]
                 obj.server.jsonrpc.registerClickUiObjectWatcher(
-                    name, self.__selectors, Selector(**kwargs))
+                    name, self.__selectors, target)
 
             def press(self, *keys):
                 """

@@ -883,6 +883,14 @@ You can register [watchers](http://developer.android.com/tools/help/uiautomator/
   #  .click(target)  ## perform click action on the target UiSelector.
   ```
 
+  There is also a trick about click. You can use click without arguments.
+
+  ```python
+  d.watcher("ALERT").when(text="OK").click()
+  # Same as
+  d.watcher("ALERT").when(text="OK").click(text="OK")
+  ```
+
   - Press key when a condition becomes true
 
   ```python
