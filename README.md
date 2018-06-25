@@ -1043,8 +1043,16 @@ d.toast.reset()
 
 For example: 其中一个节点的内容
 
-```
-<android.widget.TextView index="2" text="05:19" resource-id="com.netease.cloudmusic:id/qf" package="com.netease.cloudmusic" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" visible-to-user="true" bounds="[957,1602][1020,1636]" />
+```xml
+<android.widget.TextView
+  index="2"
+  text="05:19"
+  resource-id="com.netease.cloudmusic:id/qf"
+  package="com.netease.cloudmusic"
+  content-desc=""
+  checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false"
+  scrollable="false" long-clickable="false" password="false" selected="false" visible-to-user="true"
+  bounds="[957,1602][1020,1636]" />
 ```
 
 xpath定位和使用方法
