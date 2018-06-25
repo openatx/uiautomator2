@@ -28,6 +28,9 @@ class Adb(object):
 
     def execute(self, *args, **kwargs):
         """
+        Example:
+            output = execute("ls", "-l")
+        
         Raises:
             EnvironmentError
         """
@@ -53,7 +56,8 @@ class Adb(object):
     def serial(self):
         if self._serial:
             return self._serial
-        self._serial = self.getprop('ro.serialno')
+        self._serial = subprocess.check_output(
+            [self.adb_path(), "get-serialno"]).decode('utf-8').strip()
         return self._serial
 
     def forward(self, local, remote, rebind=True):

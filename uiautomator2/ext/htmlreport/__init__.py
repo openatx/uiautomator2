@@ -165,3 +165,4 @@ class HTMLReport(object):
         Remove record for click operation
         """
         self._unpatch_func(uiautomator2.Session, 'click')
+        self._unpatch_func(uiautomator2.Session, 'long_click')

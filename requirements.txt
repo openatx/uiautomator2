@@ -7,3 +7,5 @@ retry>=0.9.2
 whichcraft
 # remove pillow because pillow can't installed on QPython
 # pillow
+pillow ; sys_platform == "win32" or sys_platform == "darwin"
+lxml ; sys_platform == "win32" or sys_platform == "darwin"
