@@ -26,7 +26,6 @@ import re
 import sys
 import shutil
 import xml.dom.minidom
-import xml.etree.ElementTree as ET
 import threading
 import warnings
 from datetime import datetime
@@ -46,6 +45,7 @@ else:  # for py3
 import requests
 from uiautomator2 import adbutils
 from uiautomator2.version import __apk_version__, __atx_agent_version__
+from uiautomator2 import simplexml
 
 DEBUG = False
 HTTP_TIMEOUT = 60
@@ -201,7 +201,8 @@ def connect_usb(serial=None):
     lport = adb.forward_port(7912)
     device = connect_wifi('127.0.0.1:' + str(lport))
     if not device.alive:
-        warnings.warn("atx-agent is not alive, start again ...", RuntimeWarning)
+        warnings.warn("atx-agent is not alive, start again ...",
+                      RuntimeWarning)
         adb.execute("shell", "/data/local/tmp/atx-agent", "-d")
         device.healthcheck()
     return device
@@ -359,7 +360,7 @@ class UIAutomatorServer(object):
                            **kwargs):  # method, params=[], http_timeout=60):
         try:
             return self.jsonrpc_call(*args, **kwargs)
-        except (GatewayError,):
+        except (GatewayError, ):
             warnings.warn(
                 "uiautomator2 is not reponding, restart uiautomator2 automatically",
                 RuntimeWarning,
@@ -368,7 +369,8 @@ class UIAutomatorServer(object):
             self.healthcheck(unlock=False)
             return self.jsonrpc_call(*args, **kwargs)
         except UiAutomationNotConnectedError:
-            warnings.warn("UiAutomation not connected", RuntimeWarning, stacklevel=1)
+            warnings.warn(
+                "UiAutomation not connected", RuntimeWarning, stacklevel=1)
             raise
         except (NullExceptionError, StaleObjectExceptionError) as e:
             warnings.warn(
@@ -515,7 +517,9 @@ class UIAutomatorServer(object):
         # wait until uiautomator2 service working
         deadline = time.time() + 10.0
         while time.time() < deadline:
-            print(time.strftime("%Y-%m-%d %H:%M:%S"), "wait uiautomator is ready ...")
+            print(
+                time.strftime("%Y-%m-%d %H:%M:%S"),
+                "wait uiautomator is ready ...")
             if self.alive:
                 # keyevent BACK if current is com.github.uiautomator
                 # XiaoMi uiautomator will kill the app(com.github.uiautomator) when launch
@@ -961,7 +965,7 @@ class UIAutomatorServer(object):
         if not attach:
             resp = self._reqsess.post(
                 self.path2url("/session/" + pkg_name), data={"flags": "-W -S"})
-            if resp.status_code == 410: # Gone
+            if resp.status_code == 410:  # Gone
                 raise SessionBrokenError(pkg_name, resp.text)
             resp.raise_for_status()
             jsondata = resp.json()
@@ -1984,26 +1988,32 @@ class XPathSelector(object):
     """ TODO(ssx): not finished yet """
 
     def __init__(self, xpath, server):
-        if xpath[:1] == "/":
-            xpath = "." + xpath
         self.xpath = xpath
         self.server = server
 
     def wait(self, timeout):
-        xml = self.server.dump_hierarchy()
-        root = ET.fromstring(xml)
-        for node in root.findall(".//node"):
-            node.tag = node.attrib.pop('class')
-        elems = root.findall(self.xpath)
-        if elems:
-            return XMLElement(elems[0])
+        xml_content = self.server.dump_hierarchy()
+        elements = simplexml.xpath_findall(self.xpath, xml_content)
+        if elements:
+            return XMLElement(elements[0])
 
     def click(self, timeout=10.0):
         elem = self.wait(timeout)
         if not elem:
-            raise UiObjectNotFoundError(self.xpath[1:])
+            raise UiaError(self.xpath)
         x, y = elem.center()
         self.server.click(x, y)
+
+    def all(self):
+        """
+        Returns:
+            list of XMLElement
+        """
+        xml_content = self.server.dump_hierarchy()
+        return [
+            XMLElement(node)
+            for node in simplexml.xpath_findall(self.xpath, xml_content)
+        ]
 
 
 class XMLElement(object):
@@ -2014,3 +2024,11 @@ class XMLElement(object):
         bounds = self.elem.attrib.get("bounds")
         lx, ly, rx, ry = map(int, re.findall("\d+", bounds))
         return (lx + rx) // 2, (ly + ry) // 2
+
+    @property
+    def text(self):
+        return self.elem.attrib.get("text")
+
+    @property
+    def attrib(self):
+        return self.elem.attrib

@@ -186,6 +186,7 @@ d.service("uiautomator").stop()
   - **[Global settings](#global-settings)**
   - **[Input method](#input-method)**
   - **[Toast](#toast)**
+  - **[XPath](#xpath)**
 
 **[测试方法](#测试方法)**
 
@@ -1036,6 +1037,31 @@ assert "Short message" in d.toast.get_message(5.0, default="")
 # clear cached toast
 d.toast.reset()
 # Now d.toast.get_message(0) is None
+```
+
+### XPath
+
+For example: 其中一个节点的内容
+
+```
+<android.widget.TextView index="2" text="05:19" resource-id="com.netease.cloudmusic:id/qf" package="com.netease.cloudmusic" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" visible-to-user="true" bounds="[957,1602][1020,1636]" />
+```
+
+xpath定位和使用方法
+
+```python
+# wait exists 10s
+d.xpath("//android.widget.TextView").wait(10.0)
+# find and click
+d.xpath("//*[@content-desc='分享']").click()
+# get all text-view text, attrib and center point
+for elem in d.xpath("//android.widget.TextView").all():
+    print("Text:", elem.text)
+    # Dictionary eg: 
+    # {'index': '1', 'text': '999+', 'resource-id': 'com.netease.cloudmusic:id/qb', 'package': 'com.netease.cloudmusic', 'content-desc': '', 'checkable': 'false', 'checked': 'false', 'clickable': 'false', 'enabled': 'true', 'focusable': 'false', 'focused': 'false','scrollable': 'false', 'long-clickable': 'false', 'password': 'false', 'selected': 'false', 'visible-to-user': 'true', 'bounds': '[661,1444][718,1478]'}
+    print("Attrib:", elem.attrib)
+    # Coordinate eg: (100, 200)
+    print("Position:", elem.center())
 ```
 
 ## 测试方法
