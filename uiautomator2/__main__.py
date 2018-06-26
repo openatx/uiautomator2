@@ -126,9 +126,17 @@ class Installer(adbutils.Adb):
         path = cache_download(url)
         self.push(path, '/data/local/tmp/minitouch', 0o755)
 
-    def install_uiautomator_apk(self, apk_version, reinstall=False):
+    def download_uiautomator_apk(self, apk_version):
         app_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % apk_version
         app_test_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator-test.apk' % apk_version
+        log.info("app-uiautomator.apk(%s) downloading ...", apk_version)
+        path = cache_download(app_url)
+
+        log.info("app-uiautomator-test.apk downloading ...")
+        pathtest = cache_download(app_test_url)
+        return (path, pathtest)
+
+    def install_uiautomator_apk(self, apk_version, reinstall=False):
         pkg_info = self.package_info('com.github.uiautomator')
         test_pkg_info = self.package_info('com.github.uiautomator.test')
         # For test_pkg_info has no versionName or versionCode
@@ -140,13 +148,11 @@ class Installer(adbutils.Adb):
             log.debug("uninstall old apks")
             self.uninstall('com.github.uiautomator')
             self.uninstall('com.github.uiautomator.test')
-        log.info("app-uiautomator.apk(%s) installing ...", apk_version)
-        path = cache_download(app_url)
+
+        (path, pathtest) = self.download_uiautomator_apk(apk_version)
         self.install(path)
         log.debug("app-uiautomator.apk installed")
 
-        log.info("app-uiautomator-test.apk installing ...")
-        path = cache_download(app_test_url)
         self.install(path)
         log.debug("app-uiautomator-test.apk installed")
 
@@ -293,6 +299,14 @@ class MyFire(object):
         if not ignore_apk_check:
             ins.check_apk_installed(apk_version)
         ins.launch_and_check()
+
+    def update_apk(self, ip):
+        u = u2.connect(ip)
+        apk_version = __apk_version__
+        app_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % apk_version
+        app_test_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator-test.apk' % apk_version
+        u.app_install(app_url)
+        u.app_install(app_test_url)
 
     def clear_cache(self):
         log.info("clear cache dir: %s", appdir)
