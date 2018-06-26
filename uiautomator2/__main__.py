@@ -153,7 +153,7 @@ class Installer(adbutils.Adb):
         self.install(path)
         log.debug("app-uiautomator.apk installed")
 
-        self.install(path)
+        self.install(pathtest)
         log.debug("app-uiautomator-test.apk installed")
 
     def check_apk_installed(self, apk_version):
