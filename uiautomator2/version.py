@@ -14,7 +14,8 @@ __apk_version__ = '1.1.2'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__atx_agent_version__ = '0.3.4'
+__atx_agent_version__ = '0.3.5'
+# 0.3.5 hot fix for session
 # 0.3.4 fix session() sometimes can not get mainActivity error
 # 0.3.3 /shell support timeout
 # 0.3.2 fix dns resolve error when network changes
