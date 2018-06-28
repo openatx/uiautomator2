@@ -99,7 +99,7 @@ class Installer(adbutils.Adb):
         self.server_addr = None
 
     def get_executable_dir(self):
-        dirs = ['/sdcard/', '/data/data/com.android.shell']
+        dirs = ['/data/local/tmp', '/data/data/com.android.shell']
         for dirname in dirs:
             testpath = os.path.join(dirname, 'permtest')
             self.shell('touch', testpath, raise_error=False)
@@ -181,11 +181,6 @@ class Installer(adbutils.Adb):
         if not pkg_test_info:
             raise EnvironmentError(
                 "package com.github.uiautomator.test not installed")
-
-    def install_atx_agent_dev(self):
-        exedir = self.get_executable_dir()
-        self.push("./lib/agent/atx-agent", exedir, 0o755)
-        log.debug("atx-agent installed")
 
     def install_atx_agent(self, agent_version, reinstall=False):
         version_output = self.shell(
@@ -312,8 +307,7 @@ class MyFire(object):
         ins.install_minicap()
         ins.install_minitouch()
         ins.install_uiautomator_apk(apk_version, reinstall)
-        ins.install_atx_agent_dev()
-        # ins.install_atx_agent(agent_version, reinstall)
+        ins.install_atx_agent(agent_version, reinstall)
         if not ignore_apk_check:
             ins.check_apk_installed(apk_version)
         ins.launch_and_check()
