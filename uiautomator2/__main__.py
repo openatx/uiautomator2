@@ -96,8 +96,20 @@ class Installer(adbutils.Adb):
         self.abi = self.getprop('ro.product.cpu.abi')
         self.pre = self.getprop('ro.build.version.preview_sdk')
         self.arch = self.getprop('ro.arch')
-        self.brand = self.getprop('ro.product.brand')
         self.server_addr = None
+
+    def get_executable_dir(self):
+        dirs = ['/sdcard/', '/data/data/com.android.shell']
+        for dirname in dirs:
+            testpath = os.path.join(dirname, 'permtest')
+            self.shell('touch', testpath, raise_error=False)
+            self.shell('chmod', '+x', testpath, raise_error=False)
+            content = self.shell('stat', '-c%A', testpath, raise_error=False)
+            log.debug('stat returns:', content)
+            if -1 != content.find('x'):
+                return dirname
+        raise EnvironmentError(
+                "Can't find an executable directory on device")
 
     def install_minicap(self):
         if self.arch == 'x86':
@@ -110,14 +122,13 @@ class Installer(adbutils.Adb):
         log.debug("install minicap.so")
         url = base_url + self.abi + "/lib/android-" + sdk + "/minicap.so"
         path = cache_download(url)
-        self.push(path, '/data/local/tmp/minicap.so')
+        exedir = self.get_executable_dir()
+        minicapdst = os.path.join(exedir, 'minicap.so')
+        self.push(path, minicapdst)
         log.info("install minicap")
         url = base_url + self.abi + "/bin/minicap"
         path = cache_download(url)
-        if self.brand.upper() in ['ZUK']:
-            self.push(path, '/data/data/com.android.shell', 0o755)
-        else:
-            self.push(path, '/data/local/tmp/minicap', 0o755)
+        self.push(path, exedir, 0o755)
 
     def install_minitouch(self):
         """ Need test """
@@ -128,10 +139,8 @@ class Installer(adbutils.Adb):
             self.abi + "/bin/minitouch"
         ])
         path = cache_download(url)
-        if self.brand.upper() in ['ZUK']:
-            self.push(path, '/data/data/com.android.shell', 0o755)
-        else:
-            self.push(path, '/data/local/tmp/minitouch', 0o755)
+        exedir = self.get_executable_dir()
+        self.push(path, exedir, 0o755)
 
     def install_uiautomator_apk(self, apk_version, reinstall=False):
         app_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % apk_version
@@ -174,10 +183,8 @@ class Installer(adbutils.Adb):
                 "package com.github.uiautomator.test not installed")
 
     def install_atx_agent_dev(self):
-        if self.brand.upper() in ['ZUK']:
-            self.push("./lib/agent/atx-agent", '/data/data/com.android.shell', 0o755)
-        else:
-            self.push("./lib/agent/atx-agent", '/data/local/tmp/atx-agent', 0o755)
+        exedir = self.get_executable_dir()
+        self.push("./lib/agent/atx-agent", exedir, 0o755)
         log.debug("atx-agent installed")
 
     def install_atx_agent(self, agent_version, reinstall=False):
@@ -224,10 +231,9 @@ class Installer(adbutils.Adb):
 
     def launch_and_check(self):
         log.info("launch atx-agent daemon")
-        if self.brand.upper() in ['ZUK']:
-            args = ['TMPDIR=/sdcard', '/data/data/com.android.shell/atx-agent', '-d']
-        else:
-            args = ['TMPDIR=/sdcard', '/data/local/tmp/atx-agent', '-d']
+        exedir = self.get_executable_dir()
+        exefile = os.path.join(exedir, 'atx-agent')
+        args = ['TMPDIR=/sdcard', exefile, '-d']
         if self.server_addr:
             args.append('-t')
             args.append(self.server_addr)
