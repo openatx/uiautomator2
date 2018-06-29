@@ -2,6 +2,7 @@
 #
 
 __apk_version__ = '1.1.2'
+# 1.1.3 use thread to make watchers.watched faster, try to fix input method type multi
 # 1.1.2 fix count error when have child && sync watched, to prevent watchers.remove error
 # 1.1.1 support toast capture
 # 1.1.0 update uiautomator-v18:2.1.2 -> uiautomator-v18:2.1.3 (This version fixed setWaitIdleTimeout not working bug)

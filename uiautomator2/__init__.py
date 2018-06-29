@@ -154,10 +154,24 @@ def E(x):
     return x.encode('utf-8') if type(x) is unicode else x
 
 
+def _is_wifi_addr(addr):
+    if not addr:
+        return False
+    if re.match(r"^https?://", addr):
+        return True
+    m = re.search(r"(\d+\.\d+\.\d+\.\d+)", addr)
+    if m and m.group(1) != "127.0.0.1":
+        return True
+    return False
+
+
 def connect(addr=None):
     """
     Args:
         addr (str): uiautomator server address or serial number. default from env-var ANDROID_DEVICE_IP
+
+    Returns:
+        UIAutomatorServer
 
     Example:
         connect("10.0.0.1:7912")
@@ -168,7 +182,7 @@ def connect(addr=None):
     """
     if not addr or addr == '+':
         addr = os.getenv('ANDROID_DEVICE_IP')
-    if addr and re.match(r"(http://)?(\d+\.\d+\.\d+\.\d+)(:\d+)?", addr):
+    if _is_wifi_addr(addr):
         return connect_wifi(addr)
     return connect_usb(addr)
 
@@ -177,6 +191,9 @@ def connect_wifi(addr=None):
     """
     Args:
         addr (str) uiautomator server address.
+
+    Returns:
+        UIAutomatorServer
 
     Examples:
         connect_wifi("10.0.0.1")
@@ -196,16 +213,26 @@ def connect_usb(serial=None):
     """
     Args:
         serial (str): android device serial
+    
+    Returns:
+        UIAutomatorServer
     """
     adb = adbutils.Adb(serial)
     lport = adb.forward_port(7912)
-    device = connect_wifi('127.0.0.1:' + str(lport))
-    if not device.alive:
-        warnings.warn("atx-agent is not alive, start again ...",
+    d = connect_wifi('127.0.0.1:' + str(lport))
+    if not d.agent_alive:
+        warnings.warn("backend atx-agent is not alive, start again ...",
                       RuntimeWarning)
         adb.execute("shell", "/data/local/tmp/atx-agent", "-d")
-        device.healthcheck()
-    return device
+        deadline = time.time() + 3
+        while time.time() < deadline:
+            if d.alive:
+                break
+    elif not d.alive:
+        warnings.warn("backend uiautomator2 is not alive, start again ...",
+                      RuntimeWarning)
+        d.healthcheck()
+    return d    
 
 
 class TimeoutRequestsSession(requests.Session):
@@ -439,6 +466,14 @@ class UIAutomatorServer(object):
         return m.hexdigest()
 
     @property
+    def agent_alive(self):
+        try:
+            r = self._reqsess.get(self.path2url('/version'), timeout=2)
+            return r.status_code == 200
+        except:
+            return False
+
+    @property
     def alive(self):
         try:
             r = self._reqsess.get(self.path2url('/ping'), timeout=2)
@@ -518,7 +553,7 @@ class UIAutomatorServer(object):
         deadline = time.time() + 10.0
         while time.time() < deadline:
             print(
-                time.strftime("%Y-%m-%d %H:%M:%S"),
+                time.strftime("[%Y-%m-%d %H:%M:%S]"),
                 "wait uiautomator is ready ...")
             if self.alive:
                 # keyevent BACK if current is com.github.uiautomator
@@ -530,11 +565,11 @@ class UIAutomatorServer(object):
                         'com.github.uiautomator/.Service'
                     ])
                     time.sleep(.5)
-                    return True
                 else:
                     time.sleep(.5)
                     self.shell(['input', 'keyevent', 'BACK'])
-                    return True
+                print("uiautomator back to normal")
+                return True
             time.sleep(1)
         raise RuntimeError("Uiautomator started failed.")
 
@@ -1985,19 +2020,22 @@ class Exists(object):
 
 
 class XPathSelector(object):
-    """ TODO(ssx): not finished yet """
-
     def __init__(self, xpath, server):
         self.xpath = xpath
         self.server = server
 
-    def wait(self, timeout):
-        xml_content = self.server.dump_hierarchy()
-        elements = simplexml.xpath_findall(self.xpath, xml_content)
-        if elements:
-            return XMLElement(elements[0])
+    def wait(self, timeout=10.0):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            elements = self.all()
+            if elements:
+                return elements[0]
+            time.sleep(.5)
 
     def click(self, timeout=10.0):
+        """
+        click element
+        """
         elem = self.wait(timeout)
         if not elem:
             raise UiaError(self.xpath)
