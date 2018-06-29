@@ -101,7 +101,7 @@ class Installer(adbutils.Adb):
     def get_executable_dir(self):
         dirs = ['/data/local/tmp', '/data/data/com.android.shell']
         for dirname in dirs:
-            testpath = os.path.join(dirname, 'permtest')
+            testpath = "%s/%s" % (dirname, 'permtest')
             self.shell('touch', testpath, raise_error=False)
             self.shell('chmod', '+x', testpath, raise_error=False)
             content = self.shell('stat', '-c%A', testpath, raise_error=False)
@@ -123,7 +123,7 @@ class Installer(adbutils.Adb):
         url = base_url + self.abi + "/lib/android-" + sdk + "/minicap.so"
         path = cache_download(url)
         exedir = self.get_executable_dir()
-        minicapdst = os.path.join(exedir, 'minicap.so')
+        minicapdst = "%s/%s" % (exedir, 'minicap.so')
         self.push(path, minicapdst)
         log.info("install minicap")
         url = base_url + self.abi + "/bin/minicap"
@@ -227,7 +227,7 @@ class Installer(adbutils.Adb):
     def launch_and_check(self):
         log.info("launch atx-agent daemon")
         exedir = self.get_executable_dir()
-        exefile = os.path.join(exedir, 'atx-agent')
+        exefile = "%s/%s" % (exedir, 'atx-agent')
         args = ['TMPDIR=/sdcard', exefile, '-d']
         if self.server_addr:
             args.append('-t')
