@@ -255,7 +255,7 @@ class Installer(adbutils.Adb):
                            "-d", "https://github.com/openatx/uiautomator2")
                 log.info("success")
                 break
-            except requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout:
+            except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
                 time.sleep(.5)
                 cnt += 1
         else:
