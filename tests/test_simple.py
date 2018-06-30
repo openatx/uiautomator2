@@ -8,13 +8,18 @@ import unittest
 import time
 
 
-class ToastTestCase(unittest.TestCase):
+class SimpleTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.d = u2.connect_usb()
+        cls.d.set_orientation('natural')
 
     def setUp(self):
         self.sess = self.d.session("io.appium.android.apis")
+        self.sess.watchers.remove()
+
+    def tearDown(self):
+        self.sess.watchers.remove()
 
     def test_toast_get_message(self):
         d = self.sess
@@ -58,6 +63,23 @@ class ToastTestCase(unittest.TestCase):
         d(text="App").click()
         self.assertTrue(d(text="Status Bar").exists(timeout=3))
         d.watchers.watched = False
+
+    def test_count(self):
+        d = self.sess
+        count = d(resourceId="android:id/list").child(
+            className="android.widget.TextView").count
+        self.assertEqual(count, 11)
+        self.assertEqual(
+            d(resourceId="android:id/list").info['childCount'], 11)
+        count = d(resourceId="android:id/list").child(
+            className="android.widget.TextView", instance=0).count
+        self.assertEqual(count, 1)
+
+    def test_get_text(self):
+        d = self.sess
+        text = d(resourceId="android:id/list").child(
+            className="android.widget.TextView", instance=2).get_text()
+        self.assertEqual(text, "App")
 
 
 if __name__ == '__main__':

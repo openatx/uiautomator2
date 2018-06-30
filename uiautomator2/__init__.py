@@ -26,7 +26,6 @@ import re
 import sys
 import shutil
 import xml.dom.minidom
-import xml.etree.ElementTree as ET
 import threading
 import warnings
 from datetime import datetime
@@ -46,6 +45,7 @@ else:  # for py3
 import requests
 from uiautomator2 import adbutils
 from uiautomator2.version import __apk_version__, __atx_agent_version__
+from uiautomator2 import simplexml
 
 DEBUG = False
 HTTP_TIMEOUT = 60
@@ -154,10 +154,24 @@ def E(x):
     return x.encode('utf-8') if type(x) is unicode else x
 
 
+def _is_wifi_addr(addr):
+    if not addr:
+        return False
+    if re.match(r"^https?://", addr):
+        return True
+    m = re.search(r"(\d+\.\d+\.\d+\.\d+)", addr)
+    if m and m.group(1) != "127.0.0.1":
+        return True
+    return False
+
+
 def connect(addr=None):
     """
     Args:
         addr (str): uiautomator server address or serial number. default from env-var ANDROID_DEVICE_IP
+
+    Returns:
+        UIAutomatorServer
 
     Example:
         connect("10.0.0.1:7912")
@@ -168,7 +182,7 @@ def connect(addr=None):
     """
     if not addr or addr == '+':
         addr = os.getenv('ANDROID_DEVICE_IP')
-    if addr and re.match(r"(http://)?(\d+\.\d+\.\d+\.\d+)(:\d+)?", addr):
+    if _is_wifi_addr(addr):
         return connect_wifi(addr)
     return connect_usb(addr)
 
@@ -177,6 +191,9 @@ def connect_wifi(addr=None):
     """
     Args:
         addr (str) uiautomator server address.
+
+    Returns:
+        UIAutomatorServer
 
     Examples:
         connect_wifi("10.0.0.1")
@@ -196,15 +213,26 @@ def connect_usb(serial=None):
     """
     Args:
         serial (str): android device serial
+    
+    Returns:
+        UIAutomatorServer
     """
     adb = adbutils.Adb(serial)
     lport = adb.forward_port(7912)
-    device = connect_wifi('127.0.0.1:' + str(lport))
-    if not device.alive:
-        warnings.warn("atx-agent is not alive, start again ...", RuntimeWarning)
+    d = connect_wifi('127.0.0.1:' + str(lport))
+    if not d.agent_alive:
+        warnings.warn("backend atx-agent is not alive, start again ...",
+                      RuntimeWarning)
         adb.execute("shell", "/data/local/tmp/atx-agent", "-d")
-        device.healthcheck()
-    return device
+        deadline = time.time() + 3
+        while time.time() < deadline:
+            if d.alive:
+                break
+    elif not d.alive:
+        warnings.warn("backend uiautomator2 is not alive, start again ...",
+                      RuntimeWarning)
+        d.healthcheck()
+    return d    
 
 
 class TimeoutRequestsSession(requests.Session):
@@ -359,7 +387,7 @@ class UIAutomatorServer(object):
                            **kwargs):  # method, params=[], http_timeout=60):
         try:
             return self.jsonrpc_call(*args, **kwargs)
-        except (GatewayError,):
+        except (GatewayError, ):
             warnings.warn(
                 "uiautomator2 is not reponding, restart uiautomator2 automatically",
                 RuntimeWarning,
@@ -368,7 +396,8 @@ class UIAutomatorServer(object):
             self.healthcheck(unlock=False)
             return self.jsonrpc_call(*args, **kwargs)
         except UiAutomationNotConnectedError:
-            warnings.warn("UiAutomation not connected", RuntimeWarning, stacklevel=1)
+            warnings.warn(
+                "UiAutomation not connected", RuntimeWarning, stacklevel=1)
             raise
         except (NullExceptionError, StaleObjectExceptionError) as e:
             warnings.warn(
@@ -435,6 +464,14 @@ class UIAutomatorServer(object):
         m = hashlib.md5()
         m.update(("%s at %f" % (method, time.time())).encode("utf-8"))
         return m.hexdigest()
+
+    @property
+    def agent_alive(self):
+        try:
+            r = self._reqsess.get(self.path2url('/version'), timeout=2)
+            return r.status_code == 200
+        except:
+            return False
 
     @property
     def alive(self):
@@ -515,7 +552,9 @@ class UIAutomatorServer(object):
         # wait until uiautomator2 service working
         deadline = time.time() + 10.0
         while time.time() < deadline:
-            print(time.strftime("%Y-%m-%d %H:%M:%S"), "wait uiautomator is ready ...")
+            print(
+                time.strftime("[%Y-%m-%d %H:%M:%S]"),
+                "wait uiautomator is ready ...")
             if self.alive:
                 # keyevent BACK if current is com.github.uiautomator
                 # XiaoMi uiautomator will kill the app(com.github.uiautomator) when launch
@@ -526,11 +565,11 @@ class UIAutomatorServer(object):
                         'com.github.uiautomator/.Service'
                     ])
                     time.sleep(.5)
-                    return True
                 else:
                     time.sleep(.5)
                     self.shell(['input', 'keyevent', 'BACK'])
-                    return True
+                print("uiautomator back to normal")
+                return True
             time.sleep(1)
         raise RuntimeError("Uiautomator started failed.")
 
@@ -961,6 +1000,8 @@ class UIAutomatorServer(object):
         if not attach:
             resp = self._reqsess.post(
                 self.path2url("/session/" + pkg_name), data={"flags": "-W -S"})
+            if resp.status_code == 410:  # Gone
+                raise SessionBrokenError(pkg_name, resp.text)
             resp.raise_for_status()
             jsondata = resp.json()
             if not jsondata["success"]:
@@ -1314,6 +1355,10 @@ class Session(object):
             import numpy as np
             nparr = np.fromstring(r.content, np.uint8)
             return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        elif format == 'raw':
+            return r.content
+        else:
+            raise RuntimeError("Invalid format " + format)
 
     def freeze_rotation(self, freeze=True):
         '''freeze or unfreeze the device rotation in current status.'''
@@ -1408,8 +1453,9 @@ class Session(object):
                 return self
 
             def click(self, **kwargs):
+                target = Selector(**kwargs) if kwargs else self.__selectors[-1]
                 obj.server.jsonrpc.registerClickUiObjectWatcher(
-                    name, self.__selectors, Selector(**kwargs))
+                    name, self.__selectors, target)
 
             def press(self, *keys):
                 """
@@ -1978,29 +2024,38 @@ class Exists(object):
 
 
 class XPathSelector(object):
-    """ TODO(ssx): not finished yet """
-
     def __init__(self, xpath, server):
-        if xpath[:1] == "/":
-            xpath = "." + xpath
         self.xpath = xpath
         self.server = server
 
-    def wait(self, timeout):
-        xml = self.server.dump_hierarchy()
-        root = ET.fromstring(xml)
-        for node in root.findall(".//node"):
-            node.tag = node.attrib.pop('class')
-        elems = root.findall(self.xpath)
-        if elems:
-            return XMLElement(elems[0])
+    def wait(self, timeout=10.0):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            elements = self.all()
+            if elements:
+                return elements[0]
+            time.sleep(.5)
 
     def click(self, timeout=10.0):
+        """
+        click element
+        """
         elem = self.wait(timeout)
         if not elem:
-            raise UiObjectNotFoundError(self.xpath[1:])
+            raise UiaError(self.xpath)
         x, y = elem.center()
         self.server.click(x, y)
+
+    def all(self):
+        """
+        Returns:
+            list of XMLElement
+        """
+        xml_content = self.server.dump_hierarchy()
+        return [
+            XMLElement(node)
+            for node in simplexml.xpath_findall(self.xpath, xml_content)
+        ]
 
 
 class XMLElement(object):
@@ -2011,3 +2066,11 @@ class XMLElement(object):
         bounds = self.elem.attrib.get("bounds")
         lx, ly, rx, ry = map(int, re.findall("\d+", bounds))
         return (lx + rx) // 2, (ly + ry) // 2
+
+    @property
+    def text(self):
+        return self.elem.attrib.get("text")
+
+    @property
+    def attrib(self):
+        return self.elem.attrib

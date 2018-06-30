@@ -186,6 +186,7 @@ d.service("uiautomator").stop()
   - **[Global settings](#global-settings)**
   - **[Input method](#input-method)**
   - **[Toast](#toast)**
+  - **[XPath](#xpath)**
 
 **[测试方法](#测试方法)**
 
@@ -542,13 +543,17 @@ Note: click, swipe, drag operations support percentage position values. Example:
     d.screenshot("home.jpg")
     
     # get PIL.Image formatted images. Naturally, you need pillow installed first
-    image = d.screenshot()
+    image = d.screenshot() # default format="pillow"
     image.save("home.jpg") # or home.png. Currently, only png and jpg are supported
 
     # get opencv formatted images. Naturally, you need numpy and cv2 installed first
     import cv2
     image = d.screenshot(format='opencv')
     cv2.imwrite('home.jpg', image)
+
+    # get raw jpeg data
+    imagebin = d.screenshot(format='raw')
+    open("some.jpg", "wb").write(imagebin)
     ```
 
 * Dump UI hierarchy
@@ -883,6 +888,14 @@ You can register [watchers](http://developer.android.com/tools/help/uiautomator/
   #  .click(target)  ## perform click action on the target UiSelector.
   ```
 
+  There is also a trick about click. You can use click without arguments.
+
+  ```python
+  d.watcher("ALERT").when(text="OK").click()
+  # Same as
+  d.watcher("ALERT").when(text="OK").click(text="OK")
+  ```
+
   - Press key when a condition becomes true
 
   ```python
@@ -1028,6 +1041,39 @@ assert "Short message" in d.toast.get_message(5.0, default="")
 # clear cached toast
 d.toast.reset()
 # Now d.toast.get_message(0) is None
+```
+
+### XPath
+
+For example: 其中一个节点的内容
+
+```xml
+<android.widget.TextView
+  index="2"
+  text="05:19"
+  resource-id="com.netease.cloudmusic:id/qf"
+  package="com.netease.cloudmusic"
+  content-desc=""
+  checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false"
+  scrollable="false" long-clickable="false" password="false" selected="false" visible-to-user="true"
+  bounds="[957,1602][1020,1636]" />
+```
+
+xpath定位和使用方法
+
+```python
+# wait exists 10s
+d.xpath("//android.widget.TextView").wait(10.0)
+# find and click
+d.xpath("//*[@content-desc='分享']").click()
+# get all text-view text, attrib and center point
+for elem in d.xpath("//android.widget.TextView").all():
+    print("Text:", elem.text)
+    # Dictionary eg: 
+    # {'index': '1', 'text': '999+', 'resource-id': 'com.netease.cloudmusic:id/qb', 'package': 'com.netease.cloudmusic', 'content-desc': '', 'checkable': 'false', 'checked': 'false', 'clickable': 'false', 'enabled': 'true', 'focusable': 'false', 'focused': 'false','scrollable': 'false', 'long-clickable': 'false', 'password': 'false', 'selected': 'false', 'visible-to-user': 'true', 'bounds': '[661,1444][718,1478]'}
+    print("Attrib:", elem.attrib)
+    # Coordinate eg: (100, 200)
+    print("Position:", elem.center())
 ```
 
 ## 测试方法
