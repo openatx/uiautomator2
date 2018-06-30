@@ -109,7 +109,7 @@ class Installer(adbutils.Adb):
             if -1 != content.find('x'):
                 return dirname
         raise EnvironmentError(
-                "Can't find an executable directory on device")
+            "Can't find an executable directory on device")
 
     def install_minicap(self):
         if self.arch == 'x86':
@@ -142,9 +142,17 @@ class Installer(adbutils.Adb):
         exedir = self.get_executable_dir()
         self.push(path, exedir, 0o755)
 
-    def install_uiautomator_apk(self, apk_version, reinstall=False):
+    def download_uiautomator_apk(self, apk_version):
         app_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % apk_version
         app_test_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator-test.apk' % apk_version
+        log.info("app-uiautomator.apk(%s) downloading ...", apk_version)
+        path = cache_download(app_url)
+
+        log.info("app-uiautomator-test.apk downloading ...")
+        pathtest = cache_download(app_test_url)
+        return (path, pathtest)
+
+    def install_uiautomator_apk(self, apk_version, reinstall=False):
         pkg_info = self.package_info('com.github.uiautomator')
         test_pkg_info = self.package_info('com.github.uiautomator.test')
         # For test_pkg_info has no versionName or versionCode
@@ -156,14 +164,12 @@ class Installer(adbutils.Adb):
             log.debug("uninstall old apks")
             self.uninstall('com.github.uiautomator')
             self.uninstall('com.github.uiautomator.test')
-        log.info("app-uiautomator.apk(%s) installing ...", apk_version)
-        path = cache_download(app_url)
+
+        (path, pathtest) = self.download_uiautomator_apk(apk_version)
         self.install(path)
         log.debug("app-uiautomator.apk installed")
 
-        log.info("app-uiautomator-test.apk installing ...")
-        path = cache_download(app_test_url)
-        self.install(path)
+        self.install(pathtest)
         log.debug("app-uiautomator-test.apk installed")
 
     def check_apk_installed(self, apk_version):
@@ -240,7 +246,7 @@ class Installer(adbutils.Adb):
         while cnt < 3:
             try:
                 r = requests.get(
-                    'http://localhost:%d/version' % lport, timeout=3)
+                    'http://localhost:%d/version' % lport, timeout=10)
                 log.debug("atx-agent version: %s", r.text)
                 # todo finish the retry logic
                 log.info("atx-agent output: %s", output.strip())
@@ -249,7 +255,7 @@ class Installer(adbutils.Adb):
                            "-d", "https://github.com/openatx/uiautomator2")
                 log.info("success")
                 break
-            except requests.exceptions.ConnectionError:
+            except requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout:
                 time.sleep(.5)
                 cnt += 1
         else:
@@ -311,6 +317,14 @@ class MyFire(object):
         if not ignore_apk_check:
             ins.check_apk_installed(apk_version)
         ins.launch_and_check()
+
+    def update_apk(self, ip):
+        u = u2.connect(ip)
+        apk_version = __apk_version__
+        app_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % apk_version
+        app_test_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator-test.apk' % apk_version
+        u.app_install(app_url)
+        u.app_install(app_test_url)
 
     def clear_cache(self):
         log.info("clear cache dir: %s", appdir)
