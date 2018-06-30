@@ -1355,6 +1355,10 @@ class Session(object):
             import numpy as np
             nparr = np.fromstring(r.content, np.uint8)
             return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        elif format == 'raw':
+            return r.content
+        else:
+            raise RuntimeError("Invalid format " + format)
 
     def freeze_rotation(self, freeze=True):
         '''freeze or unfreeze the device rotation in current status.'''

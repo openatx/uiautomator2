@@ -109,7 +109,7 @@ class Installer(adbutils.Adb):
             if -1 != content.find('x'):
                 return dirname
         raise EnvironmentError(
-                "Can't find an executable directory on device")
+            "Can't find an executable directory on device")
 
     def install_minicap(self):
         if self.arch == 'x86':
@@ -246,7 +246,7 @@ class Installer(adbutils.Adb):
         while cnt < 3:
             try:
                 r = requests.get(
-                    'http://localhost:%d/version' % lport, timeout=3)
+                    'http://localhost:%d/version' % lport, timeout=10)
                 log.debug("atx-agent version: %s", r.text)
                 # todo finish the retry logic
                 log.info("atx-agent output: %s", output.strip())
@@ -255,7 +255,7 @@ class Installer(adbutils.Adb):
                            "-d", "https://github.com/openatx/uiautomator2")
                 log.info("success")
                 break
-            except requests.exceptions.ConnectionError:
+            except requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout:
                 time.sleep(.5)
                 cnt += 1
         else:
