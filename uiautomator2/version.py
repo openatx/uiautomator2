@@ -1,7 +1,7 @@
 # coding: utf-8
 #
 
-__apk_version__ = '1.1.2'
+__apk_version__ = '1.1.3'
 # 1.1.3 use thread to make watchers.watched faster, try to fix input method type multi
 # 1.1.2 fix count error when have child && sync watched, to prevent watchers.remove error
 # 1.1.1 support toast capture
