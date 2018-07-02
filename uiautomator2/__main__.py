@@ -105,11 +105,11 @@ class Installer(adbutils.Adb):
             self.shell('touch', testpath, raise_error=False)
             self.shell('chmod', '+x', testpath, raise_error=False)
             content = self.shell('stat', '-c%A', testpath, raise_error=False)
-            log.debug('stat returns:', content)
+            # log.debug('stat returns:', content)
             if -1 != content.find('x'):
                 return dirname
-        raise EnvironmentError(
-            "Can't find an executable directory on device")
+        return "/data/local/tmp"
+        # raise EnvironmentError("Can't find an executable directory on device")
 
     def install_minicap(self):
         if self.arch == 'x86':
@@ -255,7 +255,8 @@ class Installer(adbutils.Adb):
                            "-d", "https://github.com/openatx/uiautomator2")
                 log.info("success")
                 break
-            except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
+            except (requests.exceptions.ConnectionError,
+                    requests.exceptions.ReadTimeout):
                 time.sleep(.5)
                 cnt += 1
         else:
