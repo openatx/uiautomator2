@@ -550,7 +550,7 @@ class UIAutomatorServer(object):
         self._reqsess.post(self.path2url('/uiautomator'))
 
         # wait until uiautomator2 service working
-        deadline = time.time() + 10.0
+        deadline = time.time() + 20.0
         while time.time() < deadline:
             print(
                 time.strftime("[%Y-%m-%d %H:%M:%S]"),
