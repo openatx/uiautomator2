@@ -5,9 +5,9 @@ from __future__ import print_function
 
 import re
 import socket
-import subprocess
-import whichcraft
-from collections import defaultdict
+
+from adb.client import Client as AdbClient
+from adb import InstallError
 
 
 def find_free_port():
@@ -20,44 +20,24 @@ def find_free_port():
 
 
 class Adb(object):
-    def __init__(self, serial=None):
+    def __init__(self, serial=None, host="127.0.0.1", port=5037):
         self._serial = serial
+        self._client = AdbClient(host=host, port=port)
 
-    def adb_path(self):
-        return whichcraft.which("adb")
+        if self._serial:
+            self._device = self._client.device(serial)
+        else:
+            # The serial can be None only when there is only one device/emulator.
+            devices = self._client.devices()
+            if len(devices) > 1:
+                raise RuntimeError("more than one device/emulator, please specify the serial number")
 
-    def execute(self, *args, **kwargs):
-        """
-        Example:
-            output = execute("ls", "-l")
-        
-        Raises:
-            EnvironmentError
-        """
-        adb_path = self.adb_path()
-        assert adb_path is not None
-        cmds = [adb_path, '-s', self._serial] if self._serial else [adb_path]
-        cmds.extend(args)
-        cmdline = subprocess.list2cmdline(map(str, cmds))
-        try:
-            return subprocess.check_output(
-                cmdline, stderr=subprocess.STDOUT, shell=True).decode('utf-8')
-        except subprocess.CalledProcessError as e:
-            if kwargs.get('raise_error', True):
-                raise EnvironmentError("subprocess", cmdline,
-                                       e.output.decode(
-                                           'utf-8', errors='ignore'))
-            # else:
-            #     print("Error output:", e.output.decode(
-            #         'utf-8', errors='ignore'))
-            return ''
+            device = devices[0]
+            self._serial = device.get_serial_no()
+            self._device = device
 
     @property
     def serial(self):
-        if self._serial:
-            return self._serial
-        self._serial = subprocess.check_output(
-            [self.adb_path(), "get-serialno"]).decode('utf-8').strip()
         return self._serial
 
     def forward(self, local, remote, rebind=True):
@@ -65,10 +45,8 @@ class Adb(object):
             local = 'tcp:%d' % local
         if isinstance(remote, int):
             remote = 'tcp:%d' % remote
-        if rebind:
-            return self.execute('forward', local, remote)
-        else:
-            return self.execute('forward', '--no-rebind', local, remote)
+
+        return self._device.forward(local, remote, norebind=not rebind)
 
     def forward_list(self):
         """
@@ -78,15 +56,17 @@ class Adb(object):
                 "{RemotePort}": "{LocalPort}"
             }
         """
-        output = self.execute('forward', '--list')
+        forward_list = self._device.list_forward()
+
         ret = {}
-        for groups in re.findall('([^\s]+)\s+tcp:(\d+)\s+tcp:(\d+)', output):
-            if len(groups) != 3:
-                continue
-            serial, lport, rport = groups
-            if serial != self.serial:
-                continue
-            ret[int(rport)] = int(lport)
+
+        for local, remote in forward_list.items():
+            ltype, lport = local.split(":")
+            rtype, rport = remote.split(":")
+
+            if ltype == "tcp" and rtype == "tcp":
+                ret[int(rport)] = int(lport)
+
         return ret
 
     def forward_port(self, remote_port):
@@ -99,30 +79,27 @@ class Adb(object):
         return free_port
 
     def shell(self, *args, **kwargs):
-        args = ['shell'] + list(args)
-        return self.execute(*args, **kwargs)
+        return self._device.shell(" ".join(args))
 
     def getprop(self, prop):
-        return self.execute('shell', 'getprop', prop).strip()
+        return self.shell('getprop', prop).strip()
 
     def push(self, src, dst, mode=0o644):
-        self.execute('push', src, dst)
-        if mode != 0o644:
-            self.shell('chmod', oct(mode)[-3:], dst)
+        self._device.push(src, dst, mode=mode)
 
     def install(self, apk_path):
         sdk = self.getprop('ro.build.version.sdk')
         if int(sdk) <= 23:
-            self.execute('install', '-d', '-r', apk_path)
+            self._device.install(apk_path, reinstall=True, downgrade=True)
             return
         try:
             # some device is missing -g
-            self.execute('install', '-d', '-r', '-g', apk_path)
-        except EnvironmentError:
-            self.execute('install', '-d', '-r', apk_path)
+            self._device.install(apk_path, reinstall=True, downgrade=True, grand_all_permissions=True)
+        except InstallError:
+            self._device.install(apk_path, reinstall=True, downgrade=True)
 
     def uninstall(self, pkg_name):
-        return self.execute('uninstall', pkg_name, raise_error=False)
+        return self._device.uninstall(pkg_name)
 
     def package_info(self, pkg_name):
         output = self.shell('dumpsys', 'package', pkg_name)
