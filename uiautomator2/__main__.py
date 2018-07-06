@@ -99,16 +99,18 @@ class Installer(adbutils.Adb):
         self.server_addr = None
 
     def get_executable_dir(self):
-        dirs = ['/data/local/tmp', '/data/data/com.android.shell']
-        for dirname in dirs:
-            testpath = "%s/%s" % (dirname, 'permtest')
-            self.shell('touch', testpath, raise_error=False)
-            self.shell('chmod', '+x', testpath, raise_error=False)
-            content = self.shell('stat', '-c%A', testpath, raise_error=False)
-            # log.debug('stat returns:', content)
-            if -1 != content.find('x'):
-                return dirname
         return "/data/local/tmp"
+        # Hot patch for some phone which not contains stat command
+        # dirs = ['/data/local/tmp', '/data/data/com.android.shell']
+        # for dirname in dirs:
+        #     testpath = "%s/%s" % (dirname, 'permtest')
+        #     self.shell('touch', testpath, raise_error=False)
+        #     self.shell('chmod', '+x', testpath, raise_error=False)
+        #     content = self.shell('stat', '-c%A', testpath, raise_error=False)
+        #     # log.debug('stat returns:', content)
+        #     if -1 != content.find('x'):
+        #         return dirname
+        # return "/data/local/tmp"
         # raise EnvironmentError("Can't find an executable directory on device")
 
     def install_minicap(self):
@@ -239,17 +241,17 @@ class Installer(adbutils.Adb):
             args.append('-t')
             args.append(self.server_addr)
         output = self.shell(*args)
+        log.info("atx-agent output: %s", output.strip())
         lport = self.forward_port(7912)
         log.debug("forward device(port:7912) -> %d", lport)
         time.sleep(.5)
         cnt = 0
-        while cnt < 3:
+        while cnt < 5:
             try:
                 r = requests.get(
                     'http://localhost:%d/version' % lport, timeout=10)
-                log.debug("atx-agent version: %s", r.text)
-                # todo finish the retry logic
-                log.info("atx-agent output: %s", output.strip())
+                log.info("atx-agent version: %s", r.text)
+
                 # open uiautomator2 github URL
                 self.shell("am", "start", "-a", "android.intent.action.VIEW",
                            "-d", "https://github.com/openatx/uiautomator2")
@@ -257,10 +259,13 @@ class Installer(adbutils.Adb):
                 break
             except (requests.exceptions.ConnectionError,
                     requests.exceptions.ReadTimeout):
-                time.sleep(.5)
+                time.sleep(1)
                 cnt += 1
         else:
-            log.error("failure")
+            log.error("failure, unable to get atx-agent version")
+            print(
+                "You can check manually by open phone browser with address http://127.0.0.1:7912/version"
+            )
 
 
 class MyFire(object):
