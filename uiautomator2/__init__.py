@@ -46,6 +46,7 @@ import requests
 from uiautomator2 import adbutils
 from uiautomator2.version import __apk_version__, __atx_agent_version__
 from uiautomator2 import simplexml
+from uiautomator2.__main__ import MyFire
 
 DEBUG = False
 HTTP_TIMEOUT = 60
