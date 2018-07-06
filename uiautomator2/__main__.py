@@ -41,6 +41,8 @@ log = get_logger('uiautomator2')
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
 log.debug("use cache directory: %s", appdir)
 
+GITHUB_BASEURL = "https://github.com/openatx"
+
 
 class DownloadBar(progress.bar.Bar):
     message = "Downloading"
@@ -120,7 +122,8 @@ class Installer(adbutils.Adb):
         sdk = self.sdk
         if self.pre and self.pre != "0":
             sdk = sdk + self.pre
-        base_url = "https://github.com/codeskyblue/stf-binaries/raw/master/node_modules/minicap-prebuilt/prebuilt/"
+        base_url = GITHUB_BASEURL + \
+            "/stf-binaries/raw/master/node_modules/minicap-prebuilt/prebuilt/"
         log.debug("install minicap.so")
         url = base_url + self.abi + "/lib/android-" + sdk + "/minicap.so"
         path = cache_download(url)
@@ -136,7 +139,7 @@ class Installer(adbutils.Adb):
         """ Need test """
         log.info("install minitouch")
         url = ''.join([
-            "https://github.com/codeskyblue/stf-binaries",
+            GITHUB_BASEURL + "/stf-binaries",
             "/raw/master/node_modules/minitouch-prebuilt/prebuilt/",
             self.abi + "/bin/minitouch"
         ])
@@ -145,8 +148,10 @@ class Installer(adbutils.Adb):
         self.push(path, exedir, 0o755)
 
     def download_uiautomator_apk(self, apk_version):
-        app_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % apk_version
-        app_test_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator-test.apk' % apk_version
+        app_url = GITHUB_BASEURL + \
+            '/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % apk_version
+        app_test_url = GITHUB_BASEURL + \
+            '/android-uiautomator-server/releases/download/%s/app-uiautomator-test.apk' % apk_version
         log.info("app-uiautomator.apk(%s) downloading ...", apk_version)
         path = cache_download(app_url)
 
@@ -222,7 +227,7 @@ class Installer(adbutils.Adb):
             raise Exception(
                 "arch(%s) need to be supported yet, please report an issue in github"
                 % abis)
-        url = 'https://github.com/openatx/atx-agent/releases/download/%s/%s' % (
+        url = GITHUB_BASEURL + '/atx-agent/releases/download/%s/%s' % (
             agent_version, name.format(v=agent_version))
         log.debug("download atx-agent(%s) from github releases", agent_version)
         path = cache_download(url)
@@ -241,17 +246,17 @@ class Installer(adbutils.Adb):
             args.append('-t')
             args.append(self.server_addr)
         output = self.shell(*args)
-        log.info("atx-agent output: %s", output.strip())
         lport = self.forward_port(7912)
         log.debug("forward device(port:7912) -> %d", lport)
         time.sleep(.5)
         cnt = 0
-        while cnt < 5:
+        while cnt < 3:
             try:
                 r = requests.get(
                     'http://localhost:%d/version' % lport, timeout=10)
-                log.info("atx-agent version: %s", r.text)
-
+                log.debug("atx-agent version: %s", r.text)
+                # todo finish the retry logic
+                log.info("atx-agent output: %s", output.strip())
                 # open uiautomator2 github URL
                 self.shell("am", "start", "-a", "android.intent.action.VIEW",
                            "-d", "https://github.com/openatx/uiautomator2")
@@ -259,13 +264,10 @@ class Installer(adbutils.Adb):
                 break
             except (requests.exceptions.ConnectionError,
                     requests.exceptions.ReadTimeout):
-                time.sleep(1)
+                time.sleep(.5)
                 cnt += 1
         else:
-            log.error("failure, unable to get atx-agent version")
-            print(
-                "You can check manually by open phone browser with address http://127.0.0.1:7912/version"
-            )
+            log.error("failure")
 
 
 class MyFire(object):
@@ -277,11 +279,15 @@ class MyFire(object):
              reinstall=False,
              ignore_apk_check=False,
              proxy=None,
-             serial=None):
+             serial=None,
+             mirror=False):
         if verbose:
             log.setLevel(logging.DEBUG)
         if server:
             log.info("atx-server addr %s", server)
+        if mirror:
+            global GITHUB_BASEURL
+            GITHUB_BASEURL = "http://openatx.appetizer.io"
 
         if proxy:
             os.environ['HTTP_PROXY'] = proxy
@@ -325,10 +331,13 @@ class MyFire(object):
         ins.launch_and_check()
 
     def update_apk(self, ip):
+        """ update com.github.uiautomator apk remotely """
         u = u2.connect(ip)
         apk_version = __apk_version__
-        app_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % apk_version
-        app_test_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator-test.apk' % apk_version
+        app_url = GITHUB_BASEURL + \
+            '/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % apk_version
+        app_test_url = GITHUB_BASEURL + \
+            '/android-uiautomator-server/releases/download/%s/app-uiautomator-test.apk' % apk_version
         u.app_install(app_url)
         u.app_install(app_test_url)
 
@@ -376,14 +385,6 @@ class MyFire(object):
     def healthcheck(self, device_ip):
         u = u2.connect(device_ip)
         u.healthcheck()
-
-    def upgrade_apk(self, device_ip):
-        """ update com.github.uiautomator apk remotely """
-        app_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % __apk_version__
-        app_test_url = 'https://github.com/openatx/android-uiautomator-server/releases/download/%s/app-uiautomator-test.apk' % __apk_version__
-        u = u2.connect(device_ip)
-        u.app_install(app_url)
-        u.app_install(app_test_url)
 
 
 def main():
