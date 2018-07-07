@@ -45,7 +45,20 @@ class Adb(object):
                 self._serial = device.get_serial_no()
                 self._device = device
 
-    def _start_adb_server(self):
+    @staticmethod
+    def list_devices(host="127.0.0.1", port=5037):
+        client = AdbClient(host=host, port=port)
+
+        try:
+            client.version()
+        except RuntimeError:
+            # Can't connect to the adb server, try to start the adb server by command line.
+            Adb._start_adb_server()
+
+        return client.devices()
+
+    @staticmethod
+    def _start_adb_server():
         adb_path = whichcraft.which("adb")
         if adb_path is None:
             raise EnvironmentError("Can't find the adb, please install adb on your PC")

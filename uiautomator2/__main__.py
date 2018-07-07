@@ -285,14 +285,12 @@ class MyFire(object):
             os.environ['HTTPS_PROXY'] = proxy
 
         if not serial:
-            output = subprocess.check_output(['adb', 'devices'])
-            pattern = re.compile(
-                r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
-            matches = pattern.findall(output.decode())
-            valid_serials = [m[0] for m in matches if m[1] == 'device']
-            if len(valid_serials) == 0:
+            devices = adbutils.Adb.list_devices()
+            if len(devices) == 0:
                 log.warning("No avaliable android devices detected.")
                 return
+
+            valid_serials = map(lambda device: device.serial, devices)
             log.info("Detect pluged devices: %s", valid_serials)
             for serial in valid_serials:
                 self._init_with_serial(serial, server, apk_version,
