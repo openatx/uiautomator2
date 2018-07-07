@@ -5,7 +5,8 @@ from __future__ import print_function
 
 import re
 import socket
-
+import whichcraft
+import subprocess
 from adb.client import Client as AdbClient
 from adb import InstallError
 
@@ -24,17 +25,40 @@ class Adb(object):
         self._serial = serial
         self._client = AdbClient(host=host, port=port)
 
+        try:
+            self._client.version()
+        except RuntimeError:
+            # Can't connect to the adb server, try to start the adb server by command line.
+            self._start_adb_server()
+
         if self._serial:
             self._device = self._client.device(serial)
         else:
             # The serial can be None only when there is only one device/emulator.
             devices = self._client.devices()
-            if len(devices) > 1:
+            if len(devices) == 0:
+                raise RuntimeError("Can't find any android device/emulator")
+            elif len(devices) > 1:
                 raise RuntimeError("more than one device/emulator, please specify the serial number")
+            else:
+                device = devices[0]
+                self._serial = device.get_serial_no()
+                self._device = device
 
-            device = devices[0]
-            self._serial = device.get_serial_no()
-            self._device = device
+    def _start_adb_server(self):
+        adb_path = whichcraft.which("adb")
+        if adb_path is None:
+            raise EnvironmentError("Can't find the adb, please install adb on your PC")
+
+        cmd = [adb_path, "start-server"]
+        cmdline = subprocess.list2cmdline(cmd)
+        try:
+            return subprocess.check_output(
+                cmdline, stderr=subprocess.STDOUT, shell=True).decode('utf-8')
+        except subprocess.CalledProcessError as e:
+            raise EnvironmentError("subprocess", cmdline,
+                                   e.output.decode(
+                                       'utf-8', errors='ignore'))
 
     @property
     def serial(self):
