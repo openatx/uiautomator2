@@ -150,6 +150,10 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 d.healthcheck()
 ```
 
+### 点击坐标出现偏移
+为了提高uiautomator2再有播放器界面不卡死，代码中将默认3000ms中的waitForIdleTimeout改成了0，不过有可能会造成坐标偏移，虽然概率不大。
+如果出现这种情况，可以将其调大一点 `d.jsonrpc.setConfigurator({"waitForIdleTimeout": 100})`
+
 ### 连接本地USB设备
 需要设备曾经使用`python -m uiautomator2 init`初始化过
 
