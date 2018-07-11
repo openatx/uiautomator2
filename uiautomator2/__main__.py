@@ -101,19 +101,16 @@ class Installer(adbutils.Adb):
         self.server_addr = None
 
     def get_executable_dir(self):
-        return "/data/local/tmp"
-        # Hot patch for some phone which not contains stat command
-        # dirs = ['/data/local/tmp', '/data/data/com.android.shell']
-        # for dirname in dirs:
-        #     testpath = "%s/%s" % (dirname, 'permtest')
-        #     self.shell('touch', testpath, raise_error=False)
-        #     self.shell('chmod', '+x', testpath, raise_error=False)
-        #     content = self.shell('stat', '-c%A', testpath, raise_error=False)
-        #     # log.debug('stat returns:', content)
-        #     if -1 != content.find('x'):
-        #         return dirname
-        # return "/data/local/tmp"
-        # raise EnvironmentError("Can't find an executable directory on device")
+        dirs = ['/data/local/tmp', '/data/data/com.android.shell']
+        for dirname in dirs:
+            testpath = "%s/%s" % (dirname, 'permtest')
+            self.shell('touch', testpath, raise_error=False)
+            self.shell('chmod', '+x', testpath, raise_error=False)
+            content = self.shell('ls', '-l', testpath, raise_error=False)
+            log.debug('permtest returns: %s' % content)
+            if -1 != content.find('x'):
+                return dirname
+        raise EnvironmentError("Can't find an executable directory on device")
 
     def install_minicap(self):
         if self.arch == 'x86':
@@ -196,8 +193,10 @@ class Installer(adbutils.Adb):
                 "package com.github.uiautomator.test not installed")
 
     def install_atx_agent(self, agent_version, reinstall=False):
+        exedir = self.get_executable_dir()
+        agentpath = '%s/%s' % (exedir, 'atx-agent')
         version_output = self.shell(
-            '/data/local/tmp/atx-agent', '-v', raise_error=False).strip()
+            agentpath, '-v', raise_error=False).strip()
         m = re.search(r"\d+\.\d+\.\d+", version_output)
         current_agent_version = m.group(0) if m else None
         if current_agent_version == agent_version:
@@ -234,7 +233,7 @@ class Installer(adbutils.Adb):
         tar = tarfile.open(path, 'r:gz')
         bin_path = os.path.join(os.path.dirname(path), 'atx-agent')
         tar.extract('atx-agent', os.path.dirname(bin_path))
-        self.push(bin_path, '/data/local/tmp/atx-agent', 0o755)
+        self.push(bin_path, agentpath, 0o755)
         log.debug("atx-agent installed")
 
     def launch_and_check(self):
