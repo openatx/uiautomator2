@@ -232,10 +232,17 @@ def connect_usb(serial=None):
         warnings.warn("backend uiautomator2 is not alive, start again ...",
                       RuntimeWarning)
         d.healthcheck()
-    return d    
+    return d
 
 
 class TimeoutRequestsSession(requests.Session):
+    def __init__(self):
+        super(TimeoutRequestsSession, self).__init__()
+        # refs: https://stackoverflow.com/questions/33895739/python-requests-cant-load-any-url-remote-end-closed-connection-without-respo
+        adapter = requests.adapters.HTTPAdapter(max_retries=3)
+        self.mount("http://", adapter)
+        self.mount("https://", adapter)
+
     def request(self, method, url, **kwargs):
         if kwargs.get('timeout') is None:
             kwargs['timeout'] = HTTP_TIMEOUT
@@ -550,7 +557,7 @@ class UIAutomatorServer(object):
         self._reqsess.post(self.path2url('/uiautomator'))
 
         # wait until uiautomator2 service working
-        deadline = time.time() + 10.0
+        deadline = time.time() + 20.0
         while time.time() < deadline:
             print(
                 time.strftime("[%Y-%m-%d %H:%M:%S]"),

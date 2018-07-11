@@ -9,6 +9,10 @@ except:
     LXML = False
 
 
+def safe_xmlstr(s):
+    return s.replace("$", "-")
+
+
 def xpath_findall(xpath, xml_content):
     """
     Search xml by xpath
@@ -20,10 +24,10 @@ def xpath_findall(xpath, xml_content):
         # print(xml_content)
         root = etree.fromstring(xml_content.encode('utf-8'))
         for node in root.xpath("//node"):
-            node.tag = node.attrib.pop("class")
+            node.tag = safe_xmlstr(node.attrib.pop("class"))
         return root.xpath(xpath)
     else:
         root = ET.fromstring(xml_content)
         for node in root.findall(".//node"):
-            node.tag = node.attrib.pop("class")
+            node.tag = safe_xmlstr(node.attrib.pop("class"))
         return root.findall(xpath if xpath.startswith(".") else "." + xpath)

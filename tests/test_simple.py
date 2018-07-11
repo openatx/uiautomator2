@@ -81,6 +81,11 @@ class SimpleTestCase(unittest.TestCase):
             className="android.widget.TextView", instance=2).get_text()
         self.assertEqual(text, "App")
 
+    def test_xpath(self):
+        d = self.sess
+        d.xpath("//*[@text='Media']").click()
+        self.assertTrue(d.xpath('//*[contains(@text, "Audio")]').wait(5))
+
 
 if __name__ == '__main__':
     unittest.main()
