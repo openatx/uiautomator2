@@ -287,18 +287,20 @@ class MyFire(object):
             log.info("atx-server addr %s", server)
         if mirror:
             global GITHUB_BASEURL
-            GITHUB_BASEURL = "http://openatx.appetizer.io"
+            GITHUB_BASEURL = "https://github-mirror.open.netease.com/openatx"
 
         if proxy:
             os.environ['HTTP_PROXY'] = proxy
             os.environ['HTTPS_PROXY'] = proxy
 
         if not serial:
-            output = subprocess.check_output(['adb', 'devices'])
-            pattern = re.compile(
-                r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
-            matches = pattern.findall(output.decode())
-            valid_serials = [m[0] for m in matches if m[1] == 'device']
+            valid_serials = [sn for sn,
+                             _ in adbutils.Adb().devices(states=['device'])]
+            # output = subprocess.check_output(['adb', 'devices'])
+            # pattern = re.compile(
+            #     r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
+            # matches = pattern.findall(output.decode())
+            # valid_serials = [m[0] for m in matches if m[1] == 'device']
             if len(valid_serials) == 0:
                 log.warning("No avaliable android devices detected.")
                 return
@@ -307,12 +309,6 @@ class MyFire(object):
                 self._init_with_serial(serial, server, apk_version,
                                        agent_version, reinstall,
                                        ignore_apk_check)
-            # if len(valid_serials) > 1:
-            #     log.warning(
-            #         "More then 1 device detected, you must specify android serial"
-            #     )
-            #     return
-            # serial = valid_serials[0]
         else:
             self._init_with_serial(serial, server, apk_version, agent_version,
                                    reinstall, ignore_apk_check)
