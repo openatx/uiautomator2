@@ -105,7 +105,7 @@ class Installer(adbutils.Adb):
         for dirname in dirs:
             testpath = "%s/%s" % (dirname, 'permtest')
             self.shell('touch', testpath, raise_error=False)
-            self.shell('chmod', '+x', testpath, raise_error=False)
+            self.shell('chmod', '755', testpath, raise_error=False)
             content = self.shell('ls', '-l', testpath, raise_error=False)
             log.debug('permtest returns: %s' % content)
             if -1 != content.find('x'):
