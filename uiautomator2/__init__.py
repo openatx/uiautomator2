@@ -108,7 +108,11 @@ class UiAutomationNotConnectedError(JsonRpcError):
     pass
 
 
-class NullExceptionError(JsonRpcError):
+class NullObjectExceptionError(JsonRpcError):
+    pass
+
+
+class NullPointerExceptionError(JsonRpcError):
     pass
 
 
@@ -406,7 +410,7 @@ class UIAutomatorServer(object):
             warnings.warn(
                 "UiAutomation not connected", RuntimeWarning, stacklevel=1)
             raise
-        except (NullExceptionError, StaleObjectExceptionError) as e:
+        except (NullObjectExceptionError, StaleObjectExceptionError) as e:
             warnings.warn(
                 "uiautomator2 raise exception %s, and run code again" % e,
                 RuntimeWarning,
@@ -451,7 +455,6 @@ class UIAutomatorServer(object):
 
         # error happends
         err = JsonRpcError(error)
-
         if err.data and 'UiAutomation not connected' in err.data:
             err.__class__ = UiAutomationNotConnectedError
         elif err.message:
@@ -464,7 +467,9 @@ class UIAutomatorServer(object):
                 # In this case, it is necessary to call findObject(BySelector) to obtain a new UiObject2 instance.
                 err.__class__ = StaleObjectExceptionError
             elif 'java.lang.NullObjectException' in err.message:
-                err.__class__ = NullExceptionError
+                err.__class__ = NullObjectExceptionError
+            elif 'java.lang.NullPointerException' == err.message:
+                err.__class__ = NullPointerExceptionError
         raise err
 
     def _jsonrpc_id(self, method):
@@ -660,6 +665,7 @@ class UIAutomatorServer(object):
                 self._reqsess.delete(self.path2url('/install/' + id))
                 raise
 
+    @retry(NullPointerExceptionError, delay=.5, tries=3, jitter=0.2)
     def dump_hierarchy(self, compressed=False, pretty=False):
         content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
         if pretty and "\n " not in content:
