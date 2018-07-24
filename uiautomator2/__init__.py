@@ -780,7 +780,7 @@ class UIAutomatorServer(object):
                 'android.intent.category.LAUNCHER', '1'
             ])
 
-    def current_app(self):
+    def current_app(self,timeout=10):
         """
         Returns:
             dict(package, activity, pid?)
@@ -801,7 +801,7 @@ class UIAutomatorServer(object):
         _activityRE = re.compile(
             r'ACTIVITY (?P<package>[^/]+)/(?P<activity>[^/\s]+) \w+ pid=(?P<pid>\d+)'
         )
-        output, _ = self.shell(['dumpsys', 'activity', 'top'])
+        output, _ = self.shell(['dumpsys', 'activity', 'top'],timeout)
         ms = _activityRE.finditer(output)
         ret = None
         for m in ms:
