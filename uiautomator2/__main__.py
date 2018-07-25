@@ -267,7 +267,9 @@ class Installer(adbutils.Adb):
                 time.sleep(.5)
                 cnt += 1
         else:
-            log.error("failure")
+            log.error(
+                "Failure, unable to get result from http://localhost:%d/version"
+            )
 
 
 class MyFire(object):
@@ -294,8 +296,9 @@ class MyFire(object):
             os.environ['HTTPS_PROXY'] = proxy
 
         if not serial:
-            valid_serials = [sn for sn,
-                             _ in adbutils.Adb().devices(states=['device'])]
+            valid_serials = [
+                sn for sn, _ in adbutils.Adb().devices(states=['device'])
+            ]
             # output = subprocess.check_output(['adb', 'devices'])
             # pattern = re.compile(
             #     r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
