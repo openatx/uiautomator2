@@ -23,6 +23,12 @@
     .img-screenshot {
       max-height: 400px;
     }
+    button {
+        display: table,
+        width: auto
+        margin-left: auto
+        margin-right: auto
+    }
   </style>
 </head>
 
@@ -55,7 +61,18 @@
       </div>
     </div>
   </nav>
-  <video src="./imgs/video.mp4" controls="controls" style="clear:both;display:block;margin:auto"></video>
+  <div style="display: flex; justify-content: center;">
+    <div style="display: inline-block;">
+      <video src="./imgs/video.mp4" id="video" controls="controls" style="clear:both;display:block;margin:auto"></video>
+      <div class="btn-group" style="float: right;">
+        <button onclick="setPlaySpeed1()" type="button" class="btn btn-default" >1倍速</button>
+        <button onclick="setPlaySpeed2()" type="button" class="btn btn-default">2倍速</button>
+        <button onclick="setPlaySpeed3()" type="button" class="btn btn-default">3倍速</button>
+        <button onclick="setPlaySpeed4()" type="button" class="btn btn-default">4倍速</button>
+      </div>
+    </div>
+  </div>
+
   <div class="container-fluid" id="app">
     <div class="row">
       <div v-if="warning" class="alert alert-warning alert-dismissible" role="alert">
