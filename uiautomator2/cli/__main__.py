@@ -17,6 +17,7 @@ import time
 import requests
 import re
 import six
+import humanize
 from docopt import docopt
 
 urllib = six.moves.urllib
@@ -29,30 +30,6 @@ def reformat_addr(addr):
     return u.scheme + "://" + u.netloc
 
 
-def get_install_url(ip, server=None):
-    """
-    Args:
-        ip: device ip, eg 10.0.0.2
-        server: atx-server addr eg 10.1.1.1:8000
-    """
-    default_url = 'http://' + ip + ":7912/install"
-    if not server:
-        return default_url
-    try:
-        server_url = reformat_addr(server)
-        r = requests.get(server_url + "/devices/ip:" + ip + "/info", timeout=2)
-        raise_for_status(r)
-        dinfo = r.json()
-        provider = dinfo.get('provider')
-        if not provider:
-            return default_url
-        return 'http://{}:{}/install/{}'.format(
-            provider['ip'], provider['port'], dinfo['serial'])
-    except Exception as e:
-        print("ERR(get install url):", str(e))
-        return default_url
-
-
 class HTTPError(Exception):
     pass
 
@@ -62,37 +39,103 @@ def raise_for_status(r):
         raise HTTPError(r.text)
 
 
-def install_apk(install_url, apk_url):
-    r = requests.post(install_url, data={'url': apk_url})
-    print(r.text)
-    raise_for_status(r)
-    id = r.text.strip()
-    u = urllib.parse.urlparse(install_url)
-    query_url = u.scheme + "://" + u.netloc + "/install/"
-    while True:
-        time.sleep(1)
-        r = requests.get(query_url + id)
+def show_pushing_progress(ret, start_time):
+    """
+    Args:
+        ret: json message from URL(/install/:id)
+    """
+    total = ret.get('totalSize', 0)
+    copied = ret.get('copiedSize', 0)
+    total_size = humanize.naturalsize(total, gnu=True)
+    copied_size = humanize.naturalsize(copied, gnu=True)
+    speed = humanize.naturalsize(
+        (copied / (time.time() - start_time)), gnu=True)
+    print("Pushing {} / {} [{}B/s]".format(copied_size, total_size, speed))
+
+
+class Installer(object):
+    def __init__(self, device_url, server_url):
+        self._device_url = reformat_addr(device_url)
+        self._server_url = server_url
+        self._devinfo = None
+
+    @property
+    def devinfo(self):
+        if self._devinfo:
+            return self._devinfo
+        self._devinfo = requests.get(self._device_url + "/info").json()
+        return self._devinfo
+
+    @property
+    def serial(self):
+        return self.devinfo['serial']
+
+    def _provider_install_url(self):
+        if not self._server_url:
+            return
+        url = reformat_addr(self._server_url)
+        dinfo = requests.get(self._server_url + "/devices/" +
+                             self.devinfo['udid'] + "/info").json()
+        provider = dinfo.get('provider')
+        if not provider:
+            return None
+        return 'http://{}:{}/install/{}'.format(
+            provider['ip'], provider['port'], dinfo['serial'])
+
+    def _device_install_url(self):
+        return self._device_url + "/install"
+
+    def _install_url(self):
+        purl = self._provider_install_url()
+        if purl:
+            return purl
+        return self._device_install_url()
+
+    def install(self, apk_url):
+        install_url = self._install_url()
+        r = requests.post(install_url, data={'url': apk_url})
+        print(r.text)
         raise_for_status(r)
-        ret = r.json()
-        status = ret['message']
-        if status == 'finished':
-            print("Success installed")
-            return True
-        elif status.startswith("err:"):
-            raise RuntimeError(status)
-        else:
-            print(ret)
+        id = r.text.strip()
+        u = urllib.parse.urlparse(install_url)
+        query_url = u.scheme + "://" + u.netloc + "/install/"
+        start = time.time()
+        while True:
+            time.sleep(1)
+            r = requests.get(query_url + id)
+            raise_for_status(r)
+            ret = r.json()
+            status = ret['message']
+            if status == 'finished':
+                print("Success installed")
+                return True
+            elif status == 'pushing':
+                show_pushing_progress(ret, start)
+            elif status == 'downloading':  # for old style
+                show_pushing_progress(ret.get('progress', {}), start)
+            elif status == 'installing':
+                print("Installing ..")
+            elif status == 'success installed':
+                print("Installed")
+                return
+            elif status.startswith("err:"):
+                raise RuntimeError(status)
+            else:
+                print(ret)
 
 
 def main():
     args = docopt(__doc__, version='u2cli 1.0')
     print(args)
     if args['install']:
-        install_url = get_install_url(args['<ip>'], args['--server'])
-        print("InstallURL", install_url)
-        # https://gohttp.nie.netease.com/tools/apks/qrcodescan-2.6.0-green.apk'
         apk_url = args['<url>']
-        install_apk(install_url, apk_url)
+        ins = Installer(args['<ip>'] + ":7912", args['--server'])
+        ins.install(apk_url)
+        # return
+        # print("InstallURL", install_url)
+        # install_url = get_install_url(args['<ip>'], args['--server'])
+        # # https://gohttp.nie.netease.com/tools/apks/qrcodescan-2.6.0-green.apk'
+        # install_apk(install_url, apk_url)
 
 
 if __name__ == '__main__':
