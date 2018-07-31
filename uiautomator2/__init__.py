@@ -585,9 +585,9 @@ class UIAutomatorServer(object):
             time.sleep(1)
         raise RuntimeError("Uiautomator started failed.")
 
-    def app_install(self, url, installing_callback=None):
+    def app_install(self, url, installing_callback=None, server=None):
         """
-        {u'message': u'downloading', "progress": {u'titalSize': 407992690, u'copiedSize': 49152}}
+        {u'message': u'downloading', "progress": {u'totalSize': 407992690, u'copiedSize': 49152}}
 
         Returns:
             packageName
