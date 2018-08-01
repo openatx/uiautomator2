@@ -45,12 +45,17 @@ def show_pushing_progress(ret, start_time):
         ret: json message from URL(/install/:id)
     """
     total = ret.get('totalSize', 0)
+    if total == 0:
+        print("Total size 0")
+        return
     copied = ret.get('copiedSize', 0)
     total_size = humanize.naturalsize(total, gnu=True)
     copied_size = humanize.naturalsize(copied, gnu=True)
     speed = humanize.naturalsize(
         (copied / (time.time() - start_time)), gnu=True)
-    print("Pushing {} / {} [{}B/s]".format(copied_size, total_size, speed))
+    progress = 100.0 * float(copied) / float(total)
+    print("Pushing {:.1f}% {} / {} [{}B/s]".format(progress, copied_size,
+                                                   total_size, speed))
 
 
 class Installer(object):
@@ -73,9 +78,9 @@ class Installer(object):
     def _provider_install_url(self):
         if not self._server_url:
             return
-        url = reformat_addr(self._server_url)
-        dinfo = requests.get(self._server_url + "/devices/" +
-                             self.devinfo['udid'] + "/info").json()
+        server_url = reformat_addr(self._server_url)
+        dinfo = requests.get(
+            server_url + "/devices/" + self.devinfo['udid'] + "/info").json()
         provider = dinfo.get('provider')
         if not provider:
             return None
@@ -88,8 +93,11 @@ class Installer(object):
     def _install_url(self):
         purl = self._provider_install_url()
         if purl:
+            print("Use provider install service:", purl)
             return purl
-        return self._device_install_url()
+        iurl = self._device_install_url()
+        print("Use device install service:", iurl)
+        return iurl
 
     def install(self, apk_url):
         install_url = self._install_url()
