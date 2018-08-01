@@ -44,6 +44,9 @@ def show_pushing_progress(ret, start_time):
     Args:
         ret: json message from URL(/install/:id)
     """
+    if ret is None:
+        print("No progress")
+        return
     total = ret.get('totalSize', 0)
     if total == 0:
         print("Total size 0")
