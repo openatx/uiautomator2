@@ -10,8 +10,10 @@ Options:
     -h --help            show this help message
     -v --version         show version
     -s --server=<server>    atx-server url, eg: http://10.0.0.1:8000
+    --serial=<serial>    device serial number
 
 """
+    #u2cli install <url> [--serial=<serial>]
 
 import time
 import requests
