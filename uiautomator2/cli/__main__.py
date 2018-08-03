@@ -118,7 +118,7 @@ class Installer(object):
             r = requests.get(query_url + id)
             raise_for_status(r)
             ret = r.json()
-            status = ret['message']
+            status = ret and ret.get('message', '')
             if status == 'finished':
                 print("Success installed")
                 return True
@@ -131,8 +131,8 @@ class Installer(object):
             elif status == 'success installed':
                 print("Installed")
                 return
-            elif status.startswith("err:"):
-                raise RuntimeError(status)
+            elif status and status.startswith("err:"):
+                raise RuntimeError(status, ret)
             else:
                 print(ret)
 

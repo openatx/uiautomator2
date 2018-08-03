@@ -5,4 +5,5 @@
 #
 
 import setuptools
-setuptools.setup(setup_requires=['pbr'], pbr=True)
+setuptools.setup(
+    setup_requires=['pbr'], python_requires='>=2.7,>=3.4,!=3.7.*', pbr=True)

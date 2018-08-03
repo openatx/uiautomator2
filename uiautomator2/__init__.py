@@ -35,12 +35,10 @@ import six
 import humanize
 import progress.bar
 from retry import retry
+import six.moves.urllib.parse as urlparse
 
 if six.PY2:
-    import urlparse
     FileNotFoundError = OSError
-else:  # for py3
-    import urllib.parse as urlparse
 
 import requests
 from uiautomator2 import adbutils
@@ -227,7 +225,7 @@ def connect_usb(serial=None):
     if not d.agent_alive:
         warnings.warn("backend atx-agent is not alive, start again ...",
                       RuntimeWarning)
-        adb.execute("shell", "/data/local/tmp/atx-agent", "-d")
+        adb.execute("shell", "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell", "atx-agent", "-d")
         deadline = time.time() + 3
         while time.time() < deadline:
             if d.alive:
