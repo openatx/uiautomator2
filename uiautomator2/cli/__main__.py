@@ -13,7 +13,7 @@ Options:
     --serial=<serial>    device serial number
 
 """
-    #u2cli install <url> [--serial=<serial>]
+#u2cli install <url> [--serial=<serial>]
 
 import time
 import requests
@@ -104,18 +104,11 @@ class Installer(object):
         print("Use device install service:", iurl)
         return iurl
 
-    def install(self, apk_url):
-        install_url = self._install_url()
-        r = requests.post(install_url, data={'url': apk_url})
-        print(r.text)
-        raise_for_status(r)
-        id = r.text.strip()
-        u = urllib.parse.urlparse(install_url)
-        query_url = u.scheme + "://" + u.netloc + "/install/"
+    def _wait_finish(self, query_url):
         start = time.time()
         while True:
             time.sleep(1)
-            r = requests.get(query_url + id)
+            r = requests.get(query_url)
             raise_for_status(r)
             ret = r.json()
             status = ret and ret.get('message', '')
@@ -133,8 +126,25 @@ class Installer(object):
                 return
             elif status and status.startswith("err:"):
                 raise RuntimeError(status, ret)
+            elif status and 'error' in status:
+                raise RuntimeError(status, ret)
             else:
                 print(ret)
+
+    def install(self, apk_url):
+        install_url = self._install_url()
+        r = requests.post(install_url, data={'url': apk_url})
+        print(r.text)
+        raise_for_status(r)
+        id = r.text.strip()
+        u = urllib.parse.urlparse(install_url)
+        query_url = u.scheme + "://" + u.netloc + "/install/" + id
+        try:
+            self._wait_finish(query_url)
+        except KeyboardInterrupt:
+            print("Catch Ctrl+C, cancel download")
+            r = requests.delete(query_url)
+            print(r.text)
 
 
 def main():
