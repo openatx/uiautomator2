@@ -20,6 +20,7 @@ import requests
 import re
 import six
 import humanize
+import uiautomator2
 from docopt import docopt
 
 urllib = six.moves.urllib
@@ -80,6 +81,32 @@ class Installer(object):
     def serial(self):
         return self.devinfo['serial']
 
+    def prepare(self):
+        if self.devinfo.get('brand', '').lower() == 'vivo':
+            print("Vivo detected, open u2 watchers")
+            u = uiautomator2.connect_wifi(self._device_url)
+            u.healthcheck()
+            u.watcher("AUTO_INSTALL").when(
+                textMatches="好|安装", className="android.widget.Button").click()
+            u.watchers.watched = True
+
+    def install(self, apk_url):
+        self.prepare()
+
+        install_url = self._install_url()
+        r = requests.post(install_url, data={'url': apk_url})
+        print(r.text)
+        raise_for_status(r)
+        id = r.text.strip()
+        u = urllib.parse.urlparse(install_url)
+        query_url = u.scheme + "://" + u.netloc + "/install/" + id
+        try:
+            self._wait_finish(query_url)
+        except KeyboardInterrupt:
+            print("Catch Ctrl+C, cancel download")
+            r = requests.delete(query_url)
+            print(r.text)
+
     def _provider_install_url(self):
         if not self._server_url:
             return
@@ -130,21 +157,6 @@ class Installer(object):
                 raise RuntimeError(status, ret)
             else:
                 print(ret)
-
-    def install(self, apk_url):
-        install_url = self._install_url()
-        r = requests.post(install_url, data={'url': apk_url})
-        print(r.text)
-        raise_for_status(r)
-        id = r.text.strip()
-        u = urllib.parse.urlparse(install_url)
-        query_url = u.scheme + "://" + u.netloc + "/install/" + id
-        try:
-            self._wait_finish(query_url)
-        except KeyboardInterrupt:
-            print("Catch Ctrl+C, cancel download")
-            r = requests.delete(query_url)
-            print(r.text)
 
 
 def main():

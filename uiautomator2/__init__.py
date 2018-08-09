@@ -81,14 +81,16 @@ class JsonRpcError(UiaError):
             return 'Server error'
         return 'Unknown error'
 
-    def __init__(self, error={}):
+    def __init__(self, error={}, method=None):
         self.code = error.get('code')
         self.message = error.get('message', '')
         self.data = error.get('data', '')
+        self.method = method
 
     def __str__(self):
         return '%d %s: %s' % (self.code, self.format_errcode(self.code),
-                              '<%s> data: %s' % (self.message, self.data))
+                              '<%s> data: %s, method: %s' %
+                              (self.message, self.data, self.method))
 
     def __repr__(self):
         return repr(str(self))
@@ -225,7 +227,9 @@ def connect_usb(serial=None):
     if not d.agent_alive:
         warnings.warn("backend atx-agent is not alive, start again ...",
                       RuntimeWarning)
-        adb.execute("shell", "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell", "atx-agent", "-d")
+        adb.execute("shell",
+                    "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell",
+                    "atx-agent", "-d")
         deadline = time.time() + 3
         while time.time() < deadline:
             if d.alive:
@@ -452,7 +456,7 @@ class UIAutomatorServer(object):
             return jsondata.get('result')
 
         # error happends
-        err = JsonRpcError(error)
+        err = JsonRpcError(error, method)
         if err.data and 'UiAutomation not connected' in err.data:
             err.__class__ = UiAutomationNotConnectedError
         elif err.message:
