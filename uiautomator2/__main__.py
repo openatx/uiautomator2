@@ -338,6 +338,8 @@ class MyFire(object):
             # TODO: should also check atx-server addr
             log.info("atx-agent is already running, force stop")
             ins.shell("/data/local/tmp/atx-agent", "-stop", raise_error=False)
+            ins.shell("rm", "/sdcard/atx-agent.pid", raise_error=False)
+            ins.shell("rm", "/sdcard/atx-agent.log.old", raise_error=False)
         else:
             ins.install_atx_agent(agent_version, reinstall)
 

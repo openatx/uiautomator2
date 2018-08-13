@@ -16,7 +16,8 @@ __apk_version__ = '1.1.4'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__atx_agent_version__ = '0.4.1'
+__atx_agent_version__ = '0.4.2'
+# 0.4.2 hot fix, close upgrade-self
 # 0.4.1 fix app-download time.Timer panic error, use safe-time.Timer instead.
 # 0.4.0 add go-daemon lib. use safe-time.Timer to prevent panic error. this will make it run longer
 # 0.3.6 support upload zip and unzip, fix minicap rotation error when atx-agent is killed -9
