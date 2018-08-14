@@ -1067,6 +1067,15 @@ class Session(object):
                 self._pid, self._pkg_name)
         return super(Session, self).__repr__()
 
+    def implicitly_wait(self, seconds=None):
+        """set default wait timeout
+        Args:
+            seconds(float): to wait element show up
+        """
+        if seconds is not None:
+            self.server.wait_timeout = seconds
+        return self.server.wait_timeout
+
     def running(self):
         """
         Check is session is running. return bool
@@ -1535,6 +1544,7 @@ class Session(object):
         return UiObject(self, Selector(**kwargs))
 
 
+# Will be removed in the future
 def wrap_wait_exists(fn):
     @functools.wraps(fn)
     def inner(self, *args, **kwargs):
@@ -1569,10 +1579,12 @@ class UiObject(object):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
 
-    @wrap_wait_exists
-    def click(self):
+    def click(self, timeout=None):
         """
         Click UI element. 
+        
+        Args:
+            timeout: seconds wait element show up
 
         The click method does the same logic as java uiautomator does.
         1. waitForExists 2. get VisibleBounds center 3. send click event
@@ -1580,6 +1592,7 @@ class UiObject(object):
         Raises:
             UiObjectNotFoundError
         """
+        self.wait(timeout=timeout)
         x, y = self.center()
         # ext.htmlreport need to comment bellow code
         # if info['clickable']:
@@ -1627,21 +1640,24 @@ class UiObject(object):
         except UiObjectNotFoundError:
             return False
 
-    @wrap_wait_exists
-    def long_click(self, duration=None):
+    def long_click(self, duration=None, timeout=None):
         """
         Args:
             duration (float): seconds of pressed
+            timeout (float): seconds wait element show up
         """
 
         # if info['longClickable'] and not duration:
         #     return self.jsonrpc.longClick(self.selector)
+        self.wait(timeout=timeout)
         x, y = self.center()
         return self.session.long_click(x, y, duration)
 
-    @wrap_wait_exists
     def drag_to(self, *args, **kwargs):
         duration = kwargs.pop('duration', 0.5)
+        timeout = kwargs.pop('timeout', None)
+        self.wait(timeout=timeout)
+
         steps = int(duration * 200)
         if len(args) >= 2 or "x" in kwargs or "y" in kwargs:
 
@@ -1677,7 +1693,7 @@ class UiObject(object):
     def pinch_out(self, percent=100, steps=50):
         return self.jsonrpc.pinchOut(self.selector, percent, steps)
 
-    def wait(self, exists=True, timeout=10):
+    def wait(self, exists=True, timeout=20):
         """
         Wait until UI Element exists or gone
 
@@ -1688,6 +1704,8 @@ class UiObject(object):
             d(text="Clock").wait()
             d(text="Settings").wait("gone") # wait until it's gone
         """
+        if timeout is None:
+            timeout = self.wait_timeout
         http_wait = timeout + 10
         if exists:
             return self.jsonrpc.waitForExists(
@@ -1708,20 +1726,20 @@ class UiObject(object):
         """ alias of set_text """
         return self.set_text(text)
 
-    @wrap_wait_exists
-    def set_text(self, text):
+    def set_text(self, text, timeout=None):
+        self.wait(timeout=timeout)
         if not text:
             return self.jsonrpc.clearTextField(self.selector)
         else:
             return self.jsonrpc.setText(self.selector, text)
 
-    @wrap_wait_exists
-    def get_text(self):
+    def get_text(self, timeout=None):
         """ get text from field """
+        self.wait(timeout=timeout)
         return self.jsonrpc.getText(self.selector)
 
-    @wrap_wait_exists
-    def clear_text(self):
+    def clear_text(self, timeout=None):
+        self.wait(timeout=timeout)
         return self.set_text(None)
 
     def child(self, **kwargs):
@@ -1769,7 +1787,8 @@ class UiObject(object):
 
     def __getitem__(self, index):
         selector = self.selector.clone()
-        selector['instance'] = index
+        # selector['instance'] = index
+        selector.update_instance(index)
         return UiObject(self.session, selector)
 
     @property
@@ -2009,6 +2028,12 @@ class Selector(dict):
         self[self.__childOrSiblingSelector].append(Selector(**kwargs))
         return self
 
+    def update_instance(self, i):
+        # update inside child instance
+        if not self[self.__childOrSiblingSelector]:
+            self['instance'] = i
+        self[self.__childOrSiblingSelector][-1]['instance'] = i
+
 
 class Exists(object):
     """Exists object with magic methods."""
@@ -2055,7 +2080,7 @@ class XPathSelector(object):
         """
         click element
         """
-        elem = self.wait(timeout)
+        elem = self.wait(timeout=timeout)
         if not elem:
             raise UiaError(self.xpath)
         x, y = elem.center()

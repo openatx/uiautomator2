@@ -13,6 +13,7 @@ class SimpleTestCase(unittest.TestCase):
     def setUpClass(cls):
         cls.d = u2.connect_usb()
         cls.d.set_orientation('natural')
+        cls.d.implicitly_wait(10)
 
     def setUp(self):
         self.sess = self.d.session("io.appium.android.apis")
@@ -83,8 +84,36 @@ class SimpleTestCase(unittest.TestCase):
 
     def test_xpath(self):
         d = self.sess
+        self.assertEqual(len(d.xpath("//*[@text='Media']").all()), 1)
+        self.assertEqual(len(d.xpath("//*[@text='MediaNotExists']").all()), 0)
         d.xpath("//*[@text='Media']").click()
         self.assertTrue(d.xpath('//*[contains(@text, "Audio")]').wait(5))
+
+    def test_implicitly_wait(self):
+        d = self.sess
+        d.implicitly_wait(2)
+        self.assertEqual(d.implicitly_wait(), 2)
+        start = time.time()
+        with self.assertRaises(u2.UiObjectNotFoundError):
+            d(text="Sensors").get_text()
+        time_used = time.time() - start
+        self.assertGreaterEqual(time_used, 2)
+        # maybe longer then 2, waitForExists -> getText
+        # getText may take 1~2s
+        self.assertLess(time_used, 2 + 3)
+
+    def test_select_iter(self):
+        d = self.sess
+        d(text='OS').click()
+        texts = d(resourceId='android:id/list').child(
+            className='android.widget.TextView')
+        self.assertEqual(texts.count, 4)
+        words = []
+        for item in texts:
+            words.append(item.get_text())
+        self.assertEqual(
+            words,
+            ['Morse Code', 'Rotation Vector', 'Sensors', 'SMS Messaging'])
 
 
 if __name__ == '__main__':
