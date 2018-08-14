@@ -1787,7 +1787,6 @@ class UiObject(object):
 
     def __getitem__(self, index):
         selector = self.selector.clone()
-        # selector['instance'] = index
         selector.update_instance(index)
         return UiObject(self.session, selector)
 
@@ -2030,9 +2029,10 @@ class Selector(dict):
 
     def update_instance(self, i):
         # update inside child instance
-        if not self[self.__childOrSiblingSelector]:
+        if self[self.__childOrSiblingSelector]:
+            self[self.__childOrSiblingSelector][-1]['instance'] = i
+        else:
             self['instance'] = i
-        self[self.__childOrSiblingSelector][-1]['instance'] = i
 
 
 class Exists(object):
