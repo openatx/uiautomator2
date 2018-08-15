@@ -28,6 +28,7 @@ import shutil
 import xml.dom.minidom
 import threading
 import warnings
+import logging
 from datetime import datetime
 from subprocess import list2cmdline
 
@@ -1578,6 +1579,7 @@ class UiObject(object):
         return Exists(self.jsonrpc, self.selector)
 
     @property
+    @retry(UiObjectNotFoundError, delay=.2, tries=3, jitter=0.1, logger=logging)
     def info(self):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
