@@ -217,7 +217,7 @@ def connect_usb(serial=None):
     """
     Args:
         serial (str): android device serial
-    
+
     Returns:
         UIAutomatorServer
     """
@@ -227,9 +227,8 @@ def connect_usb(serial=None):
     if not d.agent_alive:
         warnings.warn("backend atx-agent is not alive, start again ...",
                       RuntimeWarning)
-        adb.execute("shell",
-                    "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell",
-                    "atx-agent", "-d")
+        adb.execute(
+            "shell", "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell", "atx-agent", "-d")
         deadline = time.time() + 3
         while time.time() < deadline:
             if d.alive:
@@ -667,14 +666,6 @@ class UIAutomatorServer(object):
                 self._reqsess.delete(self.path2url('/install/' + id))
                 raise
 
-    @retry(NullPointerExceptionError, delay=.5, tries=3, jitter=0.2)
-    def dump_hierarchy(self, compressed=False, pretty=False):
-        content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
-        if pretty and "\n " not in content:
-            xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))
-            content = U(xml_text.toprettyxml(indent='  '))
-        return content
-
     def shell(self, cmdargs, stream=False, timeout=60):
         """
         Run adb shell command with arguments and return its output. Require atx-agent >=0.3.3
@@ -1076,6 +1067,11 @@ class Session(object):
             self.server.wait_timeout = seconds
         return self.server.wait_timeout
 
+    def close(self):
+        """ close app """
+        if self._pkg_name:
+            self.server.app_stop(self._pkg_name)
+
     def running(self):
         """
         Check is session is running. return bool
@@ -1384,6 +1380,14 @@ class Session(object):
         else:
             raise RuntimeError("Invalid format " + format)
 
+    @retry(NullPointerExceptionError, delay=.5, tries=5, jitter=0.2)
+    def dump_hierarchy(self, compressed=False, pretty=False):
+        content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
+        if pretty and "\n " not in content:
+            xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))
+            content = U(xml_text.toprettyxml(indent='  '))
+        return content
+
     def freeze_rotation(self, freeze=True):
         '''freeze or unfreeze the device rotation in current status.'''
         self.jsonrpc.freezeRotation(freeze)
@@ -1446,17 +1450,16 @@ class Session(object):
     def exists(self, **kwargs):
         return self(**kwargs).exists
 
-    def xpath(self, xpath):
+    def xpath(self, xpath, source=None):
         """
+        Args:
+            xpath: expression of XPath2.0
+            source: optional, hierarchy from dump_hierarchy()
+
         Returns:
             XPathSelector
         """
-        return XPathSelector(xpath, self.server)
-
-    # def xpath_findall(self, xpath):
-    #     xml = self.server.dump_hierarchy()
-    #     root = ET.fromstring(xml)
-    #     return root.findall(xpath)
+        return XPathSelector(xpath, self.server, source)
 
     def watcher(self, name):
         obj = self
@@ -1582,7 +1585,7 @@ class UiObject(object):
     def click(self, timeout=None):
         """
         Click UI element. 
-        
+
         Args:
             timeout: seconds wait element show up
 
@@ -2064,9 +2067,10 @@ class Exists(object):
 
 
 class XPathSelector(object):
-    def __init__(self, xpath, server):
+    def __init__(self, xpath, server, source=None):
         self.xpath = xpath
         self.server = server
+        self.source = source
 
     def wait(self, timeout=10.0):
         deadline = time.time() + timeout
@@ -2091,11 +2095,15 @@ class XPathSelector(object):
         Returns:
             list of XMLElement
         """
-        xml_content = self.server.dump_hierarchy()
+        xml_content = self.source or self.server.dump_hierarchy()
         return [
             XMLElement(node)
             for node in simplexml.xpath_findall(self.xpath, xml_content)
         ]
+
+    @property
+    def exists(self):
+        return len(self.all()) > 0
 
 
 class XMLElement(object):
