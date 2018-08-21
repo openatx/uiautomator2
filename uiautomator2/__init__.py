@@ -228,8 +228,9 @@ def connect_usb(serial=None):
     if not d.agent_alive:
         warnings.warn("backend atx-agent is not alive, start again ...",
                       RuntimeWarning)
-        adb.execute(
-            "shell", "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell", "atx-agent", "-d")
+        adb.execute("shell",
+                    "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell",
+                    "atx-agent", "-d")
         deadline = time.time() + 3
         while time.time() < deadline:
             if d.alive:
@@ -237,7 +238,7 @@ def connect_usb(serial=None):
     elif not d.alive:
         warnings.warn("backend uiautomator2 is not alive, start again ...",
                       RuntimeWarning)
-        d.healthcheck()
+        d.reset_uiautomator()
     return d
 
 
@@ -406,12 +407,15 @@ class UIAutomatorServer(object):
                 RuntimeWarning,
                 stacklevel=1)
             # for XiaoMi, want to recover uiautomator2 must start app:com.github.uiautomator
-            self.healthcheck(unlock=False)
+            self.reset_uiautomator()
             return self.jsonrpc_call(*args, **kwargs)
         except UiAutomationNotConnectedError:
             warnings.warn(
-                "UiAutomation not connected", RuntimeWarning, stacklevel=1)
-            raise
+                "UiAutomation not connected, restart uiautoamtor",
+                RuntimeWarning,
+                stacklevel=1)
+            self.reset_uiautomator()
+            return self.jsonrpc_call(*args, **kwargs)
         except (NullObjectExceptionError, StaleObjectExceptionError) as e:
             warnings.warn(
                 "uiautomator2 raise exception %s, and run code again" % e,
@@ -457,7 +461,10 @@ class UIAutomatorServer(object):
 
         # error happends
         err = JsonRpcError(error, method)
-        if err.data and 'UiAutomation not connected' in err.data:
+
+        if isinstance(err.data,
+                      dict) and 'UiAutomation not connected' in err.data.get(
+                          'message', ''):
             err.__class__ = UiAutomationNotConnectedError
         elif err.message:
             if 'uiautomator.UiObjectNotFoundException' in err.message:
@@ -537,22 +544,17 @@ class UIAutomatorServer(object):
 
         return _Service(name)
 
-    def healthcheck(self, unlock=True):
+    def reset_uiautomator(self):
         """
-        Check if uiautomator is running, if not launch again
-
-        Args:
-            unlock (bool): unlock screen before
+        Reset uiautomator
 
         Raises:
             RuntimeError
         """
-        if unlock:
-            self.open_identify()
-
+        # self.open_identify()
         self._reqsess.delete(
             self.path2url('/uiautomator'))  # stop uiautomator keeper first
-        wait = not unlock  # should not wait IdentifyActivity open or it will stuck sometimes
+        # wait = not unlock  # should not wait IdentifyActivity open or it will stuck sometimes
         self.app_start(  # may also stuck here.
             'com.github.uiautomator',
             '.MainActivity',
@@ -578,7 +580,7 @@ class UIAutomatorServer(object):
                         'am', 'startservice', '-n',
                         'com.github.uiautomator/.Service'
                     ])
-                    time.sleep(.5)
+                    time.sleep(1.5)
                 else:
                     time.sleep(.5)
                     self.shell(['input', 'keyevent', 'BACK'])
@@ -586,6 +588,22 @@ class UIAutomatorServer(object):
                 return True
             time.sleep(1)
         raise RuntimeError("Uiautomator started failed.")
+
+    def healthcheck(self):
+        """
+        Reset device into ready state
+
+        Raises:
+            RuntimeError
+        """
+        if not self.info['screenOn']:
+            self.screen_on()
+            self.press("home")
+            self.swipe(0.1, 0.9, 0.9, 0.1, 0.3)  # swipe to unlock
+
+        self.press("home")
+        self.press("back")
+        self.reset_uiautomator()
 
     def app_install(self, url, installing_callback=None, server=None):
         """
@@ -780,7 +798,7 @@ class UIAutomatorServer(object):
             dict(package, activity, pid?)
 
         For developer:
-            Function healthcheck need this function, so can't use jsonrpc here.
+            Function reset_uiautomator need this function, so can't use jsonrpc here.
         """
         # try: adb shell dumpsys window windows
         _focusedRE = re.compile(
@@ -1579,7 +1597,8 @@ class UiObject(object):
         return Exists(self.jsonrpc, self.selector)
 
     @property
-    @retry(UiObjectNotFoundError, delay=.2, tries=3, jitter=0.1, logger=logging)
+    @retry(
+        UiObjectNotFoundError, delay=.5, tries=3, jitter=0.1, logger=logging)
     def info(self):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)

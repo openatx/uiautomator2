@@ -1117,11 +1117,23 @@ For example: 其中一个节点的内容
 
 xpath定位和使用方法
 
+有些属性的名字有修改需要注意
+
+```
+description -> content-desc
+resourceId -> resource-id
+```
+
+常见用法
+
 ```python
 # wait exists 10s
 d.xpath("//android.widget.TextView").wait(10.0)
 # find and click
 d.xpath("//*[@content-desc='分享']").click()
+# check exists
+if d.xpath("//android.widget.TextView[contains(@text, 'Se')]").exists:
+    print("exists")
 # get all text-view text, attrib and center point
 for elem in d.xpath("//android.widget.TextView").all():
     print("Text:", elem.text)
@@ -1130,6 +1142,28 @@ for elem in d.xpath("//android.widget.TextView").all():
     print("Attrib:", elem.attrib)
     # Coordinate eg: (100, 200)
     print("Position:", elem.center())
+```
+
+其他XPath常见用法
+
+```
+# 所有元素
+//*
+
+# resource-id包含login字符
+//*[contains(@resource-id, 'login')]
+
+# 按钮包含账号或帐号
+//android.widget.Button[contains(@text, '账号') or contains(@text, '帐号')]
+
+# 所有ImageView中的第二个
+(//android.widget.ImageView)[2]
+
+# 所有ImageView中的最后一个
+(//android.widget.ImageView)[last()]
+
+# className包含ImageView
+//*[contains(name(), "ImageView")]
 ```
 
 ## 测试方法
