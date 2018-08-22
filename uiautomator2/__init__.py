@@ -300,6 +300,7 @@ class UIAutomatorServer(object):
         self.__devinfo = None
         self.platform = None  # hot fix for weditor
 
+        self.ash = AdbShell(self.shell)  # the powerful adb shell
         self.wait_timeout = 20.0  # wait element timeout
         self.click_post_delay = None  # wait after each click
 
@@ -587,7 +588,9 @@ class UIAutomatorServer(object):
                 print("uiautomator back to normal")
                 return True
             time.sleep(1)
-        raise RuntimeError("Uiautomator started failed.")
+        raise RuntimeError(
+            "Uiautomator started failed. Find solutions in https://github.com/openatx/uiautomator2/wiki/Common-issues"
+        )
 
     def healthcheck(self):
         """
@@ -596,13 +599,15 @@ class UIAutomatorServer(object):
         Raises:
             RuntimeError
         """
-        if not self.info['screenOn']:
-            self.screen_on()
-            self.press("home")
-            self.swipe(0.1, 0.9, 0.9, 0.1, 0.3)  # swipe to unlock
+        sh = self.ash
+        if not sh.is_screen_on():
+            print(time.strftime("[%Y-%m-%d %H:%M:%S]"), "wakeup screen")
+            sh.keyevent("WAKEUP")
+            sh.keyevent("HOME")
+            sh.swipe(0.1, 0.9, 0.9, 0.1)  # swipe to unlock
 
-        self.press("home")
-        self.press("back")
+        sh.keyevent("HOME")
+        sh.keyevent("BACK")
         self.reset_uiautomator()
 
     def app_install(self, url, installing_callback=None, server=None):
@@ -2143,3 +2148,50 @@ class XMLElement(object):
     @property
     def attrib(self):
         return self.elem.attrib
+
+
+class AdbShell(object):
+    def __init__(self, shellfn):
+        """
+        Args:
+            shellfn: Shell function
+        """
+        self.shell = shellfn
+
+    def wmsize(self):
+        """ get window size
+        Returns:
+            (width, height)
+        """
+        output, _ = self.shell("wm size")
+        m = re.match(r"Physical size: (\d+)x(\d+)", output)
+        if m:
+            return map(int, m.groups())
+        raise RuntimeError("Can't parse wm size: " + output)
+
+    def is_screen_on(self):
+        output, _ = self.shell("dumpsys power")
+        return 'mHoldingDisplaySuspendBlocker=true' in output
+
+    def keyevent(self, v):
+        """
+        Args:
+            v: eg home wakeup back
+        """
+        v = v.upper()
+        self.shell("input keyevent " + v)
+
+    def _adjust_pos(self, x, y, w=None, h=None):
+        if x < 1:
+            x = x * w
+        if y < 1:
+            y = y * h
+        return (x, y)
+
+    def swipe(self, x0, y0, x1, y1):
+        w, h = None, None
+        if x0 < 1 or y0 < 1 or x1 < 1 or y1 < 1:
+            w, h = self.wmsize()
+        x0, y0 = self._adjust_pos(x0, y0, w, h)
+        x1, y1 = self._adjust_pos(x1, y1, w, h)
+        self.shell("input swipe %d %d %d %d" % (x0, y0, x1, y1))

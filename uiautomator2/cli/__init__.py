@@ -85,7 +85,6 @@ class Installer(object):
         if self.devinfo.get('brand', '').lower() == 'vivo':
             print("Vivo detected, open u2 watchers")
             u = uiautomator2.connect_wifi(self._device_url)
-            u.healthcheck()
             u.watcher("AUTO_INSTALL").when(
                 textMatches="好|安装", className="android.widget.Button").click()
             u.watchers.watched = True
@@ -103,7 +102,7 @@ class Installer(object):
         try:
             self._wait_finish(query_url)
         except KeyboardInterrupt:
-            print("Catch Ctrl+C, cancel download")
+            print("Catch Interrupt signal, cancel download")
             r = requests.delete(query_url)
             print(r.text)
 

@@ -1212,6 +1212,8 @@ $ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' 127.0.0.1:9008/jsonrp
     $ /data/local/tmp/atx-agent -stop
     ```
 
+Other: <https://github.com/openatx/uiautomator2/wiki/Common-issues>
+
 ## 实验室功能
 ### 远程查看
 手机`python -m uiautomator2 init`之后，浏览器输入 <device_ip:7912>，会发现一个远程控制功能，延迟非常低噢。^_^
