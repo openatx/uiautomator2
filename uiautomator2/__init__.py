@@ -89,9 +89,9 @@ class JsonRpcError(UiaError):
         self.method = method
 
     def __str__(self):
-        return '%d %s: %s' % (self.code, self.format_errcode(self.code),
-                              '<%s> data: %s, method: %s' %
-                              (self.message, self.data, self.method))
+        return '%d %s: <%s> data: %s, method: %s' % (
+            self.code, self.format_errcode(self.code), self.message, self.data,
+            self.method)
 
     def __repr__(self):
         return repr(str(self))
@@ -463,9 +463,7 @@ class UIAutomatorServer(object):
         # error happends
         err = JsonRpcError(error, method)
 
-        if isinstance(err.data,
-                      dict) and 'UiAutomation not connected' in err.data.get(
-                          'message', ''):
+        if err.data and 'UiAutomation not connected' in str(err.data):
             err.__class__ = UiAutomationNotConnectedError
         elif err.message:
             if 'uiautomator.UiObjectNotFoundException' in err.message:
