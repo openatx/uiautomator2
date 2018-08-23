@@ -137,7 +137,16 @@ class Installer(object):
             r = requests.get(query_url)
             raise_for_status(r)
             ret = r.json()
-            status = ret and ret.get('message', '')
+            if not ret:
+                print("wait progress info")
+                continue
+            # raise when error found
+            err = ret.get('error')
+            if err:
+                print("Unexpected error:", err)
+                raise RuntimeError(err)
+            # message is also status
+            status = ret.get('message', '')
             if status == 'finished':
                 print("Success installed")
                 return True
