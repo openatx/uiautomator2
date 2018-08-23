@@ -41,7 +41,7 @@ log = get_logger('uiautomator2')
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
 log.debug("use cache directory: %s", appdir)
 
-GITHUB_BASEURL = "https://github.com/openatx"
+GITHUB_BASEURL = "https://github-mirror.open.netease.com/openatx"
 
 
 class DownloadBar(progress.bar.Bar):
@@ -337,7 +337,7 @@ class MyFire(object):
         if ins.check_agent_installed(agent_version):
             # TODO: should also check atx-server addr
             log.info("atx-agent is already running, force stop")
-            ins.shell("/data/local/tmp/atx-agent", "-stop", raise_error=False)
+            ins.shell("/data/local/tmp/atx-agent", "--stop", raise_error=False)
             ins.shell("rm", "/sdcard/atx-agent.pid", raise_error=False)
             ins.shell("rm", "/sdcard/atx-agent.log.old", raise_error=False)
         else:
