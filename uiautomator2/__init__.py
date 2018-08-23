@@ -417,7 +417,8 @@ class UIAutomatorServer(object):
                 stacklevel=1)
             self.reset_uiautomator()
             return self.jsonrpc_call(*args, **kwargs)
-        except (NullObjectExceptionError, StaleObjectExceptionError) as e:
+        except (NullObjectExceptionError,
+                NullPointerExceptionError, StaleObjectExceptionError) as e:
             warnings.warn(
                 "uiautomator2 raise exception %s, and run code again" % e,
                 RuntimeWarning,
