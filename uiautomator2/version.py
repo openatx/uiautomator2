@@ -1,7 +1,8 @@
 # coding: utf-8
 #
 
-__apk_version__ = '1.1.4'
+__apk_version__ = '1.1.5'
+# 1.1.5 waitForExists use UiObject2 method first then fallback to UiObject.waitForExists
 # 1.1.4 add ADB_EDITOR_CODE broadcast support, fix bug （toast捕获导致app闪退)
 # 1.1.3 use thread to make watchers.watched faster, try to fix input method type multi
 # 1.1.2 fix count error when have child && sync watched, to prevent watchers.remove error
@@ -16,7 +17,10 @@ __apk_version__ = '1.1.4'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__atx_agent_version__ = '0.3.6'
+__atx_agent_version__ = '0.4.2'
+# 0.4.2 hot fix, close upgrade-self
+# 0.4.1 fix app-download time.Timer panic error, use safe-time.Timer instead.
+# 0.4.0 add go-daemon lib. use safe-time.Timer to prevent panic error. this will make it run longer
 # 0.3.6 support upload zip and unzip, fix minicap rotation error when atx-agent is killed -9
 # 0.3.5 hot fix for session
 # 0.3.4 fix session() sometimes can not get mainActivity error

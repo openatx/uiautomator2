@@ -28,6 +28,7 @@ import shutil
 import xml.dom.minidom
 import threading
 import warnings
+import logging
 from datetime import datetime
 from subprocess import list2cmdline
 
@@ -35,12 +36,10 @@ import six
 import humanize
 import progress.bar
 from retry import retry
+import six.moves.urllib.parse as urlparse
 
 if six.PY2:
-    import urlparse
     FileNotFoundError = OSError
-else:  # for py3
-    import urllib.parse as urlparse
 
 import requests
 from uiautomator2 import adbutils
@@ -83,14 +82,16 @@ class JsonRpcError(UiaError):
             return 'Server error'
         return 'Unknown error'
 
-    def __init__(self, error={}):
+    def __init__(self, error={}, method=None):
         self.code = error.get('code')
         self.message = error.get('message', '')
         self.data = error.get('data', '')
+        self.method = method
 
     def __str__(self):
-        return '%d %s: %s' % (self.code, self.format_errcode(self.code),
-                              '<%s> data: %s' % (self.message, self.data))
+        return '%d %s: <%s> data: %s, method: %s' % (
+            self.code, self.format_errcode(self.code), self.message, self.data,
+            self.method)
 
     def __repr__(self):
         return repr(str(self))
@@ -217,7 +218,7 @@ def connect_usb(serial=None):
     """
     Args:
         serial (str): android device serial
-    
+
     Returns:
         UIAutomatorServer
     """
@@ -227,7 +228,9 @@ def connect_usb(serial=None):
     if not d.agent_alive:
         warnings.warn("backend atx-agent is not alive, start again ...",
                       RuntimeWarning)
-        adb.execute("shell", "/data/local/tmp/atx-agent", "-d")
+        adb.execute("shell",
+                    "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell",
+                    "atx-agent", "-d")
         deadline = time.time() + 3
         while time.time() < deadline:
             if d.alive:
@@ -235,7 +238,7 @@ def connect_usb(serial=None):
     elif not d.alive:
         warnings.warn("backend uiautomator2 is not alive, start again ...",
                       RuntimeWarning)
-        d.healthcheck()
+        d.reset_uiautomator()
     return d
 
 
@@ -297,6 +300,7 @@ class UIAutomatorServer(object):
         self.__devinfo = None
         self.platform = None  # hot fix for weditor
 
+        self.ash = AdbShell(self.shell)  # the powerful adb shell
         self.wait_timeout = 20.0  # wait element timeout
         self.click_post_delay = None  # wait after each click
 
@@ -404,13 +408,17 @@ class UIAutomatorServer(object):
                 RuntimeWarning,
                 stacklevel=1)
             # for XiaoMi, want to recover uiautomator2 must start app:com.github.uiautomator
-            self.healthcheck(unlock=False)
+            self.reset_uiautomator()
             return self.jsonrpc_call(*args, **kwargs)
         except UiAutomationNotConnectedError:
             warnings.warn(
-                "UiAutomation not connected", RuntimeWarning, stacklevel=1)
-            raise
-        except (NullObjectExceptionError, StaleObjectExceptionError) as e:
+                "UiAutomation not connected, restart uiautoamtor",
+                RuntimeWarning,
+                stacklevel=1)
+            self.reset_uiautomator()
+            return self.jsonrpc_call(*args, **kwargs)
+        except (NullObjectExceptionError,
+                NullPointerExceptionError, StaleObjectExceptionError) as e:
             warnings.warn(
                 "uiautomator2 raise exception %s, and run code again" % e,
                 RuntimeWarning,
@@ -454,8 +462,9 @@ class UIAutomatorServer(object):
             return jsondata.get('result')
 
         # error happends
-        err = JsonRpcError(error)
-        if err.data and 'UiAutomation not connected' in err.data:
+        err = JsonRpcError(error, method)
+
+        if err.data and 'UiAutomation not connected' in str(err.data):
             err.__class__ = UiAutomationNotConnectedError
         elif err.message:
             if 'uiautomator.UiObjectNotFoundException' in err.message:
@@ -535,22 +544,17 @@ class UIAutomatorServer(object):
 
         return _Service(name)
 
-    def healthcheck(self, unlock=True):
+    def reset_uiautomator(self):
         """
-        Check if uiautomator is running, if not launch again
-
-        Args:
-            unlock (bool): unlock screen before
+        Reset uiautomator
 
         Raises:
             RuntimeError
         """
-        if unlock:
-            self.open_identify()
-
+        # self.open_identify()
         self._reqsess.delete(
             self.path2url('/uiautomator'))  # stop uiautomator keeper first
-        wait = not unlock  # should not wait IdentifyActivity open or it will stuck sometimes
+        # wait = not unlock  # should not wait IdentifyActivity open or it will stuck sometimes
         self.app_start(  # may also stuck here.
             'com.github.uiautomator',
             '.MainActivity',
@@ -576,18 +580,38 @@ class UIAutomatorServer(object):
                         'am', 'startservice', '-n',
                         'com.github.uiautomator/.Service'
                     ])
-                    time.sleep(.5)
+                    time.sleep(1.5)
                 else:
                     time.sleep(.5)
                     self.shell(['input', 'keyevent', 'BACK'])
                 print("uiautomator back to normal")
                 return True
             time.sleep(1)
-        raise RuntimeError("Uiautomator started failed.")
+        raise RuntimeError(
+            "Uiautomator started failed. Find solutions in https://github.com/openatx/uiautomator2/wiki/Common-issues"
+        )
 
-    def app_install(self, url, installing_callback=None):
+    def healthcheck(self):
         """
-        {u'message': u'downloading', "progress": {u'titalSize': 407992690, u'copiedSize': 49152}}
+        Reset device into ready state
+
+        Raises:
+            RuntimeError
+        """
+        sh = self.ash
+        if not sh.is_screen_on():
+            print(time.strftime("[%Y-%m-%d %H:%M:%S]"), "wakeup screen")
+            sh.keyevent("WAKEUP")
+            sh.keyevent("HOME")
+            sh.swipe(0.1, 0.9, 0.9, 0.1)  # swipe to unlock
+
+        sh.keyevent("HOME")
+        sh.keyevent("BACK")
+        self.reset_uiautomator()
+
+    def app_install(self, url, installing_callback=None, server=None):
+        """
+        {u'message': u'downloading', "progress": {u'totalSize': 407992690, u'copiedSize': 49152}}
 
         Returns:
             packageName
@@ -664,14 +688,6 @@ class UIAutomatorServer(object):
                 print("keyboard interrupt catched, cancel install id", id)
                 self._reqsess.delete(self.path2url('/install/' + id))
                 raise
-
-    @retry(NullPointerExceptionError, delay=.5, tries=3, jitter=0.2)
-    def dump_hierarchy(self, compressed=False, pretty=False):
-        content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
-        if pretty and "\n " not in content:
-            xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))
-            content = U(xml_text.toprettyxml(indent='  '))
-        return content
 
     def shell(self, cmdargs, stream=False, timeout=60):
         """
@@ -786,7 +802,7 @@ class UIAutomatorServer(object):
             dict(package, activity, pid?)
 
         For developer:
-            Function healthcheck need this function, so can't use jsonrpc here.
+            Function reset_uiautomator need this function, so can't use jsonrpc here.
         """
         # try: adb shell dumpsys window windows
         _focusedRE = re.compile(
@@ -1064,6 +1080,20 @@ class Session(object):
             return "<uiautomator2.Session pid:%d pkgname:%s>" % (
                 self._pid, self._pkg_name)
         return super(Session, self).__repr__()
+
+    def implicitly_wait(self, seconds=None):
+        """set default wait timeout
+        Args:
+            seconds(float): to wait element show up
+        """
+        if seconds is not None:
+            self.server.wait_timeout = seconds
+        return self.server.wait_timeout
+
+    def close(self):
+        """ close app """
+        if self._pkg_name:
+            self.server.app_stop(self._pkg_name)
 
     def running(self):
         """
@@ -1373,6 +1403,14 @@ class Session(object):
         else:
             raise RuntimeError("Invalid format " + format)
 
+    @retry(NullPointerExceptionError, delay=.5, tries=5, jitter=0.2)
+    def dump_hierarchy(self, compressed=False, pretty=False):
+        content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
+        if pretty and "\n " not in content:
+            xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))
+            content = U(xml_text.toprettyxml(indent='  '))
+        return content
+
     def freeze_rotation(self, freeze=True):
         '''freeze or unfreeze the device rotation in current status.'''
         self.jsonrpc.freezeRotation(freeze)
@@ -1435,17 +1473,16 @@ class Session(object):
     def exists(self, **kwargs):
         return self(**kwargs).exists
 
-    def xpath(self, xpath):
+    def xpath(self, xpath, source=None):
         """
+        Args:
+            xpath: expression of XPath2.0
+            source: optional, hierarchy from dump_hierarchy()
+
         Returns:
             XPathSelector
         """
-        return XPathSelector(xpath, self.server)
-
-    # def xpath_findall(self, xpath):
-    #     xml = self.server.dump_hierarchy()
-    #     root = ET.fromstring(xml)
-    #     return root.findall(xpath)
+        return XPathSelector(xpath, self.server, source)
 
     def watcher(self, name):
         obj = self
@@ -1533,6 +1570,7 @@ class Session(object):
         return UiObject(self, Selector(**kwargs))
 
 
+# Will be removed in the future
 def wrap_wait_exists(fn):
     @functools.wraps(fn)
     def inner(self, *args, **kwargs):
@@ -1563,14 +1601,18 @@ class UiObject(object):
         return Exists(self.jsonrpc, self.selector)
 
     @property
+    @retry(
+        UiObjectNotFoundError, delay=.5, tries=3, jitter=0.1, logger=logging)
     def info(self):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
 
-    @wrap_wait_exists
-    def click(self):
+    def click(self, timeout=None):
         """
         Click UI element. 
+
+        Args:
+            timeout: seconds wait element show up
 
         The click method does the same logic as java uiautomator does.
         1. waitForExists 2. get VisibleBounds center 3. send click event
@@ -1578,6 +1620,7 @@ class UiObject(object):
         Raises:
             UiObjectNotFoundError
         """
+        self.wait(timeout=timeout)
         x, y = self.center()
         # ext.htmlreport need to comment bellow code
         # if info['clickable']:
@@ -1625,21 +1668,24 @@ class UiObject(object):
         except UiObjectNotFoundError:
             return False
 
-    @wrap_wait_exists
-    def long_click(self, duration=None):
+    def long_click(self, duration=None, timeout=None):
         """
         Args:
             duration (float): seconds of pressed
+            timeout (float): seconds wait element show up
         """
 
         # if info['longClickable'] and not duration:
         #     return self.jsonrpc.longClick(self.selector)
+        self.wait(timeout=timeout)
         x, y = self.center()
         return self.session.long_click(x, y, duration)
 
-    @wrap_wait_exists
     def drag_to(self, *args, **kwargs):
         duration = kwargs.pop('duration', 0.5)
+        timeout = kwargs.pop('timeout', None)
+        self.wait(timeout=timeout)
+
         steps = int(duration * 200)
         if len(args) >= 2 or "x" in kwargs or "y" in kwargs:
 
@@ -1675,7 +1721,7 @@ class UiObject(object):
     def pinch_out(self, percent=100, steps=50):
         return self.jsonrpc.pinchOut(self.selector, percent, steps)
 
-    def wait(self, exists=True, timeout=10):
+    def wait(self, exists=True, timeout=20):
         """
         Wait until UI Element exists or gone
 
@@ -1686,6 +1732,8 @@ class UiObject(object):
             d(text="Clock").wait()
             d(text="Settings").wait("gone") # wait until it's gone
         """
+        if timeout is None:
+            timeout = self.wait_timeout
         http_wait = timeout + 10
         if exists:
             return self.jsonrpc.waitForExists(
@@ -1706,20 +1754,20 @@ class UiObject(object):
         """ alias of set_text """
         return self.set_text(text)
 
-    @wrap_wait_exists
-    def set_text(self, text):
+    def set_text(self, text, timeout=None):
+        self.wait(timeout=timeout)
         if not text:
             return self.jsonrpc.clearTextField(self.selector)
         else:
             return self.jsonrpc.setText(self.selector, text)
 
-    @wrap_wait_exists
-    def get_text(self):
+    def get_text(self, timeout=None):
         """ get text from field """
+        self.wait(timeout=timeout)
         return self.jsonrpc.getText(self.selector)
 
-    @wrap_wait_exists
-    def clear_text(self):
+    def clear_text(self, timeout=None):
+        self.wait(timeout=timeout)
         return self.set_text(None)
 
     def child(self, **kwargs):
@@ -1767,7 +1815,7 @@ class UiObject(object):
 
     def __getitem__(self, index):
         selector = self.selector.clone()
-        selector['instance'] = index
+        selector.update_instance(index)
         return UiObject(self.session, selector)
 
     @property
@@ -2007,6 +2055,13 @@ class Selector(dict):
         self[self.__childOrSiblingSelector].append(Selector(**kwargs))
         return self
 
+    def update_instance(self, i):
+        # update inside child instance
+        if self[self.__childOrSiblingSelector]:
+            self[self.__childOrSiblingSelector][-1]['instance'] = i
+        else:
+            self['instance'] = i
+
 
 class Exists(object):
     """Exists object with magic methods."""
@@ -2037,9 +2092,10 @@ class Exists(object):
 
 
 class XPathSelector(object):
-    def __init__(self, xpath, server):
+    def __init__(self, xpath, server, source=None):
         self.xpath = xpath
         self.server = server
+        self.source = source
 
     def wait(self, timeout=10.0):
         deadline = time.time() + timeout
@@ -2053,7 +2109,7 @@ class XPathSelector(object):
         """
         click element
         """
-        elem = self.wait(timeout)
+        elem = self.wait(timeout=timeout)
         if not elem:
             raise UiaError(self.xpath)
         x, y = elem.center()
@@ -2064,11 +2120,15 @@ class XPathSelector(object):
         Returns:
             list of XMLElement
         """
-        xml_content = self.server.dump_hierarchy()
+        xml_content = self.source or self.server.dump_hierarchy()
         return [
             XMLElement(node)
             for node in simplexml.xpath_findall(self.xpath, xml_content)
         ]
+
+    @property
+    def exists(self):
+        return len(self.all()) > 0
 
 
 class XMLElement(object):
@@ -2087,3 +2147,50 @@ class XMLElement(object):
     @property
     def attrib(self):
         return self.elem.attrib
+
+
+class AdbShell(object):
+    def __init__(self, shellfn):
+        """
+        Args:
+            shellfn: Shell function
+        """
+        self.shell = shellfn
+
+    def wmsize(self):
+        """ get window size
+        Returns:
+            (width, height)
+        """
+        output, _ = self.shell("wm size")
+        m = re.match(r"Physical size: (\d+)x(\d+)", output)
+        if m:
+            return map(int, m.groups())
+        raise RuntimeError("Can't parse wm size: " + output)
+
+    def is_screen_on(self):
+        output, _ = self.shell("dumpsys power")
+        return 'mHoldingDisplaySuspendBlocker=true' in output
+
+    def keyevent(self, v):
+        """
+        Args:
+            v: eg home wakeup back
+        """
+        v = v.upper()
+        self.shell("input keyevent " + v)
+
+    def _adjust_pos(self, x, y, w=None, h=None):
+        if x < 1:
+            x = x * w
+        if y < 1:
+            y = y * h
+        return (x, y)
+
+    def swipe(self, x0, y0, x1, y1):
+        w, h = None, None
+        if x0 < 1 or y0 < 1 or x1 < 1 or y1 < 1:
+            w, h = self.wmsize()
+        x0, y0 = self._adjust_pos(x0, y0, w, h)
+        x1, y1 = self._adjust_pos(x1, y1, w, h)
+        self.shell("input swipe %d %d %d %d" % (x0, y0, x1, y1))

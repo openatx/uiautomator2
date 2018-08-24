@@ -13,7 +13,9 @@ uiautomator2 是一个可以使用Python对Android设备进行UI自动化的库�
 
 虽然我说的很简单，但是实现起来用到了很多的技术和技巧，功能非常强，唯独文档有点少。哈哈
 
-![QQ Icon](docs/img/qq-international-icon-32.png) QQ沟通群: *499563266*
+QQ群号: *499563266*
+
+![QQ QRCode](docs/img/qqgroup.png)
 
 # Table of contents
 - **[Installation](#installation)**
@@ -27,7 +29,7 @@ uiautomator2 是一个可以使用Python对Android设备进行UI自动化的库�
 
     ```bash
     # Since uiautomator2 is still under development, you have to add --pre to install the development version
-    pip install --pre uiautomator2
+    pip install --upgrade --pre uiautomator2
 
     # Or you can install directly from github source
     git clone https://github.com/openatx/uiautomator2
@@ -181,24 +183,17 @@ d = u2.connect_usb("{Your-Device-Serial}")
 
 ```python
 d.service("uiautomator").stop()
+# d.service("uiautomator").start()
 ```
 
-### 打开调试开关
-用于开发者或有经验的使用者定位问题
-
-```python
->>> d.debug = True
->>> d.info
-12:32:47.182 $ curl -X POST -d '{"jsonrpc": "2.0", "id": "b80d3a488580be1f3e9cb3e926175310", "method": "deviceInfo", "params": {}}' 'http://127.0.0.1:54179/jsonrpc/0'
-12:32:47.225 Response >>>
-{"jsonrpc":"2.0","id":"b80d3a488580be1f3e9cb3e926175310","result":{"currentPackageName":"com.android.mms","displayHeight":1920,"displayRotation":0,"displaySizeDpX":360,"displaySizeDpY":640,"displayWidth":1080,"productName"
-:"odin","screenOn":true,"sdkInt":25,"naturalOrientation":true}}
-<<< END
-```
 
 **Notes:** In below examples, we use `d` to represent the uiautomator2 object for the connected device.
 
 # API Documents
+**[Global settings](#global-settings)**
+  - **[Debug HTTP requests](#debug-http-requests)
+  - **[Implicit wait](#implicit-wait)
+
 **[App management](#app-management)**
   - **[Install an app](#install-an-app)**
   - **[Launch an app](#launch-an-app)**
@@ -230,6 +225,34 @@ d.service("uiautomator").stop()
 **[Contributors](#contributors)**
 
 **[LICENSE](#license)**
+
+## Global settings
+This part contains some global settings
+
+### Debug HTTP requests
+Trace HTTP requests and response to find out how it works.
+
+```python
+>>> d.debug = True
+>>> d.info
+12:32:47.182 $ curl -X POST -d '{"jsonrpc": "2.0", "id": "b80d3a488580be1f3e9cb3e926175310", "method": "deviceInfo", "params": {}}' 'http://127.0.0.1:54179/jsonrpc/0'
+12:32:47.225 Response >>>
+{"jsonrpc":"2.0","id":"b80d3a488580be1f3e9cb3e926175310","result":{"currentPackageName":"com.android.mms","displayHeight":1920,"displayRotation":0,"displaySizeDpX":360,"displaySizeDpY":640,"displayWidth":1080,"productName"
+:"odin","screenOn":true,"sdkInt":25,"naturalOrientation":true}}
+<<< END
+```
+
+### Implicit wait
+Set default element wait time, unit seconds
+
+```python
+d.implicitly_wait(10.0)
+d(text="Settings").click() # if Settings button not show in 10s, UiObjectNotFoundError will raised
+
+print("wait timeout", d.implicitly_wait()) # get default implicit wait
+```
+
+This function will have influence on `click`, `long_click`, `drag_to`, `get_text`, `set_text`, `clear_text`, etc.
 
 ## App management
 This part showcases how to perform app management
@@ -1094,11 +1117,23 @@ For example: 其中一个节点的内容
 
 xpath定位和使用方法
 
+有些属性的名字有修改需要注意
+
+```
+description -> content-desc
+resourceId -> resource-id
+```
+
+常见用法
+
 ```python
 # wait exists 10s
 d.xpath("//android.widget.TextView").wait(10.0)
 # find and click
 d.xpath("//*[@content-desc='分享']").click()
+# check exists
+if d.xpath("//android.widget.TextView[contains(@text, 'Se')]").exists:
+    print("exists")
 # get all text-view text, attrib and center point
 for elem in d.xpath("//android.widget.TextView").all():
     print("Text:", elem.text)
@@ -1107,6 +1142,28 @@ for elem in d.xpath("//android.widget.TextView").all():
     print("Attrib:", elem.attrib)
     # Coordinate eg: (100, 200)
     print("Position:", elem.center())
+```
+
+其他XPath常见用法
+
+```
+# 所有元素
+//*
+
+# resource-id包含login字符
+//*[contains(@resource-id, 'login')]
+
+# 按钮包含账号或帐号
+//android.widget.Button[contains(@text, '账号') or contains(@text, '帐号')]
+
+# 所有ImageView中的第二个
+(//android.widget.ImageView)[2]
+
+# 所有ImageView中的最后一个
+(//android.widget.ImageView)[last()]
+
+# className包含ImageView
+//*[contains(name(), "ImageView")]
 ```
 
 ## 测试方法
@@ -1138,6 +1195,24 @@ $ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' 127.0.0.1:9008/jsonrp
     如果运行正常，启动测试之前增加一行代码`d.healthcheck()`
 
     如果报错，可能是缺少某个设备组件没有安装，使用下面的命令重新初始化 `python -m uiautomator2 init --reinstall`
+
+2. 提示Connection Error
+
+    可能是atx-agent没有在运行。
+
+    ```bash
+    # 检查是否运行的方法
+    > adb shell
+    $ ps | grep atx # 如果看到atx-agent则表示正在运行
+
+    # 启动atx-agent
+    $ /data/local/tmp/atx-agent -d
+
+    # 停止atx-agent
+    $ /data/local/tmp/atx-agent -stop
+    ```
+
+Other: <https://github.com/openatx/uiautomator2/wiki/Common-issues>
 
 ## 实验室功能
 ### 远程查看
