@@ -24,12 +24,12 @@ def mark_point(im, x, y):
     """
     draw = ImageDraw.Draw(im)
     w, h = im.size
-    draw.line((x, 0, x, h), fill='yellow', width=5)
-    draw.line((0, y, w, y), fill='yellow', width=5)
+    draw.line((x, 0, x, h), fill='red', width=5)
+    draw.line((0, y, w, y), fill='red', width=5)
     r = min(im.size) // 40
     draw.ellipse((x - r, y - r, x + r, y + r), fill='red')
     r = min(im.size) // 50
-    draw.ellipse((x - r, y - r, x + r, y + r), fill='yellow')
+    draw.ellipse((x - r, y - r, x + r, y + r), fill='white')
     del draw
     return im
 
