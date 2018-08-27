@@ -5,7 +5,6 @@ import six
 import socket
 from contextlib import closing
 import webbrowser
-import os
 
 if six.PY2:
     import SimpleHTTPServer
