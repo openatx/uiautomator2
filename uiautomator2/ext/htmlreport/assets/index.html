@@ -23,6 +23,12 @@
     .img-screenshot {
       max-height: 400px;
     }
+    button {
+        display: table,
+        width: auto
+        margin-left: auto
+        margin-right: auto
+    }
   </style>
 </head>
 
@@ -40,7 +46,8 @@
         <a class="navbar-brand" href="/">测试过程记录</a>
       </div>
       <div id="navbar" class="collapse navbar-collapse">
-        <ul class="nav navbar-nav">
+        <ul class="nav navbar-nav navbar-right">
+          <li><a class="navbar-brand" href="./log.txt">游戏log</a></li>
           <!-- <li class="dropdown">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
               列表 <span class="caret"></span>
@@ -55,6 +62,18 @@
       </div>
     </div>
   </nav>
+  <div style="display: flex; justify-content: center;">
+    <div style="display: inline-block;">
+      <video src="video.mp4" id="video" controls="controls" style="clear:both;display:block;margin:auto"></video>
+      <div class="btn-group" style="float: right;">
+        <button onclick="setPlaySpeed(1)" type="button" class="btn btn-default" >1倍速</button>
+        <button onclick="setPlaySpeed(2)" type="button" class="btn btn-default">2倍速</button>
+        <button onclick="setPlaySpeed(3)" type="button" class="btn btn-default">3倍速</button>
+        <button onclick="setPlaySpeed(4)" type="button" class="btn btn-default">4倍速</button>
+      </div>
+    </div>
+  </div>
+
   <div class="container-fluid" id="app">
     <div class="row">
       <div v-if="warning" class="alert alert-warning alert-dismissible" role="alert">
@@ -123,7 +142,11 @@
           }]
         }
       })
-    })
+    });
+    var video = document.getElementById("video");
+    function setPlaySpeed(speed){
+        video.playbackRate=speed;
+    }
 </script>
 
 </html>
