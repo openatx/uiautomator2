@@ -386,7 +386,7 @@ class AutomatorServer(object):
             # -S: force stop the target app before starting the activity
             # --user <USER_ID> | current: Specify which user to run as; if not
             #    specified then run as the current user.
-            args = ['am', 'start', '-W']
+            args = ['am', 'start', '-W', '-a', 'android.intent.action.MAIN', '-c', 'android.intent.category.LAUNCHER']
             if stop:
                 args.append('-S')
             args += ['-n', '{}/{}'.format(pkg_name, activity)]
