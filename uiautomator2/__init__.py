@@ -464,7 +464,7 @@ class UIAutomatorServer(object):
         # error happends
         err = JsonRpcError(error, method)
 
-        if err.data and 'UiAutomation not connected' in str(err.data):
+        if isinstance(err.data, six.string_types) and 'UiAutomation not connected' in err.data:
             err.__class__ = UiAutomationNotConnectedError
         elif err.message:
             if 'uiautomator.UiObjectNotFoundException' in err.message:
