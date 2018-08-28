@@ -13,7 +13,7 @@ Options:
     --serial=<serial>    device serial number
 
 """
-#u2cli install <url> [--serial=<serial>]
+# u2cli install <url> [--serial=<serial>]
 
 import time
 import requests
@@ -93,10 +93,27 @@ class Installer(object):
     def oppo_install(self, apk_url):
         m = hashlib.md5()
         m.update(apk_url.encode('utf-8'))
-        dst = "/sdcard/atx-" + m.hexdigest()[8:16] + ".apk"
+        key = m.hexdigest()[8:16]
+        dst = "/sdcard/atx-" + key + ".apk"
         d = uiautomator2.connect(self._device_url)
         print(d.info, dst)
-        raise NotImplementedError()
+        d.push_url(apk_url, dst)
+        # d.push("/Users/codeskyblue/workdir/atxcrawler/apks/ApiDemos-debug.apk", dst) # For debug
+        s = d.session("com.coloros.filemanager")
+        s(text=u"所有文件").click()
+        s(className="android.widget.ListView").scroll.to(textContains=key)
+        s(textContains=key).click()
+
+        btn_done = d(className="android.widget.Button", text=u"完成")
+        while not btn_done.exists:
+            s(text="继续安装旧版本").click_exists()
+            s(text="重新安装").click_exists()
+            # 自动清除安装包和残留
+            if s(resourceId="com.android.packageinstaller:id/install_confirm_panel").exists:
+                # 通过偏移点击<安装>
+                s(resourceId="com.android.packageinstaller:id/bottom_button_layout").click(offset=(0.75, 0.5))
+        btn_done.click()
+        # raise NotImplementedError()
 
     def pm_install(self, apk_url):
         install_url = self._install_url()

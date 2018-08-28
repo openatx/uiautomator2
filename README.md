@@ -820,6 +820,7 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
 
     ```python
     x, y = d(text="Settings").center()
+    # x, y = d(text="Settings").center(offset=(0, 0)) # left-top x, y
     ```
     
 #### Perform the click action on the selected UI object
@@ -828,10 +829,20 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
     ```python
     # click on the center of the specific ui object
     d(text="Settings").click()
+    
     # wait element to appear for at most 10 seconds and then click
     d(text="Settings").click(timeout=10)
+    
+    # click with offset(x_offset, y_offset)
+    # click_x = x_offset * width + x_left_top
+    # click_y = y_offset * height + y_left_top
+    d(text="Settings").click(offset=(0.5, 0.5)) # Default center
+    d(text="Settings").click(offset=(0, 0)) # click left-top
+    d(text="Settings").click(offset=(1, 1)) # click right-bottom
+
     # click when exists in 10s, default timeout 0s
     clicked = d(text='Skip').click_exists(timeout=10.0)
+    
     # click until element gone, return bool
     is_gone = d(text="Skip").click_gone(maxretry=10, interval=1.0) # maxretry default 10, interval default 1.0
     ```

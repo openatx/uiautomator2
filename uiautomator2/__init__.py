@@ -75,6 +75,7 @@ class JsonRpcError(UiaError):
             -32602: 'Invalid params',
             -32603: 'Internal error',
             -32001: 'Jsonrpc error',
+            -32002: 'Client error',
         }
         if errcode in m:
             return m[errcode]
@@ -1607,12 +1608,13 @@ class UiObject(object):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
 
-    def click(self, timeout=None):
+    def click(self, timeout=None, offset=None):
         """
         Click UI element. 
 
         Args:
             timeout: seconds wait element show up
+            offset: (xoff, yoff) default (0.5, 0.5) -> center
 
         The click method does the same logic as java uiautomator does.
         1. waitForExists 2. get VisibleBounds center 3. send click event
@@ -1620,8 +1622,9 @@ class UiObject(object):
         Raises:
             UiObjectNotFoundError
         """
-        self.wait(timeout=timeout)
-        x, y = self.center()
+        if not self.wait(timeout=timeout):
+            raise UiObjectNotFoundError({'code': 32002})
+        x, y = self.center(offset=offset)
         # ext.htmlreport need to comment bellow code
         # if info['clickable']:
         #     return self.jsonrpc.click(self.selector)
@@ -1630,15 +1633,23 @@ class UiObject(object):
         if delay:
             time.sleep(delay)
 
-    def center(self):
+    def center(self, offset=None):
         """
+        Args:
+            offset: optional, (x_off, y_off)
+                (0, 0) means center, (0.5, 0.5) means right-bottom
         Return:
             center point (x, y)
         """
         info = self.info
         bounds = info.get('visibleBounds') or info.get("bounds")
-        x = (bounds['left'] + bounds['right']) / 2
-        y = (bounds['top'] + bounds['bottom']) / 2
+        lx, ly, rx, ry = bounds['left'], bounds['top'], bounds['right'], bounds['bottom']
+        if not offset:
+            offset = (0.5, 0.5)
+        xoff, yoff = offset
+        width, height = rx - lx, ry - ly
+        x = lx + width * xoff
+        y = ly + height * yoff
         return (x, y)
 
     def click_gone(self, maxretry=10, interval=1.0):
