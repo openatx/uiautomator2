@@ -21,6 +21,7 @@ import re
 import six
 import humanize
 import uiautomator2
+import hashlib
 from docopt import docopt
 
 urllib = six.moves.urllib
@@ -81,17 +82,23 @@ class Installer(object):
     def serial(self):
         return self.devinfo['serial']
 
-    def prepare(self):
-        if self.devinfo.get('brand', '').lower() == 'vivo':
-            print("Vivo detected, open u2 watchers")
-            u = uiautomator2.connect_wifi(self._device_url)
-            u.watcher("AUTO_INSTALL").when(
-                textMatches="好|安装", className="android.widget.Button").click()
-            u.watchers.watched = True
+    def vivo_install(self, apk_url):
+        print("Vivo detected, open u2 watchers")
+        u = uiautomator2.connect_wifi(self._device_url)
+        u.watcher("AUTO_INSTALL").when(
+            textMatches="好|安装", className="android.widget.Button").click()
+        u.watchers.watched = True
+        self.pm_install(apk_url)
 
-    def install(self, apk_url):
-        self.prepare()
+    def oppo_install(self, apk_url):
+        m = hashlib.md5()
+        m.update(apk_url.encode('utf-8'))
+        dst = "/sdcard/atx-" + m.hexdigest()[8:16] + ".apk"
+        d = uiautomator2.connect(self._device_url)
+        print(d.info, dst)
+        raise NotImplementedError()
 
+    def pm_install(self, apk_url):
         install_url = self._install_url()
         r = requests.post(install_url, data={'url': apk_url})
         print(r.text)
@@ -105,6 +112,15 @@ class Installer(object):
             print("Catch Interrupt signal, cancel download")
             r = requests.delete(query_url)
             print(r.text)
+
+    def install(self, apk_url):
+        brand = self.devinfo.get('brand', '').lower()
+        if brand == 'vivo':
+            self.vivo_install(apk_url)
+        elif brand == 'oppo':
+            self.oppo_install(apk_url)
+        else:
+            self.pm_install(apk_url)
 
     def _provider_install_url(self):
         if not self._server_url:
