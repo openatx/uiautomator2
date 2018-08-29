@@ -191,8 +191,8 @@ d.service("uiautomator").stop()
 
 # API Documents
 **[Global settings](#global-settings)**
-  - **[Debug HTTP requests](#debug-http-requests)
-  - **[Implicit wait](#implicit-wait)
+  - **[Debug HTTP requests](#debug-http-requests)**
+  - **[Implicit wait](#implicit-wait)**
 
 **[App management](#app-management)**
   - **[Install an app](#install-an-app)**
@@ -380,10 +380,18 @@ This part showcases how to perform common device operations:
 ### Session
 Session represent an app lifestyle. Can be used to start app, detect app crash.
 
-* Launch app
+* Launch and close app
 
     ```python
     sess = d.session("com.netease.cloudmusic") # start 网易云音乐
+    sess.close() # 停止网易云音乐
+    ```
+
+* Use python `with` to launch and close app
+
+    ```python
+    with d.session("com.netease.cloudmusic") as sess:
+        sess(text="Play").click()
     ```
 
 * Attach to the running app
@@ -408,6 +416,7 @@ Session represent an app lifestyle. Can be used to start app, detect app crash.
     # Warning: function name may change in the future
     sess.running() # True or False
     ```
+
 
 ### Retrieve the device info
 

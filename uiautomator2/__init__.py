@@ -1081,6 +1081,12 @@ class Session(object):
             return "<uiautomator2.Session pid:%d pkgname:%s>" % (
                 self._pid, self._pkg_name)
         return super(Session, self).__repr__()
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     def implicitly_wait(self, seconds=None):
         """set default wait timeout
@@ -1622,8 +1628,7 @@ class UiObject(object):
         Raises:
             UiObjectNotFoundError
         """
-        if not self.wait(timeout=timeout):
-            raise UiObjectNotFoundError({'code': 32002})
+        self.must_wait(timeout=timeout)
         x, y = self.center(offset=offset)
         # ext.htmlreport need to comment bellow code
         # if info['clickable']:
@@ -1688,14 +1693,14 @@ class UiObject(object):
 
         # if info['longClickable'] and not duration:
         #     return self.jsonrpc.longClick(self.selector)
-        self.wait(timeout=timeout)
+        self.must_wait(timeout=timeout)
         x, y = self.center()
         return self.session.long_click(x, y, duration)
 
     def drag_to(self, *args, **kwargs):
         duration = kwargs.pop('duration', 0.5)
         timeout = kwargs.pop('timeout', None)
-        self.wait(timeout=timeout)
+        self.must_wait(timeout=timeout)
 
         steps = int(duration * 200)
         if len(args) >= 2 or "x" in kwargs or "y" in kwargs:
@@ -1760,13 +1765,18 @@ class UiObject(object):
         """
         timeout = timeout or self.wait_timeout
         return self.wait(exists=False, timeout=timeout)
+    
+    def must_wait(self, exists=True, timeout=None):
+        """ wait and if not found raise UiObjectNotFoundError """
+        if not self.wait(exists, timeout):
+            raise UiObjectNotFoundError({'code': -32002, 'method': 'wait'})
 
     def send_keys(self, text):
         """ alias of set_text """
         return self.set_text(text)
 
     def set_text(self, text, timeout=None):
-        self.wait(timeout=timeout)
+        self.must_wait(timeout=timeout)
         if not text:
             return self.jsonrpc.clearTextField(self.selector)
         else:
@@ -1774,11 +1784,11 @@ class UiObject(object):
 
     def get_text(self, timeout=None):
         """ get text from field """
-        self.wait(timeout=timeout)
+        self.must_wait(timeout=timeout)
         return self.jsonrpc.getText(self.selector)
 
     def clear_text(self, timeout=None):
-        self.wait(timeout=timeout)
+        self.must_wait(timeout=timeout)
         return self.set_text(None)
 
     def child(self, **kwargs):
