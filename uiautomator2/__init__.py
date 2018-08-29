@@ -2103,17 +2103,18 @@ class Exists(object):
 
 
 class XPathSelector(object):
-    def __init__(self, xpath, server, source=None):
+    def __init__(self, xpath, server, source=None, instance=0):
         self.xpath = xpath
         self.server = server
         self.source = source
+        self.instance = instance
 
     def wait(self, timeout=10.0):
         deadline = time.time() + timeout
         while time.time() < deadline:
             elements = self.all()
             if elements:
-                return elements[0]
+                return elements[self.instance]
             time.sleep(.5)
 
     def click(self, timeout=10.0):
