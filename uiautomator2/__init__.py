@@ -771,7 +771,7 @@ class UIAutomatorServer(object):
             # -e <EXTRA_KEY> <EXTRA_STRING_VALUE>
             # --ei <EXTRA_KEY> <EXTRA_INT_VALUE>
             # --ez <EXTRA_KEY> <EXTRA_BOOLEAN_VALUE>
-            args = ['am', 'start']
+            args = ['am', 'start', '-a', 'android.intent.action.MAIN', '-c', 'android.intent.category.LAUNCHER']
             if wait:
                 args.append('-W')
             if stop:
