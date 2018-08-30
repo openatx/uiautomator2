@@ -797,18 +797,28 @@ class UIAutomatorServer(object):
                 'android.intent.category.LAUNCHER', '1'
             ])
 
+    @retry(EnvironmentError, delay=.5, tries=3, jitter=.1)
     def current_app(self):
         """
         Returns:
             dict(package, activity, pid?)
 
+        Raises:
+            EnvironementError
+
         For developer:
             Function reset_uiautomator need this function, so can't use jsonrpc here.
         """
-        # try: adb shell dumpsys window windows
+        # Related issue: https://github.com/openatx/uiautomator2/issues/200
+        # $ adb shell dumpsys window windows
+        # Example output:
+        #   mCurrentFocus=Window{41b37570 u0 com.incall.apps.launcher/com.incall.apps.launcher.Launcher}
+        #   mFocusedApp=AppWindowToken{422df168 token=Token{422def98 ActivityRecord{422dee38 u0 com.example/.UI.play.PlayActivity t14}}}
+        # Regexp
+        #   r'mFocusedApp=.*ActivityRecord{\w+ \w+ (?P<package>.*)/(?P<activity>.*) .*'
+        #   r'mCurrentFocus=Window{\w+ \w+ (?P<package>.*)/(?P<activity>.*)\}')
         _focusedRE = re.compile(
-            r'mFocusedApp=.*ActivityRecord{\w+ \w+ (?P<package>.*)/(?P<activity>.*) .*'
-        )
+            r'mCurrentFocus=Window{\w+ \w+ (?P<package>.*)/(?P<activity>.*)\}')
         m = _focusedRE.search(self.shell(['dumpsys', 'window', 'windows'])[0])
         if m:
             return dict(
@@ -826,11 +836,9 @@ class UIAutomatorServer(object):
                 package=m.group('package'),
                 activity=m.group('activity'),
                 pid=int(m.group('pid')))
-        if ret:
+        if ret: # get last result
             return ret
-        # empty result
-        warnings.warn("Couldn't get focused app", stacklevel=2)
-        return dict(package=None, activity=None)
+        raise EnvironmentError("Couldn't get focused app")
 
     def app_stop(self, pkg_name):
         """ Stop one application: am force-stop"""
@@ -1081,10 +1089,10 @@ class Session(object):
             return "<uiautomator2.Session pid:%d pkgname:%s>" % (
                 self._pid, self._pkg_name)
         return super(Session, self).__repr__()
-    
+
     def __enter__(self):
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
@@ -1765,7 +1773,7 @@ class UiObject(object):
         """
         timeout = timeout or self.wait_timeout
         return self.wait(exists=False, timeout=timeout)
-    
+
     def must_wait(self, exists=True, timeout=None):
         """ wait and if not found raise UiObjectNotFoundError """
         if not self.wait(exists, timeout):

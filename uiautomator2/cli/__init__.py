@@ -107,6 +107,7 @@ class Installer(object):
             btn_done = d(className="android.widget.Button", text=u"完成")
             while not btn_done.exists:
                 s(text="继续安装旧版本").click_exists()
+                s(text="无视风险安装").click_exists()
                 s(text="重新安装").click_exists()
                 # 自动清除安装包和残留
                 if s(resourceId=
