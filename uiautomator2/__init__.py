@@ -1223,6 +1223,33 @@ class Session(object):
             return self(focused=True).set_text(text)
             # warnings.warn("set FastInputIME failed. use \"adb shell input text\" instead", Warning)
             # self.server.adb_shell("input", "text", text.replace(" ", "%s"))
+    
+    @check_alive
+    def send_action(self, code):
+        """
+        Simulate input method edito code
+        
+        Args:
+            code (str or int): input method editor code
+        
+        Examples:
+            send_action("search"), send_action(3)
+        
+        Refs:
+            https://developer.android.com/reference/android/view/inputmethod/EditorInfo
+        """
+        self.wait_fastinput_ime()
+        __alias = {
+            "go": 2,
+            "search": 3,
+            "send": 4,
+            "next": 5,
+            "done": 6,
+            "previous": 7,
+        }
+        if isinstance(code, six.string_types):
+            code = __alias.get(code, code)
+        self.server.shell(['am', 'broadcast', '-a', 'ADB_EDITOR_CODE', '--ei', 'code', str(code)])
 
     @check_alive
     def clear_text(self):
@@ -1245,7 +1272,7 @@ class Session(object):
             EnvironmentError
         """
         if not self.server.serial:  # maybe simulator eg: genymotion, 海马玩模拟器
-            raise EnvironmentError("Android simulator detected.")
+            raise EnvironmentError("Android simulator is not supported.")
 
         deadline = time.time() + timeout
         while time.time() < deadline:
