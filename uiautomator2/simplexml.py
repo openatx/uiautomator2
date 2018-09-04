@@ -25,7 +25,8 @@ def xpath_findall(xpath, xml_content):
         root = etree.fromstring(xml_content.encode('utf-8'))
         for node in root.xpath("//node"):
             node.tag = safe_xmlstr(node.attrib.pop("class"))
-        return root.xpath(xpath)
+        return root.xpath(
+            xpath, namespaces={"re": "http://exslt.org/regular-expressions"})
     else:
         root = ET.fromstring(xml_content)
         for node in root.findall(".//node"):

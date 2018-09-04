@@ -420,10 +420,11 @@ class UIAutomatorServer(object):
             return self.jsonrpc_call(*args, **kwargs)
         except (NullObjectExceptionError,
                 NullPointerExceptionError, StaleObjectExceptionError) as e:
-            warnings.warn(
-                "uiautomator2 raise exception %s, and run code again" % e,
-                RuntimeWarning,
-                stacklevel=1)
+            if args[1] != 'dumpWindowHierarchy': # args[1] method
+                warnings.warn(
+                    "uiautomator2 raise exception %s, and run code again" % e,
+                    RuntimeWarning,
+                    stacklevel=1)
             time.sleep(1)
             return self.jsonrpc_call(*args, **kwargs)
 
