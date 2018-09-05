@@ -31,6 +31,7 @@ import warnings
 import logging
 from datetime import datetime
 from subprocess import list2cmdline
+from collections import namedtuple
 
 import six
 import humanize
@@ -729,7 +730,8 @@ class UIAutomatorServer(object):
         resp = ret.json()
         exit_code = 1 if resp.get('error') else 0
         exit_code = resp.get('exitCode', exit_code)
-        return resp.get('output'), exit_code
+        shell_response = namedtuple("ShellResponse", ("output", "exit_code"))
+        return shell_response(resp.get('output'), exit_code)
 
     def adb_shell(self, *args):
         """

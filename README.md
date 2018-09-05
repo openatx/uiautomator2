@@ -24,6 +24,10 @@ QQ群号: *499563266*
   - **[Quick start](#quick-start)**
 - **[API Documents](#api-documents)**
 
+# Limitation 限制
+- Android OS Version >= 4.4
+- Python >=2.7 <= 3.6
+
 # Installation
 1. Install uiautomator2
 
@@ -80,12 +84,36 @@ QQ群号: *499563266*
 
     具体参考文章：[浅谈自动化测试工具python-uiautomator2](https://testerhome.com/topics/11357)
 
-# Usage
-部署 `atx-agent`之后，设备可以和电脑通过WiFi链接，设备上的`atx-agent`安装完成后会自动提示手机的IP是多少（模拟器另说）。下文中我们用`device_ip`这个变量来表示手机的IP，这个IP唯一标示一个设备。
+    
+## QUICK START
+There are two ways to connect to the device. Run the following Python code in a Python 2.7/3+ interpreter:
 
-如果手机的WiFi跟电脑不是一个网段的，不能使用WiFi互联功能，需要通过数据线将手机连接到电脑上，使用命令`adb forward tcp:7912 tcp:7912` 将手机上的服务端口7912转发到电脑上，然后使用`device_ip=127.0.0.1`连接该手机。
+1. Through WiFi (recommended)
+Suppose device IP is `10.0.0.1` and your PC is in the same network.
+
+```python
+import uiautomator2 as u2
+
+d = u2.connect('10.0.0.1') # alias for u2.connect_wifi('10.0.0.1')
+print(d.info)
+```
+
+2. Through USB
+Suppose the device serial is `123456f` (seen from `adb devices`)
+
+```python
+import uiautomator2 as u2
+
+d = u2.connect('123456f') # alias for u2.connect_usb('123456f')
+print(d.info)
+```
+
+Calling `u2.connect()` with no argument, `uiautomator2` will obtain device IP from the environment variable `ANDROID_DEVICE_IP`.
+If this environment variable is empty, uiautomator will fall back to `connect_usb` and you need to make sure that there is only one device connected to the computer.
 
 ## Command line
+其中的`$device_ip`代表设备的ip地址
+
 - init: 为设备安装所需要的程序
 - install: 安装apk，apk通过URL给出
 
@@ -119,32 +147,6 @@ QQ群号: *499563266*
     ```bash
     $ python -m uiautomator2 healthcheck $device_ip
     ```
-    
-## QUICK START
-There are two ways to connect to the device. Run the following Python code in a Python 2.7/3+ interpreter:
-
-1. Through WiFi (recommended)
-Suppose device IP is `10.0.0.1` and your PC is in the same network.
-
-```python
-import uiautomator2 as u2
-
-d = u2.connect('10.0.0.1') # alias for u2.connect_wifi('10.0.0.1')
-print(d.info)
-```
-
-2. Through USB
-Suppose the device serial is `123456f` (seen from `adb devices`)
-
-```python
-import uiautomator2 as u2
-
-d = u2.connect('123456f') # alias for u2.connect_usb('123456f')
-print(d.info)
-```
-
-Calling `u2.connect()` with no argument, `uiautomator2` will obtain device IP from the environment variable `ANDROID_DEVICE_IP`.
-If this environment variable is empty, uiautomator will fall back to `connect_usb` and you need to make sure that there is only one device connected to the computer.
 
 ## 一些常用但是不知道归到什么类里的函数
 先中文写着了，国外大佬们先用Google Translate顶着
@@ -164,13 +166,6 @@ d.healthcheck()
 ### 点击坐标出现偏移
 为了提高uiautomator2再有播放器界面不卡死，代码中将默认3000ms中的waitForIdleTimeout改成了0，不过有可能会造成坐标偏移，虽然概率不大。
 如果出现这种情况，可以将其调大一点 `d.jsonrpc.setConfigurator({"waitForIdleTimeout": 100})`
-
-### 连接本地USB设备
-需要设备曾经使用`python -m uiautomator2 init`初始化过
-
-```python
-d = u2.connect_usb("{Your-Device-Serial}")
-```
 
 ### 如何停用UiAutomator的守护程序 How to stop UiAutomator process keeper
 因为有`atx-agent`的存在，Uiautomator会被一直守护着，如果退出了就会被重新启动起来。但是Uiautomator又是霸道的，一旦它在运行，手机上的辅助功能、电脑上的uiautomatorviewer 就都不能用了，除非关掉该框架本身的uiautomator。下面就说下两种关闭方法
@@ -346,6 +341,11 @@ This part showcases how to perform common device operations:
     output, exit_code = d.shell("pwd", timeout=60) # timeout 60s (Default)
     # output: "/\n", exit_code: 0
     # Similar to command: adb shell pwd
+
+    # Since `shell` function return type is `namedtuple("ShellResponse", ("output", "exit_code"))`
+    # so we can do some tricks
+    output = d.shell("pwd").output
+    exit_code = d.shell("pwd").output
     ```
 
     The first argument can be list. for example
