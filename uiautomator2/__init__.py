@@ -304,6 +304,10 @@ def plugin_register(name, plugin, *args, **kwargs):
     UIAutomatorServer.plugins()[name] = (plugin, args, kwargs)
 
 
+def plugin_clear():
+    UIAutomatorServer.plugins().clear()
+
+
 class UIAutomatorServer(object):
     __isfrozen = False
     __plugins = {}
@@ -1068,6 +1072,9 @@ class UIAutomatorServer(object):
         Raises:
             requests.HTTPError, SessionBrokenError
         """
+        if pkg_name is None:
+            return self._default_session
+            
         if not attach:
             resp = self._reqsess.post(
                 self.path2url("/session/" + pkg_name), data={"flags": "-W -S"})
@@ -1086,7 +1093,9 @@ class UIAutomatorServer(object):
         return Session(self, pkg_name, pid)
 
     def __getattr__(self, attr):
-        if attr.startswith('ext_') and attr[4:] in self.__plugins:
+        if attr.startswith('ext_'):
+            if attr[4:] not in self.__plugins:
+                raise ValueError("plugin \"%s\" not registed" % attr[4:])
             func, args, kwargs = self.__plugins[attr[4:]]
             return partial(func, self)(*args, **kwargs)
         return getattr(self._default_session, attr)
@@ -1119,6 +1128,9 @@ class Session(object):
             jsonrpc_url = server.path2url('/session/%d:%s/jsonrpc/0' %
                                           (pid, pkg_name))
             self._jsonrpc = server.setup_jsonrpc(jsonrpc_url)
+        
+        # hot fix for session missing shell function
+        self.shell = self.server.shell
 
     def __repr__(self):
         if self._pid and self._pkg_name:

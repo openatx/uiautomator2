@@ -115,6 +115,17 @@ class SimpleTestCase(unittest.TestCase):
             words,
             ['Morse Code', 'Rotation Vector', 'Sensors', 'SMS Messaging'])
 
+    def test_plugin(self):
+        def _my_plugin(d, k):
+            def _inner():
+                return k
+
+            return _inner
+
+        u2.plugin_clear()
+        u2.plugin_register('my', _my_plugin, 'pp')
+        self.assertEqual(self.d.ext_my(), 'pp')
+
 
 if __name__ == '__main__':
     unittest.main()

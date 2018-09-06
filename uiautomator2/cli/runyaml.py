@@ -1,6 +1,23 @@
 #!/usr/bin/env python
 # coding: utf-8
 #
+"""
+packageName: com.netease.cloudmusic  # Optional
+activity: .MainActivity # Optional
+steps:
+- q: ~hell
+- q: ^hello w
+- q: =hello world
+- q: hello world
+- q: foo
+  timeout: 10 # seconds
+- text: the input text
+- code: |
+time.sleep(10) # d, time can be used
+watchers: # click when show up
+- q: ~跳过
+  timeout: 0 # default
+"""
 
 import argparse
 import time
@@ -20,54 +37,78 @@ class TestCase(object):
     def __init__(self, cnf):
         self._title = cnf.get('title')
         self._pkg_name = cnf.get('packageName')
+        self._activity = cnf.get('activity')
         self._cnf = cnf
         self._clear = cnf.get('clear')
         self._steps = cnf.get('steps')
         self._watchers = cnf.get('watchers', [])
         self._d = None
 
+        self.session = None
+
+        # just for test
+        plugins_cnf = cnf.get('plugins')
+        if plugins_cnf and 'ocr' in plugins_cnf:
+            import uiautomator2.ext.ocr as ocr
+            ocr.API = plugins_cnf['ocr']
+            logger.info("Use ocr plugin: %s", ocr.API)
+            u2.plugin_register('ocr', ocr.OCR)
+
     def _find_xpath(self, xpath, hierarchy):
-        el = self._d.xpath(xpath, hierarchy)
+        el = self.session.xpath(xpath, hierarchy)
         if el.exists:
             return el.wait().center()
 
     def _find_text(self, text, hierarchy):
-        elements = self._d.xpath(
+        elements = self.session.xpath(
             '//*[re:match(name(), "\.(TextView|Button|ImageView)$")]',
             hierarchy).all()
-        pattern = re.compile(text)
+        if text.startswith('~') or text.startswith('^'):  # Regexp
+            pattern = re.compile(text[1:])
+            for el in elements:
+                if el.text and pattern.match(el.text):
+                    logger.debug("find match: %s, %s", el.text, el.attrib)
+                    return el.center()
+        elif text.startswith("="):
+            text = text[1:]
+
         for el in elements:
-            if el.text and pattern.match(el.text):
-                logger.debug("find match: %s, %s", el.text, el.attrib)
+            if el.text == text:
+                logger.debug("find exactly match text: %s", el.text)
                 return el.center()
 
     def _oper_input(self, text):
         logger.info("input text: %s", text)
-        self._d.set_fastinput_ime(True)
-        self._d.send_keys(text)
-        self._d.press("enter")
+        self.session.set_fastinput_ime(True)
+        self.session.send_keys(text)
+        self.session.press("enter")
 
-    def _handle_watchers(self, hierarchy):
+    def _run_watchers(self, hierarchy):
         for kwargs in self._watchers:
             kwargs['timeout'] = kwargs.get('timeout', 0)
             if 'q' in kwargs:
                 kwargs['query'] = kwargs.pop('q')
-            if self._handle_onestep(hierarchy, **kwargs):
+            if self._run_onestep(hierarchy, **kwargs):
                 logger.info("trigger watcher: %s", kwargs)
 
-    def _handle_onestep(self,
-                        hierarchy,
-                        action='click',
-                        query=None,
-                        text=None,
-                        code=None,
-                        timeout=10):
+    def _run_onestep(self,
+                     hierarchy,
+                     action='click',
+                     query=None,
+                     text=None,
+                     code=None,
+                     ocr=None,
+                     timeout=10):
         """
         Returns:
             bool: if step handled
         """
         if text:
             self._oper_input(text)
+            return True
+
+        if ocr:
+            self._d.ext_ocr(ocr).click(timeout=timeout)
             return True
 
         # find element and click
@@ -85,14 +126,14 @@ class TestCase(object):
 
             if action == 'click':
                 logger.info("click: %s", pos)
-                self._d.click(*pos)
+                self.session.click(*pos)
                 return True
             elif action == 'assertExists':
                 return True
 
         if code:
             logger.info("exec: |\n%s", code)
-            exec(code, {'d': self._d, 'time': time})
+            exec(code, {'d': self.session, 'time': time})
             return True
 
         # raise NotImplementedError("only support click action")
@@ -101,13 +142,16 @@ class TestCase(object):
         retry_cnt = 0
         timeout = kwargs.pop('timeout', 10)
         deadline = time.time() + timeout
+
+        # alias
         if 'q' in kwargs:
             kwargs['query'] = kwargs.pop('q')
+
         while retry_cnt == 0 or time.time() < deadline:
             retry_cnt += 1
-            hierarchy = self._d.dump_hierarchy()
-            self._handle_watchers(hierarchy)  # 处理弹框
-            if self._handle_onestep(hierarchy, **kwargs):
+            hierarchy = self.session.dump_hierarchy()
+            self._run_watchers(hierarchy)  # 处理弹框
+            if self._run_onestep(hierarchy, **kwargs):
                 break
             logger.debug("process %s, retry %d", kwargs, retry_cnt)
             time.sleep(.5)
@@ -115,15 +159,21 @@ class TestCase(object):
             raise RuntimeError("element not found: %s", kwargs)
 
     def run(self):
-        d = u2.connect()
+        self._d = d = u2.connect()
         logger.info("Test begins: %s", self._title)
         logger.info("launch app: %s", self._pkg_name)
         if self._clear:
             d.app_clear(self._pkg_name)
-        s = d.session(self._pkg_name)
+
+        s = None
+        if self._activity:
+            d.app_start(self._pkg_name, self._activity, stop=True)
+            s = d.session(self._pkg_name, attach=True)
+        else:
+            s = d.session(self._pkg_name)
+
+        self.session = s
         try:
-            # s = d
-            self._d = s
             for step in self._steps:
                 logger.info("==> %s", step)
                 self._handle_step(**step)

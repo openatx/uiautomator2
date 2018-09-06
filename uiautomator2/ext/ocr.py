@@ -8,8 +8,8 @@ u2.plugin_add("ocr", ocr.OCR)
 
 d = u2.connect()
 d.ext_ocr("对战模式").click()
-
 """
+
 import requests
 import time
 
@@ -65,6 +65,9 @@ class OCRSelector(object):
         Args:
             timeout: seconds to wait
         
+        Returns:
+            List of recognition (text, x, y)
+            
         Raises:
             OCRObjectNotFound
         """
@@ -77,8 +80,8 @@ class OCRSelector(object):
                 return all
         raise OCRObjectNotFound(self._text)
 
-    def click(self):
-        result = self.wait()
+    def click(self, timeout=10):
+        result = self.wait(timeout=timeout)
         _, x, y = result[0]
         self._d.click(x, y)
 
