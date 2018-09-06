@@ -11,7 +11,7 @@ import time
 class SimpleTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.d = u2.connect_usb()
+        cls.d = u2.connect()
         cls.d.set_orientation('natural')
         cls.d.implicitly_wait(10)
 

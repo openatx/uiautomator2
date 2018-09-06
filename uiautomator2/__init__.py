@@ -231,9 +231,8 @@ def connect_usb(serial=None):
     if not d.agent_alive:
         warnings.warn("backend atx-agent is not alive, start again ...",
                       RuntimeWarning)
-        adb.execute("shell",
-                    "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell",
-                    "atx-agent", "-d")
+        adb.execute(
+            "shell", "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell", "atx-agent", "-d")
         deadline = time.time() + 3
         while time.time() < deadline:
             if d.alive:
@@ -1141,21 +1140,6 @@ class Session(object):
             return "<uiautomator2.Session pid:%d pkgname:%s>" % (
                 self._pid, self._pkg_name)
         return super(Session, self).__repr__()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    def implicitly_wait(self, seconds=None):
-        """set default wait timeout
-        Args:
-            seconds(float): to wait element show up
-        """
-        if seconds is not None:
-            self.server.wait_timeout = seconds
-        return self.server.wait_timeout
 
     def close(self):
         """ close app """
