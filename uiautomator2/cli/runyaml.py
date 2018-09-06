@@ -92,7 +92,7 @@ class TestCase(object):
 
         if code:
             logger.info("exec: |\n%s", code)
-            exec(code, {'d': self._d})
+            exec(code, {'d': self._d, 'time': time})
             return True
 
         # raise NotImplementedError("only support click action")

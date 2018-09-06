@@ -32,6 +32,7 @@ import logging
 from datetime import datetime
 from subprocess import list2cmdline
 from collections import namedtuple
+from functools import partial
 
 import six
 import humanize
@@ -280,8 +281,32 @@ class TimeoutRequestsSession(requests.Session):
             return resp
 
 
+def plugin_register(name, plugin, *args, **kwargs):
+    """
+    Add plugin into UIAutomatorServer
+    
+    Args:
+        name: string
+        plugin: class or function which take d as first parameter
+    
+    Example:
+        def upload_screenshot(d):
+            def inner():
+                d.screenshot("tmp.jpg")
+                # use requests.post upload tmp.jpg
+            return inner
+        
+        plugin_register("upload_screenshot", save_screenshot)
+        
+        d = u2.connect()
+        d.ext_upload_screenshot()
+    """
+    UIAutomatorServer.plugins()[name] = (plugin, args, kwargs)
+
+
 class UIAutomatorServer(object):
     __isfrozen = False
+    __plugins = {}
 
     def __init__(self, host, port=7912):
         """
@@ -311,6 +336,10 @@ class UIAutomatorServer(object):
 
     def _freeze(self):
         self.__isfrozen = True
+
+    @staticmethod
+    def plugins():
+        return UIAutomatorServer.__plugins
 
     def __setattr__(self, key, value):
         """ Prevent creating new attributes outside __init__ """
@@ -354,6 +383,15 @@ class UIAutomatorServer(object):
     def serial(self):
         return self.shell(['getprop', 'ro.serialno'])[0].strip()
 
+    @property
+    def jsonrpc(self):
+        """
+        Make jsonrpc call easier
+        For example:
+            self.jsonrpc.pressKey("home")
+        """
+        return self.setup_jsonrpc()
+
     def path2url(self, path):
         return urlparse.urljoin(self._server_url, path)
 
@@ -365,14 +403,6 @@ class UIAutomatorServer(object):
             w, h = h, w
         return w, h
 
-    @property
-    def jsonrpc(self):
-        """
-        Make jsonrpc call easier
-        For example:
-            self.jsonrpc.pressKey("home")
-        """
-        return self.setup_jsonrpc()
 
     def setup_jsonrpc(self, jsonrpc_url=None):
         """
@@ -1056,6 +1086,9 @@ class UIAutomatorServer(object):
         return Session(self, pkg_name, pid)
 
     def __getattr__(self, attr):
+        if attr.startswith('ext_') and attr[4:] in self.__plugins:
+            func, args, kwargs = self.__plugins[attr[4:]]
+            return partial(func, self)(*args, **kwargs)
         return getattr(self._default_session, attr)
 
     def __call__(self, **kwargs):
@@ -1226,7 +1259,7 @@ class Session(object):
             return self(focused=True).set_text(text)
             # warnings.warn("set FastInputIME failed. use \"adb shell input text\" instead", Warning)
             # self.server.adb_shell("input", "text", text.replace(" ", "%s"))
-    
+
     @check_alive
     def send_action(self, code):
         """

@@ -1214,6 +1214,38 @@ $ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' 127.0.0.1:9008/jsonrp
 4. uiautomator2必须明确EditText框才能向里面输入文字，uiautomator直接指定父类也可以在子类中输入文字
 5. uiautomator2获取控件速度比uiautomator快
 
+## 插件机制（Beta)
+为了方便uiautomator2能够方便跟其他项目集成，所以开发了插件机制。参考了过去[flask的插件机制](https://www.zoulei.net/2016/09/05/flask_plugin_note/)。
+使用方法
+
+```python
+import uiautomator2 as u2
+
+def my_plugin(d, fileext='.jpg'):
+    """ save screenshot plugin """
+    def inner(filename):
+        d.screenshot().save(filename+fileext)
+    return inner
+
+u2.plugin_register('png_save', my_plugin, '.png')
+
+d = u2.connect()
+d.ext_png_save("screen") # screenshot will save screen.png
+```
+
+这里引入了一个函数`plugin_register`
+
+```python
+def plugin_register(name, func_or_class, *args, **kwargs)
+```
+
+name代表插件的名字，`func_or_class`可以是函数，也可以是类，其第一个参数一定是`d`（设备的实例）, `args`和`kwargs`是可选参数
+
+通过`d.ext_`加上注册插件是的名字，如果插件名是`png_save`则通过`d.ext_png_save`调用。
+
+> PS: 插件的调用没有自动补全，有点不太方便
+
+
 ## 常见问题
 1. 提示`502`错误
 
