@@ -328,13 +328,13 @@ class UIAutomatorServer(object):
         self._server_url = 'http://{}:{}'.format(host, port)
         self._server_jsonrpc_url = self._server_url + "/jsonrpc/0"
         self._default_session = Session(self, None)
+        self._cached_plugins = {}
         self.__devinfo = None
         self.platform = None  # hot fix for weditor
 
         self.ash = AdbShell(self.shell)  # the powerful adb shell
         self.wait_timeout = 20.0  # wait element timeout
         self.click_post_delay = None  # wait after each click
-
         self._freeze()  # prevent creating new attrs
         # self._atx_agent_check()
 
@@ -1093,11 +1093,15 @@ class UIAutomatorServer(object):
         return Session(self, pkg_name, pid)
 
     def __getattr__(self, attr):
+        if attr in self._cached_plugins:
+            return self._cached_plugins[attr]
         if attr.startswith('ext_'):
             if attr[4:] not in self.__plugins:
                 raise ValueError("plugin \"%s\" not registed" % attr[4:])
             func, args, kwargs = self.__plugins[attr[4:]]
-            return partial(func, self)(*args, **kwargs)
+            obj = partial(func, self)(*args, **kwargs)
+            self._cached_plugins[attr] = obj
+            return obj
         return getattr(self._default_session, attr)
 
     def __call__(self, **kwargs):
