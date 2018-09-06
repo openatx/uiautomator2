@@ -64,7 +64,7 @@ class TestCase(object):
             '//*[re:match(name(), "\.(TextView|Button|ImageView)$")]',
             hierarchy).all()
         if text.startswith('~') or text.startswith('^'):  # Regexp
-            pattern = re.compile(text[1:])
+            pattern = re.compile(text[1:] if text.startswith('~') else text)
             for el in elements:
                 if el.text and pattern.match(el.text):
                     logger.debug("find match: %s, %s", el.text, el.attrib)
@@ -160,7 +160,7 @@ class TestCase(object):
 
     def run(self):
         self._d = d = u2.connect()
-        logger.info("Test begins: %s", self._title)
+        logger.info("test begins: %s", self._title)
         logger.info("launch app: %s", self._pkg_name)
         if self._clear:
             d.app_clear(self._pkg_name)
