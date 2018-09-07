@@ -42,7 +42,7 @@ time,pss,cpu,systemCpu,rxBytes,txBytes
 数据项说明
 
 - PSS直接通过`dumpsys meminfo <package-name>`获取
-- CPU应该是会超过100%的，直接读取的`/proc/`下的文件计算出来的
+- CPU直接读取的`/proc/`下的文件计算出来的，多核的情况，数据是有可能超过100%的
 - rxBytes, txBytes 目前只有wlan的流量，tcp和udp的流量总和
 
 ## 参考资料

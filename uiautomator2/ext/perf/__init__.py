@@ -195,6 +195,8 @@ class Perf(object):
         self._condition.acquire()
         self._condition.wait(timeout=2)
         self._condition.release()
+        if self.debug:
+            print("DEBUG: perf collect stopped")
 
 
 if __name__ == '__main__':

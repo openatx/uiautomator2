@@ -5,8 +5,9 @@
 packageName: com.netease.cloudmusic  # Optional
 activity: .MainActivity # Optional
 launch: true # Optional, default true
+close: true # Optional, close app when finished
 plugins:
-  ocr: ocr-api-url
+  ocr: $ocr-api-url
   perf:
     interval: 1
     debug: true
@@ -46,6 +47,7 @@ class JSONRunner(object):
         self._pkg_name = cnf.get('packageName')
         self._activity = cnf.get('activity')
         self._launch = cnf.get('launch', True)
+        self._close = cnf.get('close', True)
         self._cnf = cnf
         self._clear = cnf.get('clear')
         self._steps = cnf.get('steps')
@@ -209,9 +211,10 @@ class JSONRunner(object):
                 self._handle_step(**step)
             logger.info("Finished")
         finally:
-            pass
             if 'perf' in self._plugins:
                 self._d.ext_perf.stop()
+            if self._pkg_name and self._close:
+                self._d.app_stop(self._pkg_name)
 
 
 def main(filename, debug=False):
