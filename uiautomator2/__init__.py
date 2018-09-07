@@ -1101,7 +1101,10 @@ class UIAutomatorServer(object):
             obj = partial(func, self)(*args, **kwargs)
             self._cached_plugins[attr] = obj
             return obj
-        return getattr(self._default_session, attr)
+        try:
+            return getattr(self._default_session, attr)
+        except AttributeError:
+            raise AttributeError("'Session or UIAutomatorServer' object has no attribute '%s'" % attr)
 
     def __call__(self, **kwargs):
         return self._default_session(**kwargs)
