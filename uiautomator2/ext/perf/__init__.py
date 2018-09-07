@@ -6,6 +6,7 @@ from __future__ import absolute_import, print_function
 import threading
 import re
 import time
+import csv
 
 _MEM_PATTERN = re.compile(r'TOTAL[:\s]+(\d+)')
 
@@ -61,7 +62,8 @@ class Perf(object):
         scpu = 100.0 * ((tjiff2 - idle2) -
                         (tjiff1 - idle1)) / (tjiff2 - tjiff1)  # system cpu
         # print("CPU:", pcpu, scpu)
-        print("cal cpu:", round(pcpu, 1), round(scpu, 1))
+        return round(pcpu, 1), round(scpu, 1)
+        # print("cal cpu:", round(pcpu, 1), round(scpu, 1))
 
         # first_line = d.shell(['cat', '/proc/stat']).output.splitlines()[0]
         # assert first_line.startswith('cpu ')
@@ -77,30 +79,38 @@ class Perf(object):
 
         # time.sleep(.3)
 
-        for line in d.shell(["top", "-n", "1"]).output.splitlines():
-            vs = line.split()
-            if len(vs) > 5 and vs[-1] == self.package_name:
-                if vs[4].endswith('%'):
-                    print("Miss:", float(vs[4][:-1]) - pcpu)
-                    return float(vs[4][:-1]), 0.0
-        return (0.0, 0.0)
+        # for line in d.shell(["top", "-n", "1"]).output.splitlines():
+        #     vs = line.split()
+        #     if len(vs) > 5 and vs[-1] == self.package_name:
+        #         if vs[4].endswith('%'):
+        #             print("Miss:", float(vs[4][:-1]) - pcpu)
+        #             return float(vs[4][:-1]), 0.0
+        # return (0.0, 0.0)
 
     def collect(self):
-        pss = self.memory()
         start = time.time()
+        pss = self.memory()
+        print("memofy time used =", time.time() - start)
         cpu, scpu = self.cpu()
-        # print("cpu time used=", time.time() - start)
+        print("collect time used =", time.time() - start)
         return {
+            'time': int(time.time() * 1000),
             'pss': pss,
             'cpu': cpu,
-            'system_cpu': scpu,
+            'systemCpu': scpu,
         }
 
     def continue_collect(self):
         try:
-            while not self._event.isSet():
-                print(time.time(), self.collect())
-                time.sleep(.5)
+            with open("perf.csv", "w", newline='\n') as f:
+                fcsv = csv.writer(f)
+                headers = ['time', 'pss', 'cpu', 'systemCpu']
+                fcsv.writerow(headers)
+                while not self._event.isSet():
+                    perfdata = self.collect()
+                    fcsv.writerow([perfdata[k] for k in headers])
+                    print(time.time(), perfdata)
+                    time.sleep(.5)
         finally:
             print("collect finish")
             self._condition.acquire()
@@ -139,7 +149,9 @@ if __name__ == '__main__':
     print(d.current_app())
     # d.app_start(pkgname)
     d.ext_perf.start()
-    time.sleep(500)
-    d.ext_perf.stop()
-    print("threading stopped")
+    try:
+        time.sleep(500)
+    except KeyboardInterrupt:
+        d.ext_perf.stop()
+        print("threading stopped")
     # time.sleep(2)
