@@ -44,14 +44,14 @@ class Perf(object):
         return 0
 
     def _cpu_rawdata_collect(self, pid):
-        first_line = d.shell(['cat', '/proc/stat']).output.splitlines()[0]
+        first_line = self.d.shell(['cat', '/proc/stat']).output.splitlines()[0]
         assert first_line.startswith('cpu ')
         # ds: user, nice, system, idle, iowait, irq, softirq, stealstolen, guest, guest_nice
         ds = list(map(int, first_line.split()[1:]))
         total_cpu = sum(ds)
         idle = ds[3]
 
-        proc_stat = d.shell(
+        proc_stat = self.d.shell(
             ['cat', '/proc/%d/stat' % pid]).output.split(') ')[1].split()
         utime = int(proc_stat[11])
         stime = int(proc_stat[12])

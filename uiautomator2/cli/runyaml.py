@@ -4,6 +4,13 @@
 """
 packageName: com.netease.cloudmusic  # Optional
 activity: .MainActivity # Optional
+launch: true # Optional, default true
+plugins:
+  ocr: ocr-api-url
+  perf:
+    interval: 1
+    debug: true
+    filename: perf.csv
 steps:
 - q: ~hell
 - q: ^hello w
@@ -29,7 +36,7 @@ import logzero
 from logzero import logger
 
 
-class TestCase(object):
+class JSONRunner(object):
     __alias = {
         'q': 'query',
     }
@@ -38,21 +45,32 @@ class TestCase(object):
         self._title = cnf.get('title')
         self._pkg_name = cnf.get('packageName')
         self._activity = cnf.get('activity')
+        self._launch = cnf.get('launch', True)
         self._cnf = cnf
         self._clear = cnf.get('clear')
         self._steps = cnf.get('steps')
         self._watchers = cnf.get('watchers', [])
-        self._d = None
+        self._udid = cnf.get('udid')
+        self._plugins = cnf.get('plugins', {})
+        d = self._d = u2.connect(self._udid)
 
         self.session = None
 
-        # just for test
-        plugins_cnf = cnf.get('plugins')
-        if plugins_cnf and 'ocr' in plugins_cnf:
+        # plugins
+        if 'ocr' in self._plugins:
+            logger.info("load plugin: ocr")
             import uiautomator2.ext.ocr as ocr
-            ocr.API = plugins_cnf['ocr']
+            ocr.API = self._plugins['ocr']
             logger.info("Use ocr plugin: %s", ocr.API)
             u2.plugin_register('ocr', ocr.OCR)
+        if self._pkg_name and 'perf' in self._plugins:
+            logger.info("load plugin: perf")
+            import uiautomator2.ext.perf as perf
+            u2.plugin_register('perf', perf.Perf, self._pkg_name)
+            perfcnf = self._plugins['perf']
+            d.ext_perf.interval = perfcnf.get('interval', 1.0)
+            d.ext_perf.debug = perfcnf.get('debug', True)
+            d.ext_perf.csv_output = perfcnf.get('filename', 'perf.csv')
 
     def _find_xpath(self, xpath, hierarchy):
         el = self.session.xpath(xpath, hierarchy)
@@ -158,10 +176,12 @@ class TestCase(object):
         else:
             raise RuntimeError("element not found: %s", kwargs)
 
-    def run(self):
-        self._d = d = u2.connect()
-        logger.info("test begins: %s", self._title)
-        logger.info("launch app: %s", self._pkg_name)
+    def prepare_session(self):
+        d = self._d
+        if not self._launch:
+            self.session = self._d.session(self._pkg_name, attach=True)
+            return
+
         if self._clear:
             d.app_clear(self._pkg_name)
 
@@ -173,6 +193,16 @@ class TestCase(object):
             s = d.session(self._pkg_name)
 
         self.session = s
+
+    def run(self):
+        # self._d = d = u2.connect()
+        logger.info("test begins: %s", self._title)
+        logger.info("launch app: %s", self._pkg_name)
+
+        self.prepare_session()
+        if 'perf' in self._plugins:
+            self._d.ext_perf.start()
+
         try:
             for step in self._steps:
                 logger.info("==> %s", step)
@@ -180,7 +210,8 @@ class TestCase(object):
             logger.info("Finished")
         finally:
             pass
-            # s.close()
+            if 'perf' in self._plugins:
+                self._d.ext_perf.stop()
 
 
 def main(filename, debug=False):
@@ -189,7 +220,7 @@ def main(filename, debug=False):
 
     import yaml
     with open(filename, 'rb') as f:
-        tc = TestCase(yaml.load(f))
+        tc = JSONRunner(yaml.load(f))
         tc.run()
 
 
