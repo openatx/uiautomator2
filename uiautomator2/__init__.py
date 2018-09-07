@@ -1141,6 +1141,21 @@ class Session(object):
                 self._pid, self._pkg_name)
         return super(Session, self).__repr__()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def implicitly_wait(self, seconds=None):
+        """set default wait timeout
+        Args:
+            seconds(float): to wait element show up
+        """
+        if seconds is not None:
+            self.server.wait_timeout = seconds
+        return self.server.wait_timeout
+
     def close(self):
         """ close app """
         if self._pkg_name:
