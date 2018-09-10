@@ -8,6 +8,7 @@ import re
 import time
 import datetime
 import csv
+import sys
 import atexit
 from collections import namedtuple
 
@@ -171,7 +172,10 @@ class Perf(object):
             self._condition.release()
 
     def start(self):
-        f = open("perf.csv", "w", newline='\n')
+        if sys.version_info.major < 3:
+            f = open(self.csv_output, "wb")
+        else:
+            f = open(self.csv_output, "w", newline='\n')
 
         def defer_close():
             if not f.closed:

@@ -21,7 +21,7 @@ steps:
   timeout: 10 # seconds
 - text: the input text
 - code: |
-time.sleep(10) # d, time can be used
+    time.sleep(10) # only "d, time" can be used
 watchers: # click when show up
 - q: ~跳过
   timeout: 0 # default
