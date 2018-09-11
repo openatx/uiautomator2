@@ -5,7 +5,7 @@ uiautomator2 cli
 
 Usage:
     u2cli install <ip> <url> [--server=<server>]
-    u2cli runyaml [--debug] <filename>
+    u2cli runyaml [--debug] [--step] <filename>
 
 Options:
     -h --help            show this help message
@@ -224,19 +224,19 @@ def __cmd_install(ip, server, apk_url):
     ins.install(apk_url)
 
 
-def __cmd_runyaml(debug, filename):
+def __cmd_runyaml(debug, onlystep, filename):
     try:
         import yaml
     except ImportError:
         sys.exit("you need to install pyaml")
-    runyaml.main(filename, debug)
+    runyaml.main(filename, debug, onlystep)
 
 
 def main():
     args = docopt(__doc__, version='u2cli 1.0')
     print(args)
     register_command(__cmd_install, 'install', ('<ip>', '--server', '<url>'))
-    register_command(__cmd_runyaml, "runyaml", ('--debug', '<filename>'))
+    register_command(__cmd_runyaml, "runyaml", ('--debug', '--step', '<filename>'))
 
     for cmdname, cmdopts in __commands.items():
         if args[cmdname]:

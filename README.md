@@ -874,6 +874,22 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
     d(text="Settings").drag_to(text="Clock", duration=0.25)
     ```
 
+* Swipe from the center of the UI object to its edge
+
+    Swipe supports 4 directions:
+
+    - left
+    - right
+    - top
+    - bottom
+
+    ```python
+    d(text="Settings").swipe("right")
+    d(text="Settings").swipe("left", steps=10)
+    d(text="Settings").swipe("up", steps=20) # 1 steps is about 5ms, so 20 steps is about 0.1s
+    d(text="Settings").swipe("down", steps=20)
+    ```
+
 * Two-point gesture from one point to another
 
   ```python

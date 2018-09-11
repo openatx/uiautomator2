@@ -1073,7 +1073,7 @@ class UIAutomatorServer(object):
         """
         if pkg_name is None:
             return self._default_session
-            
+
         if not attach:
             resp = self._reqsess.post(
                 self.path2url("/session/" + pkg_name), data={"flags": "-W -S"})
@@ -1134,7 +1134,7 @@ class Session(object):
             jsonrpc_url = server.path2url('/session/%d:%s/jsonrpc/0' %
                                           (pid, pkg_name))
             self._jsonrpc = server.setup_jsonrpc(jsonrpc_url)
-        
+
         # hot fix for session missing shell function
         self.shell = self.server.shell
 
@@ -1418,12 +1418,13 @@ class Session(object):
         self.touch.up(x, y)
         return self
 
-    def swipe(self, fx, fy, tx, ty, duration=0.5):
+    def swipe(self, fx, fy, tx, ty, duration=0.1, steps=None):
         """
         Args:
             fx, fy: from position
             tx, ty: to position
             duration (float): duration
+            steps: 1 steps is about 5ms, if set, duration will be ignore
 
         Documents:
             uiautomator use steps instead of duration
@@ -1435,7 +1436,9 @@ class Session(object):
         rel2abs = self.pos_rel2abs
         fx, fy = rel2abs(fx, fy)
         tx, ty = rel2abs(tx, ty)
-        return self.jsonrpc.swipe(fx, fy, tx, ty, int(duration * 200))
+        if not steps:
+            steps = int(duration * 200)
+        return self.jsonrpc.swipe(fx, fy, tx, ty, steps)
 
     def swipe_points(self, points, duration=0.5):
         """
@@ -1801,6 +1804,38 @@ class UiObject(object):
 
             return drag2xy(*args, **kwargs)
         return self.jsonrpc.dragTo(self.selector, Selector(**kwargs), steps)
+
+    def swipe(self, direction, steps=10):
+        """
+        Performs the swipe action on the UiObject.
+        Swipe from center
+
+        Args:
+            direction (str): one of ("left", "right", "up", "down")
+            steps (int): move steps, one step is about 5ms
+            percent: float between [0, 1]
+
+        Note: percent require API >= 18
+        # assert 0 <= percent <= 1
+        """
+        assert direction in ("left", "right", "up", "down")
+
+        self.must_wait()
+        info = self.info
+        bounds = info.get('visibleBounds') or info.get("bounds")
+        lx, ly, rx, ry = bounds['left'], bounds['top'], bounds['right'], bounds['bottom']
+        cx, cy = (lx+rx)//2, (ly+ry)//2
+        if direction == 'up':
+            self.session.swipe(cx, cy, cx, ly, steps=steps)
+        elif direction == 'down':
+            self.session.swipe(cx, cy, cx,  ry - 1, steps=steps)
+        elif direction == 'left':
+            self.session.swipe(cx, cy, lx, cy, steps=steps)
+        elif direction == 'right':
+            self.session.swipe(cx, cy, rx - 1, cy, steps=steps)
+
+        # return self.jsonrpc.swipe(self.selector, direction, percent, steps)
+
 
     def gesture(self, start1, start2, end1, end2, steps=100):
         '''

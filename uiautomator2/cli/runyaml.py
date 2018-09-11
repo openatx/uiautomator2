@@ -43,12 +43,12 @@ class JSONRunner(object):
     }
 
     def __init__(self, cnf):
+        self._cnf = cnf
         self._title = cnf.get('title')
         self._pkg_name = cnf.get('packageName')
         self._activity = cnf.get('activity')
         self._launch = cnf.get('launch', True)
         self._close = cnf.get('close', True)
-        self._cnf = cnf
         self._clear = cnf.get('clear')
         self._steps = cnf.get('steps')
         self._watchers = cnf.get('watchers', [])
@@ -180,7 +180,7 @@ class JSONRunner(object):
 
     def prepare_session(self):
         d = self._d
-        if not self._launch:
+        if not self._launch or not self._pkg_name:
             self.session = self._d.session(self._pkg_name, attach=True)
             return
 
@@ -197,7 +197,6 @@ class JSONRunner(object):
         self.session = s
 
     def run(self):
-        # self._d = d = u2.connect()
         logger.info("test begins: %s", self._title)
         logger.info("launch app: %s", self._pkg_name)
 
@@ -213,25 +212,29 @@ class JSONRunner(object):
         finally:
             if 'perf' in self._plugins:
                 self._d.ext_perf.stop()
-            if self._pkg_name and self._close:
+            if self._launch and self._pkg_name and self._close:
                 self._d.app_stop(self._pkg_name)
 
 
-def main(filename, debug=False):
+def main(filename, debug=False, onlystep=False):
     if not debug:
         logzero.loglevel(logging.INFO)
 
     import yaml
     with open(filename, 'rb') as f:
-        tc = JSONRunner(yaml.load(f))
+        cnf = yaml.load(f)
+        if onlystep:
+            cnf['launch'] = False
+        tc = JSONRunner(cnf)
         tc.run()
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '-d', '--debug', help='set loglevel to debug', action='store_true')
-    parser.add_argument('yamlfile')
-    args = parser.parse_args()
+# if __name__ == '__main__':
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument(
+#         '-d', '--debug', help='set loglevel to debug', action='store_true')
+#     parser.add_argument('--step', help='run only step', action='store_true')
+#     parser.add_argument('yamlfile')
+#     args = parser.parse_args()
 
-    main(args.yamlfile, args.debug)
+#     main(args.yamlfile, args.debug, onlystep=args.step)
