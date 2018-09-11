@@ -36,23 +36,27 @@ class Perf(object):
         self._condition = threading.Condition()
         self._data = {}
 
+    def shell(self, *args, **kwargs):
+        # print("Shell:", args)
+        return self.d.shell(*args, **kwargs)
+
     def memory(self):
         """ PSS(KB) """
-        output = self.d.shell(['dumpsys', 'meminfo', self.package_name]).output
+        output = self.shell(['dumpsys', 'meminfo', self.package_name]).output
         m = _MEM_PATTERN.search(output)
         if m:
             return int(m.group(1))
         return 0
 
     def _cpu_rawdata_collect(self, pid):
-        first_line = self.d.shell(['cat', '/proc/stat']).output.splitlines()[0]
+        first_line = self.shell(['cat', '/proc/stat']).output.splitlines()[0]
         assert first_line.startswith('cpu ')
         # ds: user, nice, system, idle, iowait, irq, softirq, stealstolen, guest, guest_nice
         ds = list(map(int, first_line.split()[1:]))
         total_cpu = sum(ds)
         idle = ds[3]
 
-        proc_stat = self.d.shell(
+        proc_stat = self.shell(
             ['cat', '/proc/%d/stat' % pid]).output.split(') ')[1].split()
         utime = int(proc_stat[11])
         stime = int(proc_stat[12])
@@ -84,7 +88,7 @@ class Perf(object):
         return round(pcpu, 1), round(scpu, 1)
 
         # Retrive cpu from top
-        # for line in d.shell(["top", "-n", "1"]).output.splitlines():
+        # for line in self.shell(["top", "-n", "1"]).output.splitlines():
         #     vs = line.split()
         #     if len(vs) > 5 and vs[-1] == self.package_name:
         #         if vs[4].endswith('%'):
@@ -98,13 +102,13 @@ class Perf(object):
             (rx_bytes, tx_bytes)
         """
         m = re.search(r'^Uid:\s+(\d+)',
-                      self.d.shell(['cat', '/proc/%d/status' % pid]).output,
+                      self.shell(['cat', '/proc/%d/status' % pid]).output,
                       re.M)
         if not m:
             return (0, 0)
         uid = m.group(1)
-        lines = self.d.shell(
-            ['cat', '/proc/net/xt_qtaguid/stats']).output.splitlines()
+        lines = self.shell(['cat',
+                            '/proc/net/xt_qtaguid/stats']).output.splitlines()
 
         rx, tx = 0, 0
         for line in lines:
@@ -128,26 +132,90 @@ class Perf(object):
         self._data[store_key] = (rx, tx)
         return drx, dtx
 
+    def _current_view(self, app=None):
+        d = self.d
+        views = self.shell(['dumpsys', 'SurfaceFlinger',
+                            '--list']).output.splitlines()
+        if not app:
+            app = d.current_app()
+        current = app['package'] + "/" + app['activity']
+        surface_curr = 'SurfaceView - ' + current
+        if surface_curr in views:
+            return surface_curr
+        return current
+
+    def _dump_surfaceflinger(self, view):
+        valid_lines = []
+        MAX_N = 9223372036854775807
+        for line in self.shell(
+            ['dumpsys', 'SurfaceFlinger', '--latency',
+             view]).output.splitlines():
+            fields = line.split()
+            if len(fields) != 3:
+                continue
+            a, b, c = map(int, fields)
+            if a == 0:
+                continue
+            if MAX_N in (a, b, c):
+                continue
+            valid_lines.append((a, b, c))
+        return valid_lines
+
+    def _fps_init(self):
+        view = self._current_view()
+        self.shell(["dumpsys", "SurfaceFlinger", "--latency-clear", view])
+        self._data['fps-start-time'] = time.time()
+        self._data['fps-last-vsync'] = None
+        self._data['fps-inited'] = True
+
+    def fps(self, app=None):
+        """
+        Return float
+        """
+        if 'fps-inited' not in self._data:
+            self._fps_init()
+        view = self._current_view(app)
+        values = self._dump_surfaceflinger(view)
+        last_vsync = self._data.get('fps-last-vsync')
+        last_start = self._data.get('fps-start-time')
+        try:
+            idx = values.index(last_vsync)
+            values = values[idx + 1:]
+        except ValueError:
+            pass
+        duration = time.time() - last_start
+        if len(values):
+            self._data['fps-last-vsync'] = values[-1]
+        self._data['fps-start-time'] = time.time()
+        return round(len(values) / duration, 1)
+
     def collect(self):
         pid = self.d._pidof_app(self.package_name)
         if pid is None:
             return
+        app = self.d.current_app()
         pss = self.memory()
         cpu, scpu = self.cpu(pid)
         rx_bytes, tx_bytes = self.netstat(pid)
+        fps = self.fps(app)
         timestr = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         return {
             'time': timestr,
+            'package': app['package'],
             'pss': round(pss / 1024.0, 2),
             'cpu': cpu,
             'systemCpu': scpu,
             'rxBytes': rx_bytes,
             'txBytes': tx_bytes,
+            'fps': fps,
         }
 
     def continue_collect(self, f):
         try:
-            headers = ['time', 'pss', 'cpu', 'systemCpu', 'rxBytes', 'txBytes']
+            headers = [
+                'time', 'package', 'pss', 'cpu', 'systemCpu', 'rxBytes',
+                'txBytes', 'fps'
+            ]
             fcsv = csv.writer(f)
             fcsv.writerow(headers)
             update_time = time.time()
@@ -206,7 +274,7 @@ class Perf(object):
 if __name__ == '__main__':
     import uiautomator2 as u2
     pkgname = "com.tencent.tmgp.sgame"
-    pkgname = "com.netease.cloudmusic"
+    # pkgname = "com.netease.cloudmusic"
     u2.plugin_register('perf', Perf, pkgname)
 
     d = u2.connect("10.242.62.224")
