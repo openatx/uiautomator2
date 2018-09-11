@@ -20,6 +20,10 @@ def main():
 
     # run ... tests code here ...
     d.ext_perf.stop() # 最好结束的时候调用下，虽然不调用也没多大关系
+    
+    # generate images from csv
+    # 需要安装 matplotlib, pandas, numpy, humanize
+    d.ext_perf.csv2images()
 
 
 if __name__ == '__main__':
@@ -29,14 +33,25 @@ if __name__ == '__main__':
 保存的csv文件内容格式为
 
 ```csv
-time,pss,cpu,systemCpu,rxBytes,txBytes
-2018-09-07 16:09:16.725,161.41,1.9,6.2,0,0
-2018-09-07 16:09:17.812,161.42,3.6,9.1,31650,2943
-2018-09-07 16:09:19.043,167.1,17.3,52.5,3379507,133231
-2018-09-07 16:09:19.800,168.92,12.8,33.6,801161,30242
-2018-09-07 16:09:20.871,168.78,12.3,26.0,0,0
-2018-09-07 16:09:21.842,168.76,12.1,26.9,0,0
-2018-09-07 16:09:22.910,169.39,12.5,26.3,187,64
+time,package,pss,cpu,systemCpu,rxBytes,txBytes,fps
+2018-09-11 20:35:29.016,com.tencent.tmgp.sgame,456.71,13.3,15.8,0,0,12.8
+2018-09-11 20:35:29.733,com.tencent.tmgp.sgame,456.75,11.0,20.6,108,160,30.7
+2018-09-11 20:35:30.756,com.tencent.tmgp.sgame,456.83,12.2,18.9,548,2021,31.3
+2018-09-11 20:35:31.730,com.tencent.tmgp.sgame,457.05,11.6,19.1,160,1199,29.8
+2018-09-11 20:35:32.759,com.tencent.tmgp.sgame,457.05,11.7,19.5,108,160,31.1
+2018-09-11 20:35:33.821,com.tencent.tmgp.sgame,456.86,11.6,17.7,0,0,29.2
+```
+
+生成的图片为
+
+![net](net.png)
+
+![summary](summary.png)
+
+`csv2images`函数更多的用法
+
+```python
+d.ext_perf.csv2images("perf.csv", target_dir="./")
 ```
 
 数据项说明
@@ -44,6 +59,7 @@ time,pss,cpu,systemCpu,rxBytes,txBytes
 - PSS直接通过`dumpsys meminfo <package-name>`获取
 - CPU直接读取的`/proc/`下的文件计算出来的，多核的情况，数据是有可能超过100%的
 - rxBytes, txBytes 目前只有wlan的流量，tcp和udp的流量总和
+- fps 通过解析`dumpsys SurfaceFlinger --list` 和 `dumpsys SurfaceFlinger --latency <VIEW>` 计算出来
 
 ## 参考资料
 - [Python CSV读写方法](https://python3-cookbook.readthedocs.io/zh_CN/latest/c06/p01_read_write_csv_data.html)

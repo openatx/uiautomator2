@@ -202,7 +202,7 @@ class Perf(object):
         return {
             'time': timestr,
             'package': app['package'],
-            'pss': round(pss / 1024.0, 2),
+            'pss': round(pss / 1024.0, 2),  # MB
             'cpu': cpu,
             'systemCpu': scpu,
             'rxBytes': rx_bytes,
@@ -270,6 +270,61 @@ class Perf(object):
         if self.debug:
             print("DEBUG: perf collect stopped")
 
+    def csv2images(self, src=None, target_dir='.'):
+        """
+        Args:
+            src: csv file, default to perf record csv path
+            target_dir: images store dir
+        """
+        import pandas as pd
+        import matplotlib.pyplot as plt
+        import matplotlib.ticker as ticker
+        import datetime
+        import os
+        import humanize
+
+        src = src or self.csv_output
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+        data = pd.read_csv(src)
+        data['time'] = data['time'].apply(
+            lambda x: datetime.datetime.strptime(x, "%Y-%m-%d %H:%M:%S.%f"))
+
+        # network
+        rx_str = humanize.naturalsize(data['rxBytes'].sum(), gnu=True)
+        tx_str = humanize.naturalsize(data['txBytes'].sum(), gnu=True)
+        plt.subplot(2, 1, 1)
+        plt.plot(data['time'], data['rxBytes'] / 1024, '-')
+        plt.title('Network (Recv %s, Send %s)' % (rx_str, tx_str))
+        plt.gca().xaxis.set_major_formatter(ticker.NullFormatter())
+        plt.ylabel('Recv(KB)')
+
+        plt.subplot(2, 1, 2)
+        plt.plot(data['time'], data['txBytes'] / 1024, '-')
+        plt.xlabel('Time')
+        plt.ylabel('Send(KB)')
+        plt.savefig(os.path.join(target_dir, "net.png"))
+        plt.clf()
+
+        plt.subplot(3, 1, 1)
+        plt.title('Summary')
+        plt.plot(data['time'], data['pss'], '-')
+        plt.ylabel('PSS(MB)')
+        plt.gca().xaxis.set_major_formatter(ticker.NullFormatter())
+
+        plt.subplot(3, 1, 2)
+        plt.plot(data['time'], data['cpu'], '-')
+        plt.ylim(0, max(100, data['cpu'].max()))
+        plt.ylabel('CPU')
+        plt.gca().xaxis.set_major_formatter(ticker.NullFormatter())
+
+        plt.subplot(3, 1, 3)
+        plt.plot(data['time'], data['fps'], '-')
+        plt.ylabel('FPS')
+        plt.ylim(0, 60)
+        plt.xlabel('Time')
+        plt.savefig(os.path.join(target_dir, "summary.png"))
+
 
 if __name__ == '__main__':
     import uiautomator2 as u2
@@ -287,4 +342,5 @@ if __name__ == '__main__':
         time.sleep(500)
     except KeyboardInterrupt:
         d.ext_perf.stop()
+        d.ext_perf.csv2images()
         print("threading stopped")
