@@ -322,11 +322,14 @@ class MyFire(object):
                                        agent_version, reinstall,
                                        ignore_apk_check)
         else:
-            self._init_with_serial(serial, server, apk_version, agent_version,
+            #Allows str-formatted serial, e.g. 8327595e234585 will be taken as a float, but put str:8327595e234585 to avoid this
+            self._init_with_serial(serial.split('str:')[-1], server, apk_version, agent_version,
                                    reinstall, ignore_apk_check)
 
     def _init_with_serial(self, serial, server, apk_version, agent_version,
                           reinstall, ignore_apk_check):
+        #Allows str-formatted serial..
+        serial.split('str:')[-1]
         log.info("Device(%s) initialing ...", serial)
         ins = Installer(serial)
         ins.server_addr = server
