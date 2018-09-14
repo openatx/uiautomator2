@@ -606,7 +606,7 @@ class UIAutomatorServer(object):
         while time.time() < deadline:
             print(
                 time.strftime("[%Y-%m-%d %H:%M:%S]"),
-                "wait uiautomator is ready ...")
+                "uiautomator is starting ...")
             if self.alive:
                 # keyevent BACK if current is com.github.uiautomator
                 # XiaoMi uiautomator will kill the app(com.github.uiautomator) when launch
@@ -854,7 +854,7 @@ class UIAutomatorServer(object):
         #   r'mFocusedApp=.*ActivityRecord{\w+ \w+ (?P<package>.*)/(?P<activity>.*) .*'
         #   r'mCurrentFocus=Window{\w+ \w+ (?P<package>.*)/(?P<activity>.*)\}')
         _focusedRE = re.compile(
-            r'mCurrentFocus=Window{\w+ \w+ (?P<package>.*)/(?P<activity>.*)\}')
+            r'mCurrentFocus=Window{.*\s+(?P<package>[^\s]+)/(?P<activity>[^\s]+)\}')
         m = _focusedRE.search(self.shell(['dumpsys', 'window', 'windows'])[0])
         if m:
             return dict(
@@ -862,7 +862,7 @@ class UIAutomatorServer(object):
 
         # try: adb shell dumpsys activity top
         _activityRE = re.compile(
-            r'ACTIVITY (?P<package>[^/]+)/(?P<activity>[^/\s]+) \w+ pid=(?P<pid>\d+)'
+            r'ACTIVITY (?P<package>[^\s]+)/(?P<activity>[^/\s]+) \w+ pid=(?P<pid>\d+)'
         )
         output, _ = self.shell(['dumpsys', 'activity', 'top'])
         ms = _activityRE.finditer(output)

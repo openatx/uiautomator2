@@ -30,16 +30,6 @@ class OCR(object):
         if not API:
             raise EnvironmentError("set API var before using OCR")
 
-    def __call__(self, text):
-        return OCRSelector(self._d, text)
-
-
-class OCRSelector(object):
-    def __init__(self, d, text=None, textContains=None):
-        self._d = d
-        self._text = text
-        self._text_contains = textContains
-
     def all(self):
         rawdata = self._d.screenshot(format='raw')
         r = requests.post(API, files={"file": ("tmp.jpg", rawdata)})
@@ -50,8 +40,26 @@ class OCRSelector(object):
         for item in resp['data']:
             lx, ly, rx, ry = item['coords']
             x, y = (lx + rx) // 2, (ly + ry) // 2
-            matched = False
             ocr_text = item['text']
+            result.append((ocr_text, x, y))
+        result.sort(key=lambda v: (v[2], v[1]))
+        return result
+
+    def __call__(self, text):
+        return OCRSelector(self, text)
+
+
+class OCRSelector(object):
+    def __init__(self, server, text=None, textContains=None):
+        self._server = server
+        self._d = server._d
+        self._text = text
+        self._text_contains = textContains
+
+    def all(self):
+        result = []
+        for (ocr_text, x, y) in self._server.all():
+            matched = False
             if self._text == ocr_text:  # exactly match
                 matched = True
             elif self._text_contains and self._text_contains in ocr_text:

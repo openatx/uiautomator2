@@ -49,6 +49,9 @@ class Perf(object):
         return 0
 
     def _cpu_rawdata_collect(self, pid):
+        """
+        pjiff maybe 0 if /proc/<pid>stat not exists
+        """
         first_line = self.shell(['cat', '/proc/stat']).output.splitlines()[0]
         assert first_line.startswith('cpu ')
         # ds: user, nice, system, idle, iowait, irq, softirq, stealstolen, guest, guest_nice
@@ -56,11 +59,15 @@ class Perf(object):
         total_cpu = sum(ds)
         idle = ds[3]
 
-        proc_stat = self.shell(
-            ['cat', '/proc/%d/stat' % pid]).output.split(') ')[1].split()
-        utime = int(proc_stat[11])
-        stime = int(proc_stat[12])
-        return (total_cpu, idle, utime + stime)
+        proc_stat = self.shell(['cat',
+                                '/proc/%d/stat' % pid]).output.split(') ')
+        pjiff = 0
+        if len(proc_stat) > 1:
+            proc_values = proc_stat[1].split()
+            utime = int(proc_values[11])
+            stime = int(proc_values[12])
+            pjiff = utime + stime
+        return (total_cpu, idle, pjiff)
 
     def cpu(self, pid):
         """ CPU
@@ -70,7 +77,7 @@ class Perf(object):
         - [安卓性能测试之cpu占用率统计方法总结](https://www.jianshu.com/p/6bf564f7cdf0)
         """
         store_key = 'cpu-%d' % pid
-        # first time jiffies
+        # first time jiffies, t: total, p: process
         if store_key in self._data:
             tjiff1, idle1, pjiff1 = self._data[store_key]
         else:
@@ -82,24 +89,19 @@ class Perf(object):
             store_key] = tjiff2, idle2, pjiff2 = self._cpu_rawdata_collect(pid)
 
         # calculate
-        pcpu = 100.0 * (pjiff2 - pjiff1) / (tjiff2 - tjiff1)  # process cpu
+        pcpu = 0.0
+        if pjiff1 > 0 and pjiff2 > 0:
+            pcpu = 100.0 * (pjiff2 - pjiff1) / (tjiff2 - tjiff1)  # process cpu
         scpu = 100.0 * ((tjiff2 - idle2) -
                         (tjiff1 - idle1)) / (tjiff2 - tjiff1)  # system cpu
+        assert scpu > -1  # maybe -0.5, sometimes happens
+        scpu = max(0, scpu)
         return round(pcpu, 1), round(scpu, 1)
-
-        # Retrive cpu from top
-        # for line in self.shell(["top", "-n", "1"]).output.splitlines():
-        #     vs = line.split()
-        #     if len(vs) > 5 and vs[-1] == self.package_name:
-        #         if vs[4].endswith('%'):
-        #             print("Miss:", float(vs[4][:-1]) - pcpu)
-        #             return float(vs[4][:-1]), 0.0
-        # return (0.0, 0.0)
 
     def netstat(self, pid):
         """
         Returns:
-            (rx_bytes, tx_bytes)
+            (rall, tall, rtcp, ttcp, rudp, tudp)
         """
         m = re.search(r'^Uid:\s+(\d+)',
                       self.shell(['cat', '/proc/%d/status' % pid]).output,
@@ -110,7 +112,12 @@ class Perf(object):
         lines = self.shell(['cat',
                             '/proc/net/xt_qtaguid/stats']).output.splitlines()
 
-        rx, tx = 0, 0
+        traffic = [0] * 6
+
+        def plus_array(arr, *args):
+            for i, v in enumerate(args):
+                arr[i] = arr[i] + int(v)
+
         for line in lines:
             vs = line.split()
             if len(vs) != 21:
@@ -120,17 +127,18 @@ class Perf(object):
                 continue
             if v.iface != 'wlan0':
                 continue
-            # FIXME(ssx): tcp and udp data will support when some one needed
-            rx += int(v.rx_bytes)
-            tx += int(v.tx_bytes)
+            # all, tcp, udp
+            plus_array(traffic, v.rx_bytes, v.tx_bytes, v.rx_tcp_bytes,
+                       v.tx_tcp_bytes, v.rx_udp_bytes, v.tx_udp_bytes)
 
         store_key = 'netstat-%s' % uid
-        drx, dtx = 0, 0
+        result = []
         if store_key in self._data:
-            last_rx, last_tx = self._data[store_key]
-            drx, dtx = rx - last_rx, tx - last_tx
-        self._data[store_key] = (rx, tx)
-        return drx, dtx
+            last_traffic = self._data[store_key]
+            for i in range(len(traffic)):
+                result.append(traffic[i] - last_traffic[i])
+        self._data[store_key] = traffic
+        return result or [0] * 6
 
     def _current_view(self, app=None):
         d = self.d
@@ -196,7 +204,7 @@ class Perf(object):
         app = self.d.current_app()
         pss = self.memory()
         cpu, scpu = self.cpu(pid)
-        rx_bytes, tx_bytes = self.netstat(pid)
+        rbytes, tbytes, rtcp, ttcp = self.netstat(pid)[:4]
         fps = self.fps(app)
         timestr = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         return {
@@ -205,8 +213,10 @@ class Perf(object):
             'pss': round(pss / 1024.0, 2),  # MB
             'cpu': cpu,
             'systemCpu': scpu,
-            'rxBytes': rx_bytes,
-            'txBytes': tx_bytes,
+            'rxBytes': rbytes,
+            'txBytes': tbytes,
+            'rxTcpBytes': rtcp,
+            'txTcpBytes': ttcp,
             'fps': fps,
         }
 
@@ -214,7 +224,7 @@ class Perf(object):
         try:
             headers = [
                 'time', 'package', 'pss', 'cpu', 'systemCpu', 'rxBytes',
-                'txBytes', 'fps'
+                'txBytes', 'rxTcpBytes', 'txTcpBytes', 'fps'
             ]
             fcsv = csv.writer(f)
             fcsv.writerow(headers)
@@ -290,24 +300,37 @@ class Perf(object):
         data['time'] = data['time'].apply(
             lambda x: datetime.datetime.strptime(x, "%Y-%m-%d %H:%M:%S.%f"))
 
+        timestr = time.strftime("%Y-%m-%d %H:%M")
         # network
         rx_str = humanize.naturalsize(data['rxBytes'].sum(), gnu=True)
         tx_str = humanize.naturalsize(data['txBytes'].sum(), gnu=True)
         plt.subplot(2, 1, 1)
-        plt.plot(data['time'], data['rxBytes'] / 1024, '-')
-        plt.title('Network (Recv %s, Send %s)' % (rx_str, tx_str))
+        plt.plot(data['time'], data['rxBytes'] / 1024, label='all')
+        plt.plot(data['time'], data['rxTcpBytes'] / 1024, 'r--', label='tcp')
+        plt.legend()
+        plt.title(
+            '\n'.join(
+                ["Network", timestr,
+                 'Recv %s, Send %s' % (rx_str, tx_str)]),
+            loc='left')
         plt.gca().xaxis.set_major_formatter(ticker.NullFormatter())
         plt.ylabel('Recv(KB)')
+        plt.ylim(ymin=0)
 
         plt.subplot(2, 1, 2)
-        plt.plot(data['time'], data['txBytes'] / 1024, '-')
+        plt.plot(data['time'], data['txBytes'] / 1024, label='all')
+        plt.plot(data['time'], data['txTcpBytes'] / 1024, 'r--', label='tcp')
+        plt.legend()
         plt.xlabel('Time')
         plt.ylabel('Send(KB)')
+        plt.ylim(ymin=0)
         plt.savefig(os.path.join(target_dir, "net.png"))
         plt.clf()
 
         plt.subplot(3, 1, 1)
-        plt.title('Summary')
+
+        plt.title(
+            '\n'.join(['Summary', timestr, self.package_name]), loc='left')
         plt.plot(data['time'], data['pss'], '-')
         plt.ylabel('PSS(MB)')
         plt.gca().xaxis.set_major_formatter(ticker.NullFormatter())
