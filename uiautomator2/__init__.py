@@ -232,7 +232,8 @@ def connect_usb(serial=None):
         warnings.warn("backend atx-agent is not alive, start again ...",
                       RuntimeWarning)
         adb.execute(
-            "shell", "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell", "atx-agent", "-d")
+            "shell", "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell",
+            "atx-agent", "server", "-d")
         deadline = time.time() + 3
         while time.time() < deadline:
             if d.alive:
@@ -476,7 +477,7 @@ class UIAutomatorServer(object):
         }
         data = json.dumps(data).encode('utf-8')
         res = self._reqsess.post(
-            jsonrpc_url,
+            jsonrpc_url, # +"?m="+method, #?method is for debug
             headers={"Content-Type": "application/json"},
             timeout=http_timeout,
             data=data)
@@ -1697,7 +1698,7 @@ class UiObject(object):
     @property
     def exists(self):
         '''check if the object exists in current window.'''
-        return Exists(self.jsonrpc, self.selector)
+        return Exists(self)
 
     @property
     @retry(
@@ -1861,7 +1862,7 @@ class UiObject(object):
     def pinch_out(self, percent=100, steps=50):
         return self.jsonrpc.pinchOut(self.selector, percent, steps)
 
-    def wait(self, exists=True, timeout=20):
+    def wait(self, exists=True, timeout=None):
         """
         Wait until UI Element exists or gone
 
@@ -1876,11 +1877,19 @@ class UiObject(object):
             timeout = self.wait_timeout
         http_wait = timeout + 10
         if exists:
-            return self.jsonrpc.waitForExists(
-                self.selector, int(timeout * 1000), http_timeout=http_wait)
+            try:
+                return self.jsonrpc.waitForExists(
+                    self.selector, int(timeout * 1000), http_timeout=http_wait)
+            except requests.ReadTimeout as e:
+                warnings.warn("waitForExists readTimeout: %s" % e, RuntimeWarning)
+                return self.exists()
         else:
-            return self.jsonrpc.waitUntilGone(
-                self.selector, int(timeout * 1000), http_timeout=http_wait)
+            try:
+                return self.jsonrpc.waitUntilGone(
+                    self.selector, int(timeout * 1000), http_timeout=http_wait)
+            except requests.ReadTimeout as e:
+                warnings.warn("waitForExists readTimeout: %s" % e, RuntimeWarning)
+                return not self.exists()
 
     def wait_gone(self, timeout=None):
         """ wait until ui gone
@@ -2211,13 +2220,12 @@ class Selector(dict):
 class Exists(object):
     """Exists object with magic methods."""
 
-    def __init__(self, jsonrpc, selector):
-        self.jsonrpc = jsonrpc
-        self.selector = selector
+    def __init__(self, uiobject):
+        self.uiobject = uiobject
 
     def __nonzero__(self):
         """Magic method for bool(self) python2 """
-        return self.jsonrpc.exist(self.selector)
+        return self.uiobject.jsonrpc.exist(self.uiobject.selector)
 
     def __bool__(self):
         """ Magic method for bool(self) python3 """
@@ -2229,8 +2237,9 @@ class Exists(object):
         Args:
             timeout (float): exists in seconds
         """
-        return self.jsonrpc.waitForExists(
-            self.selector, timeout * 1000, http_timeout=timeout + 10)
+        if timeout:
+            return self.uiobject.wait(timeout=timeout)
+        return bool(self)
 
     def __repr__(self):
         return str(bool(self))

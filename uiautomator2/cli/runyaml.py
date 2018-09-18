@@ -201,7 +201,13 @@ class JSONRunner(object):
         logger.info("launch app: %s", self._pkg_name)
 
         self.prepare_session()
+
         if 'perf' in self._plugins:
+            # add report
+            import easyhtmlreport as htmlreport
+            hrp = htmlreport.HTMLReport(self._d)
+            hrp.patch_click()
+            self._d.ext_perf.csv_output = 'report/perf.csv'
             self._d.ext_perf.start()
 
         try:
