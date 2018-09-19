@@ -92,13 +92,14 @@ def cache_download(url, filename=None):
 
 
 class Installer(adbutils.Adb):
-    def __init__(self, serial=None):
+    def __init__(self, serial=None,agent_port=7912):
         super(Installer, self).__init__(serial)
         self.sdk = self.getprop('ro.build.version.sdk')
         self.abi = self.getprop('ro.product.cpu.abi')
         self.pre = self.getprop('ro.build.version.preview_sdk')
         self.arch = self.getprop('ro.arch')
         self.server_addr = None
+        self.agent_port = agent_port
 
     def get_executable_dir(self):
         return "/data/local/tmp"
@@ -196,8 +197,8 @@ class Installer(adbutils.Adb):
                 "package com.github.uiautomator.test not installed")
 
     def check_agent_installed(self, agent_version):
-        lport = self.forward_port(7912)
-        log.debug("forward device(port:7912) -> %d", lport)
+        lport = self.forward_port(self.agent_port )
+        log.debug("forward device(port:%d) -> %d",self.agent_port, lport)
         try:
             r = requests.get("http://127.0.0.1:%d/version" % lport, timeout=5)
             return r.text.strip() == agent_version
@@ -256,9 +257,11 @@ class Installer(adbutils.Adb):
         if self.server_addr:
             args.append('-t')
             args.append(self.server_addr)
+        args.append('-p')
+        args.append(self.agent_port )
         output = self.shell(*args)
-        lport = self.forward_port(7912)
-        log.debug("forward device(port:7912) -> %d", lport)
+        lport = self.forward_port(self.agent_port )
+        log.debug("forward device(port:%d) -> %d",self.agent_port , lport)
         time.sleep(.5)
         cnt = 0
         while cnt < 3:
@@ -279,20 +282,21 @@ class Installer(adbutils.Adb):
                 cnt += 1
         else:
             log.error(
-                "Failure, unable to get result from http://localhost:%d/version"
+                "Failure, unable to get result from http://localhost:%d/version",lport
             )
 
 
 class MyFire(object):
     def init(self,
              server=None,
+             serial=None,
+             agent_port=7912,
              apk_version=__apk_version__,
              agent_version=__atx_agent_version__,
              verbose=False,
              reinstall=False,
              ignore_apk_check=False,
              proxy=None,
-             serial=None,
              mirror=False):
         if verbose:
             log.setLevel(logging.DEBUG)
@@ -320,17 +324,18 @@ class MyFire(object):
                 return
             log.info("Detect pluged devices: %s", valid_serials)
             for serial in valid_serials:
-                self._init_with_serial(serial, server, apk_version,
+                self._init_with_serial(serial,agent_port, server, apk_version,
                                        agent_version, reinstall,
                                        ignore_apk_check)
+                agent_port = agent_port+1
         else:
-            self._init_with_serial(serial, server, apk_version, agent_version,
+            self._init_with_serial(serial,agent_port, server, apk_version, agent_version,
                                    reinstall, ignore_apk_check)
 
-    def _init_with_serial(self, serial, server, apk_version, agent_version,
+    def _init_with_serial(self, serial,agent_port, server, apk_version, agent_version,
                           reinstall, ignore_apk_check):
         log.info("Device(%s) initialing ...", serial)
-        ins = Installer(serial)
+        ins = Installer(serial,agent_port)
         ins.server_addr = server
         ins.install_minicap()
         ins.install_minitouch()
