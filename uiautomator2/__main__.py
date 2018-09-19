@@ -250,8 +250,10 @@ class Installer(adbutils.Adb):
         log.info("launch atx-agent daemon")
         args = [
             "TMPDIR=/sdcard",
-            "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell",
-            "atx-agent", "server", '-d'
+            "/data/local/tmp/atx-agent",
+            "server", '-d'
+            # "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell",
+            # "atx-agent", "server", '-d'
         ]
         if self.server_addr:
             args.append('-t')
@@ -339,7 +341,7 @@ class MyFire(object):
         if ins.check_agent_installed(agent_version):
             # TODO: should also check atx-server addr
             log.info("atx-agent is already running, force stop")
-            ins.shell("/data/local/tmp/atx-agent", "--stop", raise_error=False)
+            ins.shell("/data/local/tmp/atx-agent", "server", "--stop", raise_error=False)
             ins.shell("rm", "/sdcard/atx-agent.pid", raise_error=False)
             ins.shell("rm", "/sdcard/atx-agent.log.old", raise_error=False)
         else:
