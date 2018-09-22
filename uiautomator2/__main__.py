@@ -322,9 +322,12 @@ class MyFire(object):
                                        agent_version, reinstall,
                                        ignore_apk_check)
         else:
-            #Allows serials such as 8734e3576, which would otherwise be floating point
-            #e.g. python3 -m uiautomator2 init --serial str:8734e3576
-            self._init_with_serial(serial.split('str:')[-1], server, apk_version, agent_version,
+            #Pass in serials such as 8734e3576, which would otherwise be floating point.. keep ints safe
+            #Prefix with "str:", so for example
+            #python3 -m uiautomator2 init --serial str:8734e3576
+            if hasattr(serial, 'split'):
+                serial = serial.split('str:')[-1]
+            self._init_with_serial(serial, server, apk_version, agent_version,
                                    reinstall, ignore_apk_check)
 
     def _init_with_serial(self, serial, server, apk_version, agent_version,
