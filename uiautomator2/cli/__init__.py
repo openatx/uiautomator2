@@ -177,6 +177,7 @@ class Installer(object):
         while True:
             time.sleep(1)
             r = requests.get(query_url)
+            print(r.text)
             raise_for_status(r)
             ret = r.json()
             if not ret:
@@ -236,7 +237,8 @@ def main():
     args = docopt(__doc__, version='u2cli 1.0')
     print(args)
     register_command(__cmd_install, 'install', ('<ip>', '--server', '<url>'))
-    register_command(__cmd_runyaml, "runyaml", ('--debug', '--step', '<filename>'))
+    register_command(__cmd_runyaml, "runyaml",
+                     ('--debug', '--step', '<filename>'))
 
     for cmdname, cmdopts in __commands.items():
         if args[cmdname]:

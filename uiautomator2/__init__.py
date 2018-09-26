@@ -29,10 +29,10 @@ import xml.dom.minidom
 import threading
 import warnings
 import logging
+import functools
 from datetime import datetime
 from subprocess import list2cmdline
 from collections import namedtuple
-from functools import partial
 
 import six
 import humanize
@@ -171,6 +171,16 @@ def _is_wifi_addr(addr):
     if m and m.group(1) != "127.0.0.1":
         return True
     return False
+
+
+def hooks_wrap(fn):
+    @functools.wraps(fn)
+    def inner(self, *args, **kwargs):
+        name = fn.__name__.lstrip('_')
+        self.server.hooks_apply("before", name, args, kwargs, None)
+        ret = fn(self, *args, **kwargs)
+        self.server.hooks_apply("after", name, args, kwargs, ret)
+    return inner
 
 
 def connect(addr=None):
@@ -330,6 +340,7 @@ class UIAutomatorServer(object):
         self._default_session = Session(self, None)
         self._cached_plugins = {}
         self.__devinfo = None
+        self._hooks = {}
         self.platform = None  # hot fix for weditor
 
         self.ash = AdbShell(self.shell)  # the powerful adb shell
@@ -407,6 +418,20 @@ class UIAutomatorServer(object):
             w, h = h, w
         return w, h
 
+    def hooks_register(self, func):
+        """
+        Args:
+            func: should accept 3 args. func_name:string, args:tuple, kwargs:dict
+        """
+        self._hooks[func] = True
+
+    def hooks_apply(self, stage, func_name, args=(), kwargs={}, ret=None):
+        """
+        Args:
+            stage(str): one of "before" or "after"
+        """
+        for fn in self._hooks.keys():
+            fn(stage, func_name, args, kwargs, ret)
 
     def setup_jsonrpc(self, jsonrpc_url=None):
         """
@@ -1099,7 +1124,7 @@ class UIAutomatorServer(object):
             if attr[4:] not in self.__plugins:
                 raise ValueError("plugin \"%s\" not registed" % attr[4:])
             func, args, kwargs = self.__plugins[attr[4:]]
-            obj = partial(func, self)(*args, **kwargs)
+            obj = functools.partial(func, self)(*args, **kwargs)
             self._cached_plugins[attr] = obj
             return obj
         try:
@@ -1392,7 +1417,11 @@ class Session(object):
         click position
         """
         x, y = self.pos_rel2abs(x, y)
-        ret = self.jsonrpc.click(x, y)
+        self._click(x, y)
+    
+    @hooks_wrap
+    def _click(self, x, y):
+        self.jsonrpc.click(x, y)
         if self.server.click_post_delay:  # click code delay
             time.sleep(self.server.click_post_delay)
 
@@ -1414,6 +1443,10 @@ class Session(object):
         if not duration:
             duration = 0.5
         x, y = self.pos_rel2abs(x, y)
+        return self._long_click(x, y, duration)
+    
+    @hooks_wrap
+    def _long_click(self, x, y, duration):
         self.touch.down(x, y)
         time.sleep(duration)
         self.touch.up(x, y)
@@ -1439,6 +1472,10 @@ class Session(object):
         tx, ty = rel2abs(tx, ty)
         if not steps:
             steps = int(duration * 200)
+        self._swipe(fx, fy, tx, ty, steps)
+    
+    @hooks_wrap
+    def _swipe(self, fx, fy, tx, ty, steps):
         return self.jsonrpc.swipe(fx, fy, tx, ty, steps)
 
     def swipe_points(self, points, duration=0.5):

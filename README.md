@@ -1263,7 +1263,27 @@ name代表插件的名字，`func_or_class`可以是函数，也可以是类，�
 
 > PS: 插件的调用没有自动补全，有点不太方便
 
+## Hooks(beta)
+```python
+d = u2.connect()
 
+def callback(stage, func_name, args, kwargs, ret):
+    print("stage", stage)
+    print("call", func_name, args, kwargs)
+    print("return", ret)
+
+d.hooks_register(callback)
+d.click(0.5, 0.5)
+# expect output
+# stage: before
+# call: click (540, 960) {}
+# return: None
+# stage: after
+# call: click (540, 960) {}
+# return: None
+```
+
+Use hooks, you can capture screenshot before or after `click`, `long_click`, `double_click`, `swipe`
 ## 常见问题
 1. 提示`502`错误
 
