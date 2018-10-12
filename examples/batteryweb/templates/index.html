@@ -11,9 +11,11 @@
 </head>
 
 <body>
-  使用前需要安装<a href="https://github.com/openatx/uiautomator2" target="_blank">uiautomator2</a>
+  使用前需要安装
+  <a href="https://github.com/openatx/uiautomator2" target="_blank">uiautomator2</a>
   <div>
-    手机IP: <input id="ip" type="text">
+    手机IP:
+    <input id="ip" type="text">
   </div>
   <div id="main" style="height:400px;"></div>
   <script type="text/javascript">
@@ -33,6 +35,14 @@
         trigger: 'axis',
         alwaysShowContent: true,
       },
+      dataZoom: [
+        {
+          id: 'dataZoomX',
+          type: 'slider',
+          xAxisIndex: [0],
+          filterMode: 'filter'
+        }
+      ],
       xAxis: {
         type: 'time',
       },
@@ -41,7 +51,7 @@
         max: 100,
         scale: true,
         axisLabel: {
-          formatter: function(val) {
+          formatter: function (val) {
             return val + '%';
           }
         },
@@ -65,29 +75,33 @@
         method: 'get',
         url: '/battery_level/' + ip,
         type: 'json',
-      }).then(function(value) {
-        data.pop();
-        if (lastValue != value) {
-          lastValue = value;
-          data.push([new Date(), value])
-          data.push([new Date(), value])
-        } else {
-          data.push([new Date(), value])
-        }
-
-        myChart.setOption({
-          series: [{
-            data: data
-          }]
-        });
       })
+        .then(function (value) {
+          console.log("IP:", ip, value);
+          data.pop();
+          if (lastValue != value) {
+            lastValue = value;
+            data.push([new Date(), value])
+            data.push([new Date(), value])
+          } else {
+            data.push([new Date(), value])
+          }
+
+          myChart.setOption({
+            series: [{
+              data: data
+            }]
+          });
+        })
+      // .fail(function(){
+      // })
     }
     setInterval(pushNewValue, 1000);
 
     // 使用刚指定的配置项和数据显示图表。
     myChart.setOption(option);
 
-    window.onresize = function() {
+    window.onresize = function () {
       myChart.resize();
     }
   </script>
