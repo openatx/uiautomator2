@@ -819,7 +819,7 @@ class UIAutomatorServer(object):
         Args:
             pkg_name (str): package name
             activity (str): app activity
-            stop (str): Stop app before starting the activity. (require activity)
+            stop (bool): Stop app before starting the activity. (require activity)
         """
         if unlock:
             self.unlock()
