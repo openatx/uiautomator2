@@ -1,32 +1,20 @@
 # uiautomator2 [![Build Status](https://travis-ci.org/openatx/uiautomator2.svg?branch=master)](https://travis-ci.org/openatx/uiautomator2) [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2) ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg)
-**该项目正在火热的开发中**
+**该项目正在火热的开发中** QQ群号: *499563266*
 
-uiautomator2 是一个可以使用Python对Android设备进行UI自动化的库。其底层基于Google uiautomator，Google提供的[uiautomator](https://developer.android.com/training/testing/ui-automator.html)库可以获取屏幕上任意一个APP的任意一个控件属性，并对其进行任意操作，但有两个缺点：1. 测试脚本只能使用Java语言 2. 测试脚本必须每次被上传到设备上运行。
+![QQ QRCode](docs/img/qqgroup.png)
+
+uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本对设备进行自动化。底层基于Google uiautomator，Google提供的[uiautomator](https://developer.android.com/training/testing/ui-automator.html)库可以获取屏幕上任意一个APP的任意一个控件属性，并对其进行任意操作，但有两个缺点：1. 测试脚本只能使用Java语言 2. 测试脚本必须每次被上传到设备上运行。
 我们希望测试能够用一个更脚本化的语言，例如Python编写，同时可以每次所见即所得地修改测试、运行测试。这里要非常感谢 Xiaocong He ([@xiaocong][])，他将这个想法实现了出来（见[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)），原理是在手机上运行了一个http服务器，将uiautomator中的功能开放出来，然后再将这些http接口，封装成Python库。
 我们的uiautomator2项目是对[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)的增强，主要有以下部分：
 
 * 设备和开发机可以脱离数据线，通过WiFi互联（基于[atx-agent](https://github.com/openatx/atx-agent)）
-* 集成了[openstf/minicap](https://github.com/openstf/minicap)加快截图速度
+* 集成了[openstf/minicap](https://github.com/openstf/minicap)达到实时屏幕投频，以及实时截图
 * 集成了[openstf/minitouch](https://github.com/openstf/minitouch)达到精确实时控制设备
 * 修复了xiaocong/uiautomator经常性退出的问题
 * 代码进行了重构和精简，方便维护
+* Requirements: `Android OS Version >= 4.4` `Python >=2.7 || <= 3.6`
 
 虽然我说的很简单，但是实现起来用到了很多的技术和技巧，功能非常强，唯独文档有点少。哈哈
-
-QQ群号: *499563266*
-
-![QQ QRCode](docs/img/qqgroup.png)
-
-# Table of contents
-- **[Installation](#installation)**
-- **[Usage](#usage)**
-  - **[Command line](#command-line)**
-  - **[Quick start](#quick-start)**
-- **[API Documents](#api-documents)**
-
-# Limitation 限制
-- Android OS Version >= 4.4
-- Python >=2.7 <= 3.6
 
 # Installation
 1. Install uiautomator2
@@ -68,7 +56,7 @@ QQ群号: *499563266*
 
     安装提示`success`即可
 
-3. Install weditor(UI Inspector)
+3. Install weditor (UI Inspector)
 
     因为uiautomator是独占资源，所以当atx运行的时候uiautomatorviewer是不能用的，为了减少atx频繁的启停，我们开发了基于浏览器技术的weditor UI查看器。<https://github.com/openatx/weditor>
 
@@ -85,8 +73,8 @@ QQ群号: *499563266*
     具体参考文章：[浅谈自动化测试工具python-uiautomator2](https://testerhome.com/topics/11357)
 
     
-## QUICK START
-There are two ways to connect to the device. Run the following Python code in a Python 2.7/3+ interpreter:
+# Connect to a device
+There are two ways to connect to the device. 
 
 1. Through WiFi (recommended)
 Suppose device IP is `10.0.0.1` and your PC is in the same network.
@@ -111,7 +99,7 @@ print(d.info)
 Calling `u2.connect()` with no argument, `uiautomator2` will obtain device IP from the environment variable `ANDROID_DEVICE_IP`.
 If this environment variable is empty, uiautomator will fall back to `connect_usb` and you need to make sure that there is only one device connected to the computer.
 
-## Command line
+# Use command line
 其中的`$device_ip`代表设备的ip地址
 
 - init: 为设备安装所需要的程序
@@ -148,26 +136,26 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
     $ python -m uiautomator2 healthcheck $device_ip
     ```
 
-## 一些常用但是不知道归到什么类里的函数
+# 一些常用但是不知道归到什么类里的函数
 先中文写着了，国外大佬们先用Google Translate顶着
 
-### 感觉肯定用得着的资料链接
+## 感觉肯定用得着的资料链接
 
 - [Question and Answers (FAQ)](https://testerhome.com/topics/12025)
 - [浅谈自动化测试工具python-uiautomator2](https://testerhome.com/topics/11357)
 - [weditor](https://github.com/openatx/weditor) 用于查看UI层次结构，方便写脚本用。
 - [htmlreport](uiautomator2/ext/htmlreport) 记录测试过程的测试报告（实验性质）
 
-### 检查并维持设备端守护进程处于运行状态
+## 检查并维持设备端守护进程处于运行状态
 ```python
 d.healthcheck()
 ```
 
-### 点击坐标出现偏移
+## 点击坐标出现偏移
 为了提高uiautomator2再有播放器界面不卡死，代码中将默认3000ms中的waitForIdleTimeout改成了0，不过有可能会造成坐标偏移，虽然概率不大。
 如果出现这种情况，可以将其调大一点 `d.jsonrpc.setConfigurator({"waitForIdleTimeout": 100})`
 
-### 如何停用UiAutomator的守护程序 How to stop UiAutomator process keeper
+## 如何停用UiAutomator的守护程序 How to stop UiAutomator process keeper
 因为有`atx-agent`的存在，Uiautomator会被一直守护着，如果退出了就会被重新启动起来。但是Uiautomator又是霸道的，一旦它在运行，手机上的辅助功能、电脑上的uiautomatorviewer 就都不能用了，除非关掉该框架本身的uiautomator。下面就说下两种关闭方法
 
 方法1：
@@ -181,10 +169,9 @@ d.service("uiautomator").stop()
 # d.service("uiautomator").start()
 ```
 
-
+# API Documents
 **Notes:** In below examples, we use `d` to represent the uiautomator2 object for the connected device.
 
-# API Documents
 **[Global settings](#global-settings)**
   - **[Debug HTTP requests](#debug-http-requests)**
   - **[Implicit wait](#implicit-wait)**
