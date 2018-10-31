@@ -107,7 +107,7 @@ class Perf(object):
                       self.shell(['cat', '/proc/%d/status' % pid]).output,
                       re.M)
         if not m:
-            return (0, 0)
+            return (0, 0, 0, 0, 0, 0)
         uid = m.group(1)
         lines = self.shell(['cat',
                             '/proc/net/xt_qtaguid/stats']).output.splitlines()
@@ -204,10 +204,7 @@ class Perf(object):
         app = self.d.current_app()
         pss = self.memory()
         cpu, scpu = self.cpu(pid)
-        status = self.netstat(pid)
-        if not status or len(status) < 4:
-            return None
-        rbytes, tbytes, rtcp, ttcp = status[:4]
+        rbytes, tbytes, rtcp, ttcp = self.netstat(pid)[:4]
         fps = self.fps(app)
         timestr = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         return {
