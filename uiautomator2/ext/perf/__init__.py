@@ -204,7 +204,10 @@ class Perf(object):
         app = self.d.current_app()
         pss = self.memory()
         cpu, scpu = self.cpu(pid)
-        rbytes, tbytes, rtcp, ttcp = self.netstat(pid)[:4]
+        status = self.netstat(pid)
+        if not status or len(status) < 4:
+            return None
+        rbytes, tbytes, rtcp, ttcp = status[:4]
         fps = self.fps(app)
         timestr = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         return {
