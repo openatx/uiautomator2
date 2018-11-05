@@ -107,7 +107,7 @@ class Perf(object):
                       self.shell(['cat', '/proc/%d/status' % pid]).output,
                       re.M)
         if not m:
-            return (0, 0)
+            return (0, 0, 0, 0, 0, 0)
         uid = m.group(1)
         lines = self.shell(['cat',
                             '/proc/net/xt_qtaguid/stats']).output.splitlines()
