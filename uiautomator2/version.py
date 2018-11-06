@@ -17,7 +17,8 @@ __apk_version__ = '1.1.5'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__atx_agent_version__ = '0.4.5'
+__atx_agent_version__ = '0.4.6'
+# 0.4.6 fix download dns resolve error (sometimes)
 # 0.4.5 add http log, change atx-agent -d into atx-agent server -d
 # 0.4.4 this version is gone
 # 0.4.3 ignore sigint to prevent atx-agent quit
