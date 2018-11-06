@@ -182,6 +182,7 @@ class Perf(object):
         """
         if 'fps-inited' not in self._data:
             self._fps_init()
+            time.sleep(.2)
         view = self._current_view(app)
         values = self._dump_surfaceflinger(view)
         last_vsync = self._data.get('fps-last-vsync')
@@ -355,7 +356,7 @@ if __name__ == '__main__':
     # pkgname = "com.netease.cloudmusic"
     u2.plugin_register('perf', Perf, pkgname)
 
-    d = u2.connect("10.242.62.224")
+    d = u2.connect()
     print(d.current_app())
     # print(d.ext_perf.netstat(5350))
     # d.app_start(pkgname)
