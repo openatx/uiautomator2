@@ -32,7 +32,7 @@ from uiautomator2.cli import runyaml
 urllib = six.moves.urllib
 
 
-def reformat_addr(addr):
+def _reformat_addr(addr):
     if not re.match(r"^https?://", addr):
         addr = "http://" + addr
     u = urllib.parse.urlparse(addr)
@@ -72,7 +72,7 @@ def show_pushing_progress(ret, start_time):
 
 class Installer(object):
     def __init__(self, device_url, server_url):
-        self._device_url = reformat_addr(device_url)
+        self._device_url = _reformat_addr(device_url)
         self._server_url = server_url
         self._devinfo = None
 
@@ -149,9 +149,10 @@ class Installer(object):
             self.pm_install(apk_url)
 
     def _provider_install_url(self):
+        """ TODO(ssx): need to update """
         if not self._server_url:
             return
-        server_url = reformat_addr(self._server_url)
+        server_url = _reformat_addr(self._server_url)
         dinfo = requests.get(
             server_url + "/devices/" + self.devinfo['udid'] + "/info").json()
         provider = dinfo.get('provider')

@@ -1086,7 +1086,7 @@ class UIAutomatorServer(object):
         else:
             self.jsonrpc.setAccessibilityPatterns({})
 
-    def session(self, pkg_name, attach=False):
+    def session(self, pkg_name=None, attach=False):
         """
         Create a new session
 
