@@ -453,6 +453,49 @@ print(d.serial)
 # output example: 74aAEDR428Z9
 ```
 
+Get WLAN ip
+
+```python
+print(d.wlan_ip)
+# output example: 10.0.0.1
+```
+
+Get detailed device info
+
+```python
+print(d.device_info)
+```
+
+Below is a possible output:
+
+```
+{'udid': '3578298f-b4:0b:44:e6:1f:90-OD103',
+ 'version': '7.1.1',
+ 'serial': '3578298f',
+ 'brand': 'SMARTISAN',
+ 'model': 'OD103',
+ 'hwaddr': 'b4:0b:44:e6:1f:90',
+ 'port': 7912,
+ 'sdk': 25,
+ 'agentVersion': 'dev',
+ 'display': {'width': 1080, 'height': 1920},
+ 'battery': {'acPowered': False,
+  'usbPowered': False,
+  'wirelessPowered': False,
+  'status': 3,
+  'health': 0,
+  'present': True,
+  'level': 99,
+  'scale': 100,
+  'voltage': 4316,
+  'temperature': 272,
+  'technology': 'Li-ion'},
+ 'memory': {'total': 3690280, 'around': '4 GB'},
+ 'cpu': {'cores': 8, 'hardware': 'Qualcomm Technologies, Inc MSM8953Pro'},
+ 'presenceChangedAt': '0001-01-01T00:00:00Z',
+ 'usingBeganAt': '0001-01-01T00:00:00Z'}
+```
+
 ### Key Events
 
 * Turn on/off screen
