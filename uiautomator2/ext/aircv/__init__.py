@@ -11,7 +11,7 @@ __version__ = "0.0.1"
 
 
 class CVHandler(object):
-    template_threshold = 0.95
+    template_threshold = 0.95  # 模板匹配的阈值
 
     def show(self, img):
         ''' 显示一个图片 '''
@@ -246,7 +246,7 @@ class CVHandler(object):
 
 
 class Aircv(object):
-    time_out = 30
+    timeout = 30
     wait_before_operation = 1  # 操作前等待时间 秒
     rcv_interval = 2  # 接收图片的间隔时间 秒
 
@@ -267,12 +267,14 @@ class Aircv(object):
         self.get_scaling_ratio()
 
     def detection_screen(self):
+        """检测设备屏幕比例，必须为 16:9"""
         display_height = self.d.info['displayHeight']
         display_width = self.d.info['displayWidth']
         if display_height / display_width != 16 / 9 and display_width / display_height != 16 / 9:
             raise RuntimeError("Does not support current mobile phones, The screen ratio is not 16:9")
 
     def get_scaling_ratio(self):
+        """计算缩放比"""
         while True:
             if self.aircv_cache_image is not None:
                 self.zoom_out = 1.0 * self.d.info['displayHeight'] / self.aircv_cache_image.shape[0]
@@ -285,7 +287,7 @@ class Aircv(object):
             if isinstance(message, bytes):
 
                 if int(time.time()) - this.__rcv_interva_time_cache >= Aircv.rcv_interval:
-                    with open(self.aircv_cache_image_name, 'wb') as f:
+                    with open(this.aircv_cache_image_name, 'wb') as f:
                         f.write(message)
                     this.aircv_cache_image = this.cvHandler.imread(self.aircv_cache_image_name)
                     this.__rcv_interva_time_cache = int(time.time())
@@ -329,27 +331,27 @@ class Aircv(object):
 
         return (int(point[0] * self.zoom_out), int(point[1] * self.zoom_out)) if point else None
 
-    def exists(self, img, time_out=time_out, area=None):
+    def exists(self, img, timeout=timeout, area=None):
         point = None
         is_exists = False
-        while time_out:
+        while timeout:
             if self.debug:
-                print(time_out)
+                print(timeout)
             if self.aircv_cache_image is not None:
                 point = self.find_template_by_crop(img, area)
             if point:
                 is_exists = True
                 break
             else:
-                time_out -= 1
+                timeout -= 1
                 time.sleep(1)
         return is_exists
 
-    def click(self, img, time_out=time_out, area=None):
+    def click(self, img, timeout=timeout, area=None):
         point = None
-        while time_out:
+        while timeout:
             if self.debug:
-                print(time_out)
+                print(timeout)
             if self.aircv_cache_image is not None:
                 point = self.find_template_by_crop(img, area)
             if point:
@@ -357,17 +359,17 @@ class Aircv(object):
                 self.d.click(point[0], point[1])
                 break
             else:
-                time_out -= 1
+                timeout -= 1
                 time.sleep(1)
-            if not time_out:
+            if not timeout:
                 raise RuntimeError('No image found')
 
-    def click_index(self, img, index=1, maxcnt=20, time_out=time_out):
+    def click_index(self, img, index=1, maxcnt=20, timeout=timeout):
         point = None
         img_serch = self.cvHandler.imread(img)
-        while time_out:
+        while timeout:
             if self.debug:
-                print(time_out)
+                print(timeout)
             if self.aircv_cache_image is not None:
                 result_list = self.cvHandler.find_all_template(self.aircv_cache_image, img_serch, maxcnt=maxcnt)
                 point = result_list[index - 1]['result'] if result_list else None
@@ -376,16 +378,16 @@ class Aircv(object):
                 self.d.click(point[0], point[1])
                 break
             else:
-                time_out -= 1
+                timeout -= 1
                 time.sleep(1)
-            if not time_out:
+            if not timeout:
                 raise RuntimeError('No image found')
 
-    def long_click(self, img, duration=None, time_out=time_out, area=None):
+    def long_click(self, img, duration=None, timeout=timeout, area=None):
         point = None
-        while time_out:
+        while timeout:
             if self.debug:
-                print(time_out)
+                print(timeout)
             if self.aircv_cache_image is not None:
                 point = self.find_template_by_crop(img, area)
             if point:
@@ -393,17 +395,17 @@ class Aircv(object):
                 self.d.long_click(point[0], point[1], duration)
                 break
             else:
-                time_out -= 1
+                timeout -= 1
                 time.sleep(1)
-            if not time_out:
+            if not timeout:
                 raise RuntimeError('No image found')
 
-    def swipe(self, img_from, img_to, duration=0.1, steps=None, time_out=time_out, area=None):
+    def swipe(self, img_from, img_to, duration=0.1, steps=None, timeout=timeout, area=None):
         point_from = None
         point_to = None
-        while time_out:
+        while timeout:
             if self.debug:
-                print(time_out)
+                print(timeout)
             if self.aircv_cache_image is not None:
                 point_from = self.find_template_by_crop(img_from, area)
                 point_to = self.find_template_by_crop(img_to, area)
@@ -412,16 +414,16 @@ class Aircv(object):
                 self.d.swipe(point_from[0], point_from[1], point_to[0], point_to[1], duration, steps)
                 break
             else:
-                time_out -= 1
+                timeout -= 1
                 time.sleep(1)
-            if not time_out:
+            if not timeout:
                 raise RuntimeError('No image found')
 
-    def swipe_points(self, img_list, duration=0.5, time_out=time_out, area=None):
+    def swipe_points(self, img_list, duration=0.5, timeout=timeout, area=None):
         point_list = []
-        while time_out:
+        while timeout:
             if self.debug:
-                print(time_out)
+                print(timeout)
             if self.aircv_cache_image is not None:
                 for img in img_list:
                     point = self.find_template_by_crop(img, area)
@@ -433,17 +435,17 @@ class Aircv(object):
                 self.d.swipe_points(point_list, duration)
                 break
             else:
-                time_out -= 1
+                timeout -= 1
                 time.sleep(1)
-            if not time_out:
+            if not timeout:
                 raise RuntimeError('No image found')
 
-    def drag(self, img_from, img_to, duration=0.1, steps=None, time_out=time_out, area=None):
+    def drag(self, img_from, img_to, duration=0.1, steps=None, timeout=timeout, area=None):
         point_from = None
         point_to = None
-        while time_out:
+        while timeout:
             if self.debug:
-                print(time_out)
+                print(timeout)
             if self.aircv_cache_image is not None:
                 point_from = self.find_template_by_crop(img_from, area)
                 point_to = self.find_template_by_crop(img_to, area)
@@ -452,24 +454,24 @@ class Aircv(object):
                 self.d.drag(point_from[0], point_from[1], point_to[0], point_to[1], duration, steps)
                 break
             else:
-                time_out -= 1
+                timeout -= 1
                 time.sleep(1)
-            if not time_out:
+            if not timeout:
                 raise RuntimeError('No image found')
 
-    def get_point(self, img, time_out=time_out, area=None):
+    def get_point(self, img, timeout=timeout, area=None):
         point = None
-        while time_out:
+        while timeout:
             if self.debug:
-                print(time_out)
+                print(timeout)
             if self.aircv_cache_image is not None:
                 point = self.find_template_by_crop(img, area)
             if point:
                 break
             else:
-                time_out -= 1
+                timeout -= 1
                 time.sleep(1)
-            if not time_out:
+            if not timeout:
                 raise RuntimeError('No image found')
         return point
 
