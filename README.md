@@ -106,7 +106,7 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 - install: 安装apk，apk通过URL给出
 
     ```bash
-    $ python -m uiautomator2 install $device_ip https://example.org/some.apk
+    $ python -m uiautomator2.cli install $device_ip https://example.org/some.apk
     MainThread: 15:37:55,731 downloading 80.4 kB / 770.6 kB
     MainThread: 15:37:56,763 installing 770.6 kB / 770.6 kB
     MainThread: 15:37:58,780 success installed 770.6 kB / 770.6 kB
