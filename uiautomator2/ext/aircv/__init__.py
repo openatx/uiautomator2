@@ -4,6 +4,8 @@
 import cv2
 import numpy as np
 import time
+
+import requests
 import websocket
 import threading
 
@@ -27,6 +29,18 @@ class CVHandler(object):
         im = cv2.imread(filename)
         if im is None:
             raise RuntimeError("file: '%s' not exists" % filename)
+        return im
+
+    def imdecode(self, img_data):
+        '''
+        Like cv2.imdecode
+        This function will make sure filename exists
+        直接读取从网络下载的图片数据
+        '''
+        im = np.asarray(bytearray(img_data), dtype="uint8")
+        im = cv2.imdecode(im, cv2.IMREAD_COLOR)
+        if im is None:
+            raise RuntimeError("img_data is can not decode")
         return im
 
     def find_template(self, im_source, im_search, threshold=template_threshold, rgb=False, bgremove=False):
@@ -249,6 +263,7 @@ class Aircv(object):
     timeout = 30
     wait_before_operation = 1  # 操作前等待时间 秒
     rcv_interval = 2  # 接收图片的间隔时间 秒
+    support_network = True  # 是否启用网络下载图片
 
     def __init__(self, d):
         self.__rcv_interva_time_cache = 0
@@ -317,7 +332,11 @@ class Aircv(object):
 
     # operating
     def find_template_by_crop(self, img, area=None):
-        img_serch = self.cvHandler.imread(img)
+        if Aircv.support_network:
+            data = requests.get(img)
+            img_serch = self.cvHandler.imdecode(data.content)
+        else:
+            img_serch = self.cvHandler.imread(img)
         if area:
             crop_img = self.aircv_cache_image[area[1]:area[3], area[0]:area[2]]
             result = self.cvHandler.find_template(crop_img, img_serch)
