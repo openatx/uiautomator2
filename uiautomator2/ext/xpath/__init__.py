@@ -33,38 +33,58 @@ class XPath(object):
         return len(self(xpath, source).all()) > 0
 
     def when(self, xpath):
-        def _click(selector):
-            selector.click()
+        obj = self
 
-        self._handlers.append({
-            "xpath": xpath,
-            "callback": _click,
-        })
+        def _click(selector):
+            selector.click_nowait()
+
+        class _Watcher():
+            def click(self):
+                obj._handlers.append({
+                    "xpath": xpath,
+                    "callback": _click,
+                })
+            
+            def call(self, func):
+                """
+                Args:
+                    func: accept only one argument "selector"
+                """
+                obj._handlers.append({
+                    "xpath": xpath,
+                    "callback": func,
+                })
+
+        return _Watcher()
 
     def click(self, xpath, source=None, watch=True, timeout=10.0):
         source = self._d.dump_hierarchy()
         deadline = time.time() + timeout
         while time.time() < deadline:
-            for h in self._handlers:
-                selector = self(h['xpath'], source)
-                if selector.exists:
-                    logger.info("watch match %s", h['xpath'])
-                    h['callback'](selector)
-                    time.sleep(.5)
+            if watch:
+                for h in self._handlers:
+                    selector = self(h['xpath'], source)
+                    if selector.exists:
+                        logger.info("watch match %s", h['xpath'])
+                        h['callback'](selector)
+                        time.sleep(.5)
+                        break
+                else:
                     break
-            else:
-                break
             source = self._d.dump_hierarchy()
             selector = self(xpath, source)
             if selector.exists:
-                selector.click()
-
+                selector.click_nowait()
                 time.sleep(.5)  # post sleep
-                break
+                return
         raise TimeoutException("timeout %.1f" % timeout)
 
     def __call__(self, xpath, source=None):
-        return XPathSelector(self._d, xpath, source)
+        if xpath.startswith('//'):
+            return XPathSelector(self._d, xpath, source)
+        if xpath.startswith('@'):
+            return XPathSelector(self._d, xpath[1:], source)
+        raise RuntimeError("Invalid xpath", xpath)
 
 
 class XPathSelector(object):
@@ -92,7 +112,7 @@ class XPathSelector(object):
     def exists(self):
         return self.all() > 0
 
-    def click(self):
+    def click_nowait(self):
         x, y = self.all()[0].center()
         logger.info("click %d, %d", x, y)
         self._d.click(x, y)

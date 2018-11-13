@@ -13,3 +13,16 @@ def main():
 
     d.ext_xpath.click("//*[@content-desc='下一步']")
 ```
+
+## XPath规则
+- `//` 开头代表原生xpath
+- `@` 开头代表resourceId定位
+- 其他的是text或者description
+
+例子
+
+`@smartisanos:id/right_container` 相当于 
+`//*[@resource-id="smartisanos:id/right_container"]`
+
+`开始` 相当于 
+`//*[@text="开始" or @content-desc="开始"]`
