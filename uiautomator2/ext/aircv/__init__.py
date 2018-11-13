@@ -263,6 +263,7 @@ class Aircv(object):
     timeout = 30
     wait_before_operation = 1  # 操作前等待时间 秒
     rcv_interval = 2  # 接收图片的间隔时间 秒
+    # temporary_directory = "./"  # 临时保存截图的目录路径
     support_network = True  # 是否启用网络下载图片
 
     def __init__(self, d):
@@ -271,7 +272,7 @@ class Aircv(object):
         self.d = d
         self.cvHandler = CVHandler()
         self.FLANN_INDEX_KDTREE = 0
-        self.aircv_cache_image_name = self.d._host + "_aircv_cache_image.jpg"
+        # self.aircv_cache_image_name = Aircv.temporary_directory + self.d._host + "_aircv_cache_image.jpg"
         self.debug = True
         self.aircv_cache_image = None
         self.ws_screen = None
@@ -302,9 +303,10 @@ class Aircv(object):
             if isinstance(message, bytes):
 
                 if int(time.time()) - this.__rcv_interva_time_cache >= Aircv.rcv_interval:
-                    with open(this.aircv_cache_image_name, 'wb') as f:
-                        f.write(message)
-                    this.aircv_cache_image = this.cvHandler.imread(self.aircv_cache_image_name)
+                    # with open(this.aircv_cache_image_name, 'wb') as f:
+                    #     f.write(message)
+                    # this.aircv_cache_image = this.cvHandler.imread(self.aircv_cache_image_name)
+                    this.aircv_cache_image = this.cvHandler.imdecode(message)
                     this.__rcv_interva_time_cache = int(time.time())
 
         def on_error(ws, error):
