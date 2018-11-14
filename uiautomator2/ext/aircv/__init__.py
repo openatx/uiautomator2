@@ -264,7 +264,7 @@ class Aircv(object):
     wait_before_operation = 1  # 操作前等待时间 秒
     rcv_interval = 2  # 接收图片的间隔时间 秒
     # temporary_directory = "./"  # 临时保存截图的目录路径
-    support_network = True  # 是否启用网络下载图片
+    support_network = False  # 是否启用网络下载图片
 
     def __init__(self, d):
         self.__rcv_interva_time_cache = 0
