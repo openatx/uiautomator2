@@ -248,13 +248,8 @@ class Installer(adbutils.Adb):
 
     def launch_and_check(self):
         log.info("launch atx-agent daemon")
-        args = [
-            "TMPDIR=/sdcard",
-            "/data/local/tmp/atx-agent",
-            "server", '-d'
-            # "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell",
-            # "atx-agent", "server", '-d'
-        ]
+        pipenv = "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell"
+        args = [pipenv, "atx-agent", "server", '-d']
         if self.server_addr:
             args.append('-t')
             args.append(self.server_addr)
@@ -267,7 +262,8 @@ class Installer(adbutils.Adb):
             try:
                 r = requests.get(
                     'http://localhost:%d/version' % lport, timeout=10)
-                log.debug("atx-agent version: %s", r.text)
+                r.raise_for_status()
+                log.info("atx-agent version: %s", r.text)
                 # todo finish the retry logic
                 print("atx-agent output:", output.strip())
                 # open uiautomator2 github URL
@@ -276,13 +272,14 @@ class Installer(adbutils.Adb):
                 log.info("success")
                 break
             except (requests.exceptions.ConnectionError,
-                    requests.exceptions.ReadTimeout):
-                time.sleep(.5)
+                    requests.exceptions.ReadTimeout,
+                    requests.exceptions.HTTPError):
+                time.sleep(1.5)
                 cnt += 1
         else:
             log.error(
-                "Failure, unable to get result from http://localhost:%d/version"
-            )
+                "Failure, unable to get result from http://localhost:%d/version",
+                lport)
 
 
 class MyFire(object):
@@ -346,7 +343,11 @@ class MyFire(object):
         if ins.check_agent_installed(agent_version):
             # TODO: should also check atx-server addr
             log.info("atx-agent is already running, force stop")
-            ins.shell("/data/local/tmp/atx-agent", "server", "--stop", raise_error=False)
+            ins.shell(
+                "/data/local/tmp/atx-agent",
+                "server",
+                "--stop",
+                raise_error=False)
             ins.shell("rm", "/sdcard/atx-agent.pid", raise_error=False)
             ins.shell("rm", "/sdcard/atx-agent.log.old", raise_error=False)
         else:
