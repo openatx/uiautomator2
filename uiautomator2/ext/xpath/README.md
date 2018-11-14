@@ -1,16 +1,30 @@
 # uiautomator2 xpath extension
 
-## 工作原理
-1. 通过uiautomator2库的`dump_hierarchy`接口，获取到当前的UI图层。
-2. 然后使用`lxml`库解析，寻找匹配的xpath，然后执行相应的操作
-
-这个插件最非常多的地方都用的XPath，所以要先了解一些XPath知识。
+用这个插件前，要先了解一些XPath知识。
 好在网上这方便的资料很多。下面列举一些
 
 - [W3CSchool XPath教程](http://www.w3school.com.cn/xpath/index.asp)
 - [XPath tutorial](http://www.zvon.org/xxl/XPathTutorial/)
 - [阮一峰的XPath学习笔记](http://www.ruanyifeng.com/blog/2009/07/xpath_path_expressions.html)
 - [测试XPath的网站](https://www.freeformatter.com/xpath-tester.html)
+
+## 工作原理
+1. 通过uiautomator2库的`dump_hierarchy`接口，获取到当前的UI界面（一个很丰富的XML）。
+2. 然后使用`lxml`库解析，寻找匹配的xpath，然后使用click指令完后操作
+
+**弹窗监控原理**
+
+通过hierarchy可以知道界面上的所有元素信息（包括弹窗和要点击的按钮）。
+假设有 `跳过`, `知道了` 这两个弹窗按钮。需要点击的按钮名是 `播放`
+
+1. 获取到当前界面的XML（通过dump_hierarchy函数）
+2. 检查有没有`跳过`, `知道了` 这两个按钮，如果有就点击，然后回到第一步
+3. 检查有没有`播放`按钮, 有就点击，结束。没有找到在回到第一步，直接查找次数超标。
+
+## 安装方法
+```
+pip install -U --pre uiautomator2
+```
 
 ## 使用方法
 ```python
@@ -23,13 +37,15 @@ def main():
     d = u2.connect()
     d.app_start("com.netease.cloudmusic", stop=True)
 
-    # watchers
+    # watchers 监控弹窗
     d.ext_xpath.when("跳过").click()
     d.ext_xpath.when("知道了").click()
 
     # steps
     d.ext_xpath("//*[@text='私人FM']/../android.widget.ImageView").click()
     d.ext_xpath("下一首").click()
+
+    # 监控弹窗2s钟，时间可能大于2s
     d.ext_xpath.sleep_watch(2)
     d.ext_xpath("转到上一层级").click()
 ```
