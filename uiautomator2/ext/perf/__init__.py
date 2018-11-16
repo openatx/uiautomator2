@@ -9,6 +9,7 @@ import time
 import datetime
 import csv
 import sys
+import os
 import atexit
 from collections import namedtuple
 
@@ -251,6 +252,9 @@ class Perf(object):
             self._condition.release()
 
     def start(self):
+        csv_dir = os.path.dirname(self.csv_output)
+        if not os.path.isdir(csv_dir):
+            os.makedirs(csv_dir)
         if sys.version_info.major < 3:
             f = open(self.csv_output, "wb")
         else:

@@ -3,8 +3,8 @@
 
 import re
 import time
-import shlex
 
+from six.moves import shlex_quote
 import uiautomator2
 from logzero import logger
 from lxml import etree
@@ -106,18 +106,18 @@ class XPath(object):
         if xpath.startswith('//'):
             pass
         elif xpath.startswith('@'):
-            xpath = '//*[@resource-id={}]'.format(shlex.quote(xpath[1:]))
+            xpath = '//*[@resource-id={}]'.format(shlex_quote(xpath[1:]))
         elif xpath.startswith('^'):
-            xpath = '//*[re:match(text(), {})]'.format(shlex.quote(xpath))
+            xpath = '//*[re:match(text(), {})]'.format(shlex_quote(xpath))
         elif xpath.startswith('%') and xpath.endswith("%"):
-            xpath = '//*[contains(text(), {}]'.format(shlex.quote(xpath))
+            xpath = '//*[contains(text(), {}]'.format(shlex_quote(xpath))
         elif xpath.startswith('%'):
-            xpath = '//*[starts-with(text(), {}]'.format(shlex.quote(xpath))
+            xpath = '//*[starts-with(text(), {}]'.format(shlex_quote(xpath))
         elif xpath.endswith('%'):
-            xpath = '//*[ends-with(text(), {}]'.format(shlex.quote(xpath))
+            xpath = '//*[ends-with(text(), {}]'.format(shlex_quote(xpath))
         else:
             xpath = '//*[@text={0} or @content-desc={0}]'.format(
-                shlex.quote(xpath))
+                shlex_quote(xpath))
         return XPathSelector(self, xpath, source)
 
 
