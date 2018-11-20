@@ -34,6 +34,13 @@ opencv3.x
 ```python
 # 启用支持网络下载图片选项
 Aircv.support_network = True  # 默认 False，不启用
+# 设置 host，支持 http
+Aircv.host = "127.0.0.1:8000"
+# 请求路径，固定
+Aircv.path = "/image_service/download/"
+# 示例，图片请求地址
+img_url = "http://127.0.0.1:8000/image_service/download/@img1"
+
 
 # 全局设置操作的超时时间，大于该值时间没有找到图像，会报异常
 # timeout 可以在每个函数调用时单独设置

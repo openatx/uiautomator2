@@ -265,6 +265,9 @@ class Aircv(object):
     rcv_interval = 2  # 接收图片的间隔时间 秒
     # temporary_directory = "./"  # 临时保存截图的目录路径
     support_network = False  # 是否启用网络下载图片
+    url = ""
+    host = "127.0.0.1:8000"
+    path = "/image_service/download/"
 
     def __init__(self, d):
         self.__rcv_interva_time_cache = 0
@@ -335,7 +338,8 @@ class Aircv(object):
     # operating
     def find_template_by_crop(self, img, area=None):
         if Aircv.support_network:
-            data = requests.get(img)
+            img_url = "".join(["http://", Aircv.host, Aircv.path, img])
+            data = requests.get(img_url)
             img_serch = self.cvHandler.imdecode(data.content)
         else:
             img_serch = self.cvHandler.imread(img)
