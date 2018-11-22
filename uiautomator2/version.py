@@ -1,7 +1,8 @@
 # coding: utf-8
 #
 
-__apk_version__ = '1.1.5'
+__apk_version__ = '1.1.6'
+# 1.1.6 fix android P support
 # 1.1.5 waitForExists use UiObject2 method first then fallback to UiObject.waitForExists
 # 1.1.4 add ADB_EDITOR_CODE broadcast support, fix bug （toast捕获导致app闪退)
 # 1.1.3 use thread to make watchers.watched faster, try to fix input method type multi
