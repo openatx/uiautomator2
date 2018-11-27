@@ -248,7 +248,9 @@ class Installer(adbutils.Adb):
 
     def launch_and_check(self):
         log.info("launch atx-agent daemon")
-        pipenv = "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell"
+        # Important
+        # "\$", \ have to be added, or subprocess will replace $PATH to current env PATH
+        pipenv = r"PATH=\$PATH:/data/local/tmp:/data/data/com.android/shell"
         args = [pipenv, "atx-agent", "server", '-d']
         if self.server_addr:
             args.append('-t')
@@ -323,9 +325,9 @@ class MyFire(object):
                                        agent_version, reinstall,
                                        ignore_apk_check)
         else:
-            #Pass in serials such as 8734e3576, which would otherwise be floating point.. keep ints safe
-            #Prefix with "str:", so for example
-            #python3 -m uiautomator2 init --serial str:8734e3576
+            # Pass in serials such as 8734e3576, which would otherwise be floating point.. keep ints safe
+            # Prefix with "str:", so for example
+            # python3 -m uiautomator2 init --serial str:8734e3576
             if hasattr(serial, 'split'):
                 serial = serial.split('str:')[-1]
             self._init_with_serial(serial, server, apk_version, agent_version,
