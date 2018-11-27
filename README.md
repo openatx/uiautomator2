@@ -12,7 +12,7 @@ uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本
 * 集成了[openstf/minitouch](https://github.com/openstf/minitouch)达到精确实时控制设备
 * 修复了xiaocong/uiautomator经常性退出的问题
 * 代码进行了重构和精简，方便维护
-* Requirements: `Android OS Version >= 4.4` `Python >=2.7 || <= 3.6`
+* Requirements: `Android OS Version >= 4.4` `Python >=2.7 || <= 3.7`
 
 虽然我说的很简单，但是实现起来用到了很多的技术和技巧，功能非常强，唯独文档有点少。哈哈
 
