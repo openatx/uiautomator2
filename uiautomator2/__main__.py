@@ -251,6 +251,10 @@ class Installer(adbutils.Adb):
         # Important
         # "\$", \ have to be added, or subprocess will replace $PATH to current env PATH
         pipenv = r"PATH=\$PATH:/data/local/tmp:/data/data/com.android/shell"
+
+        # stop first
+        self.shell(pipenv, "atx-agent", "server", "--stop", raise_error=False)
+        # start server
         args = [pipenv, "atx-agent", "server", '-d']
         if self.server_addr:
             args.append('-t')
