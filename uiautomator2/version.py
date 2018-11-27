@@ -1,7 +1,8 @@
 # coding: utf-8
 #
 
-__apk_version__ = '1.1.6'
+__apk_version__ = '1.1.7'
+# 1.1.7 fix dumpHierarchy XML charactor error
 # 1.1.6 fix android P support
 # 1.1.5 waitForExists use UiObject2 method first then fallback to UiObject.waitForExists
 # 1.1.4 add ADB_EDITOR_CODE broadcast support, fix bug （toast捕获导致app闪退)
