@@ -1,7 +1,8 @@
 # coding: utf-8
 #
 
-__apk_version__ = '1.1.5'
+__apk_version__ = '1.1.6'
+# 1.1.6 fix android P support
 # 1.1.5 waitForExists use UiObject2 method first then fallback to UiObject.waitForExists
 # 1.1.4 add ADB_EDITOR_CODE broadcast support, fix bug （toast捕获导致app闪退)
 # 1.1.3 use thread to make watchers.watched faster, try to fix input method type multi
@@ -17,7 +18,8 @@ __apk_version__ = '1.1.5'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__atx_agent_version__ = '0.4.8'
+__atx_agent_version__ = '0.4.9'
+# 0.4.9 update for go1.11
 # 0.4.8 add /wlan/ip and /packages REST API for package install
 # 0.4.6 fix download dns resolve error (sometimes)
 # 0.4.5 add http log, change atx-agent -d into atx-agent server -d

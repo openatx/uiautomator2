@@ -42,8 +42,12 @@ uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本
     python -m uiautomator2 init
     ```
 
-    因为中国的网络限制，访问Github的资源速度会比较慢，执行上面的命令可能很费时间，所以我们专门制作了一个国内的[Github镜像网站](https://github-mirror.open.netease.com)，网站采用的是请求时缓存的策略，所以全网第一次请求需要等待一会。
-    使用国内镜像只要增加一个参数`--mirror`
+    有时候init也会出错，请参考[手动Init指南](https://github.com/openatx/uiautomator2/wiki/Manual-Init)
+
+    **最近这个镜像网站被Github给Block了, mirror不好使了， 伤心**
+
+    ~~因为中国的网络限制，访问Github的资源速度会比较慢，执行上面的命令可能很费时间，所以我们专门制作了一个国内的[Github镜像网站](https://github-mirror.open.netease.com) ，网站采用的是请求时缓存的策略，所以全网第一次请求需要等待一会。
+    使用国内镜像只要增加一个参数`--mirror`~~
 
     ```bash
     python -m uiautomator2 init --mirror

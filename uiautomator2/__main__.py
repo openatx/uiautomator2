@@ -41,7 +41,7 @@ log = get_logger('uiautomator2')
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
 log.debug("use cache directory: %s", appdir)
 
-GITHUB_BASEURL = "https://github-mirror.open.netease.com/openatx"
+GITHUB_BASEURL = "https://github.com/openatx"
 
 
 class DownloadBar(progress.bar.Bar):
