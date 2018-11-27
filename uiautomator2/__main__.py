@@ -342,17 +342,12 @@ class MyFire(object):
         ins.install_minitouch()
         ins.install_uiautomator_apk(apk_version, reinstall)
 
-        if ins.check_agent_installed(agent_version):
-            # TODO: should also check atx-server addr
-            log.info("atx-agent is already running, force stop")
-            ins.shell(
-                "/data/local/tmp/atx-agent",
-                "server",
-                "--stop",
-                raise_error=False)
-            ins.shell("rm", "/sdcard/atx-agent.pid", raise_error=False)
-            ins.shell("rm", "/sdcard/atx-agent.log.old", raise_error=False)
-        else:
+        log.info("atx-agent is already running, force stop")
+        ins.shell("/data/local/tmp/atx-agent", "-stop", raise_error=False)
+        ins.shell("killall", "atx-agent", raise_error=False)
+        ins.shell("rm", "/sdcard/atx-agent.pid", raise_error=False)
+        ins.shell("rm", "/sdcard/atx-agent.log.old", raise_error=False)
+        if not ins.check_agent_installed(agent_version):
             ins.install_atx_agent(agent_version, reinstall)
 
         if not ignore_apk_check:
