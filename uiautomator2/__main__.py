@@ -246,16 +246,17 @@ class Installer(adbutils.Adb):
         self.push(bin_path, '/data/local/tmp/atx-agent', 0o755)
         log.debug("atx-agent installed")
 
+    @property
+    def atx_agent_path(self):
+        return '/data/local/tmp/atx-agent'
+
     def launch_and_check(self):
         log.info("launch atx-agent daemon")
-        # Important
-        # "\$", \ have to be added, or subprocess will replace $PATH to current env PATH
-        pipenv = r"PATH=\$PATH:/data/local/tmp:/data/data/com.android/shell"
 
         # stop first
-        self.shell(pipenv, "atx-agent", "server", "--stop", raise_error=False)
+        self.shell(self.atx_agent_path, "server", "--stop", raise_error=False)
         # start server
-        args = [pipenv, "atx-agent", "server", '-d']
+        args = [self.atx_agent_path, "server", '-d']
         if self.server_addr:
             args.append('-t')
             args.append(self.server_addr)
