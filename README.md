@@ -64,10 +64,10 @@ uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本
 
     因为uiautomator是独占资源，所以当atx运行的时候uiautomatorviewer是不能用的，为了减少atx频繁的启停，我们开发了基于浏览器技术的weditor UI查看器。<https://github.com/openatx/weditor>
 
-    安装方法
+    安装方法(备注: 目前最新的稳定版为 0.1.0)
 
     ```bash
-    pip install --pre -U weditor
+    pip install -U weditor
     ```
 
     > Windows系统可以使用命令在桌面创建一个快捷方式 `python -m weditor --shortcut`
