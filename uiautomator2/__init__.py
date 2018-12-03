@@ -1065,6 +1065,10 @@ class UIAutomatorServer(object):
         self.__devinfo = self._reqsess.get(self.path2url('/info')).json()
         return self.__devinfo
 
+    @property
+    def wlan_ip(self):
+        return self._reqsess.get(self.path2url("/wlan/ip")).text.strip()
+
     def disable_popups(self, enable=True):
         """
         Automatic click all popups
@@ -1086,7 +1090,7 @@ class UIAutomatorServer(object):
         else:
             self.jsonrpc.setAccessibilityPatterns({})
 
-    def session(self, pkg_name, attach=False):
+    def session(self, pkg_name=None, attach=False):
         """
         Create a new session
 
@@ -2328,7 +2332,7 @@ class XMLElement(object):
 
     def center(self):
         bounds = self.elem.attrib.get("bounds")
-        lx, ly, rx, ry = map(int, re.findall("\d+", bounds))
+        lx, ly, rx, ry = map(int, re.findall(r"\d+", bounds))
         return (lx + rx) // 2, (ly + ry) // 2
 
     @property

@@ -12,7 +12,7 @@ uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本
 * 集成了[openstf/minitouch](https://github.com/openstf/minitouch)达到精确实时控制设备
 * 修复了xiaocong/uiautomator经常性退出的问题
 * 代码进行了重构和精简，方便维护
-* Requirements: `Android OS Version >= 4.4` `Python >=2.7 || <= 3.6`
+* Requirements: `Android OS Version >= 4.4` `Python >=2.7 || <= 3.7`
 
 虽然我说的很简单，但是实现起来用到了很多的技术和技巧，功能非常强，唯独文档有点少。哈哈
 
@@ -42,8 +42,12 @@ uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本
     python -m uiautomator2 init
     ```
 
-    因为中国的网络限制，访问Github的资源速度会比较慢，执行上面的命令可能很费时间，所以我们专门制作了一个国内的[Github镜像网站](https://github-mirror.open.netease.com)，网站采用的是请求时缓存的策略，所以全网第一次请求需要等待一会。
-    使用国内镜像只要增加一个参数`--mirror`
+    有时候init也会出错，请参考[手动Init指南](https://github.com/openatx/uiautomator2/wiki/Manual-Init)
+
+    **最近这个镜像网站被Github给Block了, mirror不好使了， 伤心**
+
+    ~~因为中国的网络限制，访问Github的资源速度会比较慢，执行上面的命令可能很费时间，所以我们专门制作了一个国内的[Github镜像网站](https://github-mirror.open.netease.com) ，网站采用的是请求时缓存的策略，所以全网第一次请求需要等待一会。
+    使用国内镜像只要增加一个参数`--mirror`~~
 
     ```bash
     python -m uiautomator2 init --mirror
@@ -60,10 +64,10 @@ uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本
 
     因为uiautomator是独占资源，所以当atx运行的时候uiautomatorviewer是不能用的，为了减少atx频繁的启停，我们开发了基于浏览器技术的weditor UI查看器。<https://github.com/openatx/weditor>
 
-    安装方法
+    安装方法(备注: 目前最新的稳定版为 0.1.0)
 
     ```bash
-    pip install --pre -U weditor
+    pip install -U weditor
     ```
 
     > Windows系统可以使用命令在桌面创建一个快捷方式 `python -m weditor --shortcut`
@@ -106,7 +110,7 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 - install: 安装apk，apk通过URL给出
 
     ```bash
-    $ python -m uiautomator2 install $device_ip https://example.org/some.apk
+    $ python -m uiautomator2.cli install $device_ip https://example.org/some.apk
     MainThread: 15:37:55,731 downloading 80.4 kB / 770.6 kB
     MainThread: 15:37:56,763 installing 770.6 kB / 770.6 kB
     MainThread: 15:37:58,780 success installed 770.6 kB / 770.6 kB
@@ -332,7 +336,7 @@ This part showcases how to perform common device operations:
     # Since `shell` function return type is `namedtuple("ShellResponse", ("output", "exit_code"))`
     # so we can do some tricks
     output = d.shell("pwd").output
-    exit_code = d.shell("pwd").output
+    exit_code = d.shell("pwd").exit_code
     ```
 
     The first argument can be list. for example
@@ -451,6 +455,49 @@ Get device serial number
 ```python
 print(d.serial)
 # output example: 74aAEDR428Z9
+```
+
+Get WLAN ip
+
+```python
+print(d.wlan_ip)
+# output example: 10.0.0.1
+```
+
+Get detailed device info
+
+```python
+print(d.device_info)
+```
+
+Below is a possible output:
+
+```
+{'udid': '3578298f-b4:0b:44:e6:1f:90-OD103',
+ 'version': '7.1.1',
+ 'serial': '3578298f',
+ 'brand': 'SMARTISAN',
+ 'model': 'OD103',
+ 'hwaddr': 'b4:0b:44:e6:1f:90',
+ 'port': 7912,
+ 'sdk': 25,
+ 'agentVersion': 'dev',
+ 'display': {'width': 1080, 'height': 1920},
+ 'battery': {'acPowered': False,
+  'usbPowered': False,
+  'wirelessPowered': False,
+  'status': 3,
+  'health': 0,
+  'present': True,
+  'level': 99,
+  'scale': 100,
+  'voltage': 4316,
+  'temperature': 272,
+  'technology': 'Li-ion'},
+ 'memory': {'total': 3690280, 'around': '4 GB'},
+ 'cpu': {'cores': 8, 'hardware': 'Qualcomm Technologies, Inc MSM8953Pro'},
+ 'presenceChangedAt': '0001-01-01T00:00:00Z',
+ 'usingBeganAt': '0001-01-01T00:00:00Z'}
 ```
 
 ### Key Events
