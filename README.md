@@ -336,7 +336,7 @@ This part showcases how to perform common device operations:
     # Since `shell` function return type is `namedtuple("ShellResponse", ("output", "exit_code"))`
     # so we can do some tricks
     output = d.shell("pwd").output
-    exit_code = d.shell("pwd").output
+    exit_code = d.shell("pwd").exit_code
     ```
 
     The first argument can be list. for example
