@@ -1125,9 +1125,14 @@ class UIAutomatorServer(object):
         if attr in self._cached_plugins:
             return self._cached_plugins[attr]
         if attr.startswith('ext_'):
-            if attr[4:] not in self.__plugins:
-                raise ValueError("plugin \"%s\" not registed" % attr[4:])
-            func, args, kwargs = self.__plugins[attr[4:]]
+            plugin_name = attr[4:]
+            if plugin_name not in self.__plugins:
+                if plugin_name == 'xpath':
+                    import uiautomator2.ext.xpath as xpath
+                    xpath.init()
+                else:
+                    raise ValueError("plugin \"%s\" not registed" % plugin_name)
+            func, args, kwargs = self.__plugins[plugin_name]
             obj = functools.partial(func, self)(*args, **kwargs)
             self._cached_plugins[attr] = obj
             return obj
