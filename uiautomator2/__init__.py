@@ -1299,7 +1299,8 @@ class Session(object):
         """
         try:
             self.wait_fastinput_ime()
-            base64text = base64.b64encode(text.encode('utf-8')).decode()
+            btext = U(text).encode('utf-8')
+            base64text = base64.b64encode(btext).decode()
             self.server.shell([
                 'am', 'broadcast', '-a', 'ADB_INPUT_TEXT', '--es', 'text',
                 base64text

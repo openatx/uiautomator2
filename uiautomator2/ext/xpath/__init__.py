@@ -8,6 +8,7 @@ from six.moves import shlex_quote
 import uiautomator2
 from logzero import logger
 from lxml import etree
+from uiautomator2 import U, E
 
 
 def safe_xmlstr(s):
@@ -143,9 +144,8 @@ class XPathSelector(object):
         root = etree.fromstring(xml_content.encode('utf-8'))
         for node in root.xpath("//node"):
             node.tag = safe_xmlstr(node.attrib.pop("class"))
-        print(self._xpath)
         match_nodes = root.xpath(
-            self._xpath,
+            U(self._xpath),
             namespaces={"re": "http://exslt.org/regular-expressions"})
         return [XMLElement(node) for node in match_nodes]
 
