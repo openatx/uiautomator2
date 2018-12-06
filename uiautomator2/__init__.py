@@ -2012,9 +2012,15 @@ class UiObject(object):
         # In UIAutomator, UIObject2 has getParent() method
         # https://developer.android.com/reference/android/support/test/uiautomator/UiObject2.html
         raise NotImplementedError()
-        return UiObject(self.session, self.jsonrpc.getParent(self.selector))
+        # return UiObject(self.session, self.jsonrpc.getParent(self.selector))
 
     def __getitem__(self, index):
+        """
+        Raises:
+            IndexError
+        """
+        if isinstance(self.selector, six.string_types):
+            raise IndexError("Index is not supported when UiObject returned by child_by_xxx")
         selector = self.selector.clone()
         selector.update_instance(index)
         return UiObject(self.session, selector)
