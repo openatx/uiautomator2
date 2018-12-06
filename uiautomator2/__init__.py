@@ -902,6 +902,24 @@ class UIAutomatorServer(object):
             return ret
         raise EnvironmentError("Couldn't get focused app")
 
+    def wait_activity(self, activity, timeout=10):
+        """ wait activity
+        Args:
+            activity (str): name of activity
+            timeout (float): max wait time
+        
+        Returns:
+            bool of activity
+        """
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            current_activity = self.current_app().get('activity')
+            if activity == current_activity:
+                return True
+            time.sleep(.5)
+        return False
+
+
     def app_stop(self, pkg_name):
         """ Stop one application: am force-stop"""
         self.shell(['am', 'force-stop', pkg_name])
@@ -1358,6 +1376,7 @@ class Session(object):
         """ wait FastInputIME is ready
         Args:
             timeout(float): maxium wait time
+        
         Raises:
             EnvironmentError
         """
@@ -1942,6 +1961,9 @@ class UiObject(object):
         """ wait until ui gone
         Args:
             timeout (float): wait element gone timeout
+        
+        Returns:
+            bool if element gone
         """
         timeout = timeout or self.wait_timeout
         return self.wait(exists=False, timeout=timeout)

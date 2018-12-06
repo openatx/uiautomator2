@@ -450,6 +450,13 @@ print(d.current_app())
 # Output example 3: {'activity': None, 'package': None}
 ```
 
+Wait activity
+
+```python
+d.wait_activity(".ApiDemos", timeout=10) # default timeout 10.0 seconds
+# Output: true of false
+```
+
 Get device serial number
 
 ```python
