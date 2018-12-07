@@ -1066,11 +1066,11 @@ class UIAutomatorServer(object):
         return self.__devinfo
 
     def package_info(self, pkg_name):
-        pkginfo = self._reqsess.get(self.path2url('/packages/{}/info'.format(pkg_name)))
+        pkginfo = self._reqsess.get(self.path2url('/packages/{}/info'.format(pkg_name))).json()
         return pkginfo
 
     def app_icon(self, pkg_name):
-        icon = self._reqsess.get(self.path2url('/packages/{}/icon'.format(pkg_name)))
+        icon = self._reqsess.get(self.path2url('/packages/{}/icon'.format(pkg_name))).content
         return icon
 
     @property

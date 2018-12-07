@@ -3,7 +3,6 @@ import os
 import datetime
 import atexit
 from uiautomator2.ext.info import conf
-import uiautomator2
 
 
 class Info(object):
@@ -31,6 +30,8 @@ class Info(object):
 
     def get_app_icon(self):
         icon = self._driver.app_icon(self.pkg_name)
+        with open(self.output_dir + 'icon.png', 'wb') as f:
+            f.write(icon)
 
     def get_record_info(self):
         record = json.loads(self.read_file('record.json'))
@@ -75,11 +76,3 @@ class Info(object):
         self.get_result_info()
         with open(self.output_dir + 'info.json', 'wb') as f:
             f.write(json.dumps(self.test_info))
-
-
-if __name__ == '__main__':
-    dri = uiautomator2.connect()
-    pkg = 'com.netease.frxy'
-    info = Info(dri, pkg)
-    info.get_basic_info()
-    print('')
