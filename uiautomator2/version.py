@@ -20,6 +20,7 @@ __apk_version__ = '1.1.7'
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
 __atx_agent_version__ = '0.5.0'
+# 0.5.0 add /packages/${pkgname}/<info|icon> api
 # 0.4.9 update for go1.11
 # 0.4.8 add /wlan/ip and /packages REST API for package install
 # 0.4.6 fix download dns resolve error (sometimes)

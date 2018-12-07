@@ -8,6 +8,7 @@ from six.moves import shlex_quote
 import uiautomator2
 from logzero import logger
 from lxml import etree
+from uiautomator2 import U, E
 
 
 def safe_xmlstr(s):
@@ -16,6 +17,11 @@ def safe_xmlstr(s):
 
 def init():
     uiautomator2.plugin_register("xpath", XPath)
+
+
+def string_quote(s):
+    """ TODO(ssx): quick way to quote string """
+    return '"' + s + '"'
 
 
 class TimeoutException(Exception):
@@ -106,18 +112,18 @@ class XPath(object):
         if xpath.startswith('//'):
             pass
         elif xpath.startswith('@'):
-            xpath = '//*[@resource-id={}]'.format(shlex_quote(xpath[1:]))
+            xpath = '//*[@resource-id={}]'.format(string_quote(xpath[1:]))
         elif xpath.startswith('^'):
-            xpath = '//*[re:match(text(), {})]'.format(shlex_quote(xpath))
+            xpath = '//*[re:match(text(), {})]'.format(string_quote(xpath))
         elif xpath.startswith('%') and xpath.endswith("%"):
-            xpath = '//*[contains(text(), {}]'.format(shlex_quote(xpath))
+            xpath = '//*[contains(text(), {}]'.format(string_quote(xpath))
         elif xpath.startswith('%'):
-            xpath = '//*[starts-with(text(), {}]'.format(shlex_quote(xpath))
+            xpath = '//*[starts-with(text(), {}]'.format(string_quote(xpath))
         elif xpath.endswith('%'):
-            xpath = '//*[ends-with(text(), {}]'.format(shlex_quote(xpath))
+            xpath = '//*[ends-with(text(), {}]'.format(string_quote(xpath))
         else:
             xpath = '//*[@text={0} or @content-desc={0}]'.format(
-                shlex_quote(xpath))
+                string_quote(xpath))
         return XPathSelector(self, xpath, source)
 
 
@@ -139,7 +145,7 @@ class XPathSelector(object):
         for node in root.xpath("//node"):
             node.tag = safe_xmlstr(node.attrib.pop("class"))
         match_nodes = root.xpath(
-            self._xpath,
+            U(self._xpath),
             namespaces={"re": "http://exslt.org/regular-expressions"})
         return [XMLElement(node) for node in match_nodes]
 

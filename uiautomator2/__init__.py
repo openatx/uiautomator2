@@ -902,6 +902,24 @@ class UIAutomatorServer(object):
             return ret
         raise EnvironmentError("Couldn't get focused app")
 
+    def wait_activity(self, activity, timeout=10):
+        """ wait activity
+        Args:
+            activity (str): name of activity
+            timeout (float): max wait time
+        
+        Returns:
+            bool of activity
+        """
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            current_activity = self.current_app().get('activity')
+            if activity == current_activity:
+                return True
+            time.sleep(.5)
+        return False
+
+
     def app_stop(self, pkg_name):
         """ Stop one application: am force-stop"""
         self.shell(['am', 'force-stop', pkg_name])
@@ -1133,9 +1151,14 @@ class UIAutomatorServer(object):
         if attr in self._cached_plugins:
             return self._cached_plugins[attr]
         if attr.startswith('ext_'):
-            if attr[4:] not in self.__plugins:
-                raise ValueError("plugin \"%s\" not registed" % attr[4:])
-            func, args, kwargs = self.__plugins[attr[4:]]
+            plugin_name = attr[4:]
+            if plugin_name not in self.__plugins:
+                if plugin_name == 'xpath':
+                    import uiautomator2.ext.xpath as xpath
+                    xpath.init()
+                else:
+                    raise ValueError("plugin \"%s\" not registed" % plugin_name)
+            func, args, kwargs = self.__plugins[plugin_name]
             obj = functools.partial(func, self)(*args, **kwargs)
             self._cached_plugins[attr] = obj
             return obj
@@ -1302,7 +1325,8 @@ class Session(object):
         """
         try:
             self.wait_fastinput_ime()
-            base64text = base64.b64encode(text.encode('utf-8')).decode()
+            btext = U(text).encode('utf-8')
+            base64text = base64.b64encode(btext).decode()
             self.server.shell([
                 'am', 'broadcast', '-a', 'ADB_INPUT_TEXT', '--es', 'text',
                 base64text
@@ -1360,6 +1384,7 @@ class Session(object):
         """ wait FastInputIME is ready
         Args:
             timeout(float): maxium wait time
+        
         Raises:
             EnvironmentError
         """
@@ -1944,6 +1969,9 @@ class UiObject(object):
         """ wait until ui gone
         Args:
             timeout (float): wait element gone timeout
+        
+        Returns:
+            bool if element gone
         """
         timeout = timeout or self.wait_timeout
         return self.wait(exists=False, timeout=timeout)
@@ -2014,9 +2042,15 @@ class UiObject(object):
         # In UIAutomator, UIObject2 has getParent() method
         # https://developer.android.com/reference/android/support/test/uiautomator/UiObject2.html
         raise NotImplementedError()
-        return UiObject(self.session, self.jsonrpc.getParent(self.selector))
+        # return UiObject(self.session, self.jsonrpc.getParent(self.selector))
 
     def __getitem__(self, index):
+        """
+        Raises:
+            IndexError
+        """
+        if isinstance(self.selector, six.string_types):
+            raise IndexError("Index is not supported when UiObject returned by child_by_xxx")
         selector = self.selector.clone()
         selector.update_instance(index)
         return UiObject(self.session, selector)
