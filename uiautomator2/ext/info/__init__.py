@@ -2,10 +2,12 @@ import json
 import os
 import datetime
 import atexit
+from uiautomator2.ext.info import conf
+import uiautomator2
 
 
 class Info(object):
-    def __init__(self, driver, package_name=None):
+    def __init__(self, driver, package_name):
         self._driver = driver
         self.output_dir = 'report/'
         self.pkg_name = package_name
@@ -21,8 +23,14 @@ class Info(object):
 
     def get_basic_info(self):
         device_info = self._driver.device_info
-        app = self.pkg_name
-        self.test_info['basic_info'] = {'device_info': device_info, 'app': app}
+        package_info = self._driver.package_info(self.pkg_name)
+        # query for exact model info
+        if device_info['model'] in conf.phones:
+            device_info['model'] = conf.phones[device_info['model']]
+        self.test_info['basic_info'] = {'device_info': device_info, 'package_info': package_info}
+
+    def get_app_icon(self):
+        icon = self._driver.app_icon(self.pkg_name)
 
     def get_record_info(self):
         record = json.loads(self.read_file('record.json'))
@@ -59,6 +67,7 @@ class Info(object):
 
     def start(self):
         self.get_basic_info()
+        self.get_app_icon()
 
     def write_info(self):
         # self.get_basic_info()
@@ -66,3 +75,11 @@ class Info(object):
         self.get_result_info()
         with open(self.output_dir + 'info.json', 'wb') as f:
             f.write(json.dumps(self.test_info))
+
+
+if __name__ == '__main__':
+    dri = uiautomator2.connect()
+    pkg = 'com.netease.frxy'
+    info = Info(dri, pkg)
+    info.get_basic_info()
+    print('')

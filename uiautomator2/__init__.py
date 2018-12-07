@@ -1065,6 +1065,14 @@ class UIAutomatorServer(object):
         self.__devinfo = self._reqsess.get(self.path2url('/info')).json()
         return self.__devinfo
 
+    def package_info(self, pkg_name):
+        pkginfo = self._reqsess.get(self.path2url('/packages/{}/info'.format(pkg_name)))
+        return pkginfo
+
+    def app_icon(self, pkg_name):
+        icon = self._reqsess.get(self.path2url('/packages/{}/icon'.format(pkg_name)))
+        return icon
+
     @property
     def wlan_ip(self):
         return self._reqsess.get(self.path2url("/wlan/ip")).text.strip()
