@@ -34,6 +34,8 @@ from datetime import datetime
 from subprocess import list2cmdline
 from collections import namedtuple
 
+from PIL import Image
+
 import six
 import humanize
 import progress.bar
@@ -1083,13 +1085,18 @@ class UIAutomatorServer(object):
         self.__devinfo = self._reqsess.get(self.path2url('/info')).json()
         return self.__devinfo
 
-    def package_info(self, pkg_name):
-        pkginfo = self._reqsess.get(self.path2url('/packages/{}/info'.format(pkg_name))).json()
-        return pkginfo
+    def app_info(self, pkg_name):
+        appinfo = self._reqsess.get(self.path2url('/packages/{}/info'.format(pkg_name))).json()
+        return appinfo
 
     def app_icon(self, pkg_name):
-        icon = self._reqsess.get(self.path2url('/packages/{}/icon'.format(pkg_name))).content
-        return icon
+        res = self._reqsess.get(self.path2url('/packages/{}/icon'.format(pkg_name)))
+        if res.status_code == 200:
+            icon = Image.open(io.BytesIO(res.content))
+            return icon
+        else:
+            raise UiaError(self.path2url('/packages/{}/icon'.format(pkg_name)), res.status_code, res.text,
+                           "HTTP Return code is not 200", res.text)
 
     @property
     def wlan_ip(self):
