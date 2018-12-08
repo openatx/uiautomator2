@@ -34,8 +34,6 @@ from datetime import datetime
 from subprocess import list2cmdline
 from collections import namedtuple
 
-from PIL import Image
-
 import six
 import humanize
 import progress.bar
@@ -1086,17 +1084,45 @@ class UIAutomatorServer(object):
         return self.__devinfo
 
     def app_info(self, pkg_name):
-        appinfo = self._reqsess.get(self.path2url('/packages/{}/info'.format(pkg_name))).json()
-        return appinfo
+        """
+        Get app info
+
+        Args:
+            pkg_name (str): package name
+
+        Return example:
+            {
+                "mainActivity": "com.github.uiautomator.MainActivity",
+                "label": "ATX",
+                "versionName": "1.1.7",
+                "versionCode": 1001007,
+                "size":1760809
+            }
+
+        Raises:
+            UiaError
+        """
+        url = self.path2url('/packages/{0}/info'.format(pkg_name))
+        resp = self._reqsess.get(url)
+        resp.raise_for_status()
+        resp = resp.json()
+        if not resp.get('success'):
+            raise UiaError(resp.get('description', 'unknown'))
+        return resp.get('data')
 
     def app_icon(self, pkg_name):
-        res = self._reqsess.get(self.path2url('/packages/{}/icon'.format(pkg_name)))
-        if res.status_code == 200:
-            icon = Image.open(io.BytesIO(res.content))
-            return icon
-        else:
-            raise UiaError(self.path2url('/packages/{}/icon'.format(pkg_name)), res.status_code, res.text,
-                           "HTTP Return code is not 200", res.text)
+        """
+        Returns:
+            PIL.Image
+        
+        Raises:
+            UiaError
+        """
+        from PIL import Image
+        url = self.path2url('/packages/{0}/icon'.format(pkg_name))
+        resp = self._reqsess.get(url)
+        resp.raise_for_status()
+        return Image.open(io.BytesIO(resp.content))
 
     @property
     def wlan_ip(self):
