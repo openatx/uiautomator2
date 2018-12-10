@@ -3,12 +3,11 @@ import os
 import datetime
 import atexit
 
-from uiautomator2 import UIAutomatorServer
 from uiautomator2.ext.info import conf
 
 
 class Info(object):
-    def __init__(self, driver, package_name):
+    def __init__(self, driver, package_name=None):
         self._driver = driver
         self.output_dir = 'report/'
         self.pkg_name = package_name
