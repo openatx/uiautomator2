@@ -3,6 +3,9 @@ import os
 import datetime
 import atexit
 
+from uiautomator2 import UIAutomatorServer
+from uiautomator2.ext.info import conf
+
 
 class Info(object):
     def __init__(self, driver, package_name=None):
@@ -21,8 +24,15 @@ class Info(object):
 
     def get_basic_info(self):
         device_info = self._driver.device_info
-        app = self.pkg_name
-        self.test_info['basic_info'] = {'device_info': device_info, 'app': app}
+        app_info = self._driver.app_info(self.pkg_name)
+        # query for exact model info
+        if device_info['model'] in conf.phones:
+            device_info['model'] = conf.phones[device_info['model']]
+        self.test_info['basic_info'] = {'device_info': device_info, 'app_info': app_info}
+
+    def get_app_icon(self):
+        icon = self._driver.app_icon(self.pkg_name)
+        icon.save(self.output_dir + 'icon.png')
 
     def get_record_info(self):
         record = json.loads(self.read_file('record.json'))
@@ -59,6 +69,7 @@ class Info(object):
 
     def start(self):
         self.get_basic_info()
+        self.get_app_icon()
 
     def write_info(self):
         # self.get_basic_info()

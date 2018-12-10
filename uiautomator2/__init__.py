@@ -1086,6 +1086,47 @@ class UIAutomatorServer(object):
         self.__devinfo = self._reqsess.get(self.path2url('/info')).json()
         return self.__devinfo
 
+    def app_info(self, pkg_name):
+        """
+        Get app info
+
+        Args:
+            pkg_name (str): package name
+
+        Return example:
+            {
+                "mainActivity": "com.github.uiautomator.MainActivity",
+                "label": "ATX",
+                "versionName": "1.1.7",
+                "versionCode": 1001007,
+                "size":1760809
+            }
+
+        Raises:
+            UiaError
+        """
+        url = self.path2url('/packages/{0}/info'.format(pkg_name))
+        resp = self._reqsess.get(url)
+        resp.raise_for_status()
+        resp = resp.json()
+        if not resp.get('success'):
+            raise UiaError(resp.get('description', 'unknown'))
+        return resp.get('data')
+
+    def app_icon(self, pkg_name):
+        """
+        Returns:
+            PIL.Image
+        
+        Raises:
+            UiaError
+        """
+        from PIL import Image
+        url = self.path2url('/packages/{0}/icon'.format(pkg_name))
+        resp = self._reqsess.get(url)
+        resp.raise_for_status()
+        return Image.open(io.BytesIO(resp.content))
+
     @property
     def wlan_ip(self):
         return self._reqsess.get(self.path2url("/wlan/ip")).text.strip()

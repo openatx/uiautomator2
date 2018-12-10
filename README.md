@@ -271,6 +271,22 @@ d.app_stop_all()
 d.app_stop_all(excludes=['com.examples.demo'])
 ```
 
+### Get app info
+```python
+d.app_info("com.examples.demo")
+# expect output
+#{
+#    "mainActivity": "com.github.uiautomator.MainActivity",
+#    "label": "ATX",
+#    "versionName": "1.1.7",
+#    "versionCode": 1001007,
+#    "size":1760809
+#}
+
+# save app icon
+img = d.app_icon("com.examples.demo")
+img.save("icon.png")
+```
 ### Push and pull files
 * push a file to the device
 
