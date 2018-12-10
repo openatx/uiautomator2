@@ -56,6 +56,9 @@ HTTP_TIMEOUT = 60
 _INPUT_METHOD_RE = re.compile(r'mCurMethodId=([-_./\w]+)')
 
 
+class ATXError(Exception):
+    pass
+
 class UiaError(Exception):
     pass
 
@@ -619,11 +622,11 @@ class UIAutomatorServer(object):
         self._reqsess.delete(
             self.path2url('/uiautomator'))  # stop uiautomator keeper first
         # wait = not unlock  # should not wait IdentifyActivity open or it will stuck sometimes
-        self.app_start(  # may also stuck here.
-            'com.github.uiautomator',
-            '.MainActivity',
-            wait=False,
-            stop=True)
+        # self.app_start(  # may also stuck here.
+        #     'com.github.uiautomator',
+        #     '.MainActivity',
+        #     wait=False,
+        #     stop=True)
         time.sleep(.5)
 
         # launch atx-agent uiautomator keeper
@@ -1123,13 +1126,14 @@ class UIAutomatorServer(object):
         else:
             self.jsonrpc.setAccessibilityPatterns({})
 
-    def session(self, pkg_name=None, attach=False):
+    def session(self, pkg_name=None, attach=False, launch_timeout=None):
         """
         Create a new session
 
         Args:
             pkg_name (str): android package name
             attach (bool): attach to already running app
+            launch_timeout (int): launch timeout
 
         Raises:
             requests.HTTPError, SessionBrokenError
@@ -1138,8 +1142,11 @@ class UIAutomatorServer(object):
             return self._default_session
 
         if not attach:
+            request_data = {"flags": "-W -S"}
+            if launch_timeout:
+                request_data["timeout"] = str(launch_timeout)
             resp = self._reqsess.post(
-                self.path2url("/session/" + pkg_name), data={"flags": "-W -S"})
+                self.path2url("/session/" + pkg_name), data=request_data)
             if resp.status_code == 410:  # Gone
                 raise SessionBrokenError(pkg_name, resp.text)
             resp.raise_for_status()

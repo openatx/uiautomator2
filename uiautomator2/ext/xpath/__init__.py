@@ -37,6 +37,13 @@ class XPath(object):
         self._d = d
         self._watchers = []  # item: {"xpath": .., "callback": func}
         self._timeout = 10.0
+    
+    def global_set(self, dicts):
+        valid_keys = {"timeout"}
+        for k, v in dicts.items():
+            if k not in valid_keys:
+                raise ValueError("invalid key", k)
+            setattr(self, "_"+k, v)
 
     def implicitly_wait(self, timeout):
         """ set default timeout when click """
@@ -152,6 +159,21 @@ class XPathSelector(object):
     @property
     def exists(self):
         return len(self.all()) > 0
+    
+    def wait(self, timeout=None):
+        """
+        Args:
+            timeout (float): seconds
+
+        Raises:
+            bool of exists
+        """
+        deadline = time.time() + (timeout or self._parent._timeout)
+        while time.time() < deadline:
+            if self.exists:
+                return True
+            time.sleep(.2)
+        return False
 
     def click_nowait(self):
         x, y = self.all()[0].center()
@@ -178,6 +200,34 @@ class XMLElement(object):
     @property
     def attrib(self):
         return self.elem.attrib
+
+
+# class Exists(object):
+#     """Exists object with magic methods."""
+
+#     def __init__(self, selector):
+#         self.selector = selector
+
+#     def __nonzero__(self):
+#         """Magic method for bool(self) python2 """
+#         return len(self.selector.all()) > 0
+
+#     def __bool__(self):
+#         """ Magic method for bool(self) python3 """
+#         return self.__nonzero__()
+
+#     def __call__(self, timeout=0):
+#         """Magic method for self(args).
+
+#         Args:
+#             timeout (float): exists in seconds
+#         """
+#         if timeout:
+#             return self.uiobject.wait(timeout=timeout)
+#         return bool(self)
+
+#     def __repr__(self):
+#         return str(bool(self))
 
 
 if __name__ == "__main__":
