@@ -622,6 +622,17 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
     多用于九宫格解锁，提前获取到每个点的相对坐标（这里支持百分比），
     更详细的使用参考这个帖子 [使用u2实现九宫图案解锁](https://testerhome.com/topics/11034)
 
+* Touch and drap (Beta)
+
+    这个接口感觉并不完，不过酬和能用。注：这个地方并不支持百分比
+
+    ```python
+    d.touch.down(10, 10) # 模拟按下
+    time.sleep(.01) # down 和 move 之间的延迟，自己控制
+    d.touch.move(15, 15) # 模拟移动
+    d.touch.up() # 模拟抬起
+    ```
+
 Note: click, swipe, drag operations support percentage position values. Example:
 
 `d.long_click(0.5, 0.5)` means long click center of screen

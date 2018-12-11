@@ -1484,7 +1484,8 @@ class Session(object):
             def move(self, x, y):
                 obj.jsonrpc.injectInputEvent(ACTION_MOVE, x, y, 0)
 
-            def up(self, x, y):
+            def up(self, x=0, y=0):
+                """ ACTION_UP x, y seems no use """
                 obj.jsonrpc.injectInputEvent(ACTION_UP, x, y, 0)
 
         return _Touch()
@@ -1525,6 +1526,7 @@ class Session(object):
     @hooks_wrap
     def _long_click(self, x, y, duration):
         self.touch.down(x, y)
+        # self.touch.move(x, y) # maybe can fix 
         time.sleep(duration)
         self.touch.up(x, y)
         return self
