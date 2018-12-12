@@ -20,7 +20,9 @@ matrix:
           repo: openatx/uiautomator2
           all_branches: true
           python: '2.7'
+    # https://docs.travis-ci.com/user/languages/android/
     - language: android
+      install: ant deps
       jdk: oraclejdk8
       env:
         global:
