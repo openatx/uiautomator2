@@ -7,7 +7,7 @@ init:
   - cd \
   - appveyor DownloadFile http://dl.google.com/android/android-sdk_r24.4.1-windows.zip
   - 7z x android-sdk_r24.4.1-windows.zip > nul
-  - cd C:\projects\ci-with-android-emulator
+  - cd C:\projects\uiautomator2
 
 install:
   - echo y | "%ANDROID_HOME%\tools\android.bat" update sdk -u -a -t tools
@@ -26,5 +26,5 @@ before_build:
 
 build_script:
   - ps: $env:Path += ";C:\android-sdk-windows\platform-tools";
-  - pip install 
+  - pip install -e C:\projects\uiautomator2
   - python test.py
