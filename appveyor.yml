@@ -29,7 +29,7 @@ build_script:
   - adb version
   - ps: adb devices
   - pip install -e C:\projects\uiautomator2
-  - python -m uiautomator2 init
+  - python -m uiautomator2 init --verbose
   - python -m uiautomator2 install https://github.com/appium/java-client/raw/master/src/test/java/io/appium/java_client/ApiDemos-debug.apk
   - python tests/test_simple.py
   # - ps: choco install fa
