@@ -176,6 +176,35 @@ def _is_wifi_addr(addr):
     return False
 
 
+_fail_prompt_enabled = False
+
+def set_fail_prompt(enable=True):
+    """
+    When Element click through Exception, Prompt user to decide
+    """
+    global _fail_prompt_enabled
+    _fail_prompt_enabled = enable
+
+
+def _failprompt(fn):
+    def _inner(self, *args, **kwargs):
+        if not _fail_prompt_enabled:
+            return fn(self, *args, **kwargs)
+
+        from uiautomator2 import messagebox
+        try:
+            return fn(self, *args, **kwargs)
+        except UiObjectNotFoundError as e:
+            result = messagebox.retryskipabort(str(e), 30)
+            if result == 'retry':
+                return _inner(self, *args, **kwargs)
+            elif result == 'skip':
+                return True
+            else:
+                raise
+    return _inner
+
+
 def hooks_wrap(fn):
     @functools.wraps(fn)
     def inner(self, *args, **kwargs):
@@ -1823,6 +1852,7 @@ class UiObject(object):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
 
+    @_failprompt
     def click(self, timeout=None, offset=None):
         """
         Click UI element. 

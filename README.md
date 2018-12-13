@@ -624,7 +624,7 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
 
 * Touch and drap (Beta)
 
-    这个接口感觉并不完，不过酬和能用。注：这个地方并不支持百分比
+    这个接口属于比较底层的原始接口，感觉并不完，不过酬和能用。注：这个地方并不支持百分比
 
     ```python
     d.touch.down(10, 10) # 模拟按下
@@ -1352,6 +1352,25 @@ d.click(0.5, 0.5)
 ```
 
 Use hooks, you can capture screenshot before or after `click`, `long_click`, `double_click`, `swipe`
+
+## 失败是弹出提示框 （Beta)
+使用方法
+
+```python
+import uiautomator2 as u2
+u2.set_fail_prompt(True) # 填写False可以关闭这个功能
+
+d = u2.connect()
+d(text="Search").click(timeout=2)
+```
+
+如果`Search`这个按钮没有找到，会弹出一个tkinter的提示框。
+包含 `Retry`, `Skip`, `Abort`按钮，如果没有任何操作30s后悔自动Abort，也就是抛出异常
+
+目前只有`click`这一个操作会有提示框。欢迎使用该功能，并提供反馈意见。 
+
+Introduced in `2018-12-13 23:17`
+
 ## 常见问题
 1. 提示`502`错误
 
