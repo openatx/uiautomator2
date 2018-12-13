@@ -1365,7 +1365,7 @@ d(text="Search").click(timeout=2)
 ```
 
 如果`Search`这个按钮没有找到，会弹出一个tkinter的提示框。
-包含 `Retry`, `Skip`, `Abort`按钮，如果没有任何操作30s后悔自动Abort，也就是抛出异常
+包含 `Retry`, `Skip`, `Abort`按钮，如果没有任何操作30s后自动Abort，也就是抛出异常
 
 目前只有`click`这一个操作会有提示框。欢迎使用该功能，并提供反馈意见。 
 
