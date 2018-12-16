@@ -274,8 +274,7 @@ def connect_usb(serial=None):
         warnings.warn("backend atx-agent is not alive, start again ...",
                       RuntimeWarning)
         adb.execute(
-            "shell", "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell",
-            "atx-agent", "server", "-d")
+            "shell", "/data/local/tmp/atx-agent", "server", "-d")
         deadline = time.time() + 3
         while time.time() < deadline:
             if d.alive:
