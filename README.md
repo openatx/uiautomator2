@@ -385,7 +385,7 @@ This part showcases how to perform common device operations:
     Command will be terminated when `r.close()` called.
     
 ### Session
-Session represent an app lifestyle. Can be used to start app, detect app crash.
+Session represent an app lifecycle. Can be used to start app, detect app crash.
 
 * Launch and close app
 
@@ -837,7 +837,7 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
       view.info  # ...
   ```
 
-  **Notes**: when using selectors in a list fashion, you must ensure that the UI elements on the screen
+  **Notes**: when using selectors in a code block that walk through the result list, you must ensure that the UI elements on the screen
   keep unchanged. Otherwise, when Element-Not-Found error could occur when iterating through the list.
 
 #### Get the selected ui object status and its information
