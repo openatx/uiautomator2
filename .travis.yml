@@ -3,7 +3,7 @@ python:
 - '2.7'
 - '3.6'
 install:
-- pip install -r requirements.txt
+- pip install --user -r requirements.txt
 before_script:
   - echo no | android create avd --force -n test -t android-21 --abi armeabi-v7a
   - emulator -avd test -no-audio -no-window &
