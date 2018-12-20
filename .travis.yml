@@ -4,8 +4,18 @@ python:
 - '3.6'
 install:
 - pip install -r requirements.txt
+before_script:
+  - echo no | android create avd --force -n test -t android-21 --abi armeabi-v7a
+  - emulator -avd test -no-audio -no-window &
+  - android-wait-for-emulator
+  - adb shell input keyevent 82 &
 script:
-- echo "skip test"
+  - adb version
+  - adb devices
+  - python -m pip install -e .
+  - python -m uiautomator2 init --verbose
+  - python -m uiautomator2 install https://github.com/appium/java-client/raw/master/src/test/java/io/appium/java_client/ApiDemos-debug.apk
+  - python tests/test_simple.py
 deploy:
   skip_cleanup: true
   provider: pypi
