@@ -247,7 +247,7 @@ class Installer(adbutils.Adb):
 
     @property
     def atx_agent_path(self):
-        return '/data/local/tmp/atx-agent'
+        return self.get_executable_dir() + '/atx-agent'
 
     def launch_and_check(self):
         log.info("launch atx-agent daemon")
@@ -348,8 +348,9 @@ class MyFire(object):
         ins.install_minitouch()
         ins.install_uiautomator_apk(apk_version, reinstall)
 
+        exedir = ins.get_executable_dir()
         log.info("atx-agent is already running, force stop")
-        ins.shell("/data/local/tmp/atx-agent", "-stop", raise_error=False)
+        ins.shell(exedir + "/atx-agent", "-stop", raise_error=False)
         ins.shell("killall", "atx-agent", raise_error=False)
         ins.shell("rm", "/sdcard/atx-agent.pid", raise_error=False)
         ins.shell("rm", "/sdcard/atx-agent.log.old", raise_error=False)
