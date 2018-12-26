@@ -1,0 +1,33 @@
+environment:
+  ANDROID_HOME: "C:\\android-sdk-windows"
+  JAVA_HOME: "C:\\Program Files\\Java\\jdk1.8.0"
+
+init:
+  - cd \
+  - appveyor DownloadFile http://dl.google.com/android/android-sdk_r24.4.1-windows.zip
+  - 7z x android-sdk_r24.4.1-windows.zip > nul
+  - cd C:\projects\uiautomator2
+
+install:
+  - echo y | "%ANDROID_HOME%\tools\android.bat" update sdk -u -a -t tools
+  - echo y | "%ANDROID_HOME%\tools\android.bat" update sdk -u -a -t platform-tools
+  - echo y | "%ANDROID_HOME%\tools\android.bat" update sdk -u -a -t build-tools-21.0.0
+  - echo y | "%ANDROID_HOME%\tools\android.bat" update sdk -u -a -t android-21
+  - echo y | "%ANDROID_HOME%\tools\android.bat" update sdk -u -a -t extra-google-m2repository
+  - echo y | "%ANDROID_HOME%\tools\android.bat" update sdk -u -a -t extra-android-m2repository
+  - echo y | "%ANDROID_HOME%\tools\android.bat" update sdk -u -a -t sys-img-armeabi-v7a-android-21
+
+before_build:
+  - echo no | "%ANDROID_HOME%\tools\android.bat" create avd --force -n test -t android-21 --abi armeabi-v7a
+  - ps: Start-Process "C:\android-sdk-windows\tools\emulator.exe" "-avd test -no-audio -no-window" 
+  - ps: Start-sleep -s 120
+  - echo dummy | "%ANDROID_HOME%\platform-tools\adb.exe" shell input keyevent 82 
+
+build_script:
+  - ps: $env:Path += ";C:\android-sdk-windows\platform-tools";
+  - adb version
+  - adb devices
+  - python -m pip install -e .
+  - python -m uiautomator2 init --verbose
+  - python -m uiautomator2 install https://github.com/appium/java-client/raw/master/src/test/java/io/appium/java_client/ApiDemos-debug.apk
+  - python tests/test_simple.py
