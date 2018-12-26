@@ -11,8 +11,9 @@ import time
 class SimpleTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.d = u2.connect_usb()
+        cls.d = u2.connect()
         cls.d.set_orientation('natural')
+        cls.d.implicitly_wait(10)
 
     def setUp(self):
         self.sess = self.d.session("io.appium.android.apis")
@@ -29,7 +30,10 @@ class SimpleTestCase(unittest.TestCase):
         d(text="App").click()
         d(text="Notification").click()
         d(text="NotifyWithText").click()
-        d(text="Show Short Notification").click()
+        try:
+            d(text="Show Short Notification").click()
+        except u2.UiObjectNotFoundError:
+            d(text="SHOW SHORT NOTIFICATION").click()
         self.assertEqual(d.toast.get_message(2, 5, ""), "Short notification")
         time.sleep(.5)
         self.assertIsNone(d.toast.get_message(0, 0.4))
@@ -83,8 +87,47 @@ class SimpleTestCase(unittest.TestCase):
 
     def test_xpath(self):
         d = self.sess
+        self.assertEqual(len(d.xpath("//*[@text='Media']").all()), 1)
+        self.assertEqual(len(d.xpath("//*[@text='MediaNotExists']").all()), 0)
         d.xpath("//*[@text='Media']").click()
         self.assertTrue(d.xpath('//*[contains(@text, "Audio")]').wait(5))
+
+    def test_implicitly_wait(self):
+        d = self.sess
+        d.implicitly_wait(2)
+        self.assertEqual(d.implicitly_wait(), 2)
+        start = time.time()
+        with self.assertRaises(u2.UiObjectNotFoundError):
+            d(text="Sensors").get_text()
+        time_used = time.time() - start
+        self.assertGreaterEqual(time_used, 2)
+        # maybe longer then 2, waitForExists -> getText
+        # getText may take 1~2s
+        self.assertLess(time_used, 2 + 3)
+
+    def test_select_iter(self):
+        d = self.sess
+        d(text='OS').click()
+        texts = d(resourceId='android:id/list').child(
+            className='android.widget.TextView')
+        self.assertEqual(texts.count, 4)
+        words = []
+        for item in texts:
+            words.append(item.get_text())
+        self.assertEqual(
+            words,
+            ['Morse Code', 'Rotation Vector', 'Sensors', 'SMS Messaging'])
+
+    def test_plugin(self):
+        def _my_plugin(d, k):
+            def _inner():
+                return k
+
+            return _inner
+
+        u2.plugin_clear()
+        u2.plugin_register('my', _my_plugin, 'pp')
+        self.assertEqual(self.d.ext_my(), 'pp')
 
 
 if __name__ == '__main__':

@@ -72,7 +72,20 @@ class Adb(object):
             raise EnvironmentError("subprocess", cmdline,
                                    e.output.decode(
                                        'utf-8', errors='ignore'))
-
+            
+    def devices(self, states=['device', 'offline']):
+        """
+        Returns:
+            [($serial1, "device"), ($serial2, "offline")]
+        """
+        # TODO: not really checking anything
+        return [(d, "device") for d in self.list_devices()]
+        output = subprocess.check_output([self.adb_path(), 'devices'])
+        pattern = re.compile(
+            r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
+        matches = pattern.findall(output.decode())
+        return [(m[0], m[1]) for m in matches]
+      
     @property
     def serial(self):
         return self._serial

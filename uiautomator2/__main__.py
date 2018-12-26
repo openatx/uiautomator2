@@ -195,6 +195,15 @@ class Installer(adbutils.Adb):
             raise EnvironmentError(
                 "package com.github.uiautomator.test not installed")
 
+    def check_agent_installed(self, agent_version):
+        lport = self.forward_port(7912)
+        log.debug("forward device(port:7912) -> %d", lport)
+        try:
+            r = requests.get("http://127.0.0.1:%d/version" % lport, timeout=5)
+            return r.text.strip() == agent_version
+        except:
+            return False
+
     def install_atx_agent(self, agent_version, reinstall=False):
         version_output = self.shell(
             '/data/local/tmp/atx-agent', '-v', raise_error=False).strip()
@@ -237,11 +246,17 @@ class Installer(adbutils.Adb):
         self.push(bin_path, '/data/local/tmp/atx-agent', 0o755)
         log.debug("atx-agent installed")
 
+    @property
+    def atx_agent_path(self):
+        return '/data/local/tmp/atx-agent'
+
     def launch_and_check(self):
         log.info("launch atx-agent daemon")
-        exedir = self.get_executable_dir()
-        exefile = "%s/%s" % (exedir, 'atx-agent')
-        args = ['TMPDIR=/sdcard', exefile, '-d']
+
+        # stop first
+        self.shell(self.atx_agent_path, "server", "--stop", raise_error=False)
+        # start server
+        args = [self.atx_agent_path, "server", '-d']
         if self.server_addr:
             args.append('-t')
             args.append(self.server_addr)
@@ -254,20 +269,24 @@ class Installer(adbutils.Adb):
             try:
                 r = requests.get(
                     'http://localhost:%d/version' % lport, timeout=10)
-                log.debug("atx-agent version: %s", r.text)
+                r.raise_for_status()
+                log.info("atx-agent version: %s", r.text)
                 # todo finish the retry logic
-                log.info("atx-agent output: %s", output.strip())
+                print("atx-agent output:", output.strip())
                 # open uiautomator2 github URL
                 self.shell("am", "start", "-a", "android.intent.action.VIEW",
                            "-d", "https://github.com/openatx/uiautomator2")
                 log.info("success")
                 break
             except (requests.exceptions.ConnectionError,
-                    requests.exceptions.ReadTimeout):
-                time.sleep(.5)
+                    requests.exceptions.ReadTimeout,
+                    requests.exceptions.HTTPError):
+                time.sleep(1.5)
                 cnt += 1
         else:
-            log.error("failure")
+            log.error(
+                "Failure, unable to get result from http://localhost:%d/version",
+                lport)
 
 
 class MyFire(object):
@@ -287,15 +306,22 @@ class MyFire(object):
             log.info("atx-server addr %s", server)
         if mirror:
             global GITHUB_BASEURL
-            GITHUB_BASEURL = "http://openatx.appetizer.io"
+            GITHUB_BASEURL = "https://github-mirror.open.netease.com/openatx"
 
         if proxy:
             os.environ['HTTP_PROXY'] = proxy
             os.environ['HTTPS_PROXY'] = proxy
 
         if not serial:
-            devices = adbutils.Adb.list_devices()
-            if len(devices) == 0:
+            valid_serials = [
+                sn for sn, _ in adbutils.Adb().devices(states=['device'])
+            ]
+            # output = subprocess.check_output(['adb', 'devices'])
+            # pattern = re.compile(
+            #     r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
+            # matches = pattern.findall(output.decode())
+            # valid_serials = [m[0] for m in matches if m[1] == 'device']
+            if len(valid_serials) == 0:
                 log.warning("No avaliable android devices detected.")
                 return
 
@@ -305,13 +331,12 @@ class MyFire(object):
                 self._init_with_serial(serial, server, apk_version,
                                        agent_version, reinstall,
                                        ignore_apk_check)
-            # if len(valid_serials) > 1:
-            #     log.warning(
-            #         "More then 1 device detected, you must specify android serial"
-            #     )
-            #     return
-            # serial = valid_serials[0]
         else:
+            # Pass in serials such as 8734e3576, which would otherwise be floating point.. keep ints safe
+            # Prefix with "str:", so for example
+            # python3 -m uiautomator2 init --serial str:8734e3576
+            if hasattr(serial, 'split'):
+                serial = serial.split('str:')[-1]
             self._init_with_serial(serial, server, apk_version, agent_version,
                                    reinstall, ignore_apk_check)
 
@@ -323,7 +348,15 @@ class MyFire(object):
         ins.install_minicap()
         ins.install_minitouch()
         ins.install_uiautomator_apk(apk_version, reinstall)
-        ins.install_atx_agent(agent_version, reinstall)
+
+        log.info("atx-agent is already running, force stop")
+        ins.shell("/data/local/tmp/atx-agent", "-stop", raise_error=False)
+        ins.shell("killall", "atx-agent", raise_error=False)
+        ins.shell("rm", "/sdcard/atx-agent.pid", raise_error=False)
+        ins.shell("rm", "/sdcard/atx-agent.log.old", raise_error=False)
+        if not ins.check_agent_installed(agent_version):
+            ins.install_atx_agent(agent_version, reinstall)
+
         if not ignore_apk_check:
             ins.check_apk_installed(apk_version)
         ins.launch_and_check()
