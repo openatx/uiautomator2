@@ -325,7 +325,7 @@ class MyFire(object):
                 log.warning("No avaliable android devices detected.")
                 return
 
-            valid_serials = map(lambda device: device.serial, devices)
+            valid_serials = [d.get_serial_no() for d in valid_serials]
             log.info("Detect pluged devices: %s", valid_serials)
             for serial in valid_serials:
                 self._init_with_serial(serial, server, apk_version,
