@@ -298,9 +298,9 @@ class TimeoutRequestsSession(requests.Session):
             kwargs['timeout'] = HTTP_TIMEOUT
         verbose = hasattr(self, 'debug') and self.debug
         if verbose:
-            data = kwargs.get('data') or ''
+            data = kwargs.get('data') or '""'
             if isinstance(data, dict):
-                data = 'dict:' + json.dumps(data)
+                data = json.dumps(data)
             time_start = time.time()
             print(datetime.now().strftime("%H:%M:%S.%f")[:-3],
                   "$ curl -X {method} -d '{data}' '{url}'".format(
