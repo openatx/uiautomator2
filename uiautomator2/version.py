@@ -19,7 +19,8 @@ __apk_version__ = '1.1.7'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__atx_agent_version__ = '0.5.2'
+__atx_agent_version__ = '0.5.3'
+# 0.5.3 try to fix panic in heartbeat
 # 0.5.2 fix /session/${pkgname} launch timeout too short error(before was 10s)
 # 0.5.1 bad tag, deprecated
 # 0.5.0 add /packages/${pkgname}/<info|icon> api
