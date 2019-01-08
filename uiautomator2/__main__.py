@@ -1,23 +1,19 @@
 # coding: utf-8
 #
 
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
-import fire
-import os
+import hashlib
 import logging
-import subprocess
+import os
+import re
 import shutil
 import tarfile
-import hashlib
-import re
 import time
-import socket
-import progress.bar
-from contextlib import closing
 
+import fire
 import humanize
+import progress.bar
 import requests
 
 import uiautomator2 as u2
