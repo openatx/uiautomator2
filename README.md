@@ -55,22 +55,22 @@ uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本
   - **[Toast](#toast)**
   - **[XPath](#xpath)**
 
-**[常见问题](#常见问题)**
-  - **[502错误](#常见问题)**
-  - **[Connection Error](#常见问题)**
-  - **[深度睡眠](#常见问题)**
-  - **[Testerhome问题收集贴](#常见问题)**
-  - **[点击偏差](#常见问题)**
-  - **[释放AccessibilityService](#常见问题)**
+**[常见问题](https://github.com/openatx/uiautomator2/wiki#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98-testerhome%E8%AE%A8%E8%AE%BA%E5%B8%96)**
+  - **[502错误](https://github.com/openatx/uiautomator2/wiki#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98-testerhome%E8%AE%A8%E8%AE%BA%E5%B8%96)**
+  - **[Connection Error](https://github.com/openatx/uiautomator2/wiki#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98-testerhome%E8%AE%A8%E8%AE%BA%E5%B8%96)**
+  - **[深度睡眠](https://github.com/openatx/uiautomator2/wiki#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98-testerhome%E8%AE%A8%E8%AE%BA%E5%B8%96)**
+  - **[Testerhome问题收集贴](https://github.com/openatx/uiautomator2/wiki#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98-testerhome%E8%AE%A8%E8%AE%BA%E5%B8%96)**
+  - **[点击偏差](https://github.com/openatx/uiautomator2/wiki#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98-testerhome%E8%AE%A8%E8%AE%BA%E5%B8%96)**
+  - **[释放AccessibilityService](https://github.com/openatx/uiautomator2/wiki#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98-testerhome%E8%AE%A8%E8%AE%BA%E5%B8%96)**
 
-**[实验性功能](#实验性功能)**
-  - **[远程投屏](#实验性功能)**
-  - **[插上自动init](#实验性功能)**
-  - **[htmlreport](#实验性功能)**
-  - **[诊断uiautomator2方法](#诊断uiautomator2方法)**
-  - **[Plugin](#plugin)**
-  - **[Hooks](#hooks)**
-  - **[失败时弹出提示框](#失败时弹出提示框)**
+**[实验性功能](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+  - **[远程投屏](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+  - **[插上自动init](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+  - **[htmlreport](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+  - **[诊断uiautomator2方法](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+  - **[Plugin](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+  - **[Hooks](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+  - **[失败时弹出提示框](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
 
 **[项目历史](#项目历史)**
 
@@ -139,6 +139,13 @@ uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本
 
     具体参考文章：[浅谈自动化测试工具python-uiautomator2](https://testerhome.com/topics/11357)
 
+4. 【推荐】AppetizerIO 所见即所得脚本编辑器
+
+    [AppetizerIO](https://www.appetizer.io) 提供了对uiautomator2的深度集成，可以图形化管理ATX设备，还有所见即所得脚本编辑器
+    * 到网站下载直接打开，首次使用需要注册账号
+    * `设备管理` 界面里可以检查设备是否正常init，起停atx-agent，抓取atx-agent.log文件
+    * `APP测试->脚本助手`调出脚本助手，实时界面同步，点击界面直接插入各种代码，同时支持uiautomator和Appium
+    * **[视频教程 请戳这里](https://github.com/openatx/uiautomator2/wiki/Appetizer%E6%89%80%E8%A7%81%E5%8D%B3%E6%89%80%E5%BE%97u2%E8%84%9A%E6%9C%AC%E7%BC%96%E8%BE%91%E5%99%A8)**  [其他文档在此](http://doc.appetizer.io)
     
 # Connect to a device
 There are two ways to connect to the device. 
@@ -1277,149 +1284,6 @@ for elem in d.xpath("//android.widget.TextView").all():
 # className包含ImageView
 //*[contains(name(), "ImageView")]
 ```
-
-## 常见问题
-1. 提示`502`错误
-
-    尝试手机连接PC，然后运行下面的命令
-    
-    ```
-    adb shell am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub \
-		com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner
-    ```
-    如果运行正常，启动测试之前增加一行代码`d.healthcheck()`
-
-    如果报错，可能是缺少某个设备组件没有安装，使用下面的命令重新初始化 `python -m uiautomator2 init --reinstall`
-
-2. 提示Connection Error
-
-    可能是atx-agent没有在运行。
-
-    ```bash
-    # 检查是否运行的方法
-    > adb shell
-    $ ps | grep atx # 如果看到atx-agent则表示正在运行
-
-    # 启动atx-agent
-    $ /data/local/tmp/atx-agent -d
-
-    # 停止atx-agent
-    $ /data/local/tmp/atx-agent -stop
-    ```
-
-Other: <https://github.com/openatx/uiautomator2/wiki/Common-issues>
-
-3. 在Android 8以上，例如华为等设备上，测试时建议保持屏幕常量（开发者选项）保证后台的atx-agent不被系统放入深度睡眠，同时建议将atx相关组件在设置->电池中不进行电池优化（防止睡眠）：https://github.com/openatx/uiautomator2/issues/284
-
-4. [Testerhome讨论帖](https://testerhome.com/topics/12025)
-
-5. 点击坐标出现偏移
-为了提高uiautomator2再有播放器界面不卡死，代码中将默认3000ms中的waitForIdleTimeout改成了0，不过有可能会造成坐标偏移，虽然概率不大。
-如果出现这种情况，可以将其调大一点 `d.jsonrpc.setConfigurator({"waitForIdleTimeout": 100})`
-
-6. 如何停用UiAutomator的守护程序 How to stop UiAutomator process keeper
-
-因为有`atx-agent`的存在，Uiautomator会被一直守护着，如果退出了就会被重新启动起来。但是Uiautomator又是霸道的，一旦它在运行，手机上的辅助功能、电脑上的uiautomatorviewer 就都不能用了，除非关掉该框架本身的uiautomator。下面就说下两种关闭方法
-
-方法1：
-
-直接打开`uiautomator` app（init成功后，就会安装上的），点击`关闭UIAutomator`
-
-方法2:
-
-```python
-d.service("uiautomator").stop()
-# d.service("uiautomator").start()
-```
-[ATX与Maxim共存AccessibilityService的方法](https://testerhome.com/topics/17179)
-
-# 实验性功能
-- 远程查看： 手机`python -m uiautomator2 init`之后，浏览器输入 <device_ip:7912>，会发现一个远程控制功能，延迟非常低噢。^_^
-- 手机USB连接后，自动调用init命令 [adbkit-init](examples/adbkit-init)
-- [htmlreport](uiautomator2/ext/htmlreport) 记录测试过程的测试报告
-
-## 诊断uiautomator2方法
-```bash
-$ adb forward tcp:9008 tcp:9008
-$ curl 127.0.0.1:9008/ping
-# expect: pong
-
-$ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' 127.0.0.1:9008/jsonrpc/0
-# expect JSON output
-```
-
-## Plugin
-为了方便uiautomator2跟其他项目集成，所以开发了这套插件机制。参考了一些[过去flask的插件机制](https://www.zoulei.net/2016/09/05/flask_plugin_note/)。
-使用示例
-
-```python
-import uiautomator2 as u2
-
-def image_save(d, fileext='.jpg'):
-    """ save screenshot plugin """
-    def inner(filename):
-        d.screenshot().save(filename+fileext)
-    return inner
-
-u2.plugin_register('png_save', image_save, '.png')
-
-d = u2.connect()
-d.ext_png_save("screen") # screenshot will save screen.png
-```
-
-这里引入了一个函数`plugin_register`
-
-```python
-def plugin_register(name, func_or_class, *args, **kwargs)
-```
-
-name代表插件的名字，`func_or_class`可以是函数，也可以是类，其第一个参数一定是`d`（设备的实例）, `args`和`kwargs`是可选参数
-
-通过`d.ext_`加上注册插件是的名字，如果插件名是`png_save`则通过`d.ext_png_save`调用。
-
-`image_save`这个函数只有在最初调用`d.ext_png_save`的时候会调用，之后都只使用第一次生成的实例。
-
-> PS: 插件的调用没有自动补全，有点不太方便
-
-## Hooks
-```python
-d = u2.connect()
-
-def callback(stage, func_name, args, kwargs, ret):
-    print("stage", stage)
-    print("call", func_name, args, kwargs)
-    print("return", ret)
-
-d.hooks_register(callback)
-d.click(0.5, 0.5)
-# expect output
-# stage: before
-# call: click (540, 960) {}
-# return: None
-# stage: after
-# call: click (540, 960) {}
-# return: None
-```
-
-Use hooks, you can capture screenshot before or after `click`, `long_click`, `double_click`, `swipe`
-
-## 失败时弹出提示框
-使用方法
-
-```python
-import uiautomator2 as u2
-u2.set_fail_prompt(True) # 填写False可以关闭这个功能
-
-d = u2.connect()
-d(text="Search").click(timeout=2)
-```
-
-如果`Search`这个按钮没有找到，会弹出一个tkinter的提示框。
-包含 `Retry`, `Skip`, `Abort`按钮，如果没有任何操作30s后自动Abort，也就是抛出异常
-
-目前只有`click`这一个操作会有提示框。欢迎使用该功能，并提供反馈意见。 
-
-Introduced in `2018-12-13 23:17`
 
 # 项目历史
 * 项目重构自 <https://github.com/openatx/atx-uiautomator>
