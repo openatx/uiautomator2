@@ -3,12 +3,12 @@
 
 import re
 import time
+import threading
 
-from six.moves import shlex_quote
 import uiautomator2
+from uiautomator2.utils import U
 from logzero import logger
 from lxml import etree
-from uiautomator2 import U, E
 
 
 def safe_xmlstr(s):
@@ -37,7 +37,7 @@ class XPath(object):
         self._d = d
         self._watchers = []  # item: {"xpath": .., "callback": func}
         self._timeout = 10.0
-    
+
     def global_set(self, dicts):
         valid_keys = {"timeout"}
         for k, v in dicts.items():
@@ -86,6 +86,16 @@ class XPath(object):
                 h['callback'](selector)
                 return True
         return False
+
+    def watch_background(self):
+        def _watch_forever():
+            while 1:
+                self.run_watchers()
+                time.sleep(4)
+
+        th = threading.Thread(target=_watch_forever)
+        th.daemon = True
+        th.start()
 
     def sleep_watch(self, seconds):
         """ run watchers when sleep """
@@ -159,7 +169,7 @@ class XPathSelector(object):
     @property
     def exists(self):
         return len(self.all()) > 0
-    
+
     def wait(self, timeout=None):
         """
         Args:

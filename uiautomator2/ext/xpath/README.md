@@ -27,27 +27,30 @@ pip install -U --pre uiautomator2
 ```
 
 ## 使用方法
+目前该插件已经内置到uiautomator2中了，所以不需要plugin注册了。
+
 ```python
 import uiautomator2 as u2
-import uiautomator2.ext.xpath as xpath
 
-xpath.init()
 
 def main():
     d = u2.connect()
     d.app_start("com.netease.cloudmusic", stop=True)
 
     # watchers 监控弹窗
-    d.ext_xpath.when("跳过").click()
-    d.ext_xpath.when("知道了").click()
+    d.xpath.when("跳过").click()
+    d.xpath.when("知道了").click()
 
     # steps
-    d.ext_xpath("//*[@text='私人FM']/../android.widget.ImageView").click()
-    d.ext_xpath("下一首").click()
+    d.xpath("//*[@text='私人FM']/../android.widget.ImageView").click()
+    d.xpath("下一首").click()
 
     # 监控弹窗2s钟，时间可能大于2s
-    d.ext_xpath.sleep_watch(2)
-    d.ext_xpath("转到上一层级").click()
+    d.xpath.sleep_watch(2)
+    d.xpath("转到上一层级").click()
+
+    # 一直在后台监控（目前每隔4s检查一次），暂时还没提供暂停的方法
+    d.xpath.watch_background()
 ```
 
 ## XPath规则
