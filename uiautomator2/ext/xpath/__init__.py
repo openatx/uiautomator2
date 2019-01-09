@@ -28,6 +28,10 @@ class TimeoutException(Exception):
     pass
 
 
+class XPathError(Exception):
+    """ basic error for xpath plugin """
+
+
 class XPath(object):
     def __init__(self, d):
         """
@@ -38,12 +42,19 @@ class XPath(object):
         self._watchers = []  # item: {"xpath": .., "callback": func}
         self._timeout = 10.0
 
-    def global_set(self, dicts):
-        valid_keys = {"timeout"}
-        for k, v in dicts.items():
-            if k not in valid_keys:
-                raise ValueError("invalid key", k)
-            setattr(self, "_"+k, v)
+        # used for click("#back") and back is the key
+        self._alias = {}
+        self._alias_strict = False
+
+    def global_set(self, key, value): #dicts):
+        valid_keys = {"timeout", "alias", "alias_strict"}
+        if key not in valid_keys:
+            raise ValueError("invalid key", key)
+        setattr(self, "_"+key, value)
+        # for k, v in dicts.items():
+        #     if k not in valid_keys:
+        #         raise ValueError("invalid key", k)
+        #     setattr(self, "_"+k, v)
 
     def implicitly_wait(self, timeout):
         """ set default timeout when click """
@@ -125,6 +136,17 @@ class XPath(object):
             # source = self._d.dump_hierarchy()
         raise TimeoutException("timeout %.1f" % timeout)
 
+    def __alias_get(self, key, default=None):
+        """
+        when alias_strict set, if key not in _alias, XPathError will be raised
+        """
+        value = self._alias.get(key, default)
+        if value is None:
+            if self._alias_strict:
+                raise XPathError("alias have not found key", key)
+            value = key
+        return value
+
     def __call__(self, xpath, source=None):
         if xpath.startswith('//'):
             pass
@@ -132,6 +154,9 @@ class XPath(object):
             xpath = '//*[@resource-id={}]'.format(string_quote(xpath[1:]))
         elif xpath.startswith('^'):
             xpath = '//*[re:match(text(), {})]'.format(string_quote(xpath))
+        elif xpath.startswith("$"): # special for objects
+            key = xpath[1:]
+            return self(self.__alias_get(key), source)
         elif xpath.startswith('%') and xpath.endswith("%"):
             xpath = '//*[contains(text(), {}]'.format(string_quote(xpath))
         elif xpath.startswith('%'):

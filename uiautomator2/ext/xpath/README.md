@@ -53,6 +53,30 @@ def main():
     d.xpath.watch_background()
 ```
 
+别名定义，感觉这种写法有点类似selenium中的[PageObjects](https://selenium-python.readthedocs.io/page-objects.html)
+
+>下面的代码为了方便就不写`import`了
+
+```python
+# 这里是Python3的写法，python2的string定义需要改成 u"菜单" 注意前的这个u
+d.xpath.global_set("alias", {
+    "菜单": "@com.netease.cloudmusic:id/qh", # TODO(ssx): maybe we can support P("@com.netease.cloudmusic:id/qh", wait_timeout=2) someday
+    "设置": "//android.widget.TextView[@text='设置']",
+})
+
+
+# 这里需要 $ 开头
+d.xpath("$菜单").click() # 等价于 d.xpath()
+d.xpath("$设置").click()
+
+
+# alias_strict 设置项
+d.xpath("$返回").click() # 等价于 d.xpath("返回").click()，因为返回没有预先在alias中定义
+
+d.xpath.global_set("alias_strict", True) # 默认 False
+d.xpath("$返回").click() # 在这里会直接跑出XPathError异常
+```
+
 ## XPath规则
 **规则1**
 
@@ -80,6 +104,12 @@ def main():
 `%知道` 匹配`知道`结束的文本，相当于 `//*[ends-with(text(), '知道')]`
 
 `%知道%` 匹配包含`知道`的文本，相当于 `//*[contains(text(), '知道')]`
+
+**规则5**
+
+> 另外来自Selenium PageObjects
+
+`$知道` 匹配 通过`d.xpath.global_set("alias", dict)` dict字典中的内容， 如果不存在将使用`知道`来匹配
 
 **规则 Last**
 
