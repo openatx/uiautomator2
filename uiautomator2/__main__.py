@@ -386,7 +386,8 @@ _commands = [{
     "help": "install enssential resources to device",
     "flags": [
         dict(
-            name=["serial", "s"],
+            # name=["serial", "s"],
+            args=['--serial', '-s'],
             type=str,
             help='serial number'),
         dict(
@@ -427,9 +428,12 @@ def main():
             sp = subparser.add_parser(cmd_name, help=c.get('help'),
                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
             for f in c.get('flags', []):
-                args = ['-'*min(2, len(n)) + n for n in f['name']]
+                args = f.get('args')
+                if not args:
+                    args = ['-'*min(2, len(n)) + n for n in f['name']]
                 kwargs = f.copy()
-                kwargs.pop('name')
+                kwargs.pop('name', None)
+                kwargs.pop('args', None)
                 sp.add_argument(*args, **kwargs)
 
         args = parser.parse_args()
