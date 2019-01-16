@@ -20,6 +20,12 @@ def find_free_port():
         s.close()
 
 
+def devices():
+    client = AdbClient(
+        host='127.0.0.1', port=5037)  # TODO(ssx): should get HOST from env
+    return client.devices()
+
+
 class Adb(object):
     def __init__(self, serial=None, host="127.0.0.1", port=5037):
         self._serial = serial
@@ -39,7 +45,9 @@ class Adb(object):
             if len(devices) == 0:
                 raise RuntimeError("Can't find any android device/emulator")
             elif len(devices) > 1:
-                raise RuntimeError("more than one device/emulator, please specify the serial number")
+                raise RuntimeError(
+                    "more than one device/emulator, please specify the serial number"
+                )
             else:
                 device = devices[0]
                 self._serial = device.get_serial_no()
@@ -61,7 +69,8 @@ class Adb(object):
     def _start_adb_server():
         adb_path = whichcraft.which("adb")
         if adb_path is None:
-            raise EnvironmentError("Can't find the adb, please install adb on your PC")
+            raise EnvironmentError(
+                "Can't find the adb, please install adb on your PC")
 
         cmd = [adb_path, "start-server"]
         cmdline = subprocess.list2cmdline(cmd)
@@ -70,22 +79,20 @@ class Adb(object):
                 cmdline, stderr=subprocess.STDOUT, shell=True).decode('utf-8')
         except subprocess.CalledProcessError as e:
             raise EnvironmentError("subprocess", cmdline,
-                                   e.output.decode(
-                                       'utf-8', errors='ignore'))
-            
-    def devices(self, states=['device', 'offline']):
-        """
-        Returns:
-            [($serial1, "device"), ($serial2, "offline")]
-        """
-        # TODO: not really checking anything
-        return [(d, "device") for d in self.list_devices()]
-        output = subprocess.check_output([self.adb_path(), 'devices'])
-        pattern = re.compile(
-            r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
-        matches = pattern.findall(output.decode())
-        return [(m[0], m[1]) for m in matches]
-      
+                                   e.output.decode('utf-8', errors='ignore'))
+
+    # def devices(self, states=['device', 'offline']):
+    #     """
+    #     Returns:
+    #         [($serial1, "device"), ($serial2, "offline")]
+    #     """
+    #     # TODO: not really checking anything
+    #     return [(d, "device") for d in self.list_devices()]
+    #     output = subprocess.check_output([self.adb_path(), 'devices'])
+    #     pattern = re.compile(r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
+    #     matches = pattern.findall(output.decode())
+    #     return [(m[0], m[1]) for m in matches]
+
     @property
     def serial(self):
         return self._serial
@@ -106,7 +113,24 @@ class Adb(object):
                 "{RemotePort}": "{LocalPort}"
             }
         """
-        forward_list = self._device.list_forward()
+
+        # TODO(ssx): There is a bug in pure-python-adb "forward_list"
+        # waiting for the lib author to fixit.
+        # original code --.
+        # forward_list = self._device.list_forward()
+
+        cmd = "host-serial:{serial}:list-forward".format(serial=self.serial)
+        result = self._device._execute_cmd(cmd)
+
+        forward_list = {}
+
+        for line in result.split('\n'):
+            if not line:
+                continue
+            serial, local, remote = line.split()
+            if serial != self._device.serial:
+                continue
+            forward_list[local] = remote
 
         ret = {}
 
@@ -144,7 +168,11 @@ class Adb(object):
             return
         try:
             # some device is missing -g
-            self._device.install(apk_path, reinstall=True, downgrade=True, grand_all_permissions=True)
+            self._device.install(
+                apk_path,
+                reinstall=True,
+                downgrade=True,
+                grand_all_permissions=True)
         except InstallError:
             self._device.install(apk_path, reinstall=True, downgrade=True)
 
