@@ -874,6 +874,20 @@ class UIAutomatorServer(object):
         self.open_identify()
         self._default_session.press("home")
 
+    def play_sound(self, sound):
+        '''
+        播放一段语音
+        :param sound: 语音路径
+        '''
+        audio_path = "/data/local/tmp/{}".format(int(time.time()))
+        self.push(sound, audio_path)
+        try:
+            # time.sleep(0.5)
+            return self.jsonrpc.playSound(audio_path)
+        finally:
+            # delete audio file
+            self.shell("rm -rf {}".format(audio_path))
+
     def open_identify(self, theme='black'):
         """
         Args:
