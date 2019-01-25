@@ -1,7 +1,9 @@
 # coding: utf-8
 #
 
-__apk_version__ = '1.1.5'
+__apk_version__ = '1.1.7'
+# 1.1.7 fix dumpHierarchy XML charactor error
+# 1.1.6 fix android P support
 # 1.1.5 waitForExists use UiObject2 method first then fallback to UiObject.waitForExists
 # 1.1.4 add ADB_EDITOR_CODE broadcast support, fix bug （toast捕获导致app闪退)
 # 1.1.3 use thread to make watchers.watched faster, try to fix input method type multi
@@ -17,7 +19,15 @@ __apk_version__ = '1.1.5'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__atx_agent_version__ = '0.4.5'
+__atx_agent_version__ = '0.5.4'
+# 0.5.4 upgrade atx-agent to fix apk parse mainActivity of com.tmall.wireless
+# 0.5.3 try to fix panic in heartbeat
+# 0.5.2 fix /session/${pkgname} launch timeout too short error(before was 10s)
+# 0.5.1 bad tag, deprecated
+# 0.5.0 add /packages/${pkgname}/<info|icon> api
+# 0.4.9 update for go1.11
+# 0.4.8 add /wlan/ip and /packages REST API for package install
+# 0.4.6 fix download dns resolve error (sometimes)
 # 0.4.5 add http log, change atx-agent -d into atx-agent server -d
 # 0.4.4 this version is gone
 # 0.4.3 ignore sigint to prevent atx-agent quit

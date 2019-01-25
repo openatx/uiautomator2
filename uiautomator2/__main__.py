@@ -1,24 +1,23 @@
 # coding: utf-8
 #
 
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
+
+import argparse
+import hashlib
+import logging
+import os
+import re
+import shutil
+import sys
+import tarfile
+import time
 
 import fire
-import os
-import logging
-import subprocess
-import shutil
-import tarfile
-import hashlib
-import re
-import time
-import socket
-import progress.bar
-from contextlib import closing
-
 import humanize
+import progress.bar
 import requests
+from logzero import logger
 
 import uiautomator2 as u2
 from uiautomator2 import adbutils
@@ -41,7 +40,7 @@ log = get_logger('uiautomator2')
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
 log.debug("use cache directory: %s", appdir)
 
-GITHUB_BASEURL = "https://github-mirror.open.netease.com/openatx"
+GITHUB_BASEURL = "https://github.com/openatx"
 
 
 class DownloadBar(progress.bar.Bar):
@@ -101,19 +100,16 @@ class Installer(adbutils.Adb):
         self.server_addr = None
 
     def get_executable_dir(self):
-        return "/data/local/tmp"
-        # Hot patch for some phone which not contains stat command
-        # dirs = ['/data/local/tmp', '/data/data/com.android.shell']
-        # for dirname in dirs:
-        #     testpath = "%s/%s" % (dirname, 'permtest')
-        #     self.shell('touch', testpath, raise_error=False)
-        #     self.shell('chmod', '+x', testpath, raise_error=False)
-        #     content = self.shell('stat', '-c%A', testpath, raise_error=False)
-        #     # log.debug('stat returns:', content)
-        #     if -1 != content.find('x'):
-        #         return dirname
-        # return "/data/local/tmp"
-        # raise EnvironmentError("Can't find an executable directory on device")
+        dirs = ['/data/local/tmp', '/data/data/com.android.shell']
+        for dirname in dirs:
+            testpath = "%s/%s" % (dirname, 'permtest')
+            self.shell('touch', testpath, raise_error=False)
+            self.shell('chmod', '755', testpath, raise_error=False)
+            content = self.shell('ls', '-l', testpath, raise_error=False)
+            log.debug('permtest returns: %s' % content)
+            if -1 != content.find('x'):
+                return dirname
+        raise EnvironmentError("Can't find an executable directory on device")
 
     def install_minicap(self):
         if self.arch == 'x86':
@@ -205,8 +201,9 @@ class Installer(adbutils.Adb):
             return False
 
     def install_atx_agent(self, agent_version, reinstall=False):
-        version_output = self.shell(
-            '/data/local/tmp/atx-agent', '-v', raise_error=False).strip()
+        exedir = self.get_executable_dir()
+        agentpath = '%s/%s' % (exedir, 'atx-agent')
+        version_output = self.shell(agentpath, '-v', raise_error=False).strip()
         m = re.search(r"\d+\.\d+\.\d+", version_output)
         current_agent_version = m.group(0) if m else None
         if current_agent_version == agent_version:
@@ -243,31 +240,34 @@ class Installer(adbutils.Adb):
         tar = tarfile.open(path, 'r:gz')
         bin_path = os.path.join(os.path.dirname(path), 'atx-agent')
         tar.extract('atx-agent', os.path.dirname(bin_path))
-        self.push(bin_path, '/data/local/tmp/atx-agent', 0o755)
+        self.push(bin_path, agentpath, 0o755)
         log.debug("atx-agent installed")
+
+    @property
+    def atx_agent_path(self):
+        return self.get_executable_dir() + '/atx-agent'
 
     def launch_and_check(self):
         log.info("launch atx-agent daemon")
-        args = [
-            "TMPDIR=/sdcard",
-            "/data/local/tmp/atx-agent",
-            "server", '-d'
-            # "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell",
-            # "atx-agent", "server", '-d'
-        ]
+
+        # stop first
+        self.shell(self.atx_agent_path, "server", "--stop", raise_error=False)
+        # start server
+        args = [self.atx_agent_path, "server", '-d']
         if self.server_addr:
             args.append('-t')
             args.append(self.server_addr)
         output = self.shell(*args)
         lport = self.forward_port(7912)
-        log.debug("forward device(port:7912) -> %d", lport)
+        logger.debug("forward remote(tcp:7912) -> local(tcp:%d)", lport)
         time.sleep(.5)
         cnt = 0
         while cnt < 3:
             try:
                 r = requests.get(
                     'http://localhost:%d/version' % lport, timeout=10)
-                log.debug("atx-agent version: %s", r.text)
+                r.raise_for_status()
+                log.info("atx-agent version: %s", r.text)
                 # todo finish the retry logic
                 print("atx-agent output:", output.strip())
                 # open uiautomator2 github URL
@@ -276,81 +276,17 @@ class Installer(adbutils.Adb):
                 log.info("success")
                 break
             except (requests.exceptions.ConnectionError,
-                    requests.exceptions.ReadTimeout):
-                time.sleep(.5)
+                    requests.exceptions.ReadTimeout,
+                    requests.exceptions.HTTPError):
+                time.sleep(1.5)
                 cnt += 1
         else:
             log.error(
-                "Failure, unable to get result from http://localhost:%d/version"
-            )
+                "Failure, unable to get result from http://localhost:%d/version",
+                lport)
 
 
 class MyFire(object):
-    def init(self,
-             server=None,
-             apk_version=__apk_version__,
-             agent_version=__atx_agent_version__,
-             verbose=False,
-             reinstall=False,
-             ignore_apk_check=False,
-             proxy=None,
-             serial=None,
-             mirror=False):
-        if verbose:
-            log.setLevel(logging.DEBUG)
-        if server:
-            log.info("atx-server addr %s", server)
-        if mirror:
-            global GITHUB_BASEURL
-            GITHUB_BASEURL = "https://github-mirror.open.netease.com/openatx"
-
-        if proxy:
-            os.environ['HTTP_PROXY'] = proxy
-            os.environ['HTTPS_PROXY'] = proxy
-
-        if not serial:
-            valid_serials = [
-                sn for sn, _ in adbutils.Adb().devices(states=['device'])
-            ]
-            # output = subprocess.check_output(['adb', 'devices'])
-            # pattern = re.compile(
-            #     r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
-            # matches = pattern.findall(output.decode())
-            # valid_serials = [m[0] for m in matches if m[1] == 'device']
-            if len(valid_serials) == 0:
-                log.warning("No avaliable android devices detected.")
-                return
-            log.info("Detect pluged devices: %s", valid_serials)
-            for serial in valid_serials:
-                self._init_with_serial(serial, server, apk_version,
-                                       agent_version, reinstall,
-                                       ignore_apk_check)
-        else:
-            self._init_with_serial(serial, server, apk_version, agent_version,
-                                   reinstall, ignore_apk_check)
-
-    def _init_with_serial(self, serial, server, apk_version, agent_version,
-                          reinstall, ignore_apk_check):
-        log.info("Device(%s) initialing ...", serial)
-        ins = Installer(serial)
-        ins.server_addr = server
-        ins.install_minicap()
-        ins.install_minitouch()
-        ins.install_uiautomator_apk(apk_version, reinstall)
-
-        if ins.check_agent_installed(agent_version):
-            # TODO: should also check atx-server addr
-            log.info("atx-agent is already running, force stop")
-            ins.shell("/data/local/tmp/atx-agent", "server", "--stop", raise_error=False)
-            ins.shell("rm", "/sdcard/atx-agent.pid", raise_error=False)
-            ins.shell("rm", "/sdcard/atx-agent.log.old", raise_error=False)
-        else:
-            ins.install_atx_agent(agent_version, reinstall)
-
-        if not ignore_apk_check:
-            ins.check_apk_installed(apk_version)
-        ins.launch_and_check()
-
     def update_apk(self, ip):
         """ update com.github.uiautomator apk remotely """
         u = u2.connect(ip)
@@ -408,7 +344,106 @@ class MyFire(object):
         u.healthcheck()
 
 
+def cmd_init(args):
+    if not args.serial:
+        for d in adbutils.devices():
+            serial = d.get_serial_no()
+            if d.get_state() != 'device':
+                logger.warning("Skip invalid device: %s %s", serial,
+                               d.get_state())
+                continue
+            logger.info("Init device %s", serial)
+            _init_with_serial(serial, args.apk_version, args.agent_version,
+                              args.server, args.reinstall)
+    else:
+        _init_with_serial(args.serial, args.apk_version, args.agent_version,
+                          args.server, args.reinstall)
+
+
+def _init_with_serial(serial, apk_version, agent_version, server, reinstall):
+    log.info("Device(%s) initialing ...", serial)
+    ins = Installer(serial)
+    ins.server_addr = server
+    ins.install_minicap()
+    ins.install_minitouch()
+    ins.install_uiautomator_apk(apk_version, reinstall)
+
+    exedir = ins.get_executable_dir()
+    log.info("atx-agent is already running, force stop")
+    ins.shell(exedir + "/atx-agent", "-stop", raise_error=False)
+    ins.shell("killall", "atx-agent", raise_error=False)
+    ins.shell("rm", "/sdcard/atx-agent.pid", raise_error=False)
+    ins.shell("rm", "/sdcard/atx-agent.log.old", raise_error=False)
+    if not ins.check_agent_installed(agent_version):
+        ins.install_atx_agent(agent_version, reinstall)
+
+    ins.check_apk_installed(apk_version)
+    ins.launch_and_check()
+
+
+_commands = [{
+    "command": "init",
+    "help": "install enssential resources to device",
+    "flags": [
+        dict(
+            # name=["serial", "s"],
+            args=['--serial', '-s'],
+            type=str,
+            help='serial number'),
+        dict(
+            name=['agent_version'],
+            default=__atx_agent_version__,
+            help='atx-agent version'),
+        dict(
+            name=['apk_version'],
+            default=__apk_version__,
+            help='atx-uiautomator.apk version'),
+        dict(
+            name=['reinstall'],
+            type=bool,
+            default=False,
+            help='force reinstall atx-agent'),
+        dict(
+            name=['server'],
+            type=str,
+            help='atx-server address')
+    ],
+    "action": cmd_init,
+}]  # yapf: disable
+
+
 def main():
+    # yapf: disable
+    if len(sys.argv) >= 2 and sys.argv[1] in ('init',):
+        parser = argparse.ArgumentParser(
+                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        parser.add_argument('-s', '--serial', type=str, help='device serial number')
+
+        subparser = parser.add_subparsers(dest='subparser')
+
+        actions = {}
+        for c in _commands:
+            cmd_name = c['command']
+            actions[cmd_name] = c['action']
+            sp = subparser.add_parser(cmd_name, help=c.get('help'),
+                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+            for f in c.get('flags', []):
+                args = f.get('args')
+                if not args:
+                    args = ['-'*min(2, len(n)) + n for n in f['name']]
+                kwargs = f.copy()
+                kwargs.pop('name', None)
+                kwargs.pop('args', None)
+                sp.add_argument(*args, **kwargs)
+
+        args = parser.parse_args()
+        print(args, args.subparser)
+
+        if args.subparser:
+            actions[args.subparser](args)
+        return
+    # yapf: enable
+
     fire.Fire(MyFire)
 
 

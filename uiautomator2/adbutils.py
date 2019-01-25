@@ -5,9 +5,10 @@ from __future__ import print_function
 
 import re
 import socket
-import subprocess
 import whichcraft
-from collections import defaultdict
+import subprocess
+from adb.client import Client as AdbClient
+from adb import InstallError
 
 
 def find_free_port():
@@ -19,56 +20,81 @@ def find_free_port():
         s.close()
 
 
+def devices():
+    client = AdbClient(
+        host='127.0.0.1', port=5037)  # TODO(ssx): should get HOST from env
+    return client.devices()
+
+
 class Adb(object):
-    def __init__(self, serial=None):
+    def __init__(self, serial=None, host="127.0.0.1", port=5037):
         self._serial = serial
+        self._client = AdbClient(host=host, port=port)
 
-    def adb_path(self):
-        return whichcraft.which("adb")
+        try:
+            self._client.version()
+        except RuntimeError:
+            # Can't connect to the adb server, try to start the adb server by command line.
+            self._start_adb_server()
 
-    def devices(self, states=['device', 'offline']):
-        """
-        Returns:
-            [($serial1, "device"), ($serial2, "offline")]
-        """
-        output = subprocess.check_output([self.adb_path(), 'devices'])
-        pattern = re.compile(
-            r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
-        matches = pattern.findall(output.decode())
-        return [(m[0], m[1]) for m in matches]
+        if self._serial:
+            self._device = self._client.device(serial)
+        else:
+            # The serial can be None only when there is only one device/emulator.
+            devices = self._client.devices()
+            if len(devices) == 0:
+                raise RuntimeError("Can't find any android device/emulator")
+            elif len(devices) > 1:
+                raise RuntimeError(
+                    "more than one device/emulator, please specify the serial number"
+                )
+            else:
+                device = devices[0]
+                self._serial = device.get_serial_no()
+                self._device = device
 
-    def execute(self, *args, **kwargs):
-        """
-        Example:
-            output = execute("ls", "-l")
+    @staticmethod
+    def list_devices(host="127.0.0.1", port=5037):
+        client = AdbClient(host=host, port=port)
 
-        Raises:
-            EnvironmentError
-        """
-        adb_path = self.adb_path()
-        assert adb_path is not None
-        cmds = [adb_path, '-s', self._serial] if self._serial else [adb_path]
-        cmds.extend(args)
-        cmdline = subprocess.list2cmdline(map(str, cmds))
+        try:
+            client.version()
+        except RuntimeError:
+            # Can't connect to the adb server, try to start the adb server by command line.
+            Adb._start_adb_server()
+
+        return client.devices()
+
+    @staticmethod
+    def _start_adb_server():
+        adb_path = whichcraft.which("adb")
+        if adb_path is None:
+            raise EnvironmentError(
+                "Can't find the adb, please install adb on your PC")
+
+        cmd = [adb_path, "start-server"]
+        cmdline = subprocess.list2cmdline(cmd)
         try:
             return subprocess.check_output(
                 cmdline, stderr=subprocess.STDOUT, shell=True).decode('utf-8')
         except subprocess.CalledProcessError as e:
-            if kwargs.get('raise_error', True):
-                raise EnvironmentError("subprocess", cmdline,
-                                       e.output.decode(
-                                           'utf-8', errors='ignore'))
-            # else:
-            #     print("Error output:", e.output.decode(
-            #         'utf-8', errors='ignore'))
-            return ''
+            raise EnvironmentError("subprocess", cmdline,
+                                   e.output.decode('utf-8', errors='ignore'))
+
+    # def devices(self, states=['device', 'offline']):
+    #     """
+    #     Returns:
+    #         [($serial1, "device"), ($serial2, "offline")]
+    #     """
+    #     # TODO: not really checking anything
+    #     return [(d, "device") for d in self.list_devices()]
+    #     output = subprocess.check_output([self.adb_path(), 'devices'])
+    #     pattern = re.compile(r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
+    #     matches = pattern.findall(output.decode())
+    #     return [(m[0], m[1]) for m in matches]
 
     @property
     def serial(self):
-        if self._serial:
-            return self._serial
-        self._serial = subprocess.check_output(
-            [self.adb_path(), "get-serialno"]).decode('utf-8').strip()
         return self._serial
 
     def forward(self, local, remote, rebind=True):
@@ -76,10 +102,8 @@ class Adb(object):
             local = 'tcp:%d' % local
         if isinstance(remote, int):
             remote = 'tcp:%d' % remote
-        if rebind:
-            return self.execute('forward', local, remote)
-        else:
-            return self.execute('forward', '--no-rebind', local, remote)
+
+        return self._device.forward(local, remote, norebind=not rebind)
 
     def forward_list(self):
         """
@@ -89,15 +113,34 @@ class Adb(object):
                 "{RemotePort}": "{LocalPort}"
             }
         """
-        output = self.execute('forward', '--list')
+
+        # TODO(ssx): There is a bug in pure-python-adb "forward_list"
+        # waiting for the lib author to fixit.
+        # original code --.
+        # forward_list = self._device.list_forward()
+
+        cmd = "host-serial:{serial}:list-forward".format(serial=self.serial)
+        result = self._device._execute_cmd(cmd)
+
+        forward_list = {}
+
+        for line in result.split('\n'):
+            if not line:
+                continue
+            serial, local, remote = line.split()
+            if serial != self._device.serial:
+                continue
+            forward_list[local] = remote
+
         ret = {}
-        for groups in re.findall('([^\s]+)\s+tcp:(\d+)\s+tcp:(\d+)', output):
-            if len(groups) != 3:
-                continue
-            serial, lport, rport = groups
-            if serial != self.serial:
-                continue
-            ret[int(rport)] = int(lport)
+
+        for local, remote in forward_list.items():
+            ltype, lport = local.split(":")
+            rtype, rport = remote.split(":")
+
+            if ltype == "tcp" and rtype == "tcp":
+                ret[int(rport)] = int(lport)
+
         return ret
 
     def forward_port(self, remote_port):
@@ -110,30 +153,31 @@ class Adb(object):
         return free_port
 
     def shell(self, *args, **kwargs):
-        args = ['shell'] + list(args)
-        return self.execute(*args, **kwargs)
+        return self._device.shell(" ".join(args))
 
     def getprop(self, prop):
-        return self.execute('shell', 'getprop', prop).strip()
+        return self.shell('getprop', prop).strip()
 
     def push(self, src, dst, mode=0o644):
-        self.execute('push', src, dst)
-        if mode != 0o644:
-            self.shell('chmod', oct(mode)[-3:], dst)
+        self._device.push(src, dst, mode=mode)
 
     def install(self, apk_path):
         sdk = self.getprop('ro.build.version.sdk')
         if int(sdk) <= 23:
-            self.execute('install', '-d', '-r', apk_path)
+            self._device.install(apk_path, reinstall=True, downgrade=True)
             return
         try:
             # some device is missing -g
-            self.execute('install', '-d', '-r', '-g', apk_path)
-        except EnvironmentError:
-            self.execute('install', '-d', '-r', apk_path)
+            self._device.install(
+                apk_path,
+                reinstall=True,
+                downgrade=True,
+                grand_all_permissions=True)
+        except InstallError:
+            self._device.install(apk_path, reinstall=True, downgrade=True)
 
     def uninstall(self, pkg_name):
-        return self.execute('uninstall', pkg_name, raise_error=False)
+        return self._device.uninstall(pkg_name)
 
     def package_info(self, pkg_name):
         output = self.shell('dumpsys', 'package', pkg_name)

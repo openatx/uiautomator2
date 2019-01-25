@@ -15,7 +15,10 @@ Refs:
 
 from __future__ import absolute_import, print_function
 
-import base64
+from uiautomator2.version import  __atx_agent_version__
+from uiautomator2 import adbutils
+import requests
+
 import hashlib
 import time
 import functools
@@ -25,103 +28,39 @@ import os
 import re
 import sys
 import shutil
-import xml.dom.minidom
 import threading
 import warnings
-import logging
 from datetime import datetime
 from subprocess import list2cmdline
 from collections import namedtuple
-from functools import partial
 
 import six
 import humanize
 import progress.bar
 from retry import retry
 import six.moves.urllib.parse as urlparse
+from uiautomator2.exceptions import (
+    UiaError,
+    UiObjectNotFoundError,
+    SessionBrokenError,
+    GatewayError,
+    JsonRpcError,
+    UiAutomationNotConnectedError,
+    NullObjectExceptionError,
+    NullPointerExceptionError,
+    StaleObjectExceptionError,
+)
+from uiautomator2.session import ( # noqa: F401
+    Session,
+    set_fail_prompt, 
+) 
 
 if six.PY2:
     FileNotFoundError = OSError
 
-import requests
-from uiautomator2 import adbutils
-from uiautomator2.version import __apk_version__, __atx_agent_version__
-from uiautomator2 import simplexml
 
 DEBUG = False
 HTTP_TIMEOUT = 60
-
-_INPUT_METHOD_RE = re.compile(r'mCurMethodId=([-_./\w]+)')
-
-
-class UiaError(Exception):
-    pass
-
-
-class GatewayError(UiaError):
-    def __init__(self, response, description):
-        self.response = response
-        self.description = description
-
-    def __str__(self):
-        return "uiautomator2.GatewayError(" + self.description + ")"
-
-
-class JsonRpcError(UiaError):
-    @staticmethod
-    def format_errcode(errcode):
-        m = {
-            -32700: 'Parse error',
-            -32600: 'Invalid Request',
-            -32601: 'Method not found',
-            -32602: 'Invalid params',
-            -32603: 'Internal error',
-            -32001: 'Jsonrpc error',
-            -32002: 'Client error',
-        }
-        if errcode in m:
-            return m[errcode]
-        if errcode >= -32099 and errcode <= -32000:
-            return 'Server error'
-        return 'Unknown error'
-
-    def __init__(self, error={}, method=None):
-        self.code = error.get('code')
-        self.message = error.get('message', '')
-        self.data = error.get('data', '')
-        self.method = method
-
-    def __str__(self):
-        return '%d %s: <%s> data: %s, method: %s' % (
-            self.code, self.format_errcode(self.code), self.message, self.data,
-            self.method)
-
-    def __repr__(self):
-        return repr(str(self))
-
-
-class SessionBrokenError(UiaError):
-    pass
-
-
-class UiObjectNotFoundError(JsonRpcError):
-    pass
-
-
-class UiAutomationNotConnectedError(JsonRpcError):
-    pass
-
-
-class NullObjectExceptionError(JsonRpcError):
-    pass
-
-
-class NullPointerExceptionError(JsonRpcError):
-    pass
-
-
-class StaleObjectExceptionError(JsonRpcError):
-    pass
 
 
 class _ProgressBar(progress.bar.Bar):
@@ -138,29 +77,6 @@ def log_print(s):
     thread_name = threading.current_thread().getName()
     print(thread_name + ": " + datetime.now().strftime('%H:%M:%S,%f')[:-3] +
           " " + s)
-
-
-def intersect(rect1, rect2):
-    top = rect1["top"] if rect1["top"] > rect2["top"] else rect2["top"]
-    bottom = rect1["bottom"] if rect1["bottom"] < rect2["bottom"] else rect2[
-        "bottom"]
-    left = rect1["left"] if rect1["left"] > rect2["left"] else rect2["left"]
-    right = rect1["right"] if rect1["right"] < rect2["right"] else rect2[
-        "right"]
-    return left, top, right, bottom
-
-
-def U(x):
-    if six.PY3:
-        return x
-    return x.decode('utf-8') if type(x) is str else x
-
-
-def E(x):
-    if six.PY3:
-        return x
-    return x.encode('utf-8') if type(x) is unicode else x
-
 
 def _is_wifi_addr(addr):
     if not addr:
@@ -231,9 +147,8 @@ def connect_usb(serial=None):
     if not d.agent_alive:
         warnings.warn("backend atx-agent is not alive, start again ...",
                       RuntimeWarning)
-        adb.execute(
-            "shell", "PATH=$PATH:/data/local/tmp:/data/data/com.android/shell",
-            "atx-agent", "server", "-d")
+        # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
+        adb.shell("/data/local/tmp/atx-agent", "server", "-d")
         deadline = time.time() + 3
         while time.time() < deadline:
             if d.alive:
@@ -258,9 +173,9 @@ class TimeoutRequestsSession(requests.Session):
             kwargs['timeout'] = HTTP_TIMEOUT
         verbose = hasattr(self, 'debug') and self.debug
         if verbose:
-            data = kwargs.get('data') or ''
+            data = kwargs.get('data') or '""'
             if isinstance(data, dict):
-                data = 'dict:' + json.dumps(data)
+                data = json.dumps(data)
             time_start = time.time()
             print(datetime.now().strftime("%H:%M:%S.%f")[:-3],
                   "$ curl -X {method} -d '{data}' '{url}'".format(
@@ -284,20 +199,20 @@ class TimeoutRequestsSession(requests.Session):
 def plugin_register(name, plugin, *args, **kwargs):
     """
     Add plugin into UIAutomatorServer
-    
+
     Args:
         name: string
         plugin: class or function which take d as first parameter
-    
+
     Example:
         def upload_screenshot(d):
             def inner():
                 d.screenshot("tmp.jpg")
                 # use requests.post upload tmp.jpg
             return inner
-        
+
         plugin_register("upload_screenshot", save_screenshot)
-        
+
         d = u2.connect()
         d.ext_upload_screenshot()
     """
@@ -330,6 +245,7 @@ class UIAutomatorServer(object):
         self._default_session = Session(self, None)
         self._cached_plugins = {}
         self.__devinfo = None
+        self._hooks = {}
         self.platform = None  # hot fix for weditor
 
         self.ash = AdbShell(self.shell)  # the powerful adb shell
@@ -407,6 +323,20 @@ class UIAutomatorServer(object):
             w, h = h, w
         return w, h
 
+    def hooks_register(self, func):
+        """
+        Args:
+            func: should accept 3 args. func_name:string, args:tuple, kwargs:dict
+        """
+        self._hooks[func] = True
+
+    def hooks_apply(self, stage, func_name, args=(), kwargs={}, ret=None):
+        """
+        Args:
+            stage(str): one of "before" or "after"
+        """
+        for fn in self._hooks.keys():
+            fn(stage, func_name, args, kwargs, ret)
 
     def setup_jsonrpc(self, jsonrpc_url=None):
         """
@@ -455,7 +385,7 @@ class UIAutomatorServer(object):
             return self.jsonrpc_call(*args, **kwargs)
         except (NullObjectExceptionError,
                 NullPointerExceptionError, StaleObjectExceptionError) as e:
-            if args[1] != 'dumpWindowHierarchy': # args[1] method
+            if args[1] != 'dumpWindowHierarchy':  # args[1] method
                 warnings.warn(
                     "uiautomator2 raise exception %s, and run code again" % e,
                     RuntimeWarning,
@@ -477,7 +407,7 @@ class UIAutomatorServer(object):
         }
         data = json.dumps(data).encode('utf-8')
         res = self._reqsess.post(
-            jsonrpc_url, # +"?m="+method, #?method is for debug
+            jsonrpc_url,  # +"?m="+method, #?method is for debug
             headers={"Content-Type": "application/json"},
             timeout=http_timeout,
             data=data)
@@ -592,11 +522,11 @@ class UIAutomatorServer(object):
         self._reqsess.delete(
             self.path2url('/uiautomator'))  # stop uiautomator keeper first
         # wait = not unlock  # should not wait IdentifyActivity open or it will stuck sometimes
-        self.app_start(  # may also stuck here.
-            'com.github.uiautomator',
-            '.MainActivity',
-            wait=False,
-            stop=True)
+        # self.app_start(  # may also stuck here.
+        #     'com.github.uiautomator',
+        #     '.MainActivity',
+        #     wait=False,
+        #     stop=True)
         time.sleep(.5)
 
         # launch atx-agent uiautomator keeper
@@ -794,7 +724,7 @@ class UIAutomatorServer(object):
         Args:
             pkg_name (str): package name
             activity (str): app activity
-            stop (str): Stop app before starting the activity. (require activity)
+            stop (bool): Stop app before starting the activity. (require activity)
         """
         if unlock:
             self.unlock()
@@ -808,7 +738,8 @@ class UIAutomatorServer(object):
             # -e <EXTRA_KEY> <EXTRA_STRING_VALUE>
             # --ei <EXTRA_KEY> <EXTRA_INT_VALUE>
             # --ez <EXTRA_KEY> <EXTRA_BOOLEAN_VALUE>
-            args = ['am', 'start', '-a', 'android.intent.action.MAIN', '-c', 'android.intent.category.LAUNCHER']
+            args = ['am', 'start', '-a', 'android.intent.action.MAIN',
+                    '-c', 'android.intent.category.LAUNCHER']
             if wait:
                 args.append('-W')
             if stop:
@@ -873,9 +804,26 @@ class UIAutomatorServer(object):
                 package=m.group('package'),
                 activity=m.group('activity'),
                 pid=int(m.group('pid')))
-        if ret: # get last result
+        if ret:  # get last result
             return ret
         raise EnvironmentError("Couldn't get focused app")
+
+    def wait_activity(self, activity, timeout=10):
+        """ wait activity
+        Args:
+            activity (str): name of activity
+            timeout (float): max wait time
+
+        Returns:
+            bool of activity
+        """
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            current_activity = self.current_app().get('activity')
+            if activity == current_activity:
+                return True
+            time.sleep(.5)
+        return False
 
     def app_stop(self, pkg_name):
         """ Stop one application: am force-stop"""
@@ -1040,6 +988,51 @@ class UIAutomatorServer(object):
         self.__devinfo = self._reqsess.get(self.path2url('/info')).json()
         return self.__devinfo
 
+    def app_info(self, pkg_name):
+        """
+        Get app info
+
+        Args:
+            pkg_name (str): package name
+
+        Return example:
+            {
+                "mainActivity": "com.github.uiautomator.MainActivity",
+                "label": "ATX",
+                "versionName": "1.1.7",
+                "versionCode": 1001007,
+                "size":1760809
+            }
+
+        Raises:
+            UiaError
+        """
+        url = self.path2url('/packages/{0}/info'.format(pkg_name))
+        resp = self._reqsess.get(url)
+        resp.raise_for_status()
+        resp = resp.json()
+        if not resp.get('success'):
+            raise UiaError(resp.get('description', 'unknown'))
+        return resp.get('data')
+
+    def app_icon(self, pkg_name):
+        """
+        Returns:
+            PIL.Image
+
+        Raises:
+            UiaError
+        """
+        from PIL import Image
+        url = self.path2url('/packages/{0}/icon'.format(pkg_name))
+        resp = self._reqsess.get(url)
+        resp.raise_for_status()
+        return Image.open(io.BytesIO(resp.content))
+
+    @property
+    def wlan_ip(self):
+        return self._reqsess.get(self.path2url("/wlan/ip")).text.strip()
+
     def disable_popups(self, enable=True):
         """
         Automatic click all popups
@@ -1061,13 +1054,14 @@ class UIAutomatorServer(object):
         else:
             self.jsonrpc.setAccessibilityPatterns({})
 
-    def session(self, pkg_name, attach=False):
+    def session(self, pkg_name=None, attach=False, launch_timeout=None):
         """
         Create a new session
 
         Args:
             pkg_name (str): android package name
             attach (bool): attach to already running app
+            launch_timeout (int): launch timeout
 
         Raises:
             requests.HTTPError, SessionBrokenError
@@ -1076,8 +1070,11 @@ class UIAutomatorServer(object):
             return self._default_session
 
         if not attach:
+            request_data = {"flags": "-W -S"}
+            if launch_timeout:
+                request_data["timeout"] = str(launch_timeout)
             resp = self._reqsess.post(
-                self.path2url("/session/" + pkg_name), data={"flags": "-W -S"})
+                self.path2url("/session/" + pkg_name), data=request_data)
             if resp.status_code == 410:  # Gone
                 raise SessionBrokenError(pkg_name, resp.text)
             resp.raise_for_status()
@@ -1096,1211 +1093,87 @@ class UIAutomatorServer(object):
         if attr in self._cached_plugins:
             return self._cached_plugins[attr]
         if attr.startswith('ext_'):
-            if attr[4:] not in self.__plugins:
-                raise ValueError("plugin \"%s\" not registed" % attr[4:])
-            func, args, kwargs = self.__plugins[attr[4:]]
-            obj = partial(func, self)(*args, **kwargs)
+            plugin_name = attr[4:]
+            if plugin_name not in self.__plugins:
+                if plugin_name == 'xpath':
+                    import uiautomator2.ext.xpath as xpath
+                    xpath.init()
+                else:
+                    raise ValueError(
+                        "plugin \"%s\" not registed" % plugin_name)
+            func, args, kwargs = self.__plugins[plugin_name]
+            obj = functools.partial(func, self)(*args, **kwargs)
             self._cached_plugins[attr] = obj
             return obj
         try:
             return getattr(self._default_session, attr)
         except AttributeError:
-            raise AttributeError("'Session or UIAutomatorServer' object has no attribute '%s'" % attr)
+            raise AttributeError(
+                "'Session or UIAutomatorServer' object has no attribute '%s'" % attr)
 
     def __call__(self, **kwargs):
         return self._default_session(**kwargs)
 
 
-def check_alive(fn):
-    @functools.wraps(fn)
-    def inner(self, *args, **kwargs):
-        if not self.running():
-            raise SessionBrokenError(self._pkg_name)
-        return fn(self, *args, **kwargs)
 
-    return inner
 
 
-class Session(object):
-    __orientation = (  # device orientation
-        (0, "natural", "n", 0), (1, "left", "l", 90),
-        (2, "upsidedown", "u", 180), (3, "right", "r", 270))
-
-    def __init__(self, server, pkg_name=None, pid=None):
-        self.server = server
-        self._pkg_name = pkg_name
-        self._pid = pid
-        self._jsonrpc = server.jsonrpc
-        if pid and pkg_name:
-            jsonrpc_url = server.path2url('/session/%d:%s/jsonrpc/0' %
-                                          (pid, pkg_name))
-            self._jsonrpc = server.setup_jsonrpc(jsonrpc_url)
-
-        # hot fix for session missing shell function
-        self.shell = self.server.shell
-
-    def __repr__(self):
-        if self._pid and self._pkg_name:
-            return "<uiautomator2.Session pid:%d pkgname:%s>" % (
-                self._pid, self._pkg_name)
-        return super(Session, self).__repr__()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    def implicitly_wait(self, seconds=None):
-        """set default wait timeout
-        Args:
-            seconds(float): to wait element show up
-        """
-        if seconds is not None:
-            self.server.wait_timeout = seconds
-        return self.server.wait_timeout
-
-    def close(self):
-        """ close app """
-        if self._pkg_name:
-            self.server.app_stop(self._pkg_name)
-
-    def running(self):
-        """
-        Check is session is running. return bool
-        """
-        if self._pid and self._pkg_name:
-            ping_url = self.server.path2url('/session/%d:%s/ping' %
-                                            (self._pid, self._pkg_name))
-            return self.server._reqsess.get(ping_url).text.strip() == 'pong'
-        # warnings.warn("pid and pkg_name is not set, ping will always return True", Warning, stacklevel=1)
-        return True
-
-    @property
-    def jsonrpc(self):
-        return self._jsonrpc
-
-    @property
-    def pos_rel2abs(self):
-        size = []
-
-        def convert(x, y):
-            assert x >= 0
-            assert y >= 0
-
-            if (x < 1 or y < 1) and not size:
-                size.extend(
-                    self.server.window_size())  # size will be [width, height]
-
-            if x < 1:
-                x = int(size[0] * x)
-            if y < 1:
-                y = int(size[1] * y)
-            return x, y
-
-        return convert
-
-    def make_toast(self, text, duration=1.0):
-        """ Show toast
-        Args:
-            text (str): text to show
-            duration (float): seconds of display
-        """
-        warnings.warn(
-            "Use d.toast.show(text, duration) instead.",
-            DeprecationWarning,
-            stacklevel=2)
-        return self.jsonrpc.makeToast(text, duration * 1000)
-
-    @property
-    def toast(self):
-        obj = self
-
-        class Toast(object):
-            def get_message(self,
-                            wait_timeout=10,
-                            cache_timeout=10,
-                            default=None):
-                """
-                Args:
-                    wait_timeout: seconds of max wait time if toast now show right now
-                    cache_timeout: return immediately if toast showed in recent $cache_timeout
-                    default: default messsage to return when no toast show up
-
-                Returns:
-                    None or toast message
-                """
-                deadline = time.time() + wait_timeout
-                while 1:
-                    message = obj.jsonrpc.getLastToast(cache_timeout * 1000)
-                    if message:
-                        return message
-                    if time.time() > deadline:
-                        return default
-                    time.sleep(.5)
-
-            def reset(self):
-                return obj.jsonrpc.clearLastToast()
-
-            def show(self, text, duration=1.0):
-                return obj.jsonrpc.makeToast(text, duration * 1000)
-
-        return Toast()
-
-    @check_alive
-    def set_fastinput_ime(self, enable=True):
-        """ Enable of Disable FastInputIME """
-        fast_ime = 'com.github.uiautomator/.FastInputIME'
-        if enable:
-            self.server.shell(['ime', 'enable', fast_ime])
-            self.server.shell(['ime', 'set', fast_ime])
-        else:
-            self.server.shell(['ime', 'disable', fast_ime])
-
-    @check_alive
-    def send_keys(self, text):
-        """
-        Raises:
-            EnvironmentError
-        """
-        try:
-            self.wait_fastinput_ime()
-            base64text = base64.b64encode(text.encode('utf-8')).decode()
-            self.server.shell([
-                'am', 'broadcast', '-a', 'ADB_INPUT_TEXT', '--es', 'text',
-                base64text
-            ])
-            return True
-        except EnvironmentError:
-            warnings.warn(
-                "set FastInputIME failed. use \"d(focused=True).set_text instead\"",
-                Warning)
-            return self(focused=True).set_text(text)
-            # warnings.warn("set FastInputIME failed. use \"adb shell input text\" instead", Warning)
-            # self.server.adb_shell("input", "text", text.replace(" ", "%s"))
-
-    @check_alive
-    def send_action(self, code):
-        """
-        Simulate input method edito code
-        
-        Args:
-            code (str or int): input method editor code
-        
-        Examples:
-            send_action("search"), send_action(3)
-        
-        Refs:
-            https://developer.android.com/reference/android/view/inputmethod/EditorInfo
-        """
-        self.wait_fastinput_ime()
-        __alias = {
-            "go": 2,
-            "search": 3,
-            "send": 4,
-            "next": 5,
-            "done": 6,
-            "previous": 7,
-        }
-        if isinstance(code, six.string_types):
-            code = __alias.get(code, code)
-        self.server.shell(['am', 'broadcast', '-a', 'ADB_EDITOR_CODE', '--ei', 'code', str(code)])
-
-    @check_alive
-    def clear_text(self):
-        """ clear text
-        Raises:
-            EnvironmentError
-        """
-        try:
-            self.wait_fastinput_ime()
-            self.server.shell(['am', 'broadcast', '-a', 'ADB_CLEAR_TEXT'])
-        except EnvironmentError:
-            # for Android simulator
-            self(focused=True).clear_text()
-
-    def wait_fastinput_ime(self, timeout=5.0):
-        """ wait FastInputIME is ready
-        Args:
-            timeout(float): maxium wait time
-        Raises:
-            EnvironmentError
-        """
-        if not self.server.serial:  # maybe simulator eg: genymotion, 海马玩模拟器
-            raise EnvironmentError("Android simulator is not supported.")
-
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            ime_id, shown = self.current_ime()
-            if ime_id != "com.github.uiautomator/.FastInputIME":
-                self.set_fastinput_ime(True)
-                time.sleep(0.5)
-                continue
-            if shown:
-                return True
-            time.sleep(0.2)
-        raise EnvironmentError("FastInputIME started failed")
-
-    def current_ime(self):
-        """ Current input method
-        Returns:
-            (method_id(str), shown(bool)
-
-        Example output:
-            ("com.github.uiautomator/.FastInputIME", True)
-        """
-        dim, _ = self.server.shell(['dumpsys', 'input_method'])
-        m = _INPUT_METHOD_RE.search(dim)
-        method_id = None if not m else m.group(1)
-        shown = "mInputShown=true" in dim
-        return (method_id, shown)
-
-    def tap(self, x, y):
-        """
-        alias of click
-        """
-        self.click(x, y)
-
-    @property
-    def touch(self):
-        """
-        ACTION_DOWN: 0 ACTION_MOVE: 2
-        touch.down(x, y)
-        touch.move(x, y)
-        touch.up()
-        """
-        ACTION_DOWN = 0
-        ACTION_MOVE = 2
-        ACTION_UP = 1
-
-        obj = self
-
-        class _Touch(object):
-            def down(self, x, y):
-                obj.jsonrpc.injectInputEvent(ACTION_DOWN, x, y, 0)
-
-            def move(self, x, y):
-                obj.jsonrpc.injectInputEvent(ACTION_MOVE, x, y, 0)
-
-            def up(self, x, y):
-                obj.jsonrpc.injectInputEvent(ACTION_UP, x, y, 0)
-
-        return _Touch()
-
-    def click(self, x, y):
-        """
-        click position
-        """
-        x, y = self.pos_rel2abs(x, y)
-        ret = self.jsonrpc.click(x, y)
-        if self.server.click_post_delay:  # click code delay
-            time.sleep(self.server.click_post_delay)
-
-    def double_click(self, x, y, duration=0.1):
-        """
-        double click position
-        """
-        x, y = self.pos_rel2abs(x, y)
-        self.touch.down(x, y)
-        self.touch.up(x, y)
-        time.sleep(duration)
-        self.click(x, y)  # use click last is for htmlreport
-
-    def long_click(self, x, y, duration=None):
-        '''long click at arbitrary coordinates.
-        Args:
-            duration (float): seconds of pressed
-        '''
-        if not duration:
-            duration = 0.5
-        x, y = self.pos_rel2abs(x, y)
-        self.touch.down(x, y)
-        time.sleep(duration)
-        self.touch.up(x, y)
-        return self
-
-    def swipe(self, fx, fy, tx, ty, duration=0.1, steps=None):
-        """
-        Args:
-            fx, fy: from position
-            tx, ty: to position
-            duration (float): duration
-            steps: 1 steps is about 5ms, if set, duration will be ignore
-
-        Documents:
-            uiautomator use steps instead of duration
-            As the document say: Each step execution is throttled to 5ms per step.
-
-        Links:
-            https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe%28int,%20int,%20int,%20int,%20int%29
-        """
-        rel2abs = self.pos_rel2abs
-        fx, fy = rel2abs(fx, fy)
-        tx, ty = rel2abs(tx, ty)
-        if not steps:
-            steps = int(duration * 200)
-        return self.jsonrpc.swipe(fx, fy, tx, ty, steps)
-
-    def swipe_points(self, points, duration=0.5):
-        """
-        Args:
-            points: is point array containg at least one point object. eg [[200, 300], [210, 320]]
-            duration: duration to inject between two points
-
-        Links:
-            https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe(android.graphics.Point[], int)
-        """
-        ppoints = []
-        rel2abs = self.pos_rel2abs
-        for p in points:
-            x, y = rel2abs(p[0], p[1])
-            ppoints.append(x)
-            ppoints.append(y)
-        return self.jsonrpc.swipePoints(ppoints, int(duration * 200))
-
-    def drag(self, sx, sy, ex, ey, duration=0.5):
-        '''Swipe from one point to another point.'''
-        rel2abs = self.pos_rel2abs
-        sx, sy = rel2abs(sx, sy)
-        ex, ey = rel2abs(ex, ey)
-        return self.jsonrpc.drag(sx, sy, ex, ey, int(duration * 200))
-
-    @retry(
-        (IOError, SyntaxError), delay=.5, tries=5, jitter=0.1,
-        max_delay=1)  # delay .5, .6, .7, .8 ...
-    def screenshot(self, filename=None, format='pillow'):
-        """
-        Image format is JPEG
-
-        Args:
-            filename (str): saved filename
-            format (string): used when filename is empty. one of "pillow" or "opencv"
-
-        Raises:
-            IOError, SyntaxError
-
-        Examples:
-            screenshot("saved.jpg")
-            screenshot().save("saved.png")
-            cv2.imwrite('saved.jpg', screenshot(format='opencv'))
-        """
-        r = requests.get(self.server.screenshot_uri, timeout=10)
-        if filename:
-            with open(filename, 'wb') as f:
-                f.write(r.content)
-            return filename
-        elif format == 'pillow':
-            from PIL import Image
-            buff = io.BytesIO(r.content)
-            return Image.open(buff)
-        elif format == 'opencv':
-            import cv2
-            import numpy as np
-            nparr = np.fromstring(r.content, np.uint8)
-            return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        elif format == 'raw':
-            return r.content
-        else:
-            raise RuntimeError("Invalid format " + format)
-
-    @retry(NullPointerExceptionError, delay=.5, tries=5, jitter=0.2)
-    def dump_hierarchy(self, compressed=False, pretty=False):
-        content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
-        if pretty and "\n " not in content:
-            xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))
-            content = U(xml_text.toprettyxml(indent='  '))
-        return content
-
-    def freeze_rotation(self, freeze=True):
-        '''freeze or unfreeze the device rotation in current status.'''
-        self.jsonrpc.freezeRotation(freeze)
-
-    def press(self, key, meta=None):
-        """
-        press key via name or key code. Supported key name includes:
-            home, back, left, right, up, down, center, menu, search, enter,
-            delete(or del), recent(recent apps), volume_up, volume_down,
-            volume_mute, camera, power.
-        """
-        if isinstance(key, int):
-            return self.jsonrpc.pressKeyCode(
-                key, meta) if meta else self.server.jsonrpc.pressKeyCode(key)
-        else:
-            return self.jsonrpc.pressKey(key)
-
-    def screen_on(self):
-        self.jsonrpc.wakeUp()
-
-    def screen_off(self):
-        self.jsonrpc.sleep()
-
-    @property
-    def orientation(self):
-        '''
-        orienting the devie to left/right or natural.
-        left/l:       rotation=90 , displayRotation=1
-        right/r:      rotation=270, displayRotation=3
-        natural/n:    rotation=0  , displayRotation=0
-        upsidedown/u: rotation=180, displayRotation=2
-        '''
-        return self.__orientation[self.info["displayRotation"]][1]
-
-    def set_orientation(self, value):
-        '''setter of orientation property.'''
-        for values in self.__orientation:
-            if value in values:
-                # can not set upside-down until api level 18.
-                self.jsonrpc.setOrientation(values[1])
-                break
-        else:
-            raise ValueError("Invalid orientation.")
-
-    @property
-    def last_traversed_text(self):
-        '''get last traversed text. used in webview for highlighted text.'''
-        return self.jsonrpc.getLastTraversedText()
-
-    def clear_traversed_text(self):
-        '''clear the last traversed text.'''
-        self.jsonrpc.clearLastTraversedText()
-
-    def open_notification(self):
-        return self.jsonrpc.openNotification()
-
-    def open_quick_settings(self):
-        return self.jsonrpc.openQuickSettings()
-
-    def exists(self, **kwargs):
-        return self(**kwargs).exists
-
-    def xpath(self, xpath, source=None):
-        """
-        Args:
-            xpath: expression of XPath2.0
-            source: optional, hierarchy from dump_hierarchy()
-
-        Returns:
-            XPathSelector
-        """
-        return XPathSelector(xpath, self.server, source)
-
-    def watcher(self, name):
-        obj = self
-
-        class Watcher(object):
-            def __init__(self):
-                self.__selectors = []
-
-            @property
-            def triggered(self):
-                return obj.server.jsonrpc.hasWatcherTriggered(name)
-
-            def remove(self):
-                obj.server.jsonrpc.removeWatcher(name)
-
-            def when(self, **kwargs):
-                self.__selectors.append(Selector(**kwargs))
-                return self
-
-            def click(self, **kwargs):
-                target = Selector(**kwargs) if kwargs else self.__selectors[-1]
-                obj.server.jsonrpc.registerClickUiObjectWatcher(
-                    name, self.__selectors, target)
-
-            def press(self, *keys):
-                """
-                key (str): on of
-                    ("home", "back", "left", "right", "up", "down", "center",
-                    "search", "enter", "delete", "del", "recent", "volume_up",
-                    "menu", "volume_down", "volume_mute", "camera", "power")
-                """
-                obj.server.jsonrpc.registerPressKeyskWatcher(
-                    name, self.__selectors, keys)
-
-        return Watcher()
-
-    @property
-    def watchers(self):
-        obj = self
-
-        class Watchers(list):
-            def __init__(self):
-                for watcher in obj.server.jsonrpc.getWatchers():
-                    self.append(watcher)
-
-            @property
-            def triggered(self):
-                return obj.server.jsonrpc.hasAnyWatcherTriggered()
-
-            def remove(self, name=None):
-                if name:
-                    obj.server.jsonrpc.removeWatcher(name)
-                else:
-                    for name in self:
-                        obj.server.jsonrpc.removeWatcher(name)
-
-            def reset(self):
-                obj.server.jsonrpc.resetWatcherTriggers()
-                return self
-
-            def run(self):
-                obj.server.jsonrpc.runWatchers()
-                return self
-
-            @property
-            def watched(self):
-                return obj.server.jsonrpc.hasWatchedOnWindowsChange()
-
-            @watched.setter
-            def watched(self, b):
-                """
-                Args:
-                    b: boolean
-                """
-                assert isinstance(b, bool)
-                obj.server.jsonrpc.runWatchersOnWindowsChange(b)
-
-        return Watchers()
-
-    @property
-    def info(self):
-        return self.jsonrpc.deviceInfo()
-
-    def __call__(self, **kwargs):
-        return UiObject(self, Selector(**kwargs))
-
-
-# Will be removed in the future
-def wrap_wait_exists(fn):
-    @functools.wraps(fn)
-    def inner(self, *args, **kwargs):
-        timeout = kwargs.pop('timeout', self.wait_timeout)
-        if not self.wait(timeout=timeout):
-            raise UiObjectNotFoundError({
-                'code': -32002,
-                'message': E(self.selector.__str__())
-            })
-        return fn(self, *args, **kwargs)
-
-    return inner
-
-
-class UiObject(object):
-    def __init__(self, session, selector):
-        self.session = session
-        self.selector = selector
-        self.jsonrpc = session.jsonrpc
-
-    @property
-    def wait_timeout(self):
-        return self.session.server.wait_timeout
-
-    @property
-    def exists(self):
-        '''check if the object exists in current window.'''
-        return Exists(self)
-
-    @property
-    @retry(
-        UiObjectNotFoundError, delay=.5, tries=3, jitter=0.1, logger=logging)
-    def info(self):
-        '''ui object info.'''
-        return self.jsonrpc.objInfo(self.selector)
-
-    def click(self, timeout=None, offset=None):
-        """
-        Click UI element. 
-
-        Args:
-            timeout: seconds wait element show up
-            offset: (xoff, yoff) default (0.5, 0.5) -> center
-
-        The click method does the same logic as java uiautomator does.
-        1. waitForExists 2. get VisibleBounds center 3. send click event
-
-        Raises:
-            UiObjectNotFoundError
-        """
-        self.must_wait(timeout=timeout)
-        x, y = self.center(offset=offset)
-        # ext.htmlreport need to comment bellow code
-        # if info['clickable']:
-        #     return self.jsonrpc.click(self.selector)
-        self.session.click(x, y)
-        delay = self.session.server.click_post_delay
-        if delay:
-            time.sleep(delay)
-
-    def center(self, offset=None):
-        """
-        Args:
-            offset: optional, (x_off, y_off)
-                (0, 0) means center, (0.5, 0.5) means right-bottom
-        Return:
-            center point (x, y)
-        """
-        info = self.info
-        bounds = info.get('visibleBounds') or info.get("bounds")
-        lx, ly, rx, ry = bounds['left'], bounds['top'], bounds['right'], bounds['bottom']
-        if not offset:
-            offset = (0.5, 0.5)
-        xoff, yoff = offset
-        width, height = rx - lx, ry - ly
-        x = lx + width * xoff
-        y = ly + height * yoff
-        return (x, y)
-
-    def click_gone(self, maxretry=10, interval=1.0):
-        """
-        Click until element is gone
-
-        Args:
-            maxretry (int): max click times
-            interval (float): sleep time between clicks
-
-        Return:
-            Bool if element is gone
-        """
-        self.click_exists()
-        while maxretry > 0:
-            time.sleep(interval)
-            if not self.exists:
-                return True
-            self.click_exists()
-            maxretry -= 1
-        return False
-
-    def click_exists(self, timeout=0):
-        try:
-            self.click(timeout=timeout)
-            return True
-        except UiObjectNotFoundError:
-            return False
-
-    def long_click(self, duration=None, timeout=None):
-        """
-        Args:
-            duration (float): seconds of pressed
-            timeout (float): seconds wait element show up
-        """
-
-        # if info['longClickable'] and not duration:
-        #     return self.jsonrpc.longClick(self.selector)
-        self.must_wait(timeout=timeout)
-        x, y = self.center()
-        return self.session.long_click(x, y, duration)
-
-    def drag_to(self, *args, **kwargs):
-        duration = kwargs.pop('duration', 0.5)
-        timeout = kwargs.pop('timeout', None)
-        self.must_wait(timeout=timeout)
-
-        steps = int(duration * 200)
-        if len(args) >= 2 or "x" in kwargs or "y" in kwargs:
-
-            def drag2xy(x, y):
-                x, y = self.session.pos_rel2abs(x,
-                                                y)  # convert percent position
-                return self.jsonrpc.dragTo(self.selector, x, y, steps)
-
-            return drag2xy(*args, **kwargs)
-        return self.jsonrpc.dragTo(self.selector, Selector(**kwargs), steps)
-
-    def swipe(self, direction, steps=10):
-        """
-        Performs the swipe action on the UiObject.
-        Swipe from center
-
-        Args:
-            direction (str): one of ("left", "right", "up", "down")
-            steps (int): move steps, one step is about 5ms
-            percent: float between [0, 1]
-
-        Note: percent require API >= 18
-        # assert 0 <= percent <= 1
-        """
-        assert direction in ("left", "right", "up", "down")
-
-        self.must_wait()
-        info = self.info
-        bounds = info.get('visibleBounds') or info.get("bounds")
-        lx, ly, rx, ry = bounds['left'], bounds['top'], bounds['right'], bounds['bottom']
-        cx, cy = (lx+rx)//2, (ly+ry)//2
-        if direction == 'up':
-            self.session.swipe(cx, cy, cx, ly, steps=steps)
-        elif direction == 'down':
-            self.session.swipe(cx, cy, cx,  ry - 1, steps=steps)
-        elif direction == 'left':
-            self.session.swipe(cx, cy, lx, cy, steps=steps)
-        elif direction == 'right':
-            self.session.swipe(cx, cy, rx - 1, cy, steps=steps)
-
-        # return self.jsonrpc.swipe(self.selector, direction, percent, steps)
-
-
-    def gesture(self, start1, start2, end1, end2, steps=100):
-        '''
-        perform two point gesture.
-        Usage:
-        d().gesture(startPoint1, startPoint2, endPoint1, endPoint2, steps)
-        '''
-        rel2abs = self.session.pos_rel2abs
-
-        def point(x=0, y=0):
-            x, y = rel2abs(x, y)
-            return {"x": x, "y": y}
-
-        def ctp(pt):
-            return point(*pt) if type(pt) == tuple else pt
-
-        s1, s2, e1, e2 = ctp(start1), ctp(start2), ctp(end1), ctp(end2)
-        return self.jsonrpc.gesture(self.selector, s1, s2, e1, e2, steps)
-
-    def pinch_in(self, percent=100, steps=50):
-        return self.jsonrpc.pinchIn(self.selector, percent, steps)
-
-    def pinch_out(self, percent=100, steps=50):
-        return self.jsonrpc.pinchOut(self.selector, percent, steps)
-
-    def wait(self, exists=True, timeout=None):
-        """
-        Wait until UI Element exists or gone
-
-        Args:
-            timeout (float): wait element timeout
-
-        Example:
-            d(text="Clock").wait()
-            d(text="Settings").wait("gone") # wait until it's gone
-        """
-        if timeout is None:
-            timeout = self.wait_timeout
-        http_wait = timeout + 10
-        if exists:
-            try:
-                return self.jsonrpc.waitForExists(
-                    self.selector, int(timeout * 1000), http_timeout=http_wait)
-            except requests.ReadTimeout as e:
-                warnings.warn("waitForExists readTimeout: %s" % e, RuntimeWarning)
-                return self.exists()
-        else:
-            try:
-                return self.jsonrpc.waitUntilGone(
-                    self.selector, int(timeout * 1000), http_timeout=http_wait)
-            except requests.ReadTimeout as e:
-                warnings.warn("waitForExists readTimeout: %s" % e, RuntimeWarning)
-                return not self.exists()
-
-    def wait_gone(self, timeout=None):
-        """ wait until ui gone
-        Args:
-            timeout (float): wait element gone timeout
-        """
-        timeout = timeout or self.wait_timeout
-        return self.wait(exists=False, timeout=timeout)
-
-    def must_wait(self, exists=True, timeout=None):
-        """ wait and if not found raise UiObjectNotFoundError """
-        if not self.wait(exists, timeout):
-            raise UiObjectNotFoundError({'code': -32002, 'method': 'wait'})
-
-    def send_keys(self, text):
-        """ alias of set_text """
-        return self.set_text(text)
-
-    def set_text(self, text, timeout=None):
-        self.must_wait(timeout=timeout)
-        if not text:
-            return self.jsonrpc.clearTextField(self.selector)
-        else:
-            return self.jsonrpc.setText(self.selector, text)
-
-    def get_text(self, timeout=None):
-        """ get text from field """
-        self.must_wait(timeout=timeout)
-        return self.jsonrpc.getText(self.selector)
-
-    def clear_text(self, timeout=None):
-        self.must_wait(timeout=timeout)
-        return self.set_text(None)
-
-    def child(self, **kwargs):
-        return UiObject(self.session, self.selector.clone().child(**kwargs))
-
-    def sibling(self, **kwargs):
-        return UiObject(self.session, self.selector.clone().sibling(**kwargs))
-
-    child_selector, from_parent = child, sibling
-
-    def child_by_text(self, txt, **kwargs):
-        if "allow_scroll_search" in kwargs:
-            allow_scroll_search = kwargs.pop("allow_scroll_search")
-            name = self.jsonrpc.childByText(self.selector, Selector(**kwargs),
-                                            txt, allow_scroll_search)
-        else:
-            name = self.jsonrpc.childByText(self.selector, Selector(**kwargs),
-                                            txt)
-        return UiObject(self.session, name)
-
-    def child_by_description(self, txt, **kwargs):
-        # need test
-        if "allow_scroll_search" in kwargs:
-            allow_scroll_search = kwargs.pop("allow_scroll_search")
-            name = self.jsonrpc.childByDescription(self.selector,
-                                                   Selector(**kwargs), txt,
-                                                   allow_scroll_search)
-        else:
-            name = self.jsonrpc.childByDescription(self.selector,
-                                                   Selector(**kwargs), txt)
-        return UiObject(self.session, name)
-
-    def child_by_instance(self, inst, **kwargs):
-        # need test
-        return UiObject(self.session,
-                        self.jsonrpc.childByInstance(self.selector,
-                                                     Selector(**kwargs), inst))
-
-    def parent(self):
-        # android-uiautomator-server not implemented
-        # In UIAutomator, UIObject2 has getParent() method
-        # https://developer.android.com/reference/android/support/test/uiautomator/UiObject2.html
-        raise NotImplementedError()
-        return UiObject(self.session, self.jsonrpc.getParent(self.selector))
-
-    def __getitem__(self, index):
-        selector = self.selector.clone()
-        selector.update_instance(index)
-        return UiObject(self.session, selector)
-
-    @property
-    def count(self):
-        return self.jsonrpc.count(self.selector)
-
-    def __len__(self):
-        return self.count
-
-    def __iter__(self):
-        obj, length = self, self.count
-
-        class Iter(object):
-            def __init__(self):
-                self.index = -1
-
-            def next(self):
-                self.index += 1
-                if self.index < length:
-                    return obj[self.index]
-                else:
-                    raise StopIteration()
-
-            __next__ = next
-
-        return Iter()
-
-    def right(self, **kwargs):
-        def onrightof(rect1, rect2):
-            left, top, right, bottom = intersect(rect1, rect2)
-            return rect2["left"] - rect1["right"] if top < bottom else -1
-
-        return self.__view_beside(onrightof, **kwargs)
-
-    def left(self, **kwargs):
-        def onleftof(rect1, rect2):
-            left, top, right, bottom = intersect(rect1, rect2)
-            return rect1["left"] - rect2["right"] if top < bottom else -1
-
-        return self.__view_beside(onleftof, **kwargs)
-
-    def up(self, **kwargs):
-        def above(rect1, rect2):
-            left, top, right, bottom = intersect(rect1, rect2)
-            return rect1["top"] - rect2["bottom"] if left < right else -1
-
-        return self.__view_beside(above, **kwargs)
-
-    def down(self, **kwargs):
-        def under(rect1, rect2):
-            left, top, right, bottom = intersect(rect1, rect2)
-            return rect2["top"] - rect1["bottom"] if left < right else -1
-
-        return self.__view_beside(under, **kwargs)
-
-    def __view_beside(self, onsideof, **kwargs):
-        bounds = self.info["bounds"]
-        min_dist, found = -1, None
-        for ui in UiObject(self.session, Selector(**kwargs)):
-            dist = onsideof(bounds, ui.info["bounds"])
-            if dist >= 0 and (min_dist < 0 or dist < min_dist):
-                min_dist, found = dist, ui
-        return found
-
-    @property
-    def fling(self):
-        """
-        Args:
-            dimention (str): one of "vert", "vertically", "vertical", "horiz", "horizental", "horizentally"
-            action (str): one of "forward", "backward", "toBeginning", "toEnd", "to"
-        """
-        jsonrpc = self.jsonrpc
-        selector = self.selector
-
-        class _Fling(object):
-            def __init__(self):
-                self.vertical = True
-                self.action = 'forward'
-
-            def __getattr__(self, key):
-                if key in ["horiz", "horizental", "horizentally"]:
-                    self.vertical = False
-                    return self
-                if key in ['vert', 'vertically', 'vertical']:
-                    self.vertical = True
-                    return self
-                if key in [
-                        "forward", "backward", "toBeginning", "toEnd", "to"
-                ]:
-                    self.action = key
-                    return self
-                raise ValueError("invalid prop %s" % key)
-
-            def __call__(self, max_swipes=500, **kwargs):
-                if self.action == "forward":
-                    return jsonrpc.flingForward(selector, self.vertical)
-                elif self.action == "backward":
-                    return jsonrpc.flingBackward(selector, self.vertical)
-                elif self.action == "toBeginning":
-                    return jsonrpc.flingToBeginning(selector, self.vertical,
-                                                    max_swipes)
-                elif self.action == "toEnd":
-                    return jsonrpc.flingToEnd(selector, self.vertical,
-                                              max_swipes)
-
-        return _Fling()
-
-    @property
-    def scroll(self):
-        """
-        Args:
-            dimention (str): one of "vert", "vertically", "vertical", "horiz", "horizental", "horizentally"
-            action (str): one of "forward", "backward", "toBeginning", "toEnd", "to"
-        """
-        selector = self.selector
-        jsonrpc = self.jsonrpc
-
-        class _Scroll(object):
-            def __init__(self):
-                self.vertical = True
-                self.action = 'forward'
-
-            def __getattr__(self, key):
-                if key in ["horiz", "horizental", "horizentally"]:
-                    self.vertical = False
-                    return self
-                if key in ['vert', 'vertically', 'vertical']:
-                    self.vertical = True
-                    return self
-                if key in [
-                        "forward", "backward", "toBeginning", "toEnd", "to"
-                ]:
-                    self.action = key
-                    return self
-                raise ValueError("invalid prop %s" % key)
-
-            def __call__(self, steps=20, max_swipes=500, **kwargs):
-                if self.action in ["forward", "backward"]:
-                    method = jsonrpc.scrollForward if self.action == "forward" else jsonrpc.scrollBackward
-                    return method(selector, self.vertical, steps)
-                elif self.action == "toBeginning":
-                    return jsonrpc.scrollToBeginning(selector, self.vertical,
-                                                     max_swipes, steps)
-                elif self.action == "toEnd":
-                    return jsonrpc.scrollToEnd(selector, self.vertical,
-                                               max_swipes, steps)
-                elif self.action == "to":
-                    return jsonrpc.scrollTo(selector, Selector(**kwargs),
-                                            self.vertical)
-
-        return _Scroll()
-
-
-class Selector(dict):
-    """The class is to build parameters for UiSelector passed to Android device.
-    """
-    __fields = {
-        "text": (0x01, None),  # MASK_TEXT,
-        "textContains": (0x02, None),  # MASK_TEXTCONTAINS,
-        "textMatches": (0x04, None),  # MASK_TEXTMATCHES,
-        "textStartsWith": (0x08, None),  # MASK_TEXTSTARTSWITH,
-        "className": (0x10, None),  # MASK_CLASSNAME
-        "classNameMatches": (0x20, None),  # MASK_CLASSNAMEMATCHES
-        "description": (0x40, None),  # MASK_DESCRIPTION
-        "descriptionContains": (0x80, None),  # MASK_DESCRIPTIONCONTAINS
-        "descriptionMatches": (0x0100, None),  # MASK_DESCRIPTIONMATCHES
-        "descriptionStartsWith": (0x0200, None),  # MASK_DESCRIPTIONSTARTSWITH
-        "checkable": (0x0400, False),  # MASK_CHECKABLE
-        "checked": (0x0800, False),  # MASK_CHECKED
-        "clickable": (0x1000, False),  # MASK_CLICKABLE
-        "longClickable": (0x2000, False),  # MASK_LONGCLICKABLE,
-        "scrollable": (0x4000, False),  # MASK_SCROLLABLE,
-        "enabled": (0x8000, False),  # MASK_ENABLED,
-        "focusable": (0x010000, False),  # MASK_FOCUSABLE,
-        "focused": (0x020000, False),  # MASK_FOCUSED,
-        "selected": (0x040000, False),  # MASK_SELECTED,
-        "packageName": (0x080000, None),  # MASK_PACKAGENAME,
-        "packageNameMatches": (0x100000, None),  # MASK_PACKAGENAMEMATCHES,
-        "resourceId": (0x200000, None),  # MASK_RESOURCEID,
-        "resourceIdMatches": (0x400000, None),  # MASK_RESOURCEIDMATCHES,
-        "index": (0x800000, 0),  # MASK_INDEX,
-        "instance": (0x01000000, 0)  # MASK_INSTANCE,
-    }
-    __mask, __childOrSibling, __childOrSiblingSelector = "mask", "childOrSibling", "childOrSiblingSelector"
-
-    def __init__(self, **kwargs):
-        super(Selector, self).__setitem__(self.__mask, 0)
-        super(Selector, self).__setitem__(self.__childOrSibling, [])
-        super(Selector, self).__setitem__(self.__childOrSiblingSelector, [])
-        for k in kwargs:
-            self[k] = kwargs[k]
-
-    def __str__(self):
-        """ remove useless part for easily debugger """
-        selector = self.copy()
-        selector.pop('mask')
-        for key in ('childOrSibling', 'childOrSiblingSelector'):
-            if not selector.get(key):
-                selector.pop(key)
-        args = []
-        for (k, v) in selector.items():
-            args.append(k + '=' + repr(v))
-        return 'Selector [' + ', '.join(args) + ']'
-
-    def __setitem__(self, k, v):
-        if k in self.__fields:
-            super(Selector, self).__setitem__(U(k), U(v))
-            super(Selector, self).__setitem__(
-                self.__mask, self[self.__mask] | self.__fields[k][0])
-        else:
-            raise ReferenceError("%s is not allowed." % k)
-
-    def __delitem__(self, k):
-        if k in self.__fields:
-            super(Selector, self).__delitem__(k)
-            super(Selector, self).__setitem__(
-                self.__mask, self[self.__mask] & ~self.__fields[k][0])
-
-    def clone(self):
-        kwargs = dict((k, self[k]) for k in self if k not in [
-            self.__mask, self.__childOrSibling, self.__childOrSiblingSelector
-        ])
-        selector = Selector(**kwargs)
-        for v in self[self.__childOrSibling]:
-            selector[self.__childOrSibling].append(v)
-        for s in self[self.__childOrSiblingSelector]:
-            selector[self.__childOrSiblingSelector].append(s.clone())
-        return selector
-
-    def child(self, **kwargs):
-        self[self.__childOrSibling].append("child")
-        self[self.__childOrSiblingSelector].append(Selector(**kwargs))
-        return self
-
-    def sibling(self, **kwargs):
-        self[self.__childOrSibling].append("sibling")
-        self[self.__childOrSiblingSelector].append(Selector(**kwargs))
-        return self
-
-    def update_instance(self, i):
-        # update inside child instance
-        if self[self.__childOrSiblingSelector]:
-            self[self.__childOrSiblingSelector][-1]['instance'] = i
-        else:
-            self['instance'] = i
-
-
-class Exists(object):
-    """Exists object with magic methods."""
-
-    def __init__(self, uiobject):
-        self.uiobject = uiobject
-
-    def __nonzero__(self):
-        """Magic method for bool(self) python2 """
-        return self.uiobject.jsonrpc.exist(self.uiobject.selector)
-
-    def __bool__(self):
-        """ Magic method for bool(self) python3 """
-        return self.__nonzero__()
-
-    def __call__(self, timeout=0):
-        """Magic method for self(args).
-
-        Args:
-            timeout (float): exists in seconds
-        """
-        if timeout:
-            return self.uiobject.wait(timeout=timeout)
-        return bool(self)
-
-    def __repr__(self):
-        return str(bool(self))
-
-
-class XPathSelector(object):
-    def __init__(self, xpath, server, source=None):
-        self.xpath = xpath
-        self.server = server
-        self.source = source
-
-    def wait(self, timeout=10.0):
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            elements = self.all()
-            if elements:
-                return elements[0]
-            time.sleep(.5)
-
-    def click(self, timeout=10.0):
-        """
-        click element
-        """
-        elem = self.wait(timeout=timeout)
-        if not elem:
-            raise UiaError(self.xpath)
-        x, y = elem.center()
-        self.server.click(x, y)
-
-    def all(self):
-        """
-        Returns:
-            list of XMLElement
-        """
-        xml_content = self.source or self.server.dump_hierarchy()
-        return [
-            XMLElement(node)
-            for node in simplexml.xpath_findall(self.xpath, xml_content)
-        ]
-
-    @property
-    def exists(self):
-        return len(self.all()) > 0
-
-
-class XMLElement(object):
-    def __init__(self, elem):
-        self.elem = elem
-
-    def center(self):
-        bounds = self.elem.attrib.get("bounds")
-        lx, ly, rx, ry = map(int, re.findall("\d+", bounds))
-        return (lx + rx) // 2, (ly + ry) // 2
-
-    @property
-    def text(self):
-        return self.elem.attrib.get("text")
-
-    @property
-    def attrib(self):
-        return self.elem.attrib
+# class XPathSelector(object):
+#     def __init__(self, xpath, server, source=None):
+#         self.xpath = xpath
+#         self.server = server
+#         self.source = source
+
+#     def wait(self, timeout=10.0):
+#         deadline = time.time() + timeout
+#         while time.time() < deadline:
+#             elements = self.all()
+#             if elements:
+#                 return elements[0]
+#             time.sleep(.5)
+
+#     def click(self, timeout=10.0):
+#         """
+#         click element
+#         """
+#         elem = self.wait(timeout=timeout)
+#         if not elem:
+#             raise UiaError(self.xpath)
+#         x, y = elem.center()
+#         self.server.click(x, y)
+
+#     def all(self):
+#         """
+#         Returns:
+#             list of XMLElement
+#         """
+#         xml_content = self.source or self.server.dump_hierarchy()
+#         return [
+#             XMLElement(node)
+#             for node in simplexml.xpath_findall(self.xpath, xml_content)
+#         ]
+
+#     @property
+#     def exists(self):
+#         return len(self.all()) > 0
+
+
+# class XMLElement(object):
+#     def __init__(self, elem):
+#         self.elem = elem
+
+#     def center(self):
+#         bounds = self.elem.attrib.get("bounds")
+#         lx, ly, rx, ry = map(int, re.findall(r"\d+", bounds))
+#         return (lx + rx) // 2, (ly + ry) // 2
+
+#     @property
+#     def text(self):
+#         return self.elem.attrib.get("text")
+
+#     @property
+#     def attrib(self):
+#         return self.elem.attrib
 
 
 class AdbShell(object):

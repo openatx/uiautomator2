@@ -1,32 +1,83 @@
-# uiautomator2 [![Build Status](https://travis-ci.org/openatx/uiautomator2.svg?branch=master)](https://travis-ci.org/openatx/uiautomator2) [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2) ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg)
-**该项目正在火热的开发中**
+# uiautomator2 [![Build Status](https://travis-ci.org/openatx/uiautomator2.svg?branch=master)](https://travis-ci.org/openatx/uiautomator2) [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2) ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg) [![Windows Build](https://ci.appveyor.com/api/projects/status/github/openatx/uiautomator2)](https://ci.appveyor.com/project/openatx/uiautomator2)
+**该项目正在火热的开发中** QQ群号: *499563266*
 
-uiautomator2 是一个可以使用Python对Android设备进行UI自动化的库。其底层基于Google uiautomator，Google提供的[uiautomator](https://developer.android.com/training/testing/ui-automator.html)库可以获取屏幕上任意一个APP的任意一个控件属性，并对其进行任意操作，但有两个缺点：1. 测试脚本只能使用Java语言 2. 测试脚本必须每次被上传到设备上运行。
+<p align="left"><img src="docs/img/qqgroup.png" /></div>
+
+uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本对设备进行自动化。底层基于Google uiautomator，Google提供的[uiautomator](https://developer.android.com/training/testing/ui-automator.html)库可以获取屏幕上任意一个APP的任意一个控件属性，并对其进行任意操作，但有两个缺点：1. 测试脚本只能使用Java语言 2. 测试脚本必须每次被上传到设备上运行。
 我们希望测试能够用一个更脚本化的语言，例如Python编写，同时可以每次所见即所得地修改测试、运行测试。这里要非常感谢 Xiaocong He ([@xiaocong][])，他将这个想法实现了出来（见[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)），原理是在手机上运行了一个http服务器，将uiautomator中的功能开放出来，然后再将这些http接口，封装成Python库。
 我们的uiautomator2项目是对[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)的增强，主要有以下部分：
 
 * 设备和开发机可以脱离数据线，通过WiFi互联（基于[atx-agent](https://github.com/openatx/atx-agent)）
-* 集成了[openstf/minicap](https://github.com/openstf/minicap)加快截图速度
+* 集成了[openstf/minicap](https://github.com/openstf/minicap)达到实时屏幕投频，以及实时截图
 * 集成了[openstf/minitouch](https://github.com/openstf/minitouch)达到精确实时控制设备
-* 修复了xiaocong/uiautomator经常性退出的问题
+* 修复了[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)经常性退出的问题
 * 代码进行了重构和精简，方便维护
+* Requirements: `Android >= 4.4` `Python >=2.7 || <= 3.7`
 
 虽然我说的很简单，但是实现起来用到了很多的技术和技巧，功能非常强，唯独文档有点少。哈哈
 
-QQ群号: *499563266*
+* 开源需要大家的贡献！
+  * `大神这个能不能加上` -> `大神我加了个这个，PR review一下` https://github.com/openatx/uiautomator2/pull/157
+  * `大神没找到文档啊` -> `大神我把xxx这里写了一下，PR了合并一下吧` https://github.com/openatx/uiautomator2/pull/260
+  * `大神我这个手机上跑不了` -> `大神，我适配了xxx，PR合并一下吧` https://github.com/openatx/uiautomator2/pull/163
+  * `大神我是小白，这个怎么用啊` -> `大神我是小白看了文档试用了一下，这个是我在TesterHome分享的踩坑贴，有些可以并到README`
+  * `大神这个是不是一直免费啊` -> `大神我能做什么` https://github.com/openatx/uiautomator2/projects/1
 
-![QQ QRCode](docs/img/qqgroup.png)
+**[Installation](#installation)**
 
-# Table of contents
-- **[Installation](#installation)**
-- **[Usage](#usage)**
-  - **[Command line](#command-line)**
-  - **[Quick start](#quick-start)**
-- **[API Documents](#api-documents)**
+**[Connect to a device](#connect-to-a-device)**
 
-# Limitation 限制
-- Android OS Version >= 4.4
-- Python >=2.7 <= 3.6
+**[Command line](#command-line)**
+
+**[Global settings](#global-settings)**
+  - **[Debug HTTP requests](#debug-http-requests)**
+  - **[Implicit wait](#implicit-wait)**
+
+**[App management](#app-management)**
+  - **[Install an app](#install-an-app)**
+  - **[Launch an app](#launch-an-app)**
+  - **[Stop an app](#stop-an-app)**
+  - **[Stop all running apps](#stop-all-running-apps)**
+  - **[Push and pull files](#push-and-pull-files)**
+  - **[Auto click permission dialogs](#auto-click-permission-dialogs)**
+
+**[UI automation](#basic-api-usages)**
+  - **[Shell commands](#shell-commands)**
+  - **[Session](#session)**
+  - **[Retrieve the device info](#retrieve-the-device-info)**
+  - **[Key Events](#key-events)**
+  - **[Gesture interaction with the device](#gesture-interaction-with-the-device)**
+  - **[Screen-related](#screen-related)**
+  - **[Selector](#selector)**
+  - **[Watcher](#watcher)**
+  - **[Global settings](#global-settings)**
+  - **[Input method](#input-method)**
+  - **[Toast](#toast)**
+  - **[XPath](#xpath)**
+
+**[常见问题](https://github.com/openatx/uiautomator2/wiki#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98-testerhome%E8%AE%A8%E8%AE%BA%E5%B8%96)**
+  - **[502错误](https://github.com/openatx/uiautomator2/wiki#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98-testerhome%E8%AE%A8%E8%AE%BA%E5%B8%96)**
+  - **[Connection Error](https://github.com/openatx/uiautomator2/wiki#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98-testerhome%E8%AE%A8%E8%AE%BA%E5%B8%96)**
+  - **[深度睡眠](https://github.com/openatx/uiautomator2/wiki#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98-testerhome%E8%AE%A8%E8%AE%BA%E5%B8%96)**
+  - **[Testerhome问题收集贴](https://github.com/openatx/uiautomator2/wiki#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98-testerhome%E8%AE%A8%E8%AE%BA%E5%B8%96)**
+  - **[点击偏差](https://github.com/openatx/uiautomator2/wiki#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98-testerhome%E8%AE%A8%E8%AE%BA%E5%B8%96)**
+  - **[释放AccessibilityService](https://github.com/openatx/uiautomator2/wiki#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98-testerhome%E8%AE%A8%E8%AE%BA%E5%B8%96)**
+
+**[实验性功能](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+  - **[远程投屏](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+  - **[插上自动init](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+  - **[htmlreport](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+  - **[诊断uiautomator2方法](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+  - **[Plugin](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+  - **[Hooks](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+  - **[失败时弹出提示框](https://github.com/openatx/uiautomator2/wiki#%E5%AE%9E%E9%AA%8C%E6%80%A7%E5%8A%9F%E8%83%BD)**
+
+**[项目历史](#项目历史)**
+
+**[Contributors](#contributors)**
+
+**[LICENSE](#license)**
+
 
 # Installation
 1. Install uiautomator2
@@ -46,7 +97,7 @@ QQ群号: *499563266*
     pip install pillow
     ```
 
-2. Deploy associated daemons to a device 
+2. Install daemons to a device 
     电脑连接上一个手机或多个手机, 确保adb已经添加到环境变量中，执行下面的命令会自动安装本库所需要的设备端程序：[uiautomator-server](https://github.com/openatx/android-uiautomator-server/releases) 、[atx-agent](https://github.com/openatx/atx-agent)、[openstf/minicap](https://github.com/openstf/minicap)、[openstf/minitouch](https://github.com/openstf/minitouch)
 
     ```bash
@@ -54,8 +105,12 @@ QQ群号: *499563266*
     python -m uiautomator2 init
     ```
 
-    因为中国的网络限制，访问Github的资源速度会比较慢，执行上面的命令可能很费时间，所以我们专门制作了一个国内的[Github镜像网站](https://github-mirror.open.netease.com)，网站采用的是请求时缓存的策略，所以全网第一次请求需要等待一会。
-    使用国内镜像只要增加一个参数`--mirror`
+    有时候init也会出错，请参考[手动Init指南](https://github.com/openatx/uiautomator2/wiki/Manual-Init)
+
+    **最近这个镜像网站被Github给Block了, mirror不好使了， 伤心**
+
+    ~~因为中国的网络限制，访问Github的资源速度会比较慢，执行上面的命令可能很费时间，所以我们专门制作了一个国内的[Github镜像网站](https://github-mirror.open.netease.com) ，网站采用的是请求时缓存的策略，所以全网第一次请求需要等待一会。
+    使用国内镜像只要增加一个参数`--mirror`~~
 
     ```bash
     python -m uiautomator2 init --mirror
@@ -68,14 +123,14 @@ QQ群号: *499563266*
 
     安装提示`success`即可
 
-3. Install weditor(UI Inspector)
+3. Install weditor (UI Inspector)
 
     因为uiautomator是独占资源，所以当atx运行的时候uiautomatorviewer是不能用的，为了减少atx频繁的启停，我们开发了基于浏览器技术的weditor UI查看器。<https://github.com/openatx/weditor>
 
-    安装方法
+    安装方法(备注: 目前最新的稳定版为 0.1.0)
 
     ```bash
-    pip install --pre -U weditor
+    pip install -U weditor
     ```
 
     > Windows系统可以使用命令在桌面创建一个快捷方式 `python -m weditor --shortcut`
@@ -84,9 +139,16 @@ QQ群号: *499563266*
 
     具体参考文章：[浅谈自动化测试工具python-uiautomator2](https://testerhome.com/topics/11357)
 
+4. 【推荐】AppetizerIO 所见即所得脚本编辑器
+
+    [AppetizerIO](https://www.appetizer.io) 提供了对uiautomator2的深度集成，可以图形化管理ATX设备，还有所见即所得脚本编辑器
+    * 到网站下载直接打开，首次使用需要注册账号
+    * `设备管理` 界面里可以检查设备是否正常init，起停atx-agent，抓取atx-agent.log文件
+    * `APP测试->脚本助手`调出脚本助手，实时界面同步，点击界面直接插入各种代码，同时支持uiautomator和Appium
+    * **[视频教程 请戳这里](https://github.com/openatx/uiautomator2/wiki/Appetizer%E6%89%80%E8%A7%81%E5%8D%B3%E6%89%80%E5%BE%97u2%E8%84%9A%E6%9C%AC%E7%BC%96%E8%BE%91%E5%99%A8)**  [其他文档在此](http://doc.appetizer.io)
     
-## QUICK START
-There are two ways to connect to the device. Run the following Python code in a Python 2.7/3+ interpreter:
+# Connect to a device
+There are two ways to connect to the device. 
 
 1. Through WiFi (recommended)
 Suppose device IP is `10.0.0.1` and your PC is in the same network.
@@ -111,14 +173,14 @@ print(d.info)
 Calling `u2.connect()` with no argument, `uiautomator2` will obtain device IP from the environment variable `ANDROID_DEVICE_IP`.
 If this environment variable is empty, uiautomator will fall back to `connect_usb` and you need to make sure that there is only one device connected to the computer.
 
-## Command line
+# Command line
 其中的`$device_ip`代表设备的ip地址
 
 - init: 为设备安装所需要的程序
 - install: 安装apk，apk通过URL给出
 
     ```bash
-    $ python -m uiautomator2 install $device_ip https://example.org/some.apk
+    $ python -m uiautomator2.cli install $device_ip https://example.org/some.apk
     MainThread: 15:37:55,731 downloading 80.4 kB / 770.6 kB
     MainThread: 15:37:56,763 installing 770.6 kB / 770.6 kB
     MainThread: 15:37:58,780 success installed 770.6 kB / 770.6 kB
@@ -147,80 +209,8 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
     ```bash
     $ python -m uiautomator2 healthcheck $device_ip
     ```
-
-## 一些常用但是不知道归到什么类里的函数
-先中文写着了，国外大佬们先用Google Translate顶着
-
-### 感觉肯定用得着的资料链接
-
-- [Question and Answers (FAQ)](https://testerhome.com/topics/12025)
-- [浅谈自动化测试工具python-uiautomator2](https://testerhome.com/topics/11357)
-- [weditor](https://github.com/openatx/weditor) 用于查看UI层次结构，方便写脚本用。
-- [htmlreport](uiautomator2/ext/htmlreport) 记录测试过程的测试报告（实验性质）
-
-### 检查并维持设备端守护进程处于运行状态
-```python
-d.healthcheck()
-```
-
-### 点击坐标出现偏移
-为了提高uiautomator2再有播放器界面不卡死，代码中将默认3000ms中的waitForIdleTimeout改成了0，不过有可能会造成坐标偏移，虽然概率不大。
-如果出现这种情况，可以将其调大一点 `d.jsonrpc.setConfigurator({"waitForIdleTimeout": 100})`
-
-### 如何停用UiAutomator的守护程序 How to stop UiAutomator process keeper
-因为有`atx-agent`的存在，Uiautomator会被一直守护着，如果退出了就会被重新启动起来。但是Uiautomator又是霸道的，一旦它在运行，手机上的辅助功能、电脑上的uiautomatorviewer 就都不能用了，除非关掉该框架本身的uiautomator。下面就说下两种关闭方法
-
-方法1：
-
-直接打开`uiautomator` app（init成功后，就会安装上的），点击`关闭UIAutomator`
-
-方法2:
-
-```python
-d.service("uiautomator").stop()
-# d.service("uiautomator").start()
-```
-
-
-**Notes:** In below examples, we use `d` to represent the uiautomator2 object for the connected device.
-
+    
 # API Documents
-**[Global settings](#global-settings)**
-  - **[Debug HTTP requests](#debug-http-requests)**
-  - **[Implicit wait](#implicit-wait)**
-
-**[App management](#app-management)**
-  - **[Install an app](#install-an-app)**
-  - **[Launch an app](#launch-an-app)**
-  - **[Stop an app](#stop-an-app)**
-  - **[Stop all running apps](#stop-all-running-apps)**
-  - **[Push and pull files](#push-and-pull-files)**
-  - **[Auto click permission dialogs](#auto-click-permission-dialogs)**
-
-**[Basic API Usages](#basic-api-usages)**
-  - **[Shell commands](#shell-commands)**
-  - **[Session](#session)**
-  - **[Retrieve the device info](#retrieve-the-device-info)**
-  - **[Key Events](#key-events)**
-  - **[Gesture interaction with the device](#gesture-interaction-with-the-device)**
-  - **[Screen-related](#screen-related)**
-  - **[Selector](#selector)**
-  - **[Watcher](#watcher)**
-  - **[Global settings](#global-settings)**
-  - **[Input method](#input-method)**
-  - **[Toast](#toast)**
-  - **[XPath](#xpath)**
-
-**[测试方法](#测试方法)**
-
-**[Google uiautomator与uiautomator2的区别](#google-uiautomator与uiautomator2的区别)**
-
-**[常见问题](#常见问题)**
-
-**[Contributors](#contributors)**
-
-**[LICENSE](#license)**
-
 ## Global settings
 This part contains some global settings
 
@@ -280,6 +270,22 @@ d.app_stop_all()
 d.app_stop_all(excludes=['com.examples.demo'])
 ```
 
+### Get app info
+```python
+d.app_info("com.examples.demo")
+# expect output
+#{
+#    "mainActivity": "com.github.uiautomator.MainActivity",
+#    "label": "ATX",
+#    "versionName": "1.1.7",
+#    "versionCode": 1001007,
+#    "size":1760809
+#}
+
+# save app icon
+img = d.app_icon("com.examples.demo")
+img.save("icon.png")
+```
 ### Push and pull files
 * push a file to the device
 
@@ -303,6 +309,11 @@ d.app_stop_all(excludes=['com.examples.demo'])
     # FileNotFoundError will raise if the file is not found on the device
     d.pull("/sdcard/some-file-not-exists.txt", "tmp.txt")
     ```
+
+### 检查并维持设备端守护进程处于运行状态
+```python
+d.healthcheck()
+```
 
 ### ~~Auto click permission dialogs~~
 **注意注意** `disable_popups`函数，检测发现很不稳定，暂时不要使用，等候通知。
@@ -345,7 +356,7 @@ This part showcases how to perform common device operations:
     # Since `shell` function return type is `namedtuple("ShellResponse", ("output", "exit_code"))`
     # so we can do some tricks
     output = d.shell("pwd").output
-    exit_code = d.shell("pwd").output
+    exit_code = d.shell("pwd").exit_code
     ```
 
     The first argument can be list. for example
@@ -378,7 +389,7 @@ This part showcases how to perform common device operations:
     Command will be terminated when `r.close()` called.
     
 ### Session
-Session represent an app lifestyle. Can be used to start app, detect app crash.
+Session represent an app lifecycle. Can be used to start app, detect app crash.
 
 * Launch and close app
 
@@ -459,11 +470,61 @@ print(d.current_app())
 # Output example 3: {'activity': None, 'package': None}
 ```
 
+Wait activity
+
+```python
+d.wait_activity(".ApiDemos", timeout=10) # default timeout 10.0 seconds
+# Output: true of false
+```
+
 Get device serial number
 
 ```python
 print(d.serial)
 # output example: 74aAEDR428Z9
+```
+
+Get WLAN ip
+
+```python
+print(d.wlan_ip)
+# output example: 10.0.0.1
+```
+
+Get detailed device info
+
+```python
+print(d.device_info)
+```
+
+Below is a possible output:
+
+```
+{'udid': '3578298f-b4:0b:44:e6:1f:90-OD103',
+ 'version': '7.1.1',
+ 'serial': '3578298f',
+ 'brand': 'SMARTISAN',
+ 'model': 'OD103',
+ 'hwaddr': 'b4:0b:44:e6:1f:90',
+ 'port': 7912,
+ 'sdk': 25,
+ 'agentVersion': 'dev',
+ 'display': {'width': 1080, 'height': 1920},
+ 'battery': {'acPowered': False,
+  'usbPowered': False,
+  'wirelessPowered': False,
+  'status': 3,
+  'health': 0,
+  'present': True,
+  'level': 99,
+  'scale': 100,
+  'voltage': 4316,
+  'temperature': 272,
+  'technology': 'Li-ion'},
+ 'memory': {'total': 3690280, 'around': '4 GB'},
+ 'cpu': {'cores': 8, 'hardware': 'Qualcomm Technologies, Inc MSM8953Pro'},
+ 'presenceChangedAt': '0001-01-01T00:00:00Z',
+ 'usingBeganAt': '0001-01-01T00:00:00Z'}
 ```
 
 ### Key Events
@@ -564,6 +625,17 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
 
     多用于九宫格解锁，提前获取到每个点的相对坐标（这里支持百分比），
     更详细的使用参考这个帖子 [使用u2实现九宫图案解锁](https://testerhome.com/topics/11034)
+
+* Touch and drap (Beta)
+
+    这个接口属于比较底层的原始接口，感觉并不完，不过酬和能用。注：这个地方并不支持百分比
+
+    ```python
+    d.touch.down(10, 10) # 模拟按下
+    time.sleep(.01) # down 和 move 之间的延迟，自己控制
+    d.touch.move(15, 15) # 模拟移动
+    d.touch.up() # 模拟抬起
+    ```
 
 Note: click, swipe, drag operations support percentage position values. Example:
 
@@ -769,7 +841,7 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
       view.info  # ...
   ```
 
-  **Notes**: when using selectors in a list fashion, you must ensure that the UI elements on the screen
+  **Notes**: when using selectors in a code block that walk through the result list, you must ensure that the UI elements on the screen
   keep unchanged. Otherwise, when Element-Not-Found error could occur when iterating through the list.
 
 #### Get the selected ui object status and its information
@@ -1213,16 +1285,8 @@ for elem in d.xpath("//android.widget.TextView").all():
 //*[contains(name(), "ImageView")]
 ```
 
-## 测试方法
-```bash
-$ adb forward tcp:9008 tcp:9008
-$ curl 127.0.0.1:9008/ping
-# expect: pong
-
-$ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' 127.0.0.1:9008/jsonrpc/0
-# expect JSON output
-```
-
+# 项目历史
+* 项目重构自 <https://github.com/openatx/atx-uiautomator>
 ## Google uiautomator与uiautomator2的区别
 1. API相似但是不完全兼容
 2. uiautomator2是安卓项目，而uiautomator是Java项目
@@ -1230,84 +1294,9 @@ $ curl -d '{"jsonrpc":"2.0","method":"deviceInfo","id":1}' 127.0.0.1:9008/jsonrp
 4. uiautomator2必须明确EditText框才能向里面输入文字，uiautomator直接指定父类也可以在子类中输入文字
 5. uiautomator2获取控件速度比uiautomator快
 
-## Plugin (Beta)
-为了方便uiautomator2跟其他项目集成，所以开发了这套插件机制。参考了一些[过去flask的插件机制](https://www.zoulei.net/2016/09/05/flask_plugin_note/)。
-使用示例
+## [CHANGELOG (generated by pbr)](CHANGELOG)
 
-```python
-import uiautomator2 as u2
-
-def image_save(d, fileext='.jpg'):
-    """ save screenshot plugin """
-    def inner(filename):
-        d.screenshot().save(filename+fileext)
-    return inner
-
-u2.plugin_register('png_save', image_save, '.png')
-
-d = u2.connect()
-d.ext_png_save("screen") # screenshot will save screen.png
-```
-
-这里引入了一个函数`plugin_register`
-
-```python
-def plugin_register(name, func_or_class, *args, **kwargs)
-```
-
-name代表插件的名字，`func_or_class`可以是函数，也可以是类，其第一个参数一定是`d`（设备的实例）, `args`和`kwargs`是可选参数
-
-通过`d.ext_`加上注册插件是的名字，如果插件名是`png_save`则通过`d.ext_png_save`调用。
-
-`image_save`这个函数只有在最初调用`d.ext_png_save`的时候会调用，之后都只使用第一次生成的实例。
-
-> PS: 插件的调用没有自动补全，有点不太方便
-
-
-## 常见问题
-1. 提示`502`错误
-
-    尝试手机连接PC，然后运行下面的命令
-    
-    ```
-    adb shell am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub \
-		com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner
-    ```
-    如果运行正常，启动测试之前增加一行代码`d.healthcheck()`
-
-    如果报错，可能是缺少某个设备组件没有安装，使用下面的命令重新初始化 `python -m uiautomator2 init --reinstall`
-
-2. 提示Connection Error
-
-    可能是atx-agent没有在运行。
-
-    ```bash
-    # 检查是否运行的方法
-    > adb shell
-    $ ps | grep atx # 如果看到atx-agent则表示正在运行
-
-    # 启动atx-agent
-    $ /data/local/tmp/atx-agent -d
-
-    # 停止atx-agent
-    $ /data/local/tmp/atx-agent -stop
-    ```
-
-Other: <https://github.com/openatx/uiautomator2/wiki/Common-issues>
-
-## 实验室功能
-### 远程查看
-手机`python -m uiautomator2 init`之后，浏览器输入 <device_ip:7912>，会发现一个远程控制功能，延迟非常低噢。^_^
-
-### 手机USB连接后，自动调用init命令
-[adbkit-init](examples/adbkit-init)
-
-# 项目历史
-项目重构自 <https://github.com/openatx/atx-uiautomator>
-
-# [CHANGELOG (generated by pbr)](CHANGELOG)
-
-# 依赖项目
+## 依赖项目
 - uiautomator守护程序 <https://github.com/openatx/atx-agent>
 - uiautomator jsonrpc server<https://github.com/openatx/android-uiautomator-server/>
 
