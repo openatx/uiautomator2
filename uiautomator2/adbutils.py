@@ -1,5 +1,6 @@
 # coding: utf-8
 #
+# Refs: https://github.com/openatx/uiautomator2/blob/d08e2e8468/uiautomator2/adbutils.py
 
 from __future__ import print_function
 
@@ -20,10 +21,47 @@ def find_free_port():
         s.close()
 
 
+def adb_path():
+    path = whichcraft.which("adb")
+    if path is None:
+        raise EnvironmentError(
+            "Can't find the adb, please install adb on your PC")
+    return path
+
+
+
 def devices():
-    client = AdbClient(
-        host='127.0.0.1', port=5037)  # TODO(ssx): should get HOST from env
-    return client.devices()
+    output = subprocess.check_output([adb_path(), 'devices'])
+    pattern = re.compile(
+        r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
+    matches = pattern.findall(output.decode())
+    ret = []
+    for m in matches:
+        if m[1] == 'device':
+            ret.append(AdbDevice(m[0]))
+
+
+class AdbDevice(object):
+    def __init__(self, serial):
+        self._serial = serial
+
+    def execute(self, *args, **kwargs):
+        """
+        Raises:
+            EnvironmentError
+        """
+
+        cmds = [adb_path(), '-s', self._serial] if self._serial else [adb_path()]
+        cmds.extend(args)
+        cmdline = subprocess.list2cmdline(map(str, cmds))
+        try:
+            return subprocess.check_output(
+                cmdline, stderr=subprocess.STDOUT, shell=True).decode('utf-8')
+        except subprocess.CalledProcessError as e:
+            if kwargs.get('raise_error', True):
+                raise EnvironmentError("subprocess", cmdline,
+                                       e.output.decode(
+                                           'utf-8', errors='ignore'))
 
 
 class Adb(object):
@@ -55,15 +93,17 @@ class Adb(object):
 
     @staticmethod
     def list_devices(host="127.0.0.1", port=5037):
-        client = AdbClient(host=host, port=port)
-
-        try:
-            client.version()
-        except RuntimeError:
-            # Can't connect to the adb server, try to start the adb server by command line.
-            Adb._start_adb_server()
-
-        return client.devices()
+        """
+        Returns:
+            list of AdbDevice
+        """
+        output = subprocess.check_output([self.adb_path(), 'devices'])
+        pattern = re.compile(
+            r'(?P<serial>[^\s]+)\t(?P<status>device|offline)')
+        matches = pattern.findall(output.decode())
+        for m in matches:
+            if m[1] == 'device':
+                yield AdbDevice(m[0])
 
     @staticmethod
     def _start_adb_server():
@@ -188,3 +228,8 @@ class Adb(object):
         if version_name is None and signature is None:
             return None
         return dict(version_name=version_name, signature=signature)
+
+
+
+    
+    
