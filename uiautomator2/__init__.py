@@ -15,7 +15,7 @@ Refs:
 
 from __future__ import absolute_import, print_function
 
-from uiautomator2.version import  __atx_agent_version__
+from uiautomator2.version import __atx_agent_version__
 from uiautomator2 import adbutils
 import requests
 
@@ -50,14 +50,12 @@ from uiautomator2.exceptions import (
     NullPointerExceptionError,
     StaleObjectExceptionError,
 )
-from uiautomator2.session import ( # noqa: F401
-    Session,
-    set_fail_prompt, 
-) 
+from uiautomator2.session import (  # noqa: F401
+    Session, set_fail_prompt,
+)
 
 if six.PY2:
     FileNotFoundError = OSError
-
 
 DEBUG = False
 HTTP_TIMEOUT = 60
@@ -77,6 +75,7 @@ def log_print(s):
     thread_name = threading.current_thread().getName()
     print(thread_name + ": " + datetime.now().strftime('%H:%M:%S,%f')[:-3] +
           " " + s)
+
 
 def _is_wifi_addr(addr):
     if not addr:
@@ -141,8 +140,13 @@ def connect_usb(serial=None):
     Returns:
         UIAutomatorServer
     """
-    adb = adbutils.Adb(serial)
-    lport = adb.forward_port(7912)
+    adb = adbutils.AdbClient()
+    if not serial:
+        device = adb.must_one_device()
+    else:
+        device = adbutils.AdbDevice(adb, serial)
+    # adb = adbutils.Adb(serial)
+    lport = device.forward_port(7912)
     d = connect_wifi('127.0.0.1:' + str(lport))
     if not d.agent_alive:
         warnings.warn("backend atx-agent is not alive, start again ...",
@@ -177,9 +181,10 @@ class TimeoutRequestsSession(requests.Session):
             if isinstance(data, dict):
                 data = json.dumps(data)
             time_start = time.time()
-            print(datetime.now().strftime("%H:%M:%S.%f")[:-3],
-                  "$ curl -X {method} -d '{data}' '{url}'".format(
-                      method=method, url=url, data=data))
+            print(
+                datetime.now().strftime("%H:%M:%S.%f")[:-3],
+                "$ curl -X {method} -d '{data}' '{url}'".format(
+                    method=method, url=url, data=data))
         try:
             resp = super(TimeoutRequestsSession, self).request(
                 method, url, **kwargs)
@@ -189,10 +194,11 @@ class TimeoutRequestsSession(requests.Session):
             )
         else:
             if verbose:
-                print(datetime.now().strftime("%H:%M:%S.%f")[:-3],
-                      "Response (%d ms) >>>\n" %
-                      ((time.time() - time_start) * 1000) +
-                      resp.text.rstrip() + "\n<<< END")
+                print(
+                    datetime.now().strftime("%H:%M:%S.%f")[:-3],
+                    "Response (%d ms) >>>\n" % (
+                        (time.time() - time_start) * 1000) +
+                    resp.text.rstrip() + "\n<<< END")
             return resp
 
 
@@ -383,8 +389,8 @@ class UIAutomatorServer(object):
                 stacklevel=1)
             self.reset_uiautomator()
             return self.jsonrpc_call(*args, **kwargs)
-        except (NullObjectExceptionError,
-                NullPointerExceptionError, StaleObjectExceptionError) as e:
+        except (NullObjectExceptionError, NullPointerExceptionError,
+                StaleObjectExceptionError) as e:
             if args[1] != 'dumpWindowHierarchy':  # args[1] method
                 warnings.warn(
                     "uiautomator2 raise exception %s, and run code again" % e,
@@ -415,8 +421,9 @@ class UIAutomatorServer(object):
             print("Shell$ curl -X POST -d '{}' {}".format(data, jsonrpc_url))
             print("Output> " + res.text)
         if res.status_code == 502:
-            raise GatewayError(res, "gateway error, time used %.1fs" %
-                               (time.time() - request_start))
+            raise GatewayError(
+                res, "gateway error, time used %.1fs" %
+                (time.time() - request_start))
         if res.status_code == 410:  # http status gone: session broken
             raise SessionBrokenError("app quit or crash", jsonrpc_url,
                                      res.text)
@@ -431,7 +438,9 @@ class UIAutomatorServer(object):
         # error happends
         err = JsonRpcError(error, method)
 
-        if isinstance(err.data, six.string_types) and 'UiAutomation not connected' in err.data:
+        if isinstance(
+                err.data,
+                six.string_types) and 'UiAutomation not connected' in err.data:
             err.__class__ = UiAutomationNotConnectedError
         elif err.message:
             if 'uiautomator.UiObjectNotFoundException' in err.message:
@@ -689,8 +698,9 @@ class UIAutomatorServer(object):
                 'timeout': str(timeout)
             })
         if ret.status_code != 200:
-            raise RuntimeError("device agent responds with an error code %d" %
-                               ret.status_code, ret.text)
+            raise RuntimeError(
+                "device agent responds with an error code %d" %
+                ret.status_code, ret.text)
         resp = ret.json()
         exit_code = 1 if resp.get('error') else 0
         exit_code = resp.get('exitCode', exit_code)
@@ -738,8 +748,10 @@ class UIAutomatorServer(object):
             # -e <EXTRA_KEY> <EXTRA_STRING_VALUE>
             # --ei <EXTRA_KEY> <EXTRA_INT_VALUE>
             # --ez <EXTRA_KEY> <EXTRA_BOOLEAN_VALUE>
-            args = ['am', 'start', '-a', 'android.intent.action.MAIN',
-                    '-c', 'android.intent.category.LAUNCHER']
+            args = [
+                'am', 'start', '-a', 'android.intent.action.MAIN', '-c',
+                'android.intent.category.LAUNCHER'
+            ]
             if wait:
                 args.append('-W')
             if stop:
@@ -786,7 +798,8 @@ class UIAutomatorServer(object):
         #   r'mFocusedApp=.*ActivityRecord{\w+ \w+ (?P<package>.*)/(?P<activity>.*) .*'
         #   r'mCurrentFocus=Window{\w+ \w+ (?P<package>.*)/(?P<activity>.*)\}')
         _focusedRE = re.compile(
-            r'mCurrentFocus=Window{.*\s+(?P<package>[^\s]+)/(?P<activity>[^\s]+)\}')
+            r'mCurrentFocus=Window{.*\s+(?P<package>[^\s]+)/(?P<activity>[^\s]+)\}'
+        )
         m = _focusedRE.search(self.shell(['dumpsys', 'window', 'windows'])[0])
         if m:
             return dict(
@@ -841,8 +854,8 @@ class UIAutomatorServer(object):
         output, _ = self.shell(['pm', 'list', 'packages', '-3'])
         pkgs = re.findall('package:([^\s]+)', output)
         process_names = re.findall('([^\s]+)$', self.shell('ps')[0], re.M)
-        kill_pkgs = set(pkgs).intersection(process_names).difference(
-            our_apps + excludes)
+        kill_pkgs = set(pkgs).intersection(process_names).difference(our_apps +
+                                                                     excludes)
         kill_pkgs = list(kill_pkgs)
         for pkg_name in kill_pkgs:
             self.app_stop(pkg_name)
@@ -1109,13 +1122,11 @@ class UIAutomatorServer(object):
             return getattr(self._default_session, attr)
         except AttributeError:
             raise AttributeError(
-                "'Session or UIAutomatorServer' object has no attribute '%s'" % attr)
+                "'Session or UIAutomatorServer' object has no attribute '%s'" %
+                attr)
 
     def __call__(self, **kwargs):
         return self._default_session(**kwargs)
-
-
-
 
 
 # class XPathSelector(object):
@@ -1156,7 +1167,6 @@ class UIAutomatorServer(object):
 #     @property
 #     def exists(self):
 #         return len(self.all()) > 0
-
 
 # class XMLElement(object):
 #     def __init__(self, elem):

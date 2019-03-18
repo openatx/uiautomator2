@@ -90,13 +90,14 @@ def cache_download(url, filename=None):
     return storepath
 
 
-class Installer(adbutils.Adb):
-    def __init__(self, serial=None):
-        super(Installer, self).__init__(serial)
-        self.sdk = self.getprop('ro.build.version.sdk')
-        self.abi = self.getprop('ro.product.cpu.abi')
-        self.pre = self.getprop('ro.build.version.preview_sdk')
-        self.arch = self.getprop('ro.arch')
+class Installer():
+    def __init__(self, device):
+        d = self._device = device
+
+        self.sdk = d.getprop('ro.build.version.sdk')
+        self.abi = d.getprop('ro.product.cpu.abi')
+        self.pre = d.getprop('ro.build.version.preview_sdk')
+        self.arch = d.getprop('ro.arch')
         self.server_addr = None
 
     def get_executable_dir(self):
@@ -160,7 +161,8 @@ class Installer(adbutils.Adb):
         test_pkg_info = self.package_info('com.github.uiautomator.test')
         # For test_pkg_info has no versionName or versionCode
         # Just check if the com.github.uiautomator.test apk is installed
-        if not reinstall and pkg_info and pkg_info['version_name'] == apk_version and test_pkg_info:
+        if not reinstall and pkg_info and pkg_info[
+                'version_name'] == apk_version and test_pkg_info:
             log.info("apk(%s) already installed, skip", apk_version)
             return
         if pkg_info or test_pkg_info:
