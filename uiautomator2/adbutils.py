@@ -4,12 +4,15 @@
 
 from __future__ import print_function
 
+import datetime
 import os
 import re
+import stat
 import socket
 import struct
 import subprocess
 from collections import namedtuple
+from contextlib import contextmanager
 
 import six
 import whichcraft
@@ -21,6 +24,7 @@ _DONE = "DONE"
 
 DeviceItem = namedtuple("Device", ["serial", "status"])
 ForwardItem = namedtuple("ForwardItem", ["serial", "local", "remote"])
+FileInfo = namedtuple("FileInfo", ['mode', 'size', 'mtime', 'name'])
 
 
 def get_free_port():
@@ -52,7 +56,9 @@ class _AdbStreamConnection(object):
         self.__port = port
         self.__conn = None
 
-    def connect(self):
+        self._connect()
+
+    def _connect(self):
         adb_host = self.__host or os.environ.get("ANDROID_ADB_SERVER_HOST",
                                                  "127.0.0.1")
         adb_port = self.__port or int(
@@ -62,11 +68,14 @@ class _AdbStreamConnection(object):
         s.connect((adb_host, adb_port))
         return self
 
+    def close(self):
+        self.conn.close()
+
     def __enter__(self):
-        return self.connect()
+        return self
 
     def __exit__(self, exc_type, exc, traceback):
-        self.conn.close()
+        self.close()
 
     @property
     def conn(self):
@@ -79,6 +88,18 @@ class _AdbStreamConnection(object):
     def read(self, n):
         assert isinstance(n, int)
         return self.conn.recv(n).decode()
+
+    def read_raw(self, n):
+        assert isinstance(n, int)
+        t = n
+        buffer = b''
+        while t > 0:
+            chunk = self.conn.recv(t)
+            if not chunk:
+                break
+            buffer += chunk
+            t = n - len(buffer)
+        return buffer
 
     def read_string(self):
         size = int(self.read(4), 16)
@@ -133,6 +154,7 @@ class AdbClient(object):
             c.send("host:transport:" + serial)
             c.check_okay()
             c.send("shell:" + command)
+            c.check_okay()
             return c.read_until_close()
 
     def forward_list(self):
@@ -164,30 +186,6 @@ class AdbClient(object):
             c.send(":".join(cmds))
             c.check_okay()
 
-    def listdir(self, serial, path):
-        assert isinstance(serial, six.string_types)
-        assert isinstance(path, six.string_types)
-
-        with self.connect() as c:
-            c.send(":".join(["host", "transport", serial]))
-            c.check_okay()
-            c.send("sync:")
-            c.check_okay()
-            # {COMMAND}{LittleEndianPathLength}{Path}
-            c.conn.send(b"LIST" + struct.pack("<I", len(path)) +
-                        path.encode("utf-8"))
-
-            while 1:
-                response = c.read(4)
-                if response == _DONE:
-                    break
-                print("N: %o" % struct.unpack("<I", c.conn.recv(4)))
-                print("Size: ", struct.unpack("<I", c.conn.recv(4)))
-                print("MTime: ", struct.unpack("<I", c.conn.recv(4)))
-                name_size = struct.unpack("<I", c.conn.recv(4))[0]
-                print("Name:", c.read(name_size))
-            # print(c.read_string())
-
     def iter_device(self):
         """
         Returns:
@@ -217,6 +215,14 @@ class AdbClient(object):
             )
         return ds[0]
 
+    def device_with_serial(self, serial=None):
+        if not serial:
+            return self.must_one_device()
+        return AdbDevice(self, serial)
+
+    def sync(self, serial):
+        return Sync(self, serial)
+
 
 class AdbDevice(object):
     def __init__(self, client, serial):
@@ -226,6 +232,13 @@ class AdbDevice(object):
     @property
     def serial(self):
         return self._serial
+
+    def __repr__(self):
+        return "AdbDevice(serial={})".format(self.serial)
+
+    @property
+    def sync(self):
+        return Sync(self._client, self.serial)
 
     def adb_output(self, *args, **kwargs):
         """Run adb command and get its content
@@ -297,11 +310,105 @@ class AdbDevice(object):
         return dict(version_name=version_name, signature=signature)
 
 
+class Sync():
+    def __init__(self, adbclient, serial):
+        self._adbclient = adbclient
+        self._serial = serial
+        # self._path = path
+
+    @contextmanager
+    def _prepare_sync(self, path, cmd):
+        c = self._adbclient.connect()
+        try:
+            c.send(":".join(["host", "transport", self._serial]))
+            c.check_okay()
+            c.send("sync:")
+            c.check_okay()
+            # {COMMAND}{LittleEndianPathLength}{Path}
+            c.conn.send(
+                cmd.encode("utf-8") + struct.pack("<I", len(path)) +
+                path.encode("utf-8"))
+            yield c
+        finally:
+            c.close()
+
+    def stat(self, path):
+        assert isinstance(path, six.string_types)
+        with self._prepare_sync(path, "STAT") as c:
+            assert "STAT" == c.read(4)
+            mode, size, mtime = struct.unpack("<III", c.conn.recv(12))
+            return FileInfo(mode, size, datetime.datetime.fromtimestamp(mtime),
+                            path)
+
+    def iter_directory(self, path):
+        assert isinstance(path, six.string_types)
+        with self._prepare_sync(path, "LIST") as c:
+            while 1:
+                response = c.read(4)
+                if response == _DONE:
+                    break
+                mode, size, mtime, namelen = struct.unpack(
+                    "<IIII", c.conn.recv(16))
+                name = c.read(namelen)
+                yield FileInfo(mode, size,
+                               datetime.datetime.fromtimestamp(mtime), name)
+
+    def list(self, path):
+        return list(self.iter_directory(path))
+
+    def push(self, src, dst, mode=0o755):
+        # IFREG: File Regular
+        # IFDIR: File Directory
+        assert isinstance(dst, six.string_types)
+        path = dst + "," + str(stat.S_IFREG | mode)
+        with self._prepare_sync(path, "SEND") as c:
+            r = src if hasattr(src, "read") else open(src, "rb")
+            try:
+                while True:
+                    chunk = r.read(4096)
+                    if not chunk:
+                        mtime = int(datetime.datetime.now().timestamp())
+                        c.conn.send(b"DONE" + struct.pack("<I", mtime))
+                        break
+                    c.conn.send(b"DATA" + struct.pack("<I", len(chunk)))
+                    c.conn.send(chunk)
+                assert c.read(4) == _OKAY
+            finally:
+                if hasattr(r, "close"):
+                    r.close()
+
+    def pull(self, path):
+        assert isinstance(path, six.string_types)
+        with self._prepare_sync(path, "RECV") as c:
+            while True:
+                cmd = c.read(4)
+                if cmd == "DONE":
+                    break
+                assert cmd == "DATA"
+                chunk_size = struct.unpack("<I", c.read_raw(4))[0]
+                chunk = c.read_raw(chunk_size)
+                if len(chunk) != chunk_size:
+                    raise RuntimeError("read chunk missing")
+                print("Chunk:", chunk)
+
+
+adb = AdbClient()
+
 if __name__ == "__main__":
-    adb = AdbClient()
     print("server version:", adb.server_version())
     print("devices:", adb.devices())
     d = adb.devices()[0]
 
     print(d.serial)
-    adb.listdir("bf755cab", "/data/local/tmp/")
+    for f in adb.sync(d.serial).iter_directory("/data/local/tmp"):
+        print(f)
+    # adb.listdir(d.serial, "/data/local/tmp/")
+    finfo = adb.sync(d.serial).stat("/data/local/tmp")
+    print(finfo)
+    import io
+    sync = adb.sync(d.serial)
+    sync.push(
+        io.BytesIO(b"hi5a4de5f4qa6we541fq6w1ef5a61f65ew1rf6we"),
+        "/data/local/tmp/hi.txt", 0o644)
+    # sync.mkdir("/data/local/tmp/foo")
+    sync.pull("/data/local/tmp/hi.txt")
