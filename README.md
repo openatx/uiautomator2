@@ -628,7 +628,7 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
 
 * Touch and drap (Beta)
 
-    这个接口属于比较底层的原始接口，感觉并不完，不过酬和能用。注：这个地方并不支持百分比
+    这个接口属于比较底层的原始接口，感觉并不完善，不过凑合能用。注：这个地方并不支持百分比
 
     ```python
     d.touch.down(10, 10) # 模拟按下
