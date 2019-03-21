@@ -7,10 +7,11 @@ from __future__ import print_function
 import datetime
 import os
 import re
-import stat
 import socket
+import stat
 import struct
 import subprocess
+import time
 from collections import namedtuple
 from contextlib import contextmanager
 
@@ -177,6 +178,8 @@ class AdbClient(object):
         
         Raises:
             AdbError
+        
+        Protocol: 0036host-serial:6EB0217704000486:forward:tcp:5533;tcp:9182
         """
         with self.connect() as c:
             cmds = ["host-serial", serial, "forward"]
@@ -367,7 +370,7 @@ class Sync():
                 while True:
                     chunk = r.read(4096)
                     if not chunk:
-                        mtime = int(datetime.datetime.now().timestamp())
+                        mtime = int(time.time())
                         c.conn.send(b"DONE" + struct.pack("<I", mtime))
                         break
                     c.conn.send(b"DATA" + struct.pack("<I", len(chunk)))

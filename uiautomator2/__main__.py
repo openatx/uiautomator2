@@ -84,6 +84,8 @@ class Initer():
         self.abi = d.getprop('ro.product.cpu.abi')
         self.pre = d.getprop('ro.build.version.preview_sdk')
         self.arch = d.getprop('ro.arch')
+        self.abis = (d.getprop('ro.product.cpu.abilist').strip()
+                     or self.abi).split(",")
         self.server_addr = None
 
     def shell(self, *args):
@@ -100,12 +102,6 @@ class Initer():
             ])
 
     @property
-    def abis(self):
-        abilist = self.shell('getprop',
-                             'ro.product.cpu.abilist').strip() or self.abi
-        return abilist.split(",")
-
-    @property
     def atx_agent_url(self):
         files = {
             'armeabi-v7a': 'atx-agent_{v}_linux_armv7.tar.gz',
@@ -113,8 +109,6 @@ class Initer():
             'armeabi': 'atx-agent_{v}_linux_armv6.tar.gz',
             'x86': 'atx-agent_{v}_linux_386.tar.gz',
         }
-        abis = self.shell('getprop',
-                          'ro.product.cpu.abilist').strip() or self.abi
         name = None
         for abi in self.abis:
             name = files.get(abi)
@@ -130,7 +124,7 @@ class Initer():
     @property
     def minicap_urls(self):
         base_url = GITHUB_BASEURL + \
-           "/stf-binaries/raw/master/node_modules/minicap-prebuilt/prebuilt/"
+            "/stf-binaries/raw/master/node_modules/minicap-prebuilt/prebuilt/"
         sdk = self.sdk
         if self.pre and self.pre != "0":
             sdk = sdk + self.pre
@@ -145,7 +139,7 @@ class Initer():
             self.abi + "/bin/minitouch"
         ])
 
-    def push_url(self, url, dest=None, mode=0o755, tgz=False, extract_name=None): # yapf: disable
+    def push_url(self, url, dest=None, mode=0o755, tgz=False, extract_name=None):  # yapf: disable
         path = cache_download(url, os.path.basename(url))
         if tgz:
             tar = tarfile.open(path, 'r:gz')
@@ -158,6 +152,16 @@ class Initer():
         self._device.sync.push(path, dest, mode=mode)
         return dest
 
+    def is_apk_outdate(self):
+        apk1 = self._device.package_info("com.github.uiautomator")
+        if not apk1:
+            return True
+        if apk1['version_name'] != __apk_version__:
+            return True
+        if not self._device.package_info("com.github.uiautomator.test"):
+            return True
+        return False
+
     def install(self, server_addr=None):
         logger.info("Install minicap, minitouch")
         self.push_url(self.minitouch_url)
@@ -166,11 +170,15 @@ class Initer():
 
         logger.info(
             "Install com.github.uiautomator, com.github.uiautomator.test")
-        self.shell("pm", "uninstall", "com.github.uiautomator")
-        self.shell("pm", "uninstall", "com.github.uiautomator.test")
-        for url in self.apk_urls:
-            path = self.push_url(url, mode=0o644)
-            self.shell("pm", "install", "-r", "-t", path)
+
+        if self.is_apk_outdate():
+            self.shell("pm", "uninstall", "com.github.uiautomator")
+            self.shell("pm", "uninstall", "com.github.uiautomator.test")
+            for url in self.apk_urls:
+                path = self.push_url(url, mode=0o644)
+                self.shell("pm", "install", "-r", "-t", path)
+        else:
+            logger.info("Already installed com.github.uiautomator apks")
 
         logger.info("Install atx-agent")
         path = self.push_url(
@@ -283,6 +291,7 @@ def cmd_init(args):
             init = Initer(device)
             init.install(args.server)
 
+
 _commands = [{
     "command": "init",
     "help": "install enssential resources to device",
@@ -304,8 +313,9 @@ def main():
     # yapf: disable
     if len(sys.argv) >= 2 and sys.argv[1] in ('init',):
         parser = argparse.ArgumentParser(
-                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-        parser.add_argument('-s', '--serial', type=str, help='device serial number')
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        parser.add_argument('-s', '--serial', type=str,
+                            help='device serial number')
 
         subparser = parser.add_subparsers(dest='subparser')
 
@@ -314,7 +324,7 @@ def main():
             cmd_name = c['command']
             actions[cmd_name] = c['action']
             sp = subparser.add_parser(cmd_name, help=c.get('help'),
-                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
             for f in c.get('flags', []):
                 args = f.get('args')
                 if not args:
