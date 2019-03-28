@@ -57,7 +57,15 @@ def cache_download(url, filename=None):
     if os.path.exists(storepath) and os.path.getsize(storepath) > 0:
         return storepath
     # download from url
-    r = requests.get(url, stream=True)
+    headers = {
+        'Accept': '*/*',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
+        'Connection': 'keep-alive',
+        'Origin': 'https://github.com',
+        'User-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'
+    }
+    r = requests.get(url, stream=True, headers=headers)
     if r.status_code != 200:
         raise Exception(url, "status code", r.status_code)
     file_size = int(r.headers.get("Content-Length"))
@@ -117,7 +125,7 @@ class Initer():
         if not name:
             raise Exception(
                 "arch(%s) need to be supported yet, please report an issue in github"
-                % abis)
+                % self.abis)
         return GITHUB_BASEURL + '/atx-agent/releases/download/%s/%s' % (
             __atx_agent_version__, name.format(v=__atx_agent_version__))
 
