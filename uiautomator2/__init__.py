@@ -164,24 +164,6 @@ def connect_usb(serial=None):
     return d
 
 
-def connect_url(addr=None):
-    """
-        Args:
-            addr (str) uiautomator server address.
-
-        Returns:
-            UIAutomatorServer
-
-        Examples:
-            connect_url("10.0.0.1/atx2/")
-    """
-    if '://' not in addr:
-        addr = 'http://' + addr
-    u = urlparse.urlparse(addr)
-    host = u.hostname
-    port = u.port or 7912
-    return UIAutomatorServer(host, port, addr=addr)
-
 class TimeoutRequestsSession(requests.Session):
     def __init__(self):
         super(TimeoutRequestsSession, self).__init__()
@@ -251,12 +233,11 @@ class UIAutomatorServer(object):
     __isfrozen = False
     __plugins = {}
 
-    def __init__(self, host, port=7912, addr=None):
+    def __init__(self, host, port=7912):
         """
         Args:
             host (str): host address
             port (int): port number
-            addr (str): url
 
         Raises:
             EnvironmentError
@@ -266,11 +247,7 @@ class UIAutomatorServer(object):
         self._reqsess = TimeoutRequestsSession(
         )  # use requests.Session to enable HTTP Keep-Alive
         self._server_url = 'http://{}:{}'.format(host, port)
-
-        if addr is not None:
-            self._server_url = addr
-
-        self._server_jsonrpc_url = self.path2url("/jsonrpc/0")
+        self._server_jsonrpc_url = self._server_url + "/jsonrpc/0"
         self._default_session = Session(self, None)
         self._cached_plugins = {}
         self.__devinfo = None
@@ -342,8 +319,6 @@ class UIAutomatorServer(object):
         return self.setup_jsonrpc()
 
     def path2url(self, path):
-        if path[0] == '/':
-            path = path[1:]
         return urlparse.urljoin(self._server_url, path)
 
     def window_size(self):
@@ -1017,7 +992,7 @@ class UIAutomatorServer(object):
 
     @property
     def screenshot_uri(self):
-        return self.path2url("/screenshot/0")
+        return 'http://%s:%d/screenshot/0' % (self._host, self._port)
 
     @property
     def device_info(self):
