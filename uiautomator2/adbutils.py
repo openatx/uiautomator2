@@ -158,9 +158,12 @@ class AdbClient(object):
             c.check_okay()
             return c.read_until_close()
 
-    def forward_list(self, serial):
+    def forward_list(self, serial=None):
+        list_cmd = "host:list-forward"
+        if serial:
+            list_cmd = "host-serial:{}:list-forward".format(serial)
         with self.connect() as c:
-            c.send("host-serial:{serial}:list-forward".format(serial=serial))
+            c.send(list_cmd)
             c.check_okay()
             content = c.read_string()
             for line in content.splitlines():
