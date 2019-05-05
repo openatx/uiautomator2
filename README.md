@@ -14,14 +14,7 @@ uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本
 * 代码进行了重构和精简，方便维护
 * Requirements: `Android >= 4.4` `Python >=2.7 || <= 3.7`
 
-虽然我说的很简单，但是实现起来用到了很多的技术和技巧，功能非常强，唯独文档有点少。哈哈
-
-* 开源需要大家的贡献！
-  * `大神这个能不能加上` -> `大神我加了个这个，PR review一下` https://github.com/openatx/uiautomator2/pull/157
-  * `大神没找到文档啊` -> `大神我把xxx这里写了一下，PR了合并一下吧` https://github.com/openatx/uiautomator2/pull/260
-  * `大神我这个手机上跑不了` -> `大神，我适配了xxx，PR合并一下吧` https://github.com/openatx/uiautomator2/pull/163
-  * `大神我是小白，这个怎么用啊` -> `大神我是小白看了文档试用了一下，这个是我在TesterHome分享的踩坑贴，有些可以并到README`
-  * `大神这个是不是一直免费啊` -> `大神我能做什么` https://github.com/openatx/uiautomator2/projects/1
+虽然我说的很简单，但是实现起来用到了很多的技术和技巧，功能非常强，文档有点缺少，这块在努力的补全。
 
 **[Installation](#installation)**
 
@@ -107,20 +100,6 @@ uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本
 
     有时候init也会出错，请参考[手动Init指南](https://github.com/openatx/uiautomator2/wiki/Manual-Init)
 
-    **最近这个镜像网站被Github给Block了, mirror不好使了， 伤心**
-
-    ~~因为中国的网络限制，访问Github的资源速度会比较慢，执行上面的命令可能很费时间，所以我们专门制作了一个国内的[Github镜像网站](https://github-mirror.open.netease.com) ，网站采用的是请求时缓存的策略，所以全网第一次请求需要等待一会。
-    使用国内镜像只要增加一个参数`--mirror`~~
-
-    ```bash
-    python -m uiautomator2 init --mirror
-    ```
-    
-    也可以使用`--serial`可以指定单个设备
-    ```
-    python -m uiautomator2 init --mirror --serial $SERIAL
-    ```
-
     安装提示`success`即可
 
 3. Install weditor (UI Inspector)
@@ -150,7 +129,8 @@ uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本
 # Connect to a device
 There are two ways to connect to the device. 
 
-1. Through WiFi (recommended)
+1. **Through WiFi**
+
 Suppose device IP is `10.0.0.1` and your PC is in the same network.
 
 ```python
@@ -160,7 +140,8 @@ d = u2.connect('10.0.0.1') # alias for u2.connect_wifi('10.0.0.1')
 print(d.info)
 ```
 
-2. Through USB
+2. **Through USB**
+
 Suppose the device serial is `123456f` (seen from `adb devices`)
 
 ```python
@@ -168,6 +149,18 @@ import uiautomator2 as u2
 
 d = u2.connect('123456f') # alias for u2.connect_usb('123456f')
 print(d.info)
+```
+
+3. **Through ADB WiFi**
+
+```python
+import uiautomator2 as u2
+
+d = u2.connect_adb_wifi("10.0.0.1:5555")
+
+# Equals to 
+# + Shell: adb connect 10.0.0.1:5555
+# + Python: u2.connect_usb("10.0.0.1:5555")
 ```
 
 Calling `u2.connect()` with no argument, `uiautomator2` will obtain device IP from the environment variable `ANDROID_DEVICE_IP`.
@@ -1265,25 +1258,7 @@ for elem in d.xpath("//android.widget.TextView").all():
 
 其他XPath常见用法
 
-```
-# 所有元素
-//*
-
-# resource-id包含login字符
-//*[contains(@resource-id, 'login')]
-
-# 按钮包含账号或帐号
-//android.widget.Button[contains(@text, '账号') or contains(@text, '帐号')]
-
-# 所有ImageView中的第二个
-(//android.widget.ImageView)[2]
-
-# 所有ImageView中的最后一个
-(//android.widget.ImageView)[last()]
-
-# className包含ImageView
-//*[contains(name(), "ImageView")]
-```
+See also: https://github.com/openatx/uiautomator2/blob/master/uiautomator2/ext/xpath/README.md
 
 # 项目历史
 * 项目重构自 <https://github.com/openatx/atx-uiautomator>

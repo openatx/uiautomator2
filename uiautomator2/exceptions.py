@@ -1,12 +1,15 @@
 # coding: utf-8
 #
 
-
 # class ATXError(Exception):
 #     pass
 
 
 class UiaError(Exception):
+    pass
+
+
+class ConnectError(UiaError):
     pass
 
 
@@ -45,8 +48,8 @@ class JsonRpcError(UiaError):
 
     def __str__(self):
         return '%d %s: <%s> data: %s, method: %s' % (
-            self.code, self.format_errcode(self.code), self.message, self.data,
-            self.method)
+            self.code, self.format_errcode(
+                self.code), self.message, self.data, self.method)
 
     def __repr__(self):
         return repr(str(self))

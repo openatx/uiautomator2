@@ -15,44 +15,39 @@ Refs:
 
 from __future__ import absolute_import, print_function
 
-from uiautomator2.version import __atx_agent_version__
-from uiautomator2 import adbutils
-import requests
-
-import hashlib
-import time
 import functools
-import json
+import hashlib
 import io
+import json
 import os
 import re
-import sys
 import shutil
+import subprocess
+import sys
 import threading
+import time
 import warnings
+from collections import namedtuple
 from datetime import datetime
 from subprocess import list2cmdline
-from collections import namedtuple
 
-import six
 import humanize
 import progress.bar
-from retry import retry
+import requests
+import six
 import six.moves.urllib.parse as urlparse
-from uiautomator2.exceptions import (
-    UiaError,
-    UiObjectNotFoundError,
-    SessionBrokenError,
-    GatewayError,
-    JsonRpcError,
-    UiAutomationNotConnectedError,
-    NullObjectExceptionError,
-    NullPointerExceptionError,
-    StaleObjectExceptionError,
-)
-from uiautomator2.session import (  # noqa: F401
-    Session, set_fail_prompt,
-)
+from retry import retry
+
+from uiautomator2 import adbutils
+from uiautomator2.exceptions import (GatewayError, JsonRpcError, ConnectError,
+                                     NullObjectExceptionError,
+                                     NullPointerExceptionError,
+                                     SessionBrokenError,
+                                     StaleObjectExceptionError, UiaError,
+                                     UiAutomationNotConnectedError,
+                                     UiObjectNotFoundError)
+from uiautomator2.session import Session, set_fail_prompt  # noqa: F401
+from uiautomator2.version import __atx_agent_version__
 
 if six.PY2:
     FileNotFoundError = OSError
@@ -95,6 +90,9 @@ def connect(addr=None):
 
     Returns:
         UIAutomatorServer
+    
+    Raises:
+        ConnectError
 
     Example:
         connect("10.0.0.1:7912")
@@ -109,27 +107,24 @@ def connect(addr=None):
         return connect_wifi(addr)
     return connect_usb(addr)
 
-
-def connect_wifi(addr=None):
+def connect_adb_wifi(addr):
     """
+    Run adb connect, and then call connect_usb(..)
+
     Args:
-        addr (str) uiautomator server address.
-
-    Returns:
-        UIAutomatorServer
-
-    Examples:
-        connect_wifi("10.0.0.1")
+        addr: ip+port which can be used for "adb connect" argument
+    
+    Raises:
+        ConnectError
     """
-    if '://' not in addr:
-        addr = 'http://' + addr
-    if addr.startswith('http://'):
-        u = urlparse.urlparse(addr)
-        host = u.hostname
-        port = u.port or 7912
-        return UIAutomatorServer(host, port)
-    else:
-        raise RuntimeError("address should start with http://")
+    assert isinstance(addr, six.string_types)
+
+    subprocess.call([adbutils.adb_path(), "connect", addr])
+    try:
+        subprocess.call([adbutils.adb_path(), "-s", addr, "wait-for-device"], timeout=2)
+    except subprocess.TimeoutExpired:
+        raise ConnectError("Fail execute", "adb connect " + addr)
+    return connect_usb(addr)
 
 
 def connect_usb(serial=None):
@@ -139,6 +134,9 @@ def connect_usb(serial=None):
 
     Returns:
         UIAutomatorServer
+    
+    Raises:
+        ConnectError
     """
     adb = adbutils.AdbClient()
     if not serial:
@@ -162,6 +160,31 @@ def connect_usb(serial=None):
                       RuntimeWarning)
         d.reset_uiautomator()
     return d
+
+
+def connect_wifi(addr=None):
+    """
+    Args:
+        addr (str) uiautomator server address.
+
+    Returns:
+        UIAutomatorServer
+
+    Raises:
+        ConnectError
+
+    Examples:
+        connect_wifi("10.0.0.1")
+    """
+    if '://' not in addr:
+        addr = 'http://' + addr
+    if addr.startswith('http://'):
+        u = urlparse.urlparse(addr)
+        host = u.hostname
+        port = u.port or 7912
+        return UIAutomatorServer(host, port)
+    else:
+        raise ConnectError("address should start with http://")
 
 
 class TimeoutRequestsSession(requests.Session):
