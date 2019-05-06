@@ -13,6 +13,10 @@ class ConnectError(UiaError):
     pass
 
 
+class XPathElementNotFoundError(UiaError):
+    pass
+
+
 class GatewayError(UiaError):
     def __init__(self, response, description):
         self.response = response

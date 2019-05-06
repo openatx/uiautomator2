@@ -2,13 +2,15 @@
 #
 
 import re
-import time
 import threading
+import time
 
-import uiautomator2
-from uiautomator2.utils import U
 from logzero import logger
 from lxml import etree
+
+import uiautomator2
+from uiautomator2.exceptions import XPathElementNotFoundError
+from uiautomator2.utils import U
 
 
 def safe_xmlstr(s):
@@ -46,11 +48,11 @@ class XPath(object):
         self._alias = {}
         self._alias_strict = False
 
-    def global_set(self, key, value): #dicts):
+    def global_set(self, key, value):  #dicts):
         valid_keys = {"timeout", "alias", "alias_strict"}
         if key not in valid_keys:
             raise ValueError("invalid key", key)
-        setattr(self, "_"+key, value)
+        setattr(self, "_" + key, value)
         # for k, v in dicts.items():
         #     if k not in valid_keys:
         #         raise ValueError("invalid key", k)
@@ -117,6 +119,10 @@ class XPath(object):
             time.sleep(min(0.5, left_time))
 
     def click(self, xpath, source=None, watch=True, timeout=None):
+        """
+        Raises:
+            TimeoutException
+        """
         timeout = timeout or self._timeout
         logger.info("XPath(timeout %.1f) %s", timeout, xpath)
 
@@ -154,7 +160,7 @@ class XPath(object):
             xpath = '//*[@resource-id={}]'.format(string_quote(xpath[1:]))
         elif xpath.startswith('^'):
             xpath = '//*[re:match(text(), {})]'.format(string_quote(xpath))
-        elif xpath.startswith("$"): # special for objects
+        elif xpath.startswith("$"):  # special for objects
             key = xpath[1:]
             return self(self.__alias_get(key), source)
         elif xpath.startswith('%') and xpath.endswith("%"):
@@ -175,14 +181,21 @@ class XPathSelector(object):
         self._d = parent._d
         self._xpath = xpath
         self._source = source
+        self._last_source = None
         self._watchers = []
 
-    def all(self):
+    @property
+    def _global_timeout(self):
+        return self._parent._timeout
+
+    def all(self, source=None):
         """
         Returns:
             list of XMLElement
         """
-        xml_content = self._source or self._d.dump_hierarchy()
+        xml_content = source or self._source or self._d.dump_hierarchy()
+        self._last_source = xml_content
+
         root = etree.fromstring(xml_content.encode('utf-8'))
         for node in root.xpath("//node"):
             node.tag = safe_xmlstr(node.attrib.pop("class"))
@@ -195,6 +208,20 @@ class XPathSelector(object):
     def exists(self):
         return len(self.all()) > 0
 
+    def get_text(self):
+        """
+        get element text
+        
+        Returns:
+            string of node text
+
+        Raises:
+            XPathElementNotFoundError
+        """
+        if not self.wait(self._global_timeout):
+            raise XPathElementNotFoundError(self._xpath)
+        return self.all(self._last_source)[0].attrib.get("text", "")
+
     def wait(self, timeout=None):
         """
         Args:
@@ -203,7 +230,7 @@ class XPathSelector(object):
         Raises:
             bool of exists
         """
-        deadline = time.time() + (timeout or self._parent._timeout)
+        deadline = time.time() + (timeout or self._global_timeout)
         while time.time() < deadline:
             if self.exists:
                 return True
@@ -263,7 +290,6 @@ class XMLElement(object):
 
 #     def __repr__(self):
 #         return str(bool(self))
-
 
 if __name__ == "__main__":
     init()
