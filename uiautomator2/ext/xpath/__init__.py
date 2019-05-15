@@ -208,6 +208,20 @@ class XPathSelector(object):
     def exists(self):
         return len(self.all()) > 0
 
+    def get(self):
+        """
+        Get first matched element
+
+        Returns:
+            XMLElement
+        
+        Raises:
+            XPathElementNotFoundError
+        """
+        if not self.wait(self._global_timeout):
+            raise XPathElementNotFoundError(self._xpath)
+        return self.all(self._last_source)[0]
+
     def get_text(self):
         """
         get element text
@@ -218,9 +232,7 @@ class XPathSelector(object):
         Raises:
             XPathElementNotFoundError
         """
-        if not self.wait(self._global_timeout):
-            raise XPathElementNotFoundError(self._xpath)
-        return self.all(self._last_source)[0].attrib.get("text", "")
+        return self.get().attrib.get("text", "")
 
     def wait(self, timeout=None):
         """
