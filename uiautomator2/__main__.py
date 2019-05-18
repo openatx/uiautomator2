@@ -134,8 +134,6 @@ class Initer():
         base_url = GITHUB_BASEURL + \
             "/stf-binaries/raw/master/node_modules/minicap-prebuilt/prebuilt/"
         sdk = self.sdk
-        if self.pre and self.pre != "0":
-            sdk = sdk + self.pre
         yield base_url + self.abi + "/lib/android-" + sdk + "/minicap.so"
         yield base_url + self.abi + "/bin/minicap"
 
