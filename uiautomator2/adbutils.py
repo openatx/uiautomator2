@@ -158,9 +158,12 @@ class AdbClient(object):
             c.check_okay()
             return c.read_until_close()
 
-    def forward_list(self):
+    def forward_list(self, serial=None):
+        list_cmd = "host:list-forward"
+        if serial:
+            list_cmd = "host-serial:{}:list-forward".format(serial)
         with self.connect() as c:
-            c.send("host:list-forward")
+            c.send(list_cmd)
             c.check_okay()
             content = c.read_string()
             for line in content.splitlines():
@@ -271,7 +274,7 @@ class AdbDevice(object):
 
     def forward_port(self, remote_port):
         assert isinstance(remote_port, int)
-        for f in self._client.forward_list():
+        for f in self._client.forward_list(self._serial):
             if f.serial == self._serial and f.remote == 'tcp:' + str(
                     remote_port) and f.local.startswith("tcp:"):
                 return int(f.local[len("tcp:"):])

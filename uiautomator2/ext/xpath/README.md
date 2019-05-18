@@ -119,3 +119,30 @@ d.xpath("$返回").click() # 在这里会直接跑出XPathError异常
 
 ## 特殊说明
 - 有时className中包含有`$`字符，这个字符在XML中是不合法的，所以全部替换成了`-`
+
+## XPath的一些高级用法
+```
+# 所有元素
+//*
+
+# resource-id包含login字符
+//*[contains(@resource-id, 'login')]
+
+# 按钮包含账号或帐号
+//android.widget.Button[contains(@text, '账号') or contains(@text, '帐号')]
+
+# 所有ImageView中的第二个
+(//android.widget.ImageView)[2]
+
+# 所有ImageView中的最后一个
+(//android.widget.ImageView)[last()]
+
+# className包含ImageView
+//*[contains(name(), "ImageView")]
+```
+
+## 一些有用的网站
+- [XPath playground](https://scrapinghub.github.io/xpath-playground/)
+- [XPath的一些高级用法-简书](https://www.jianshu.com/p/4fef4142b33f)
+
+如有其他资料，欢迎提[Issues](https://github.com/openatx/uiautomator2/issues/new)补充
