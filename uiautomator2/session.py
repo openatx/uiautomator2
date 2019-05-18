@@ -752,19 +752,27 @@ class UiObject(object):
         if delay:
             time.sleep(delay)
 
-    def center(self, offset=None):
+    def bounds(self):
         """
-        Args:
-            offset: optional, (x_off, y_off)
-                (0, 0) means center, (0.5, 0.5) means right-bottom
-        Return:
-            center point (x, y)
+        Returns:
+            left_top_x, left_top_y, right_bottom_x, right_bottom_y
         """
         info = self.info
         bounds = info.get('visibleBounds') or info.get("bounds")
         lx, ly, rx, ry = bounds['left'], bounds['top'], bounds['right'], bounds['bottom']
-        if not offset:
-            offset = (0.5, 0.5)
+        return (lx, ly, rx, ry)
+
+    def center(self, offset=(0.5, 0.5)):
+        """
+        Args:
+            offset: optional, (x_off, y_off)
+                (0, 0) means left-top, (0.5, 0.5) means middle(Default)
+        Return:
+            center point (x, y)
+        """
+        lx, ly, rx, ry = self.bounds()
+        if offset is None:
+            offset = (0.5, 0.5)  # default center
         xoff, yoff = offset
         width, height = rx - lx, ry - ly
         x = lx + width * xoff
