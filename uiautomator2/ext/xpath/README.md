@@ -144,5 +144,6 @@ d.xpath("$返回").click() # 在这里会直接跑出XPathError异常
 ## 一些有用的网站
 - [XPath playground](https://scrapinghub.github.io/xpath-playground/)
 - [XPath的一些高级用法-简书](https://www.jianshu.com/p/4fef4142b33f)
+- [XPath Quicksheet](https://devhints.io/xpath)
 
 如有其他资料，欢迎提[Issues](https://github.com/openatx/uiautomator2/issues/new)补充
