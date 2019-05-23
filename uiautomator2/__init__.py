@@ -177,6 +177,7 @@ def connect_url(addr=None):
     """
     if '://' not in addr:
         addr = 'http://' + addr
+    addr = addr.rstrip("/")
     u = urlparse.urlparse(addr)
     host = u.hostname
     port = u.port or 7912
@@ -721,7 +722,7 @@ class UIAutomatorServer(object):
             data={
                 'command': cmdargs,
                 'timeout': str(timeout)
-            })
+            },timeout=timeout)
         if ret.status_code != 200:
             raise RuntimeError(
                 "device agent responds with an error code %d" %
