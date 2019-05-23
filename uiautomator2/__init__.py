@@ -177,7 +177,6 @@ def connect_url(addr=None):
     """
     if '://' not in addr:
         addr = 'http://' + addr
-    addr = addr.rstrip("/")
     u = urlparse.urlparse(addr)
     host = u.hostname
     port = u.port or 7912
