@@ -719,7 +719,7 @@ class UIAutomatorServer(object):
             data={
                 'command': cmdargs,
                 'timeout': str(timeout)
-            })
+            }, timeout=timeout+10)
         if ret.status_code != 200:
             raise RuntimeError(
                 "device agent responds with an error code %d" %
