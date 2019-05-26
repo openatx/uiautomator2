@@ -64,7 +64,7 @@ def cache_download(url, filename=None):
         'Connection': 'keep-alive',
         'Origin': 'https://github.com',
         'User-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'
-    }
+    } # yapf: disable
     r = requests.get(url, stream=True, headers=headers)
     if r.status_code != 200:
         raise Exception(url, "status code", r.status_code)
@@ -171,8 +171,12 @@ class Initer():
     def install(self, server_addr=None):
         logger.info("Install minicap, minitouch")
         self.push_url(self.minitouch_url)
-        for url in self.minicap_urls:
-            self.push_url(url)
+        if self.abi == "x86":
+            logger.info(
+                "abi:x86 seems to be android emulator, skip install minicap")
+        else:
+            for url in self.minicap_urls:
+                self.push_url(url)
 
         logger.info(
             "Install com.github.uiautomator, com.github.uiautomator.test")
@@ -298,26 +302,32 @@ def cmd_init(args):
             init.install(args.server)
 
 
-_commands = [{
-    "command": "init",
-    "help": "install enssential resources to device",
-    "flags": [
-        dict(
-            args=['--serial', '-s'],
-            type=str,
-            help='serial number'),
-        dict(
-            name=['server'],
-            type=str,
-            help='atx-server address')
-    ],
-    "action": cmd_init,
-}]  # yapf: disable
+def cmd_screenshot(args):
+    raise NotImplementedError()
+
+
+_commands = [
+    dict(
+        action=cmd_init,
+        command="init",
+        help="install enssential resources to device",
+        flags=[
+            dict(args=['--serial', '-s'], type=str, help='serial number'),
+            dict(name=['server'], type=str, help='atxserver address')
+        ]),
+    dict(
+        action=cmd_screenshot,
+        command="screenshot",
+        help="not implemented",
+        flags=[
+            dict(args=['-o', '--output'], type=str, help="output filename")
+        ])
+]
 
 
 def main():
     # yapf: disable
-    if len(sys.argv) >= 2 and sys.argv[1] in ('init',):
+    if True or len(sys.argv) >= 2 and sys.argv[1] in ('init', 'screenshot'):
         parser = argparse.ArgumentParser(
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         parser.add_argument('-s', '--serial', type=str,

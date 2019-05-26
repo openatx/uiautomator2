@@ -69,7 +69,7 @@ class XPath(object):
         obj = self
 
         def _click(selector):
-            selector.click_nowait()
+            selector.get_last_match().click()
 
         class _Watcher():
             def click(self):
@@ -120,6 +120,11 @@ class XPath(object):
 
     def click(self, xpath, source=None, watch=True, timeout=None):
         """
+        Args:
+            xpath (str): xpath string
+            watch (bool): click popup elements
+            timeout (float): pass
+
         Raises:
             TimeoutException
         """
@@ -127,19 +132,23 @@ class XPath(object):
         logger.info("XPath(timeout %.1f) %s", timeout, xpath)
 
         deadline = time.time() + timeout
-        while time.time() < deadline:
+        while True:
             source = self._d.dump_hierarchy()
             if watch and self.run_watchers(source):
                 time.sleep(.5)  # post delay
+                deadline = time.time() + timeout
                 continue
 
             selector = self(xpath, source)
             if selector.exists:
-                selector.click_nowait()
+                selector.get_last_match().click()
                 time.sleep(.5)  # post sleep
                 return
+
+            if time.time() > deadline:
+                break
             time.sleep(.5)
-            # source = self._d.dump_hierarchy()
+
         raise TimeoutException("timeout %.1f" % timeout)
 
     def __alias_get(self, key, default=None):
@@ -202,7 +211,7 @@ class XPathSelector(object):
         match_nodes = root.xpath(
             U(self._xpath),
             namespaces={"re": "http://exslt.org/regular-expressions"})
-        return [XMLElement(node) for node in match_nodes]
+        return [XMLElement(node, self._d) for node in match_nodes]
 
     @property
     def exists(self):
@@ -220,6 +229,9 @@ class XPathSelector(object):
         """
         if not self.wait(self._global_timeout):
             raise XPathElementNotFoundError(self._xpath)
+        return self.get_last_match()
+
+    def get_last_match(self):
         return self.all(self._last_source)[0]
 
     def get_text(self):
@@ -254,18 +266,46 @@ class XPathSelector(object):
         logger.info("click %d, %d", x, y)
         self._d.click(x, y)
 
-    def click(self, timeout=None):
-        self._parent.click(self._xpath, timeout=timeout)
+    def click(self, watch=True, timeout=None):
+        """
+        Args:
+            watch (bool): click popup element before real operation
+            timeout (float): max wait timeout
+        """
+        self._parent.click(self._xpath, watch=watch, timeout=timeout)
 
 
 class XMLElement(object):
-    def __init__(self, elem):
+    def __init__(self, elem, d):
+        """
+        Args:
+            elem: lxml node
+            d: uiautomator2 instance
+        """
         self.elem = elem
+        self._d = d
 
     def center(self):
         bounds = self.elem.attrib.get("bounds")
         lx, ly, rx, ry = map(int, re.findall(r"\d+", bounds))
         return (lx + rx) // 2, (ly + ry) // 2
+
+    def click(self):
+        """
+        click element
+        """
+        x, y = self.center()
+        self._d.click(x, y)
+
+    @property
+    def rect(self):
+        """
+        Returns:
+            (left_top_x, left_top_y, width, height)
+        """
+        bounds = self.elem.attrib.get("bounds")
+        lx, ly, rx, ry = map(int, re.findall(r"\d+", bounds))
+        return lx, ly, rx - lx, ry - ly
 
     @property
     def text(self):

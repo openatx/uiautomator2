@@ -1,6 +1,15 @@
 # uiautomator2 [![Build Status](https://travis-ci.org/openatx/uiautomator2.svg?branch=master)](https://travis-ci.org/openatx/uiautomator2) [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2) ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg) [![Windows Build](https://ci.appveyor.com/api/projects/status/github/openatx/uiautomator2)](https://ci.appveyor.com/project/openatx/uiautomator2)
 **该项目正在火热的开发中** QQ群号: *499563266*
 
+各种库的版本号
+
+- [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg?label=uiautomator2)](https://pypi.python.org/pypi/uiautomator2)
+- ![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/openatx/atx-agent.svg?label=atx-agent)
+- ![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/openatx/android-uiautomator-server.svg?label=android-uiautomator-server)
+- ![PyPI](https://img.shields.io/pypi/v/adbutils.svg?label=apkutils)
+- ![PyPI](https://img.shields.io/pypi/v/requests.svg?label=requests)
+- ![PyPI](https://img.shields.io/pypi/v/lxml.svg?label=lxml)
+
 <p align="left"><img src="docs/img/qqgroup.png" /></div>
 
 uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本对设备进行自动化。底层基于Google uiautomator，Google提供的[uiautomator](https://developer.android.com/training/testing/ui-automator.html)库可以获取屏幕上任意一个APP的任意一个控件属性，并对其进行任意操作，但有两个缺点：1. 测试脚本只能使用Java语言 2. 测试脚本必须每次被上传到设备上运行。
@@ -14,7 +23,11 @@ uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本
 * 代码进行了重构和精简，方便维护
 * Requirements: `Android >= 4.4` `Python >=2.7 || <= 3.7`
 
-虽然我说的很简单，但是实现起来用到了很多的技术和技巧，功能非常强，文档有点缺少，这块在努力的补全。
+相关项目：
+
+- 设备管理平台 [atxserver2](https://github.com/openatx/atxserver2)
+- adbutils库 [adbutils](https://github.com/openatx/adbutils)
+- weditor[https://github.com/openatx/weditor] 类似于uiautomator2，专门为本项目开发的辅助编辑器
 
 **[Installation](#installation)**
 
@@ -1298,6 +1311,13 @@ git log --graph --date-order -C -M --pretty=format:"<%h> %ad [%an] %Cgreen%d%Cre
 [@artikz]: https://github.com/artikz
 
 Other [contributors](../../graphs/contributors)
+
+## 其他优秀的项目
+- [google/mobly](https://github.com/google/mobly) 谷歌内部的测试框架，虽然我不太懂，但是感觉很好用
+- https://www.appetizer.io/ 包含一个很好用的IDE，快速编写脚本，也可以插桩采集性能。
+- http://airtest.netease.com/ 本项目的前身，后来被网易广州团队接手并继续优化。实现有一个不错的IDE
+- http://www.sikulix.com/ 基于图像识别的自动化测试框架，非常的老牌
+- https://github.com/atinfo/awesome-test-automation 所有优秀测试框架的集合，包罗万象
 
 # LICENSE
 [MIT](LICENSE)
