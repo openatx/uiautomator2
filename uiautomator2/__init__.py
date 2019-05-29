@@ -127,10 +127,11 @@ def connect_adb_wifi(addr):
     return connect_usb(addr)
 
 
-def connect_usb(serial=None):
+def connect_usb(serial=None, healthcheck=True):
     """
     Args:
         serial (str): android device serial
+        healthcheck (bool): start uiautomator if not ready
 
     Returns:
         UIAutomatorServer
@@ -146,19 +147,20 @@ def connect_usb(serial=None):
     # adb = adbutils.Adb(serial)
     lport = device.forward_port(7912)
     d = connect_wifi('127.0.0.1:' + str(lport))
-    if not d.agent_alive:
-        warnings.warn("backend atx-agent is not alive, start again ...",
-                      RuntimeWarning)
-        # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
-        device.shell_output("/data/local/tmp/atx-agent", "server", "-d")
-        deadline = time.time() + 3
-        while time.time() < deadline:
-            if d.alive:
-                break
-    elif not d.alive:
-        warnings.warn("backend uiautomator2 is not alive, start again ...",
-                      RuntimeWarning)
-        d.reset_uiautomator()
+    if healthcheck:
+        if not d.agent_alive:
+            warnings.warn("backend atx-agent is not alive, start again ...",
+                        RuntimeWarning)
+            # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
+            device.shell_output("/data/local/tmp/atx-agent", "server", "-d")
+            deadline = time.time() + 3
+            while time.time() < deadline:
+                if d.alive:
+                    break
+        elif not d.alive:
+            warnings.warn("backend uiautomator2 is not alive, start again ...",
+                        RuntimeWarning)
+            d.reset_uiautomator()
     return d
 
 
@@ -592,7 +594,7 @@ class UIAutomatorServer(object):
 
     def healthcheck(self):
         """
-        Reset device into ready state
+        Reset device into health state
 
         Raises:
             RuntimeError
