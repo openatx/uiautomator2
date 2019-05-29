@@ -450,9 +450,20 @@ class Session(object):
         else:
             raise RuntimeError("Invalid format " + format)
 
-    @retry(NullPointerExceptionError, delay=.5, tries=5, jitter=0.2)
     def dump_hierarchy(self, compressed=False, pretty=False):
-        content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
+        """
+        Same as
+            content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
+        But through GET /dump/hierarchy will be more robust
+        when dumpHierarchy fails, the atx-agent will restart uiautomator again, then retry
+        """
+        res = self.server._reqsess.get(self.server.path2url("/dump/hierarchy"))
+        try:
+            res.raise_for_status()
+        except requests.HTTPError:
+            logging.warning("request error: %s", res.text)
+            raise
+        content = res.json().get("result")
         if pretty and "\n " not in content:
             xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))
             content = U(xml_text.toprettyxml(indent='  '))
