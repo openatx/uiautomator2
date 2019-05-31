@@ -21,7 +21,6 @@ from uiautomator2.utils import Exists, U, check_alive, hooks_wrap, intersect
 
 _INPUT_METHOD_RE = re.compile(r'mCurMethodId=([-_./\w]+)')
 
-
 _fail_prompt_enabled = False
 
 
@@ -450,8 +449,12 @@ class Session(object):
         else:
             raise RuntimeError("Invalid format " + format)
 
-    def dump_hierarchy(self, compressed=False, pretty=False):
+    def dump_hierarchy(self, compressed=False, pretty=False) -> str:
         """
+        Args:
+            shell (bool): use "adb shell uiautomator dump" to get hierarchy
+            pretty (bool): format xml
+
         Same as
             content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
         But through GET /dump/hierarchy will be more robust
@@ -464,11 +467,12 @@ class Session(object):
             logging.warning("request error: %s", res.text)
             raise
         content = res.json().get("result")
+
         if pretty and "\n " not in content:
             xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))
             content = U(xml_text.toprettyxml(indent='  '))
         return content
-
+    
     def freeze_rotation(self, freeze=True):
         '''freeze or unfreeze the device rotation in current status.'''
         self.jsonrpc.freezeRotation(freeze)

@@ -542,8 +542,17 @@ class UIAutomatorServer(object):
                 res = u2obj._reqsess.delete(u2obj.path2url('/uiautomator'))
                 if res.status_code != 200:
                     warnings.warn(res.text)
+            
+            def running(self) -> bool:
+                res = u2obj._reqsess.get(u2obj.path2url("/uiautomator"))
+                res.raise_for_status()
+                return res.json().get("running")
 
         return _Service(name)
+    
+    @property
+    def uiautomator(self):
+        return self.service("uiautomator")
 
     def reset_uiautomator(self):
         """
@@ -1014,10 +1023,32 @@ class UIAutomatorServer(object):
             raise FileNotFoundError("pull", src, r.text)
         with open(dst, 'wb') as f:
             shutil.copyfileobj(r.raw, f)
+        
+    def pull_content(self, src:str) -> bytes:
+        """
+        Read remote file content
+
+        Raises:
+            FileNotFoundError
+        """
+        pathname = self.path2url("/raw/" + src.lstrip("/"))
+        r = self._reqsess.get(pathname)
+        if r.status_code != 200:
+            raise FileNotFoundError("pull", src, r.text)
+        return r.content
 
     @property
     def screenshot_uri(self):
         return 'http://%s:%d/screenshot/0' % (self._host, self._port)
+    
+    def screenshot(self):
+        """
+        Take screenshot of device
+
+        Returns:
+            PIL.Image
+        """
+        return self.session().screenshot()
 
     @property
     def device_info(self):
@@ -1150,65 +1181,8 @@ class UIAutomatorServer(object):
                 "'Session or UIAutomatorServer' object has no attribute '%s'" %
                 attr)
 
-    def __call__(self, **kwargs):
+    def __call__(self, **kwargs) -> Session:
         return self._default_session(**kwargs)
-
-
-# class XPathSelector(object):
-#     def __init__(self, xpath, server, source=None):
-#         self.xpath = xpath
-#         self.server = server
-#         self.source = source
-
-#     def wait(self, timeout=10.0):
-#         deadline = time.time() + timeout
-#         while time.time() < deadline:
-#             elements = self.all()
-#             if elements:
-#                 return elements[0]
-#             time.sleep(.5)
-
-#     def click(self, timeout=10.0):
-#         """
-#         click element
-#         """
-#         elem = self.wait(timeout=timeout)
-#         if not elem:
-#             raise UiaError(self.xpath)
-#         x, y = elem.center()
-#         self.server.click(x, y)
-
-#     def all(self):
-#         """
-#         Returns:
-#             list of XMLElement
-#         """
-#         xml_content = self.source or self.server.dump_hierarchy()
-#         return [
-#             XMLElement(node)
-#             for node in simplexml.xpath_findall(self.xpath, xml_content)
-#         ]
-
-#     @property
-#     def exists(self):
-#         return len(self.all()) > 0
-
-# class XMLElement(object):
-#     def __init__(self, elem):
-#         self.elem = elem
-
-#     def center(self):
-#         bounds = self.elem.attrib.get("bounds")
-#         lx, ly, rx, ry = map(int, re.findall(r"\d+", bounds))
-#         return (lx + rx) // 2, (ly + ry) // 2
-
-#     @property
-#     def text(self):
-#         return self.elem.attrib.get("text")
-
-#     @property
-#     def attrib(self):
-#         return self.elem.attrib
 
 
 class AdbShell(object):
