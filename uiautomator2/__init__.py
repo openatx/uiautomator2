@@ -15,49 +15,42 @@ Refs:
 
 from __future__ import absolute_import, print_function
 
-from uiautomator2.version import  __atx_agent_version__
-from uiautomator2 import adbutils
-import requests
-
-import hashlib
-import time
 import functools
-import json
+import hashlib
 import io
+import json
 import os
 import re
-import sys
 import shutil
+import subprocess
+import sys
 import threading
+import time
 import warnings
+from collections import namedtuple
 from datetime import datetime
 from subprocess import list2cmdline
-from collections import namedtuple
 
-import six
 import humanize
 import progress.bar
-from retry import retry
+import requests
+import six
 import six.moves.urllib.parse as urlparse
-from uiautomator2.exceptions import (
-    UiaError,
-    UiObjectNotFoundError,
-    SessionBrokenError,
-    GatewayError,
-    JsonRpcError,
-    UiAutomationNotConnectedError,
-    NullObjectExceptionError,
-    NullPointerExceptionError,
-    StaleObjectExceptionError,
-)
-from uiautomator2.session import ( # noqa: F401
-    Session,
-    set_fail_prompt, 
-) 
+from retry import retry
+
+from uiautomator2 import adbutils
+from uiautomator2.exceptions import (GatewayError, JsonRpcError, ConnectError,
+                                     NullObjectExceptionError,
+                                     NullPointerExceptionError,
+                                     SessionBrokenError,
+                                     StaleObjectExceptionError, UiaError,
+                                     UiAutomationNotConnectedError,
+                                     UiObjectNotFoundError)
+from uiautomator2.session import Session, set_fail_prompt  # noqa: F401
+from uiautomator2.version import __atx_agent_version__
 
 if six.PY2:
     FileNotFoundError = OSError
-
 
 DEBUG = False
 HTTP_TIMEOUT = 60
@@ -78,6 +71,7 @@ def log_print(s):
     print(thread_name + ": " + datetime.now().strftime('%H:%M:%S,%f')[:-3] +
           " " + s)
 
+
 def _is_wifi_addr(addr):
     if not addr:
         return False
@@ -96,6 +90,9 @@ def connect(addr=None):
 
     Returns:
         UIAutomatorServer
+    
+    Raises:
+        ConnectError
 
     Example:
         connect("10.0.0.1:7912")
@@ -110,6 +107,62 @@ def connect(addr=None):
         return connect_wifi(addr)
     return connect_usb(addr)
 
+def connect_adb_wifi(addr):
+    """
+    Run adb connect, and then call connect_usb(..)
+
+    Args:
+        addr: ip+port which can be used for "adb connect" argument
+    
+    Raises:
+        ConnectError
+    """
+    assert isinstance(addr, six.string_types)
+
+    subprocess.call([adbutils.adb_path(), "connect", addr])
+    try:
+        subprocess.call([adbutils.adb_path(), "-s", addr, "wait-for-device"], timeout=2)
+    except subprocess.TimeoutExpired:
+        raise ConnectError("Fail execute", "adb connect " + addr)
+    return connect_usb(addr)
+
+
+def connect_usb(serial=None, healthcheck=True):
+    """
+    Args:
+        serial (str): android device serial
+        healthcheck (bool): start uiautomator if not ready
+
+    Returns:
+        UIAutomatorServer
+    
+    Raises:
+        ConnectError
+    """
+    adb = adbutils.AdbClient()
+    if not serial:
+        device = adb.must_one_device()
+    else:
+        device = adbutils.AdbDevice(adb, serial)
+    # adb = adbutils.Adb(serial)
+    lport = device.forward_port(7912)
+    d = connect_wifi('127.0.0.1:' + str(lport))
+    if healthcheck:
+        if not d.agent_alive:
+            warnings.warn("backend atx-agent is not alive, start again ...",
+                        RuntimeWarning)
+            # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
+            device.shell_output("/data/local/tmp/atx-agent", "server", "-d")
+            deadline = time.time() + 3
+            while time.time() < deadline:
+                if d.alive:
+                    break
+        elif not d.alive:
+            warnings.warn("backend uiautomator2 is not alive, start again ...",
+                        RuntimeWarning)
+            d.reset_uiautomator()
+    return d
+
 
 def connect_wifi(addr=None):
     """
@@ -118,6 +171,9 @@ def connect_wifi(addr=None):
 
     Returns:
         UIAutomatorServer
+
+    Raises:
+        ConnectError
 
     Examples:
         connect_wifi("10.0.0.1")
@@ -130,34 +186,7 @@ def connect_wifi(addr=None):
         port = u.port or 7912
         return UIAutomatorServer(host, port)
     else:
-        raise RuntimeError("address should start with http://")
-
-
-def connect_usb(serial=None):
-    """
-    Args:
-        serial (str): android device serial
-
-    Returns:
-        UIAutomatorServer
-    """
-    adb = adbutils.Adb(serial)
-    lport = adb.forward_port(7912)
-    d = connect_wifi('127.0.0.1:' + str(lport))
-    if not d.agent_alive:
-        warnings.warn("backend atx-agent is not alive, start again ...",
-                      RuntimeWarning)
-        # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
-        adb.shell("/data/local/tmp/atx-agent", "server", "-d")
-        deadline = time.time() + 3
-        while time.time() < deadline:
-            if d.alive:
-                break
-    elif not d.alive:
-        warnings.warn("backend uiautomator2 is not alive, start again ...",
-                      RuntimeWarning)
-        d.reset_uiautomator()
-    return d
+        raise ConnectError("address should start with http://")
 
 
 class TimeoutRequestsSession(requests.Session):
@@ -177,9 +206,10 @@ class TimeoutRequestsSession(requests.Session):
             if isinstance(data, dict):
                 data = json.dumps(data)
             time_start = time.time()
-            print(datetime.now().strftime("%H:%M:%S.%f")[:-3],
-                  "$ curl -X {method} -d '{data}' '{url}'".format(
-                      method=method, url=url, data=data))
+            print(
+                datetime.now().strftime("%H:%M:%S.%f")[:-3],
+                "$ curl -X {method} -d '{data}' '{url}'".format(
+                    method=method, url=url, data=data))
         try:
             resp = super(TimeoutRequestsSession, self).request(
                 method, url, **kwargs)
@@ -189,10 +219,11 @@ class TimeoutRequestsSession(requests.Session):
             )
         else:
             if verbose:
-                print(datetime.now().strftime("%H:%M:%S.%f")[:-3],
-                      "Response (%d ms) >>>\n" %
-                      ((time.time() - time_start) * 1000) +
-                      resp.text.rstrip() + "\n<<< END")
+                print(
+                    datetime.now().strftime("%H:%M:%S.%f")[:-3],
+                    "Response (%d ms) >>>\n" % (
+                        (time.time() - time_start) * 1000) +
+                    resp.text.rstrip() + "\n<<< END")
             return resp
 
 
@@ -383,8 +414,8 @@ class UIAutomatorServer(object):
                 stacklevel=1)
             self.reset_uiautomator()
             return self.jsonrpc_call(*args, **kwargs)
-        except (NullObjectExceptionError,
-                NullPointerExceptionError, StaleObjectExceptionError) as e:
+        except (NullObjectExceptionError, NullPointerExceptionError,
+                StaleObjectExceptionError) as e:
             if args[1] != 'dumpWindowHierarchy':  # args[1] method
                 warnings.warn(
                     "uiautomator2 raise exception %s, and run code again" % e,
@@ -415,8 +446,9 @@ class UIAutomatorServer(object):
             print("Shell$ curl -X POST -d '{}' {}".format(data, jsonrpc_url))
             print("Output> " + res.text)
         if res.status_code == 502:
-            raise GatewayError(res, "gateway error, time used %.1fs" %
-                               (time.time() - request_start))
+            raise GatewayError(
+                res, "gateway error, time used %.1fs" %
+                (time.time() - request_start))
         if res.status_code == 410:  # http status gone: session broken
             raise SessionBrokenError("app quit or crash", jsonrpc_url,
                                      res.text)
@@ -431,7 +463,9 @@ class UIAutomatorServer(object):
         # error happends
         err = JsonRpcError(error, method)
 
-        if isinstance(err.data, six.string_types) and 'UiAutomation not connected' in err.data:
+        if isinstance(
+                err.data,
+                six.string_types) and 'UiAutomation not connected' in err.data:
             err.__class__ = UiAutomationNotConnectedError
         elif err.message:
             if 'uiautomator.UiObjectNotFoundException' in err.message:
@@ -508,8 +542,17 @@ class UIAutomatorServer(object):
                 res = u2obj._reqsess.delete(u2obj.path2url('/uiautomator'))
                 if res.status_code != 200:
                     warnings.warn(res.text)
+            
+            def running(self) -> bool:
+                res = u2obj._reqsess.get(u2obj.path2url("/uiautomator"))
+                res.raise_for_status()
+                return res.json().get("running")
 
         return _Service(name)
+    
+    @property
+    def uiautomator(self):
+        return self.service("uiautomator")
 
     def reset_uiautomator(self):
         """
@@ -560,7 +603,7 @@ class UIAutomatorServer(object):
 
     def healthcheck(self):
         """
-        Reset device into ready state
+        Reset device into health state
 
         Raises:
             RuntimeError
@@ -687,10 +730,11 @@ class UIAutomatorServer(object):
             data={
                 'command': cmdargs,
                 'timeout': str(timeout)
-            })
+            }, timeout=timeout+10)
         if ret.status_code != 200:
-            raise RuntimeError("device agent responds with an error code %d" %
-                               ret.status_code, ret.text)
+            raise RuntimeError(
+                "device agent responds with an error code %d" %
+                ret.status_code, ret.text)
         resp = ret.json()
         exit_code = 1 if resp.get('error') else 0
         exit_code = resp.get('exitCode', exit_code)
@@ -738,8 +782,10 @@ class UIAutomatorServer(object):
             # -e <EXTRA_KEY> <EXTRA_STRING_VALUE>
             # --ei <EXTRA_KEY> <EXTRA_INT_VALUE>
             # --ez <EXTRA_KEY> <EXTRA_BOOLEAN_VALUE>
-            args = ['am', 'start', '-a', 'android.intent.action.MAIN',
-                    '-c', 'android.intent.category.LAUNCHER']
+            args = [
+                'am', 'start', '-a', 'android.intent.action.MAIN', '-c',
+                'android.intent.category.LAUNCHER'
+            ]
             if wait:
                 args.append('-W')
             if stop:
@@ -786,7 +832,8 @@ class UIAutomatorServer(object):
         #   r'mFocusedApp=.*ActivityRecord{\w+ \w+ (?P<package>.*)/(?P<activity>.*) .*'
         #   r'mCurrentFocus=Window{\w+ \w+ (?P<package>.*)/(?P<activity>.*)\}')
         _focusedRE = re.compile(
-            r'mCurrentFocus=Window{.*\s+(?P<package>[^\s]+)/(?P<activity>[^\s]+)\}')
+            r'mCurrentFocus=Window{.*\s+(?P<package>[^\s]+)/(?P<activity>[^\s]+)\}'
+        )
         m = _focusedRE.search(self.shell(['dumpsys', 'window', 'windows'])[0])
         if m:
             return dict(
@@ -841,8 +888,8 @@ class UIAutomatorServer(object):
         output, _ = self.shell(['pm', 'list', 'packages', '-3'])
         pkgs = re.findall('package:([^\s]+)', output)
         process_names = re.findall('([^\s]+)$', self.shell('ps')[0], re.M)
-        kill_pkgs = set(pkgs).intersection(process_names).difference(
-            our_apps + excludes)
+        kill_pkgs = set(pkgs).intersection(process_names).difference(our_apps +
+                                                                     excludes)
         kill_pkgs = list(kill_pkgs)
         for pkg_name in kill_pkgs:
             self.app_stop(pkg_name)
@@ -990,10 +1037,32 @@ class UIAutomatorServer(object):
             raise FileNotFoundError("pull", src, r.text)
         with open(dst, 'wb') as f:
             shutil.copyfileobj(r.raw, f)
+        
+    def pull_content(self, src:str) -> bytes:
+        """
+        Read remote file content
+
+        Raises:
+            FileNotFoundError
+        """
+        pathname = self.path2url("/raw/" + src.lstrip("/"))
+        r = self._reqsess.get(pathname)
+        if r.status_code != 200:
+            raise FileNotFoundError("pull", src, r.text)
+        return r.content
 
     @property
     def screenshot_uri(self):
         return 'http://%s:%d/screenshot/0' % (self._host, self._port)
+    
+    def screenshot(self):
+        """
+        Take screenshot of device
+
+        Returns:
+            PIL.Image
+        """
+        return self.session().screenshot()
 
     @property
     def device_info(self):
@@ -1123,71 +1192,11 @@ class UIAutomatorServer(object):
             return getattr(self._default_session, attr)
         except AttributeError:
             raise AttributeError(
-                "'Session or UIAutomatorServer' object has no attribute '%s'" % attr)
+                "'Session or UIAutomatorServer' object has no attribute '%s'" %
+                attr)
 
-    def __call__(self, **kwargs):
+    def __call__(self, **kwargs) -> Session:
         return self._default_session(**kwargs)
-
-
-
-
-
-# class XPathSelector(object):
-#     def __init__(self, xpath, server, source=None):
-#         self.xpath = xpath
-#         self.server = server
-#         self.source = source
-
-#     def wait(self, timeout=10.0):
-#         deadline = time.time() + timeout
-#         while time.time() < deadline:
-#             elements = self.all()
-#             if elements:
-#                 return elements[0]
-#             time.sleep(.5)
-
-#     def click(self, timeout=10.0):
-#         """
-#         click element
-#         """
-#         elem = self.wait(timeout=timeout)
-#         if not elem:
-#             raise UiaError(self.xpath)
-#         x, y = elem.center()
-#         self.server.click(x, y)
-
-#     def all(self):
-#         """
-#         Returns:
-#             list of XMLElement
-#         """
-#         xml_content = self.source or self.server.dump_hierarchy()
-#         return [
-#             XMLElement(node)
-#             for node in simplexml.xpath_findall(self.xpath, xml_content)
-#         ]
-
-#     @property
-#     def exists(self):
-#         return len(self.all()) > 0
-
-
-# class XMLElement(object):
-#     def __init__(self, elem):
-#         self.elem = elem
-
-#     def center(self):
-#         bounds = self.elem.attrib.get("bounds")
-#         lx, ly, rx, ry = map(int, re.findall(r"\d+", bounds))
-#         return (lx + rx) // 2, (ly + ry) // 2
-
-#     @property
-#     def text(self):
-#         return self.elem.attrib.get("text")
-
-#     @property
-#     def attrib(self):
-#         return self.elem.attrib
 
 
 class AdbShell(object):

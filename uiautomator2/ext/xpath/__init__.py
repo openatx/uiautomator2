@@ -2,13 +2,15 @@
 #
 
 import re
-import time
 import threading
+import time
 
-import uiautomator2
-from uiautomator2.utils import U
 from logzero import logger
 from lxml import etree
+
+import uiautomator2
+from uiautomator2.exceptions import XPathElementNotFoundError
+from uiautomator2.utils import U
 
 
 def safe_xmlstr(s):
@@ -46,11 +48,11 @@ class XPath(object):
         self._alias = {}
         self._alias_strict = False
 
-    def global_set(self, key, value): #dicts):
+    def global_set(self, key, value):  #dicts):
         valid_keys = {"timeout", "alias", "alias_strict"}
         if key not in valid_keys:
             raise ValueError("invalid key", key)
-        setattr(self, "_"+key, value)
+        setattr(self, "_" + key, value)
         # for k, v in dicts.items():
         #     if k not in valid_keys:
         #         raise ValueError("invalid key", k)
@@ -60,6 +62,15 @@ class XPath(object):
         """ set default timeout when click """
         self._timeout = timeout
 
+    def dump_hierarchy(self):
+        return self._d.dump_hierarchy()
+
+    def send_click(self, x, y):
+        self._d.click(x, y)
+
+    def send_swipe(self, sx, sy, tx, ty):
+        self._d.swipe(sx, sy, tx, ty)
+
     def match(self, xpath, source=None):
         return len(self(xpath, source).all()) > 0
 
@@ -67,7 +78,7 @@ class XPath(object):
         obj = self
 
         def _click(selector):
-            selector.click_nowait()
+            selector.get_last_match().click()
 
         class _Watcher():
             def click(self):
@@ -89,7 +100,7 @@ class XPath(object):
         return _Watcher()
 
     def run_watchers(self, source=None):
-        source = source or self._d.dump_hierarchy()
+        source = source or self.dump_hierarchy()
         for h in self._watchers:
             selector = self(h['xpath'], source)
             if selector.exists:
@@ -117,23 +128,36 @@ class XPath(object):
             time.sleep(min(0.5, left_time))
 
     def click(self, xpath, source=None, watch=True, timeout=None):
+        """
+        Args:
+            xpath (str): xpath string
+            watch (bool): click popup elements
+            timeout (float): pass
+
+        Raises:
+            TimeoutException
+        """
         timeout = timeout or self._timeout
         logger.info("XPath(timeout %.1f) %s", timeout, xpath)
 
         deadline = time.time() + timeout
-        while time.time() < deadline:
-            source = self._d.dump_hierarchy()
+        while True:
+            source = self.dump_hierarchy()
             if watch and self.run_watchers(source):
                 time.sleep(.5)  # post delay
+                deadline = time.time() + timeout
                 continue
 
             selector = self(xpath, source)
             if selector.exists:
-                selector.click_nowait()
+                selector.get_last_match().click()
                 time.sleep(.5)  # post sleep
                 return
+
+            if time.time() > deadline:
+                break
             time.sleep(.5)
-            # source = self._d.dump_hierarchy()
+
         raise TimeoutException("timeout %.1f" % timeout)
 
     def __alias_get(self, key, default=None):
@@ -147,53 +171,94 @@ class XPath(object):
             value = key
         return value
 
-    def __call__(self, xpath, source=None):
+    def __call__(self, xpath: str, source=None):
         if xpath.startswith('//'):
             pass
         elif xpath.startswith('@'):
             xpath = '//*[@resource-id={}]'.format(string_quote(xpath[1:]))
         elif xpath.startswith('^'):
             xpath = '//*[re:match(text(), {})]'.format(string_quote(xpath))
-        elif xpath.startswith("$"): # special for objects
+        elif xpath.startswith("$"):  # special for objects
             key = xpath[1:]
             return self(self.__alias_get(key), source)
         elif xpath.startswith('%') and xpath.endswith("%"):
-            xpath = '//*[contains(text(), {}]'.format(string_quote(xpath))
+            xpath = '//*[contains(@text, {})]'.format(string_quote(
+                xpath[1:-1]))
         elif xpath.startswith('%'):
-            xpath = '//*[starts-with(text(), {}]'.format(string_quote(xpath))
+            xpath = '//*[starts-with(@text, {})]'.format(
+                string_quote(xpath[1:]))
         elif xpath.endswith('%'):
-            xpath = '//*[ends-with(text(), {}]'.format(string_quote(xpath))
+            # //*[ends-with(@text, "suffix")] only valid in Xpath2.0
+            xpath = '//*[ends-with(@text, {})]'.format(string_quote(
+                xpath[:-1]))
         else:
             xpath = '//*[@text={0} or @content-desc={0}]'.format(
                 string_quote(xpath))
+        print("XPATH:", xpath)
         return XPathSelector(self, xpath, source)
 
 
 class XPathSelector(object):
-    def __init__(self, parent, xpath, source=None):
+    def __init__(self, parent: XPath, xpath: str, source=None):
         self._parent = parent
         self._d = parent._d
         self._xpath = xpath
         self._source = source
+        self._last_source = None
         self._watchers = []
 
-    def all(self):
+    @property
+    def _global_timeout(self):
+        return self._parent._timeout
+
+    def all(self, source=None):
         """
         Returns:
             list of XMLElement
         """
-        xml_content = self._source or self._d.dump_hierarchy()
+        xml_content = source or self._source or self._parent.dump_hierarchy()
+        self._last_source = xml_content
+
         root = etree.fromstring(xml_content.encode('utf-8'))
         for node in root.xpath("//node"):
             node.tag = safe_xmlstr(node.attrib.pop("class"))
         match_nodes = root.xpath(
             U(self._xpath),
             namespaces={"re": "http://exslt.org/regular-expressions"})
-        return [XMLElement(node) for node in match_nodes]
+        return [XMLElement(node, self._parent) for node in match_nodes]
 
     @property
     def exists(self):
         return len(self.all()) > 0
+
+    def get(self):
+        """
+        Get first matched element
+
+        Returns:
+            XMLElement
+        
+        Raises:
+            XPathElementNotFoundError
+        """
+        if not self.wait(self._global_timeout):
+            raise XPathElementNotFoundError(self._xpath)
+        return self.get_last_match()
+
+    def get_last_match(self):
+        return self.all(self._last_source)[0]
+
+    def get_text(self):
+        """
+        get element text
+        
+        Returns:
+            string of node text
+
+        Raises:
+            XPathElementNotFoundError
+        """
+        return self.get().attrib.get("text", "")
 
     def wait(self, timeout=None):
         """
@@ -201,32 +266,72 @@ class XPathSelector(object):
             timeout (float): seconds
 
         Raises:
-            bool of exists
+            None or XMLElement
         """
-        deadline = time.time() + (timeout or self._parent._timeout)
+        deadline = time.time() + (timeout or self._global_timeout)
         while time.time() < deadline:
             if self.exists:
-                return True
+                return self.get_last_match()
             time.sleep(.2)
-        return False
+        return None
 
     def click_nowait(self):
         x, y = self.all()[0].center()
         logger.info("click %d, %d", x, y)
-        self._d.click(x, y)
+        self._parent.send_click(x, y)
 
-    def click(self, timeout=None):
-        self._parent.click(self._xpath, timeout=timeout)
+    def click(self, watch=True, timeout=None):
+        """
+        Args:
+            watch (bool): click popup element before real operation
+            timeout (float): max wait timeout
+        """
+        self._parent.click(self._xpath, watch=watch, timeout=timeout)
 
 
 class XMLElement(object):
-    def __init__(self, elem):
+    def __init__(self, elem, parent: XPath):
+        """
+        Args:
+            elem: lxml node
+            d: uiautomator2 instance
+        """
         self.elem = elem
+        self._parent = parent
 
     def center(self):
+        return self.offset(0.5, 0.5)
+
+    def offset(self, px: float = 0.0, py: float = 0.0):
+        """
+        Offset from left_top
+
+        Args:
+            px (float): percent of width
+            py (float): percent of height
+        
+        Example:
+            offset(0.5, 0.5) means center
+        """
+        x, y, width, height = self.rect
+        return x + int(width * px), y + int(height * py)
+
+    def click(self):
+        """
+        click element
+        """
+        x, y = self.center()
+        self._parent.send_click(x, y)
+
+    @property
+    def rect(self):
+        """
+        Returns:
+            (left_top_x, left_top_y, width, height)
+        """
         bounds = self.elem.attrib.get("bounds")
         lx, ly, rx, ry = map(int, re.findall(r"\d+", bounds))
-        return (lx + rx) // 2, (ly + ry) // 2
+        return lx, ly, rx - lx, ry - ly
 
     @property
     def text(self):
@@ -263,7 +368,6 @@ class XMLElement(object):
 
 #     def __repr__(self):
 #         return str(bool(self))
-
 
 if __name__ == "__main__":
     init()

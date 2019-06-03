@@ -1,9 +1,331 @@
 CHANGES
 =======
 
+0.1.11
+------
+
+* limit pure-python-adb version, to fix from adb.client import error
+* support args
+
+0.1.10
+------
+
+* remove cmd:init from fire.Fire, fix forward error when muti device connect to one machine
+* upgrade atx-agent
+* ext\_xpath support
+* remove 3.7
+* fix travis test again
+* fix travis
+* sort imports
+* split code to different files
+* Update README.md
+* Update README.md
+* remove debug with dict: which will lead misunderstanding
+* update atx-agent version
+* appveyor
+* exedir detection everywhere
+* fix
+* come at me
+* need android components nowadays
+* travis 2018 switches from android-21 to android-22
+* fix pip install requirements
+* fix travis lang
+* add emulator and tests to travis and update README
+* fix typo. (#278)
+
+0.1.9
+-----
+
+* fix connect\_usb init error, close #276
+* fix typo
+* add set\_fail\_prompt function
+* add d.touch.(down|move|up) in readme
+* fix atxagent version code
+
+0.1.8
+-----
+
+* update atx-agent add api app\_info, and app\_icon
+* update atx-agent version to 0.5.1, fix session timeout error
+* update atx-agent version and netease music example
+* add wait\_activity
+* raise IndexError when UiObject returned by child\_by\_xxx, close #261
+* fix xpath py2 py3 compatibale
+* fix xpath ext resource-id error
+* Update README.md (#260)
+* update weditor install method
+
+0.1.7
+-----
+
+* sem-ver:bugfix, fix init with PATH env error on windows
+* fix doc
+* update apk to 1.1.7 to fix dumpHierarchy, close #207
+
+0.1.6
+-----
+
+* use atx-agent server -stop before launch
+* force stop atx-agent when init
+* fix launch atx-agent with wrong PATH, which may cause /info get wrong info
+* fix test on android P emulator
+* 加入aricv图像识别插件 (#250)
+* update atx-agent version
+
+0.1.5
+-----
+
+* fix init, because of mirror down
+* fix xpath python2 support, perf create dir if not exists
+* fix little bug
+* update readme
+* first xpath plugin version
+* add more comment about xpath plugin
+* add xpath plugin
+
+0.1.4
+-----
+
+* update install method
+* update install part
+* add install test code
+* fix fps collect
+* update atx-agent version
+* fix if log bug in ext/info
+* 修改info插件调用模式 (#245)
+* add test info plugin (#240)
+* fix perf get data error (#239)
+* Update README.md
+* open python 3.7 support
+* 更改一处类型提示错误 (#229)
+* add beta method hooks\_register
+* fix #206, init gives 'inf' as serial <class 'float'> (#216)
+* 修改init不成功的问题 (#221)
+* update to new atx-agent
+* fix current\_app in sumsung, add tcp and udp in perf
+* add images
+* add fps
+* swipe duration default 0.1(old 0.5), add swipe ui
+* fix perf uiautomator in python2
+* update doc
+* fix perf d not exists bug
+* add traffic into perf plugin
+* update atx-agent version
+* catch AttributeError in UIAutomatorServer
+* add back implicitly wait
+* add perf doc
+* add perf plugin
+* runyaml fix
+* add plugin\_register and ocr plugin
+* add plugin support
+* let shell return namedtuple, remove outdated docs
+* use q|query instead of xpath in steps
+* add send\_action support
+* fix #200
+* add with into session, update oppo support
+* fix merge conflict
+* click add offset, support oppo install with browser
+* add oppo install method, not finished yet
+* fix str(err.data) encode error
+* Update \_\_init\_\_.py
+* add some comment
+* 1.修改截图定位线
+* raise error when error found in uiautomator2.cli install
+* catch NullPointerExceptionError on jsonrpc call
+* patch to catch UiAutomation not connect
+* use github-mirror for update-apk command
+* fix healthcheck
+* add unlock screen for healthcheck
+* add retry for objInfo
+* fix conflict
+* hot fix for update\_instance
+* add implicit\_wait function
+* remove pid file when stop atx-agent
+
+0.1.3
+-----
+
+* fix init twice error, update atx-agent t0 0.4.1
+* support vivo install
+* add cancel request support
+* fix python requires
+* update to new version
+* exclude py 3.7 version
+* make u2cli work
+* fix when no progress
+* update uiautomator2.cli install
+* show progress
+* add missing file
+* add u2cli entry
+* add qrcode of qq
+* add fail reason
+* todo: add push folder support
+* add --mirror document, ref #173
+* add retry for dump\_hierarchy, because of UiDevice NullPointer Exception
+* support github-mirror to make download faster
+* chmod +x report bad mode on xiaomi HMNote3
+* Change method of detecting executable dir
+* merge openatx
+* fix push to /data/local/tmp/mini... instead of /data/local/tmp
+* fix requests RemoteDisconnected error
+* Use pure-python-adb to get serials of all android devices when initializing
+* If adb client can't connect to the adb server, try to use adb cli to start adb server
+* Use pure-python-adb package to replace adb wrapper
+* support --mirror
+* fix get toast error
+* hot fix for executable dir
+* replace $ into -, fix #152
+* update document
+* use /data/local/tmp as default exec dir
+* forgot to update apk version
+* manually merge pr 46
+* parens are necessary to catch multi exception in python3
+* add screenshot(format=raw), fix init timeoutError, close #114
+* Replace os.path.join with string format, so can run as normal on windows
+* Revert changes to install\_atx\_agent
+* Provide alternative execute directory to /data/local/tmp, so can install to devices like 'ZUK's Z2
+* Solve ZUK's no permission to /data/local/tmp problem
+* fix xpath wait, fix connect simulator bug, update apk, to make watchers faster
+* Replace os.path.join with string format, so can run as normal on windows
+* Revert changes to install\_atx\_agent
+* Provide alternative execute directory to /data/local/tmp, so can install to devices like 'ZUK's Z2
+* hot fix for session launch
+* fix fix
+* update apk version to fix #138 #137
+* update view
+* add xpath support
+* fix session can not start app error
+* start atx-agent if atx-agent dead when connect\_usb
+* fix ext/htmlreport unpatch
+* exists return class, fix watchers.watched not working bug
+* add toast capture support
+* add d.watchers.watched = True support
+
+0.1.2
+-----
+
+* Import update on uiautomator-server, fix current app function fix #41
+* \_wait\_install\_finished 增加 hasattr(sys.stdout, 'isatty')判断
+* fix current\_ime() failed
+* Solve ZUK's no permission to /data/local/tmp problem
+* add shell function in order to replace adb\_shell one day
+* support long running command
+* package info should return None
+* comment useless code
+* update apk version, try to catch NullException
+* run code again for NullObjectException and StaleObjectException
+* fix install -g error
+* handle StaleObjectException
+* fix dns when network change
+* only build in python 2.7
+* add healthcheck in command line
+* update travis
+* format code, add click\_gone function
+* change prompt
+* add double click support
+* add proxyhttp.go not finished yet
+* stash code
+* add support to patch long\_click
+* add fancybox into htmlreport
+* add qqicon
+
+0.1.1
+-----
+
+* fix message in None error
+* try to fix #73
+* update atx-agent version
+* add screenshot into cli
+* fix for failed to init
+* modified for android simulator
+* add docstring for swipe\_points
+* add swipe points description
+* add --ignore-apk-check option
+* add issue template
+* little fix
+* wait disable\_popups for fix
+* UiObject support long\_click with duration
+* add issue robot
+* support back to init multi devices
+* if adb without -g, remove -g and try again
+* add DeleteImmediatelly in disable\_popups
+* update apk version to support toast
+* add support to show toast
+* add how to do with popups
+* update version
+* add disable\_popups support
+* update atx agent
+* change TMPDIR to support upload large file
+* fix UINotFoundEncoding error
+* check if apk installed after init
+* open u2 github URL after success init
+* add adbkit-init
+* fix raise exception unicode code encode error
+* fix click\_nowait missing error
+* support stop uiautomator keeper
+* fix htmlreport
+* add some useful link
+* add htmlreport support, remove click\_nowait and tap
+
+0.1.0
+-----
+
+* add session support
+* add syntax error retry on screenshot error
+* hot fix to fix atx-agent screenshot bug
+* 修改import错误 ：ImportError: cannot import name popup
+* update atx-agent version
+* send\_keys use adb shell input text when set\_fast\_ime failed.  upgrade pos\_rel2abs  function
+* add tkgui for experiment
+* show better app\_install progress on noatty, make healthcheck better
+* update TOC
+* sync to atx-agent new download logic
+* travis fight
+* no android for now
+* boring travis non-python pip problem
+* fix travis build
+* add Android emulator to travis and deploy only once on py2.7
+* clarify adb\_shell; fix typos
+* Update README.md
+* fix healthcheck on xiaomi device
+
+0.0.3
+-----
+
+* fix apk version name
+* hot fix
+* not raise RuntimeError in current\_app()
+* add window\_size api
+* remove ReadTimeout from jsonrpc\_retry\_call
+* update logic, when uiautomator2 is down, restart apk
+* fix input method
+* add timeout in screenshot and restart uiautomator.apk shen connect 502
+* hot fix for weditor
+* stop uiautomator before start when do healthcheck()
+* open identify activity with am start -n
+* fix deprecated warn error
+* deprecated set\_click\_post\_delay
+* add deault wait\_timeout  set support
+* add retry to prevent screenshot error on some special conditions
+* update screenshot to support opencv
+* update atx agent version
+* update the connect method
+* update atx-agent version
+* add push\_url api
+* 增加init时对代理的支持
+* support install on emulator
+* suppress warning when uninstall error
+* rename examples/powerweb to webbattery
+* add webpower ^\_^
+* fix displayHeight error on Huawei
+* update atx\_agent version to 0.1.1
+* make pos\_rel2abs a little faster
+* modify http\_timeout according to wait(timeout..)
+
 0.0.2
 -----
 
+* update doc
 * update doc
 * support oppo auto install
 * add app\_install\_local, handle serial contains &
@@ -18,11 +340,11 @@ CHANGES
 * add gesture and pinch
 * add select count and fling, scroll
 * update ABOUT.rst addr
-* setup travis build on all\_branches
 
 0.0.1
 -----
 
+* setup travis build on all\_branches
 * add skip cleanup
 * update doc again
 * check com.github.uiautotor.test when init

@@ -21,7 +21,6 @@ from uiautomator2.utils import Exists, U, check_alive, hooks_wrap, intersect
 
 _INPUT_METHOD_RE = re.compile(r'mCurMethodId=([-_./\w]+)')
 
-
 _fail_prompt_enabled = False
 
 
@@ -450,14 +449,30 @@ class Session(object):
         else:
             raise RuntimeError("Invalid format " + format)
 
-    @retry(NullPointerExceptionError, delay=.5, tries=5, jitter=0.2)
-    def dump_hierarchy(self, compressed=False, pretty=False):
-        content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
+    def dump_hierarchy(self, compressed=False, pretty=False) -> str:
+        """
+        Args:
+            shell (bool): use "adb shell uiautomator dump" to get hierarchy
+            pretty (bool): format xml
+
+        Same as
+            content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
+        But through GET /dump/hierarchy will be more robust
+        when dumpHierarchy fails, the atx-agent will restart uiautomator again, then retry
+        """
+        res = self.server._reqsess.get(self.server.path2url("/dump/hierarchy"))
+        try:
+            res.raise_for_status()
+        except requests.HTTPError:
+            logging.warning("request error: %s", res.text)
+            raise
+        content = res.json().get("result")
+
         if pretty and "\n " not in content:
             xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))
             content = U(xml_text.toprettyxml(indent='  '))
         return content
-
+    
     def freeze_rotation(self, freeze=True):
         '''freeze or unfreeze the device rotation in current status.'''
         self.jsonrpc.freezeRotation(freeze)
@@ -752,19 +767,27 @@ class UiObject(object):
         if delay:
             time.sleep(delay)
 
-    def center(self, offset=None):
+    def bounds(self):
         """
-        Args:
-            offset: optional, (x_off, y_off)
-                (0, 0) means center, (0.5, 0.5) means right-bottom
-        Return:
-            center point (x, y)
+        Returns:
+            left_top_x, left_top_y, right_bottom_x, right_bottom_y
         """
         info = self.info
         bounds = info.get('visibleBounds') or info.get("bounds")
         lx, ly, rx, ry = bounds['left'], bounds['top'], bounds['right'], bounds['bottom']
-        if not offset:
-            offset = (0.5, 0.5)
+        return (lx, ly, rx, ry)
+
+    def center(self, offset=(0.5, 0.5)):
+        """
+        Args:
+            offset: optional, (x_off, y_off)
+                (0, 0) means left-top, (0.5, 0.5) means middle(Default)
+        Return:
+            center point (x, y)
+        """
+        lx, ly, rx, ry = self.bounds()
+        if offset is None:
+            offset = (0.5, 0.5)  # default center
         xoff, yoff = offset
         width, height = rx - lx, ry - ly
         x = lx + width * xoff
