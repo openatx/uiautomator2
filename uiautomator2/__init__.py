@@ -1055,14 +1055,14 @@ class UIAutomatorServer(object):
     def screenshot_uri(self):
         return 'http://%s:%d/screenshot/0' % (self._host, self._port)
     
-    def screenshot(self):
+    def screenshot(self, filename=None, format='pillow'):
         """
         Take screenshot of device
 
         Returns:
             PIL.Image
         """
-        return self.session().screenshot()
+        return self.session().screenshot(filename, format)
 
     @property
     def device_info(self):
