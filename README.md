@@ -1,5 +1,4 @@
 # uiautomator2 [![Build Status](https://travis-ci.org/openatx/uiautomator2.svg?branch=master)](https://travis-ci.org/openatx/uiautomator2) [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2) ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg) [![Windows Build](https://ci.appveyor.com/api/projects/status/github/openatx/uiautomator2)](https://ci.appveyor.com/project/openatx/uiautomator2)
-**该项目正在火热的开发中** QQ群号: *499563266*
 
 各种库的版本号
 
@@ -10,24 +9,64 @@
 - ![PyPI](https://img.shields.io/pypi/v/requests.svg?label=requests)
 - ![PyPI](https://img.shields.io/pypi/v/lxml.svg?label=lxml)
 
+**该项目正在火热的开发中** QQ群号: *499563266*
+
 <p align="left"><img src="docs/img/qqgroup.png" /></div>
 
-uiautomator2 是一个Android UI自动化框架，支持Python编写测试脚本对设备进行自动化。底层基于Google uiautomator，Google提供的[uiautomator](https://developer.android.com/training/testing/ui-automator.html)库可以获取屏幕上任意一个APP的任意一个控件属性，并对其进行任意操作，但有两个缺点：1. 测试脚本只能使用Java语言 2. 测试脚本必须每次被上传到设备上运行。
-我们希望测试能够用一个更脚本化的语言，例如Python编写，同时可以每次所见即所得地修改测试、运行测试。这里要非常感谢 Xiaocong He ([@xiaocong][])，他将这个想法实现了出来（见[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)），原理是在手机上运行了一个http服务器，将uiautomator中的功能开放出来，然后再将这些http接口，封装成Python库。
-我们的uiautomator2项目是对[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)的增强，主要有以下部分：
+[uiautomator](https://developer.android.com/training/testing/ui-automator.html)是Google提供的用来做安卓自动化测试的一个Java库。功能很强，可以对第三方App进行测试，获取屏幕上任意一个APP的任意一个控件属性，并对其进行任意操作，但有两个缺点：1. 测试脚本只能使用Java语言 2. 测试脚本必须每次被上传到设备上运行。
+
+我们希望测试能够用Python编写，能够在电脑上运行的时候就控制手机。这里要非常感谢 Xiaocong He ([@xiaocong][])，他将这个想法实现了出来（见[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)），原理是在手机上运行了一个http rpc服务，将uiautomator中的功能开放出来，然后再将这些http接口封装成Python库。
+因为`xiaocong/uiautomator`这个库，已经很久不见更新。所以我们直接fork了一个版本，为了方便做区分我们就在后面加了个2 [openatx/uiautomator2](https://github.com/openatx/uiautomator2)
+
+除了对原有的库的bug进行了修复，还增加了很多新的Feature。主要有以下部分：
 
 * 设备和开发机可以脱离数据线，通过WiFi互联（基于[atx-agent](https://github.com/openatx/atx-agent)）
 * 集成了[openstf/minicap](https://github.com/openstf/minicap)达到实时屏幕投频，以及实时截图
 * 集成了[openstf/minitouch](https://github.com/openstf/minitouch)达到精确实时控制设备
 * 修复了[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)经常性退出的问题
 * 代码进行了重构和精简，方便维护
-* Requirements: `Android >= 4.4` `Python >=2.7 || <= 3.7`
+* 实现了一个设备管理平台(也支持iOS) [atxserver2](https://github.com/openatx/atxserver2)
 
-相关项目：
+>这里要先说明下，因为经常有很多人问 openatx/uiautomator2 并不支持iOS测试，需要iOS自动化测试，可以转到这个库 [openatx/facebook-wda](https://github.com/openatx/facebook-wda)。
 
-- 设备管理平台 [atxserver2](https://github.com/openatx/atxserver2)
-- adbutils库 [adbutils](https://github.com/openatx/adbutils)
-- weditor[https://github.com/openatx/weditor] 类似于uiautomator2，专门为本项目开发的辅助编辑器
+> 另外这个库 <https://github.com/NeteaseGame/ATX> 也是我们开发的，不过已经不维护了。
+
+## Requirements
+- Android版本不低于 4.4
+- Python >= 3.6 
+
+>如果仍在用python2, 需要使用命令`pip install -U "uiautomator2<=1.0.0"`安装
+
+## QUICK START
+先准备一台（不要两台）开启了`开发者选项`的安卓手机，连接上电脑，确保执行`adb devices`可以看到连接上的设备。
+
+- 运行`pip3 install -U uiautomator2`安装uiautomator2
+- 运行`python3 -m uiautomator2 init`安装包含httprpc服务的apk到手机+`atx-agent, minicap, minitouch`
+
+一般情况下都会成功，不过也可能会有意外。可以加QQ群反馈问题，群里有很多大佬可以帮你解决问题。
+
+命令行运行`python`打开python交互窗口。然后将下面的命令输入到窗口中。
+
+```python
+import uiautomator2 as u2
+
+d = u2.connect() # connect to device
+print(d.info)
+```
+
+这时看到类似下面的输出，就可以正式开始用我们这个库了。因为这个库功能太多，后面还有很多的内容，需要慢慢去看 ....
+
+```
+{'currentPackageName': 'net.oneplus.launcher', 'displayHeight': 1920, 'displayRotation': 0, 'displaySizeDpX': 411, 'displaySizeDpY': 731, 'displayWidth': 1080, 'productName': 'OnePlus5', '
+screenOn': True, 'sdkInt': 27, 'naturalOrientation': True}
+```
+
+
+## 相关项目
+- 设备管理平台，设备多了就会用到 [atxserver2](https://github.com/openatx/atxserver2)
+- 专门与adb进行交互的库 [adbutils](https://github.com/openatx/adbutils)
+- <https://github.com/openatx/atx-agent>
+- weditor[https://github.com/openatx/weditor] 类似于uiautomatorviewer，专门为本项目开发的辅助编辑器
 
 **[Installation](#installation)**
 

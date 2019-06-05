@@ -127,7 +127,7 @@ def connect_adb_wifi(addr):
     return connect_usb(addr)
 
 
-def connect_usb(serial=None, healthcheck=True):
+def connect_usb(serial=None, healthcheck=False):
     """
     Args:
         serial (str): android device serial
@@ -560,20 +560,26 @@ class UIAutomatorServer(object):
 
         Raises:
             RuntimeError
+        
+        Notes:
+            OnePlus(China) need to treat specially.
+                1. stop uiautomator keeper
+                2. start ATX app
+                3. stop uiautomator keeper (ATX app will be killed by uiautomator)
+                4. start ATX app again. (ATX app will be killed again by uiautomator)
+                5. uiautomator will go back to normal
         """
-        # self.open_identify()
-        self._reqsess.delete(
-            self.path2url('/uiautomator'))  # stop uiautomator keeper first
-        # wait = not unlock  # should not wait IdentifyActivity open or it will stuck sometimes
-        # self.app_start(  # may also stuck here.
-        #     'com.github.uiautomator',
-        #     '.MainActivity',
-        #     wait=False,
-        #     stop=True)
-        time.sleep(.5)
+        brand = self.shell("getprop ro.product.brand").output.strip()
+        print("Product-brand:", brand)
+        self.uiautomator.stop() # stop uiautomator keeper first
 
-        # launch atx-agent uiautomator keeper
-        self._reqsess.post(self.path2url('/uiautomator'))
+        if brand.lower() == "oneplus":
+            self.app_start("com.github.uiautomator", launch_timeout=10)
+            self.uiautomator.start()
+            time.sleep(1.5)
+            self.app_start("com.github.uiautomator")
+        else:
+            self.uiautomator.start()
 
         # wait until uiautomator2 service working
         deadline = time.time() + 20.0
@@ -581,6 +587,8 @@ class UIAutomatorServer(object):
             print(
                 time.strftime("[%Y-%m-%d %H:%M:%S]"),
                 "uiautomator is starting ...")
+            if not self.uiautomator.running():
+                break
             if self.alive:
                 # keyevent BACK if current is com.github.uiautomator
                 # XiaoMi uiautomator will kill the app(com.github.uiautomator) when launch
@@ -763,12 +771,15 @@ class UIAutomatorServer(object):
                   extras={},
                   wait=True,
                   stop=False,
-                  unlock=False):
+                  unlock=False, launch_timeout=None):
         """ Launch application
         Args:
             pkg_name (str): package name
             activity (str): app activity
             stop (bool): Stop app before starting the activity. (require activity)
+        
+        Raises:
+            SessionBrokenError
         """
         if unlock:
             self.unlock()
@@ -806,10 +817,23 @@ class UIAutomatorServer(object):
         else:
             if stop:
                 self.app_stop(pkg_name)
-            self.shell([
-                'monkey', '-p', pkg_name, '-c',
-                'android.intent.category.LAUNCHER', '1'
-            ])
+            
+            # launch with atx-agent
+            data = {"flags": "-W -S"}
+            if launch_timeout:
+                data["timeout"] = str(launch_timeout)
+            resp = self._reqsess.post(
+                self.path2url("/session/" + pkg_name), data=data)
+            if resp.status_code != 200: # 410: Gone
+                raise SessionBrokenError(pkg_name, resp.text)
+            jsondata = resp.json()
+            if not jsondata["success"]:
+                raise SessionBrokenError(pkg_name,
+                                         jsondata["error"], jsondata["output"])
+            # self.shell([
+            #     'monkey', '-p', pkg_name, '-c',
+            #     'android.intent.category.LAUNCHER', '1'
+            # ])
 
     @retry(EnvironmentError, delay=.5, tries=3, jitter=.1)
     def current_app(self):
