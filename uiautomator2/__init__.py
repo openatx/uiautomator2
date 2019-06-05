@@ -38,8 +38,8 @@ import six
 import six.moves.urllib.parse as urlparse
 from retry import retry
 
-from uiautomator2 import adbutils
-from uiautomator2.exceptions import (GatewayError, JsonRpcError, ConnectError,
+import adbutils
+from uiautomator2.exceptions import (ConnectError, GatewayError, JsonRpcError,
                                      NullObjectExceptionError,
                                      NullPointerExceptionError,
                                      SessionBrokenError,
