@@ -31,6 +31,21 @@ def check_alive(fn):
     return inner
 
 
+_cached_values = {}
+
+def cache_return(fn):
+    @functools.wraps(fn)
+    def inner(*args, **kwargs):
+        key = (fn, args, frozenset(kwargs.items()))
+        value = _cached_values.get(key)
+        if value is not None:
+            return value
+
+        _cached_values[key] = ret = fn(*args, **kwargs)
+        return ret
+    return inner
+
+
 def hooks_wrap(fn):
     @functools.wraps(fn)
     def inner(self, *args, **kwargs):

@@ -98,7 +98,7 @@ class Initer():
 
     def shell(self, *args):
         logger.debug("Shell: %s", args)
-        return self._device.shell_output(*args)
+        return self._device.shell(args)
 
     @property
     def apk_urls(self):

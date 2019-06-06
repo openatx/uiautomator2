@@ -8,9 +8,13 @@
 - [阮一峰的XPath学习笔记](http://www.ruanyifeng.com/blog/2009/07/xpath_path_expressions.html)
 - [测试XPath的网站](https://www.freeformatter.com/xpath-tester.html)
 
+代码并没有完全测试完，可能还有bug，欢迎跟我反馈。
+
 ## 工作原理
 1. 通过uiautomator2库的`dump_hierarchy`接口，获取到当前的UI界面（一个很丰富的XML）。
 2. 然后使用`lxml`库解析，寻找匹配的xpath，然后使用click指令完后操作
+
+>目前发现lxml只支持XPath1.0, 有了解的可以告诉我下怎么支持XPath2.0
 
 **弹窗监控原理**
 
@@ -23,15 +27,110 @@
 
 ## 安装方法
 ```
-pip install -U --pre uiautomator2
+pip3 install -U uiautomator2
 ```
 
 ## 使用方法
 目前该插件已经内置到uiautomator2中了，所以不需要plugin注册了。
 
+**简单用法**
+
+看下面的这个简单的例子了解下如何使用
+
 ```python
 import uiautomator2 as u2
 
+def main():
+    d = u2.connect()
+    d.app_start("com.netease.cloudmusic", stop=True)
+
+    d.xpath('//*[@text="私人FM"]').click()
+```
+
+>下面的代码为了方便就不写`import`和`main`了，默认存在`d`这个变量
+
+**别名定义**
+
+这种写法有点类似selenium中的[PageObjects](https://selenium-python.readthedocs.io/page-objects.html)
+
+```python
+# 这里是Python3的写法，python2的string定义需要改成 u"菜单" 注意前的这个u
+d.xpath.global_set("alias", {
+    "菜单": "@com.netease.cloudmusic:id/qh", # TODO(ssx): maybe we can support P("@com.netease.cloudmusic:id/qh", wait_timeout=2) someday
+    "设置": "//android.widget.TextView[@text='设置']",
+})
+
+# 这里需要 $ 开头
+d.xpath("$菜单").click() # 等价于 d.xpath()
+d.xpath("$设置").click()
+
+
+d.xpath("$菜单").click()
+# 等价于 d.xpath("@com.netease.cloudmusic:id/qh").click()
+
+d.xpath("$小吃").click() # 在这里会直接跑出XPathError异常，因为并不存在 小吃 这个alias
+
+# alias_strict 设置项
+d.xpath.global_set("alias_strict", False) # 默认 True
+d.xpath("$小吃").click() # 这里就会正常运行
+# 等价于
+d.xpath('//*[@text="小吃" or @content-desc="小吃"]').click()
+```
+
+**`XPathSelector`的操作**
+
+```python
+sl = d.xpath("@com.example:id/home_searchedit") # sl为XPathSelector对象
+
+# 等到对应的元素出现，返回XMLElement
+# 默认的等待时间是10s
+el = sl.wait()
+el = sl.wait(timeout=15) # 等待15s, 没有找到会返回None
+
+# 跟wait用法类似，区别是如果没找到直接抛出 XPathElementNotFoundError 异常
+el = sl.get() 
+el = sl.get(timeout=15)
+
+# 修改默认的等待时间为15s
+d.xpath.global_set("timeout", 15)
+d.xpath.implicitly_wait(15) # 与上一行代码等价
+
+print(sl.exists) # 返回是否存在 (bool)
+sl.get_last_match() # 获取上次匹配的XMLElement
+
+sl.get_text() # 获取组件名
+sl.set_text("") # 清空输入框
+sl.set_text("hello world") # 输入框输入 hello world
+
+# 遍历所有匹配的元素
+for el in d.xpath('//android.widget.EditText').all():
+    print("rect:", el.rect) # output tuple: (x, y, width, height)
+    print("center:", el.center())
+    el.click() # click operation
+    print(el.elem) # 输出lxml解析出来的Node
+    print(el.text)
+```
+
+**`XMLElement`的操作**
+
+```python
+el = d.xpath("@com.example:id/home_searchedit").get()
+
+lx, ly, width, height = el.rect() # 获取左上角坐标和宽高
+x, y = el.center() # get element center position
+x, y = el.offset(0.5, 0.5) # same as center()
+
+# send click
+el.click() 
+
+# 打印文本内容
+print(el.text) 
+```
+
+**比较完整的例子**
+
+```python
+import uiautomator2 as u2
 
 def main():
     d = u2.connect()
@@ -54,40 +153,12 @@ def main():
 
     # 一直在后台监控（目前每隔4s检查一次），暂时还没提供暂停的方法
     d.xpath.watch_background()
-```
 
-别名定义，感觉这种写法有点类似selenium中的[PageObjects](https://selenium-python.readthedocs.io/page-objects.html)
-
->下面的代码为了方便就不写`import`了
-
-```python
-# 这里是Python3的写法，python2的string定义需要改成 u"菜单" 注意前的这个u
-d.xpath.global_set("alias", {
-    "菜单": "@com.netease.cloudmusic:id/qh", # TODO(ssx): maybe we can support P("@com.netease.cloudmusic:id/qh", wait_timeout=2) someday
-    "设置": "//android.widget.TextView[@text='设置']",
-})
-
-
-# 这里需要 $ 开头
-d.xpath("$菜单").click() # 等价于 d.xpath()
-d.xpath("$设置").click()
-
-
-# alias_strict 设置项
-d.xpath("$返回").click() # 等价于 d.xpath("返回").click()，因为返回没有预先在alias中定义
-
-d.xpath.global_set("alias_strict", True) # 默认 False
-d.xpath("$返回").click() # 在这里会直接跑出XPathError异常
-```
-
-遍历操作
-
-```python
-for el in d.xpath('//android.widget.EditText'):
-    print("rect:", el.rect) # output tuple: (x, y, width, height)
-    print("center:", el.center())
-    el.click() # click operation
-    print(el.elem) # 输出lxml解析出来的Node
+    for el in d.xpath('//android.widget.EditText').all():
+        print("rect:", el.rect) # output tuple: (x, y, width, height)
+        print("center:", el.center())
+        el.click() # click operation
+        print(el.elem) # 输出lxml解析出来的Node
 ```
 
 ## XPath规则

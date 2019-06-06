@@ -48,6 +48,7 @@ def _failprompt(fn):
                 return True
             else:
                 raise
+
     return _inner
 
 
@@ -136,10 +137,9 @@ class Session(object):
             text (str): text to show
             duration (float): seconds of display
         """
-        warnings.warn(
-            "Use d.toast.show(text, duration) instead.",
-            DeprecationWarning,
-            stacklevel=2)
+        warnings.warn("Use d.toast.show(text, duration) instead.",
+                      DeprecationWarning,
+                      stacklevel=2)
         return self.jsonrpc.makeToast(text, duration * 1000)
 
     @property
@@ -188,8 +188,12 @@ class Session(object):
             self.server.shell(['ime', 'disable', fast_ime])
 
     @check_alive
-    def send_keys(self, text):
+    def send_keys(self, text: str, clear: bool = False):
         """
+        Args:
+            text (str): text to set
+            clear (bool): clear before set text
+
         Raises:
             EnvironmentError
         """
@@ -197,10 +201,9 @@ class Session(object):
             self.wait_fastinput_ime()
             btext = U(text).encode('utf-8')
             base64text = base64.b64encode(btext).decode()
-            self.server.shell([
-                'am', 'broadcast', '-a', 'ADB_INPUT_TEXT', '--es', 'text',
-                base64text
-            ])
+            cmd = "ADB_SET_TEXT" if clear else "ADB_INPUT_TEXT"
+            self.server.shell(
+                ['am', 'broadcast', '-a', cmd, '--es', 'text', base64text])
             return True
         except EnvironmentError:
             warnings.warn(
@@ -235,7 +238,10 @@ class Session(object):
         }
         if isinstance(code, six.string_types):
             code = __alias.get(code, code)
-        self.server.shell(['am', 'broadcast', '-a', 'ADB_EDITOR_CODE', '--ei', 'code', str(code)])
+        self.server.shell([
+            'am', 'broadcast', '-a', 'ADB_EDITOR_CODE', '--ei', 'code',
+            str(code)
+        ])
 
     @check_alive
     def clear_text(self):
@@ -326,7 +332,7 @@ class Session(object):
         """
         x, y = self.pos_rel2abs(x, y)
         self._click(x, y)
-    
+
     @hooks_wrap
     def _click(self, x, y):
         self.jsonrpc.click(x, y)
@@ -352,11 +358,11 @@ class Session(object):
             duration = 0.5
         x, y = self.pos_rel2abs(x, y)
         return self._long_click(x, y, duration)
-    
+
     @hooks_wrap
     def _long_click(self, x, y, duration):
         self.touch.down(x, y)
-        # self.touch.move(x, y) # maybe can fix 
+        # self.touch.move(x, y) # maybe can fix
         time.sleep(duration)
         self.touch.up(x, y)
         return self
@@ -382,7 +388,7 @@ class Session(object):
         if not steps:
             steps = int(duration * 200)
         self._swipe(fx, fy, tx, ty, steps)
-    
+
     @hooks_wrap
     def _swipe(self, fx, fy, tx, ty, steps):
         return self.jsonrpc.swipe(fx, fy, tx, ty, steps)
@@ -411,9 +417,8 @@ class Session(object):
         ex, ey = rel2abs(ex, ey)
         return self.jsonrpc.drag(sx, sy, ex, ey, int(duration * 200))
 
-    @retry(
-        (IOError, SyntaxError), delay=.5, tries=5, jitter=0.1,
-        max_delay=1)  # delay .5, .6, .7, .8 ...
+    @retry((IOError, SyntaxError), delay=.5, tries=5, jitter=0.1,
+           max_delay=1)  # delay .5, .6, .7, .8 ...
     def screenshot(self, filename=None, format='pillow'):
         """
         Image format is JPEG
@@ -472,7 +477,7 @@ class Session(object):
             xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))
             content = U(xml_text.toprettyxml(indent='  '))
         return content
-    
+
     def freeze_rotation(self, freeze=True):
         '''freeze or unfreeze the device rotation in current status.'''
         self.jsonrpc.freezeRotation(freeze)
@@ -625,7 +630,6 @@ class Session(object):
         return UiObject(self, Selector(**kwargs))
 
 
-
 class Selector(dict):
     """The class is to build parameters for UiSelector passed to Android device.
     """
@@ -680,16 +684,18 @@ class Selector(dict):
     def __setitem__(self, k, v):
         if k in self.__fields:
             super(Selector, self).__setitem__(U(k), U(v))
-            super(Selector, self).__setitem__(
-                self.__mask, self[self.__mask] | self.__fields[k][0])
+            super(Selector,
+                  self).__setitem__(self.__mask,
+                                    self[self.__mask] | self.__fields[k][0])
         else:
             raise ReferenceError("%s is not allowed." % k)
 
     def __delitem__(self, k):
         if k in self.__fields:
             super(Selector, self).__delitem__(k)
-            super(Selector, self).__setitem__(
-                self.__mask, self[self.__mask] & ~self.__fields[k][0])
+            super(Selector,
+                  self).__setitem__(self.__mask,
+                                    self[self.__mask] & ~self.__fields[k][0])
 
     def clone(self):
         kwargs = dict((k, self[k]) for k in self if k not in [
@@ -736,8 +742,7 @@ class UiObject(object):
         return Exists(self)
 
     @property
-    @retry(
-        UiObjectNotFoundError, delay=.5, tries=3, jitter=0.1, logger=logging)
+    @retry(UiObjectNotFoundError, delay=.5, tries=3, jitter=0.1, logger=logging) # yapf: disable
     def info(self):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
@@ -774,7 +779,7 @@ class UiObject(object):
         """
         info = self.info
         bounds = info.get('visibleBounds') or info.get("bounds")
-        lx, ly, rx, ry = bounds['left'], bounds['top'], bounds['right'], bounds['bottom']
+        lx, ly, rx, ry = bounds['left'], bounds['top'], bounds['right'], bounds['bottom'] # yapf: disable
         return (lx, ly, rx, ry)
 
     def center(self, offset=(0.5, 0.5)):
@@ -868,12 +873,12 @@ class UiObject(object):
         self.must_wait()
         info = self.info
         bounds = info.get('visibleBounds') or info.get("bounds")
-        lx, ly, rx, ry = bounds['left'], bounds['top'], bounds['right'], bounds['bottom']
-        cx, cy = (lx+rx)//2, (ly+ry)//2
+        lx, ly, rx, ry = bounds['left'], bounds['top'], bounds['right'], bounds['bottom'] # yapf: disable
+        cx, cy = (lx + rx) // 2, (ly + ry) // 2
         if direction == 'up':
             self.session.swipe(cx, cy, cx, ly, steps=steps)
         elif direction == 'down':
-            self.session.swipe(cx, cy, cx,  ry - 1, steps=steps)
+            self.session.swipe(cx, cy, cx, ry - 1, steps=steps)
         elif direction == 'left':
             self.session.swipe(cx, cy, lx, cy, steps=steps)
         elif direction == 'right':
@@ -921,19 +926,21 @@ class UiObject(object):
         http_wait = timeout + 10
         if exists:
             try:
-                return self.jsonrpc.waitForExists(
-                    self.selector, int(timeout * 1000), http_timeout=http_wait)
+                return self.jsonrpc.waitForExists(self.selector,
+                                                  int(timeout * 1000),
+                                                  http_timeout=http_wait)
             except requests.ReadTimeout as e:
-                warnings.warn("waitForExists readTimeout: %s" %
-                              e, RuntimeWarning)
+                warnings.warn("waitForExists readTimeout: %s" % e,
+                              RuntimeWarning)
                 return self.exists()
         else:
             try:
-                return self.jsonrpc.waitUntilGone(
-                    self.selector, int(timeout * 1000), http_timeout=http_wait)
+                return self.jsonrpc.waitUntilGone(self.selector,
+                                                  int(timeout * 1000),
+                                                  http_timeout=http_wait)
             except requests.ReadTimeout as e:
-                warnings.warn("waitForExists readTimeout: %s" %
-                              e, RuntimeWarning)
+                warnings.warn("waitForExists readTimeout: %s" % e,
+                              RuntimeWarning)
                 return not self.exists()
 
     def wait_gone(self, timeout=None):
@@ -1004,9 +1011,10 @@ class UiObject(object):
 
     def child_by_instance(self, inst, **kwargs):
         # need test
-        return UiObject(self.session,
-                        self.jsonrpc.childByInstance(self.selector,
-                                                     Selector(**kwargs), inst))
+        return UiObject(
+            self.session,
+            self.jsonrpc.childByInstance(self.selector, Selector(**kwargs),
+                                         inst))
 
     def parent(self):
         # android-uiautomator-server not implemented
@@ -1022,7 +1030,8 @@ class UiObject(object):
         """
         if isinstance(self.selector, six.string_types):
             raise IndexError(
-                "Index is not supported when UiObject returned by child_by_xxx")
+                "Index is not supported when UiObject returned by child_by_xxx"
+            )
         selector = self.selector.clone()
         selector.update_instance(index)
         return UiObject(self.session, selector)

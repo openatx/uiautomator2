@@ -30,6 +30,7 @@ import warnings
 from collections import namedtuple
 from datetime import datetime
 from subprocess import list2cmdline
+from typing import Optional
 
 import humanize
 import progress.bar
@@ -48,6 +49,7 @@ from uiautomator2.exceptions import (ConnectError, GatewayError, JsonRpcError,
                                      UiObjectNotFoundError)
 from uiautomator2.session import Session, set_fail_prompt  # noqa: F401
 from uiautomator2.version import __atx_agent_version__
+from uiautomator2.utils import cache_return
 
 if six.PY2:
     FileNotFoundError = OSError
@@ -72,15 +74,22 @@ def log_print(s):
           " " + s)
 
 
-def _is_wifi_addr(addr):
+def fix_wifi_addr(addr:str) -> Optional[str]:
     if not addr:
-        return False
-    if re.match(r"^https?://", addr):
-        return True
-    m = re.search(r"(\d+\.\d+\.\d+\.\d+)", addr)
-    if m and m.group(1) != "127.0.0.1":
-        return True
-    return False
+        return None
+    if re.match(r"^https?://", addr): # eg: http://example.org
+        return addr
+    
+    # make a request
+    # eg: 10.0.0.1, 10.0.0.1:7912
+    if ':' not in addr:
+        addr += ":7912" # make default port 7912
+    try:
+        r = requests.get("http://"+addr+"/version", timeout=2)
+        r.raise_for_status()
+        return "http://"+addr
+    except:
+        return None
 
 
 def connect(addr=None):
@@ -103,7 +112,8 @@ def connect(addr=None):
     """
     if not addr or addr == '+':
         addr = os.getenv('ANDROID_DEVICE_IP')
-    if _is_wifi_addr(addr):
+    wifi_addr = fix_wifi_addr(addr)
+    if wifi_addr:
         return connect_wifi(addr)
     return connect_usb(addr)
 
@@ -164,7 +174,7 @@ def connect_usb(serial=None, healthcheck=False):
     return d
 
 
-def connect_wifi(addr=None):
+def connect_wifi(addr:str) -> "UIAutomatorServer":
     """
     Args:
         addr (str) uiautomator server address.
@@ -178,15 +188,13 @@ def connect_wifi(addr=None):
     Examples:
         connect_wifi("10.0.0.1")
     """
-    if '://' not in addr:
-        addr = 'http://' + addr
-    if addr.startswith('http://'):
-        u = urlparse.urlparse(addr)
-        host = u.hostname
-        port = u.port or 7912
-        return UIAutomatorServer(host, port)
-    else:
-        raise ConnectError("address should start with http://")
+    fixed_addr = fix_wifi_addr(addr)
+    if fixed_addr is None:
+        raise ConnectError("addr is invalid or atx-agent is not running", addr)
+    u = urlparse.urlparse(fixed_addr)
+    host = u.hostname
+    port = u.port or 7912
+    return UIAutomatorServer(host, port)
 
 
 class TimeoutRequestsSession(requests.Session):
@@ -1182,6 +1190,12 @@ class UIAutomatorServer(object):
             raise SessionBrokenError(pkg_name)
         return Session(self, pkg_name, pid)
 
+    @property
+    @cache_return
+    def xpath(self):
+        import uiautomator2.xpath as xpath
+        return xpath.XPath(self)
+
     def __getattr__(self, attr):
         if attr in self._cached_plugins:
             return self._cached_plugins[attr]
@@ -1189,7 +1203,7 @@ class UIAutomatorServer(object):
             plugin_name = attr[4:]
             if plugin_name not in self.__plugins:
                 if plugin_name == 'xpath':
-                    import uiautomator2.ext.xpath as xpath
+                    import uiautomator2.xpath as xpath
                     xpath.init()
                 else:
                     raise ValueError(
