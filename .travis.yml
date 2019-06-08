@@ -19,8 +19,9 @@ language: python
 #     - sys-img-x86-android-26
 #     - sys-img-armeabi-v7a-android-21
 python:
-- '2.7'
+- '3.5'
 - '3.6'
+- '3.7'
 # - '3.7.x' # not supported now
 install:
 - pip install -r requirements.txt
