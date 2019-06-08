@@ -5,7 +5,7 @@
 - [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg?label=uiautomator2)](https://pypi.python.org/pypi/uiautomator2)
 - ![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/openatx/atx-agent.svg?label=atx-agent)
 - ![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/openatx/android-uiautomator-server.svg?label=android-uiautomator-server)
-- ![PyPI](https://img.shields.io/pypi/v/adbutils.svg?label=apkutils)
+- ![PyPI](https://img.shields.io/pypi/v/adbutils.svg?label=adbutils)
 - ![PyPI](https://img.shields.io/pypi/v/requests.svg?label=requests)
 - ![PyPI](https://img.shields.io/pypi/v/lxml.svg?label=lxml)
 
