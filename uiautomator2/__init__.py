@@ -157,20 +157,23 @@ def connect_usb(serial=None, healthcheck=False):
     # adb = adbutils.Adb(serial)
     lport = device.forward_port(7912)
     d = connect_wifi('127.0.0.1:' + str(lport))
+    d._serial = device.serial
+    if not d.agent_alive:
+        warnings.warn("backend atx-agent is not alive, start again ...",
+                    RuntimeWarning)
+        # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
+        device.shell("/data/local/tmp/atx-agent", "server", "-d")
+        deadline = time.time() + 3
+        while time.time() < deadline:
+            if d.agent_alive:
+                break
+        else:
+            raise RuntimeError("atx-agent recover failed")
+
     if healthcheck:
-        if not d.agent_alive:
-            warnings.warn("backend atx-agent is not alive, start again ...",
-                        RuntimeWarning)
-            # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
-            device.shell_output("/data/local/tmp/atx-agent", "server", "-d")
-            deadline = time.time() + 3
-            while time.time() < deadline:
-                if d.alive:
-                    break
-        elif not d.alive:
-            warnings.warn("backend uiautomator2 is not alive, start again ...",
-                        RuntimeWarning)
-            d.reset_uiautomator()
+        if not d.alive:
+            warnings.warn("backend uiautomator2 is not alive, start again ...",RuntimeWarning)
+            d.healthcheck()
     return d
 
 
@@ -188,10 +191,12 @@ def connect_wifi(addr:str) -> "UIAutomatorServer":
     Examples:
         connect_wifi("10.0.0.1")
     """
-    fixed_addr = fix_wifi_addr(addr)
-    if fixed_addr is None:
-        raise ConnectError("addr is invalid or atx-agent is not running", addr)
-    u = urlparse.urlparse(fixed_addr)
+    if not re.match(r"^https?://", addr):
+        addr = "http://" + addr
+    # fixed_addr = fix_wifi_addr(addr)
+    # if fixed_addr is None:
+        # raise ConnectError("addr is invalid or atx-agent is not running", addr)
+    u = urlparse.urlparse(addr)
     host = u.hostname
     port = u.port or 7912
     return UIAutomatorServer(host, port)
@@ -277,6 +282,7 @@ class UIAutomatorServer(object):
         """
         self._host = host
         self._port = port
+        self._serial = None
         self._reqsess = TimeoutRequestsSession(
         )  # use requests.Session to enable HTTP Keep-Alive
         self._server_url = 'http://{}:{}'.format(host, port)
@@ -340,6 +346,8 @@ class UIAutomatorServer(object):
 
     @property
     def serial(self):
+        if self._serial:
+            return self._serial
         return self.shell(['getprop', 'ro.serialno'])[0].strip()
 
     @property
@@ -624,6 +632,7 @@ class UIAutomatorServer(object):
         Raises:
             RuntimeError
         """
+        self.app_start("com.github.uiautomator")
         sh = self.ash
         if not sh.is_screen_on():
             print(time.strftime("[%Y-%m-%d %H:%M:%S]"), "wakeup screen")
