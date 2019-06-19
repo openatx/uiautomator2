@@ -292,7 +292,7 @@ class MyFire(object):
 
 def cmd_init(args):
     if args.serial:
-        device = adbutils.adb.device_with_serial(args.serial)
+        device = adbutils.adb.device(args.serial)
         init = Initer(device)
         init.install(args.server)
 
