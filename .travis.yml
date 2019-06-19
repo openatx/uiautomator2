@@ -19,6 +19,7 @@ language: python
 #     - sys-img-x86-android-26
 #     - sys-img-armeabi-v7a-android-21
 python:
+- '3.5'
 - '3.6'
 - '3.7'
 install:
