@@ -222,7 +222,7 @@ class TimeoutRequestsSession(requests.Session):
             print(
                 datetime.now().strftime("%H:%M:%S.%f")[:-3],
                 "$ curl -X {method} -d '{data}' '{url}'".format(
-                    method=method, url=url, data=data))
+                    method=method, url=url, data=data.decode()))
         try:
             resp = super(TimeoutRequestsSession, self).request(
                 method, url, **kwargs)
