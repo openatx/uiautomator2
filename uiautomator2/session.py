@@ -216,7 +216,7 @@ class Session(object):
                 Warning)
             return self(focused=True).set_text(text)
             # warnings.warn("set FastInputIME failed. use \"adb shell input text\" instead", Warning)
-            # self.server.adb_shell("input", "text", text.replace(" ", "%s"))
+            # self.server.shell(["input", "text", text.replace(" ", "%s")])
 
     @check_alive
     def send_action(self, code):
