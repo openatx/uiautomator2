@@ -67,9 +67,6 @@ class Session(object):
                                           (pid, pkg_name))
             self._jsonrpc = server.setup_jsonrpc(jsonrpc_url)
 
-        # hot fix for session missing shell function
-        self.shell = self.server.shell
-
     def __repr__(self):
         if self._pid and self._pkg_name:
             return "<uiautomator2.Session pid:%d pkgname:%s>" % (
@@ -81,6 +78,14 @@ class Session(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    @property
+    def xpath(self):
+        return self.server.xpath
+    
+    @property
+    def shell(self):
+        return self.server.shell
 
     def implicitly_wait(self, seconds=None):
         """set default wait timeout
@@ -539,10 +544,6 @@ class Session(object):
 
     def exists(self, **kwargs):
         return self(**kwargs).exists
-
-    @property
-    def xpath(self):
-        return self.server.ext_xpath
 
     def watcher(self, name):
         obj = self

@@ -151,8 +151,9 @@ def main():
     d.xpath("转到上一层级").click(watch=False) # click without trigger watch
     d.xpath("转到上一层级").click(timeout=5.0) # wait timeout 5s
 
-    # 一直在后台监控（目前每隔4s检查一次），暂时还没提供暂停的方法
-    d.xpath.watch_background()
+    d.xpath.watch_background() # 开启后台监控模式，默认每4s检查一次
+    d.xpath.watch_background(interval=2.0) # 每2s检查一次
+    d.xpath.watch_stop() # 停止监控
 
     for el in d.xpath('//android.widget.EditText').all():
         print("rect:", el.rect) # output tuple: (x, y, width, height)

@@ -1,6 +1,4 @@
 # coding: utf-8
-
-# coding: utf-8
 #
 
 import re
@@ -45,13 +43,20 @@ class XPath(object):
         self._d = d
         self._watchers = []  # item: {"xpath": .., "callback": func}
         self._timeout = 10.0
+        self._click_before_delay = 0.0
+        self._click_after_delay = None
 
         # used for click("#back") and back is the key
         self._alias = {}
         self._alias_strict = False
+        self._watch_stop_event = threading.Event()
+        self._watch_stopped = threading.Event()
 
     def global_set(self, key, value):  #dicts):
-        valid_keys = {"timeout", "alias", "alias_strict"}
+        valid_keys = {
+            "timeout", "alias", "alias_strict", "click_after_delay",
+            "click_before_delay"
+        }
         if key not in valid_keys:
             raise ValueError("invalid key", key)
         setattr(self, "_" + key, value)
@@ -64,7 +69,17 @@ class XPath(object):
         return self._d.dump_hierarchy()
 
     def send_click(self, x, y):
+        if self._click_before_delay:
+            logger.debug("click before delay %.1f seconds",
+                         self._click_after_delay)
+            time.sleep(self._click_before_delay)
+
         self._d.click(x, y)
+
+        if self._click_after_delay:
+            logger.debug("click after delay %.1f seconds",
+                         self._click_after_delay)
+            time.sleep(self._click_after_delay)
 
     def send_swipe(self, sx, sy, tx, ty):
         self._d.swipe(sx, sy, tx, ty)
@@ -72,7 +87,7 @@ class XPath(object):
     def match(self, xpath, source=None):
         return len(self(xpath, source).all()) > 0
 
-    def when(self, xpath):
+    def when(self, xpath: str):
         obj = self
 
         def _click(selector):
@@ -107,15 +122,29 @@ class XPath(object):
                 return True
         return False
 
-    def watch_background(self):
-        def _watch_forever():
-            while 1:
+    def _watch_forever(self, interval: float):
+        try:
+            while not self._watch_stopped.wait(timeout=interval):
                 self.run_watchers()
-                time.sleep(4)
+        finally:
+            self._watch_stopped.clear()
+            self._watch_stop_event.set()
 
-        th = threading.Thread(target=_watch_forever)
+    def watch_background(self, interval: float = 4.0):
+        th = threading.Thread(name="xpath_watch",
+                              target=self._watch_forever,
+                              args=(interval, ))
         th.daemon = True
         th.start()
+        return th
+
+    def watch_stop(self):
+        """ stop watch background """
+        if self._watch_stopped.is_set():
+            raise RuntimeError("watch is not running")
+        self._watch_stopped.set()
+        self._watch_stop_event.wait(timeout=10)
+        self._watch_stop_event.clear()
 
     def sleep_watch(self, seconds):
         """ run watchers when sleep """
@@ -192,7 +221,7 @@ class XPath(object):
         else:
             xpath = '//*[@text={0} or @content-desc={0}]'.format(
                 string_quote(xpath))
-        print("XPATH:", xpath)
+        # print("XPATH:", xpath)
         return XPathSelector(self, xpath, source)
 
 

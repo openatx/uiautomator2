@@ -50,6 +50,7 @@ from uiautomator2.exceptions import (ConnectError, GatewayError, JsonRpcError,
 from uiautomator2.session import Session, set_fail_prompt  # noqa: F401
 from uiautomator2.version import __atx_agent_version__
 from uiautomator2.utils import cache_return
+import uiautomator2.xpath as xpath
 
 if six.PY2:
     FileNotFoundError = OSError
@@ -788,18 +789,23 @@ class UIAutomatorServer(object):
                   extras={},
                   wait=True,
                   stop=False,
-                  unlock=False, launch_timeout=None):
+                  unlock=False, launch_timeout=None, use_monkey=False):
         """ Launch application
         Args:
             pkg_name (str): package name
             activity (str): app activity
             stop (bool): Stop app before starting the activity. (require activity)
-        
+            use_monkey (bool): use monkey command to start app when activity is not given
+            wait (bool): wait until app started. default True
+
         Raises:
             SessionBrokenError
         """
         if unlock:
             self.unlock()
+
+        if stop:
+            self.app_stop(pkg_name)
 
         if activity:
             # -D: enable debugging
@@ -816,8 +822,6 @@ class UIAutomatorServer(object):
             ]
             if wait:
                 args.append('-W')
-            if stop:
-                args.append('-S')
             args += ['-n', '{}/{}'.format(pkg_name, activity)]
             # -e --ez
             extra_args = []
@@ -831,12 +835,14 @@ class UIAutomatorServer(object):
             args += extra_args
             # 'am', 'start', '-W', '-n', '{}/{}'.format(pkg_name, activity))
             self.shell(args)
+        elif use_monkey:
+            self.shell([
+                'monkey', '-p', pkg_name, '-c',
+                'android.intent.category.LAUNCHER', '1'
+            ])
         else:
-            if stop:
-                self.app_stop(pkg_name)
-            
             # launch with atx-agent
-            data = {"flags": "-W -S"}
+            data = {"flags": "-W"}
             if launch_timeout:
                 data["timeout"] = str(launch_timeout)
             resp = self._reqsess.post(
@@ -847,10 +853,8 @@ class UIAutomatorServer(object):
             if not jsondata["success"]:
                 raise SessionBrokenError(pkg_name,
                                          jsondata["error"], jsondata["output"])
-            # self.shell([
-            #     'monkey', '-p', pkg_name, '-c',
-            #     'android.intent.category.LAUNCHER', '1'
-            # ])
+            
+    
 
     @retry(EnvironmentError, delay=.5, tries=3, jitter=.1)
     def current_app(self):
@@ -1201,8 +1205,7 @@ class UIAutomatorServer(object):
 
     @property
     @cache_return
-    def xpath(self):
-        import uiautomator2.xpath as xpath
+    def xpath(self) -> xpath.XPath:
         return xpath.XPath(self)
 
     def __getattr__(self, attr):
