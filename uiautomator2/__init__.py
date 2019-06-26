@@ -352,6 +352,10 @@ class UIAutomatorServer(object):
         return self.shell(['getprop', 'ro.serialno'])[0].strip()
 
     @property
+    def address(self):
+        return f"http://{self._host}:{self._port}"
+        
+    @property
     def jsonrpc(self):
         """
         Make jsonrpc call easier
@@ -931,8 +935,8 @@ class UIAutomatorServer(object):
         """
         our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
         output, _ = self.shell(['pm', 'list', 'packages', '-3'])
-        pkgs = re.findall('package:([^\s]+)', output)
-        process_names = re.findall('([^\s]+)$', self.shell('ps')[0], re.M)
+        pkgs = re.findall(r'package:([^\s]+)', output)
+        process_names = re.findall(r'([^\s]+)$', self.shell('ps')[0], re.M)
         kill_pkgs = set(pkgs).intersection(process_names).difference(our_apps +
                                                                      excludes)
         kill_pkgs = list(kill_pkgs)
@@ -952,7 +956,7 @@ class UIAutomatorServer(object):
         """ Uninstall all apps """
         our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
         output, _ = self.shell(['pm', 'list', 'packages', '-3'])
-        pkgs = re.findall('package:([^\s]+)', output)
+        pkgs = re.findall(r'package:([^\s]+)', output)
         pkgs = set(pkgs).difference(our_apps + excludes)
         pkgs = list(pkgs)
         for pkg_name in pkgs:

@@ -141,10 +141,13 @@ class XPath(object):
     def watch_stop(self):
         """ stop watch background """
         if self._watch_stopped.is_set():
-            raise RuntimeError("watch is not running")
+            return
         self._watch_stopped.set()
         self._watch_stop_event.wait(timeout=10)
         self._watch_stop_event.clear()
+
+    def watch_clear(self):
+        self._watchers = []
 
     def sleep_watch(self, seconds):
         """ run watchers when sleep """
