@@ -665,7 +665,7 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
     ```python
     # swipe from point(x0, y0) to point(x1, y1) then to point(x2, y2)
     # time will speed 0.2s bwtween two points
-    d.swipe((x0, y0), (x1, y1), (x2, y2), 0.2)
+    d.swipe_points([(x0, y0), (x1, y1), (x2, y2)], 0.2))
     ```
 
     多用于九宫格解锁，提前获取到每个点的相对坐标（这里支持百分比），
