@@ -43,7 +43,7 @@ class DownloadBar(progress.bar.Bar):
         return humanize.naturalsize(self.index, gnu=True)
 
 
-def cache_download(url, filename=None):
+def cache_download(url, filename=None, timeout=None):
     """ return downloaded filepath """
     # check cache
     if not filename:
@@ -65,9 +65,9 @@ def cache_download(url, filename=None):
         'Origin': 'https://github.com',
         'User-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'
     } # yapf: disable
-    r = requests.get(url, stream=True, headers=headers)
-    if r.status_code != 200:
-        raise Exception(url, "status code", r.status_code)
+    r = requests.get(url, stream=True, headers=headers, timeout=None)
+    r.raise_for_status()
+
     file_size = int(r.headers.get("Content-Length"))
     bar = DownloadBar(filename, max=file_size)
     with open(storepath + '.tmp', 'wb') as f:
@@ -81,6 +81,19 @@ def cache_download(url, filename=None):
         bar.finish()
     shutil.move(storepath + '.tmp', storepath)
     return storepath
+
+
+def mirror_download(url, filename: str):
+    github_host = "https://github.com"
+    if url.startswith(github_host):
+        mirror_url = "http://tool.appetizer.io" + url[len(
+            github_host):]  # mirror of github
+        try:
+            return cache_download(mirror_url, filename, timeout=60)
+        except requests.RequestException as e:
+            logger.debug("download from mirror error, use origin source")
+
+    return cache_download(url, filename)
 
 
 class Initer():
@@ -146,7 +159,7 @@ class Initer():
         ])
 
     def push_url(self, url, dest=None, mode=0o755, tgz=False, extract_name=None):  # yapf: disable
-        path = cache_download(url, os.path.basename(url))
+        path = mirror_download(url, os.path.basename(url))
         if tgz:
             tar = tarfile.open(path, 'r:gz')
             path = os.path.join(os.path.dirname(path), extract_name)
@@ -191,8 +204,9 @@ class Initer():
             logger.info("Already installed com.github.uiautomator apks")
 
         logger.info("Install atx-agent")
-        path = self.push_url(
-            self.atx_agent_url, tgz=True, extract_name="atx-agent")
+        path = self.push_url(self.atx_agent_url,
+                             tgz=True,
+                             extract_name="atx-agent")
         args = [path, "server", "-d"]
         if server_addr:
             args.extend(['-t', server_addr])
@@ -307,21 +321,19 @@ def cmd_screenshot(args):
 
 
 _commands = [
-    dict(
-        action=cmd_init,
-        command="init",
-        help="install enssential resources to device",
-        flags=[
-            dict(args=['--serial', '-s'], type=str, help='serial number'),
-            dict(name=['server'], type=str, help='atxserver address')
-        ]),
-    dict(
-        action=cmd_screenshot,
-        command="screenshot",
-        help="not implemented",
-        flags=[
-            dict(args=['-o', '--output'], type=str, help="output filename")
-        ])
+    dict(action=cmd_init,
+         command="init",
+         help="install enssential resources to device",
+         flags=[
+             dict(args=['--serial', '-s'], type=str, help='serial number'),
+             dict(name=['server'], type=str, help='atxserver address')
+         ]),
+    dict(action=cmd_screenshot,
+         command="screenshot",
+         help="not implemented",
+         flags=[
+             dict(args=['-o', '--output'], type=str, help="output filename")
+         ])
 ]
 
 
