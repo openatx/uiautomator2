@@ -1,6 +1,9 @@
 CHANGES
 =======
 
+## 1.0.0
+移除了 `d.watchers.watched`
+
 0.1.11
 ------
 
