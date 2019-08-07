@@ -55,7 +55,10 @@ def cache_download(url, filename=None, timeout=None):
     if not os.path.isdir(storedir):
         os.makedirs(storedir)
     if os.path.exists(storepath) and os.path.getsize(storepath) > 0:
+        logger.debug("Use cached assets: %s", storepath)
         return storepath
+
+    logger.debug("Download %s", url)
     # download from url
     headers = {
         'Accept': '*/*',
@@ -167,7 +170,7 @@ class Initer():
         if not dest:
             dest = "/data/local/tmp/" + os.path.basename(path)
 
-        logger.debug("Push %s -> %s:0%o", url, dest, mode)
+        logger.debug("Push to %s:0%o", dest, mode)
         self._device.sync.push(path, dest, mode=mode)
         return dest
 

@@ -6,11 +6,15 @@ import threading
 import time
 
 from logzero import logger
-from lxml import etree
 
 import uiautomator2
 from uiautomator2.exceptions import XPathElementNotFoundError
 from uiautomator2.utils import U
+
+try:
+    from lxml import etree
+except ImportError:
+    logger.warning("lxml was not installed, xpath will not supported")
 
 
 def safe_xmlstr(s):
@@ -382,33 +386,6 @@ class XMLElement(object):
     def attrib(self):
         return self.elem.attrib
 
-
-# class Exists(object):
-#     """Exists object with magic methods."""
-
-#     def __init__(self, selector):
-#         self.selector = selector
-
-#     def __nonzero__(self):
-#         """Magic method for bool(self) python2 """
-#         return len(self.selector.all()) > 0
-
-#     def __bool__(self):
-#         """ Magic method for bool(self) python3 """
-#         return self.__nonzero__()
-
-#     def __call__(self, timeout=0):
-#         """Magic method for self(args).
-
-#         Args:
-#             timeout (float): exists in seconds
-#         """
-#         if timeout:
-#             return self.uiobject.wait(timeout=timeout)
-#         return bool(self)
-
-#     def __repr__(self):
-#         return str(bool(self))
 
 if __name__ == "__main__":
     init()

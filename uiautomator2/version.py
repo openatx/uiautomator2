@@ -1,7 +1,8 @@
 # coding: utf-8
 #
 
-__apk_version__ = '1.1.7'
+__apk_version__ = '2.0.0'
+# 2.0.0 remove runWatchersOnWndowsChange, add setToastListener(bool), add floatWindow
 # 1.1.7 fix dumpHierarchy XML charactor error
 # 1.1.6 fix android P support
 # 1.1.5 waitForExists use UiObject2 method first then fallback to UiObject.waitForExists
@@ -19,7 +20,8 @@ __apk_version__ = '1.1.7'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__atx_agent_version__ = '0.6.0'
+__atx_agent_version__ = '0.6.1'
+# 0.6.1 make dump_hierarchy more robust, add cpu,mem collect
 # 0.6.0 add /dump/hierarchy (works fine even if uiautomator is down)
 # 0.5.5 add minitouch reset, /screenshot support download param, fix dns error
 # 0.5.4 upgrade atx-agent to fix apk parse mainActivity of com.tmall.wireless

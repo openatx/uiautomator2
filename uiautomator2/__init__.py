@@ -152,7 +152,7 @@ def connect_usb(serial=None, healthcheck=False):
     """
     adb = adbutils.AdbClient()
     if not serial:
-        device = adb.must_one_device()
+        device = adb.device()
     else:
         device = adbutils.AdbDevice(adb, serial)
     # adb = adbutils.Adb(serial)
@@ -176,7 +176,6 @@ def connect_usb(serial=None, healthcheck=False):
             warnings.warn("backend uiautomator2 is not alive, start again ...",RuntimeWarning)
             d.healthcheck()
     return d
-
 
 def connect_wifi(addr:str) -> "UIAutomatorServer":
     """

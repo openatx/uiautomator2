@@ -3,9 +3,12 @@
 # Test apk Download from
 # https://github.com/appium/java-client/raw/master/src/test/java/io/appium/java_client/ApiDemos-debug.apk
 
-import uiautomator2 as u2
-import unittest
 import time
+import unittest
+
+import pytest
+
+import uiautomator2 as u2
 
 
 class SimpleTestCase(unittest.TestCase):
@@ -46,6 +49,7 @@ class SimpleTestCase(unittest.TestCase):
         d(text="App").click()
         d(scrollable=True).scroll.to(text="Voice Recognition")
 
+    @pytest.mark.skip("Deprecated")
     def test_watchers(self):
         """
         App -> Notification -> Status Bar
