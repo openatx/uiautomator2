@@ -297,6 +297,19 @@ def cmd_current(args):
     print(json.dumps(d.current_app(), indent=4))
 
 
+def cmd_console(args):
+    import code
+    import platform
+
+    d = u2.connect(args.serial)
+    model = d.shell("getprop ro.product.model").output.strip()
+    serial = d.serial
+    _vars = globals().copy()
+    _vars.update(locals())
+    shell = code.InteractiveConsole(_vars)
+    shell.interact(banner="Python: %s\nDevice: %s(%s)" % (platform.python_version(), model, serial))
+
+
 _commands = [
     dict(action=cmd_init,
          command="init",
@@ -365,6 +378,9 @@ _commands = [
     dict(action=cmd_current,
          command="current",
          help="show current application"),
+    dict(action=cmd_console,
+         command="console",
+         help="launch interactive python console"),
 ]
 
 
