@@ -947,9 +947,14 @@ class UIAutomatorServer(object):
         """ Stop and clear app data: pm clear """
         self.shell(['pm', 'clear', pkg_name])
 
-    def app_uninstall(self, pkg_name):
-        """ Uninstall an app """
-        self.shell(["pm", "uninstall", pkg_name])
+    def app_uninstall(self, pkg_name) -> bool:
+        """ Uninstall an app 
+        
+        Returns:
+            bool: success
+        """
+        ret = self.shell(["pm", "uninstall", pkg_name])
+        return ret.exit_code == 0
 
     def app_uninstall_all(self, excludes=[], verbose=False):
         """ Uninstall all apps """
@@ -960,8 +965,11 @@ class UIAutomatorServer(object):
         pkgs = list(pkgs)
         for pkg_name in pkgs:
             if verbose:
-                print("uninstalling", pkg_name)
-            self.app_uninstall(pkg_name)
+                print("uninstalling", pkg_name, " ", end="", flush=True)
+            ok = self.app_uninstall(pkg_name)
+            if verbose:
+                print("OK" if ok else "FAIL")
+
         return pkgs
 
     def unlock(self):

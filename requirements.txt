@@ -1,14 +1,10 @@
-requests>=2.7.0
 six
+requests>=2.7.0
 humanize
-fire
-docopt
-progress>=1.3
-retry>=0.9.2
+progress~=1.3
+retry~=0.9
 whichcraft
 logzero
 adbutils>=0.4.2
-# remove pillow because pillow can't installed on QPython
-# pillow
-pillow ; sys_platform == "win32" or sys_platform == "darwin"
-lxml>=4.3 ; sys_platform == "win32" or sys_platform == "darwin"
+Pillow # not support in QPython
+lxml>=4.3 # not support in QPython

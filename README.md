@@ -218,39 +218,35 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 # Command line
 其中的`$device_ip`代表设备的ip地址
 
+如需指定设备需要传入`--serial` 如 `python3 -m uiautomator2 --serial bff1234 <SubCommand>`, SubCommand为子命令（init,或者screenshot等）
+
 - init: 为设备安装所需要的程序
-- install: 安装apk，apk通过URL给出
 
     ```bash
-    $ python -m uiautomator2.cli install $device_ip https://example.org/some.apk
-    MainThread: 15:37:55,731 downloading 80.4 kB / 770.6 kB
-    MainThread: 15:37:56,763 installing 770.6 kB / 770.6 kB
-    MainThread: 15:37:58,780 success installed 770.6 kB / 770.6 kB
-    ```
-
-- clear-cache: 清空缓存
-
-    ```bash
-    $ python -m uiautomator2 clear-cache
-    ```
-
-- `app-stop-all`: 停止所有应用
-
-    ```bash
-    $ python -m uiautomator2 app-stop-all $device_ip
+    python3 -m uiautomator2 init 
+    # If you need specify device to init, pass --serial <serial> 
+    python3 -m uiautomator2 init --serial your-device-serial
     ```
 
 - screenshot: 截图
 
     ```bash
-    $ python -m uiautomator2 screenshot $device_ip screenshot.jpg
+    $ python -m uiautomator2 screenshot screenshot.jpg
     ```
 
-- healthcheck: 健康检查
+- uninstall： 卸载
 
     ```bash
-    $ python -m uiautomator2 healthcheck $device_ip
+    python -m uiautomator2 uninstall <package-name> # 卸载一个包
+    python -m uiautomator2 uninstall <package-name-1> <package-name-2> # 卸载多个包
+    python -m uiautomator2 uninstall --all # 全部卸载
     ```
+
+- install: 安装apk，apk通过URL给出 (暂时不能用)
+- clear-cache: 清空缓存 (废弃中，目前已经不需要改接口）
+- `app-stop-all`: 停止所有应用 （暂不能用）
+- healthcheck: 健康检查 (咱不能用)
+
     
 # API Documents
 ## Global settings

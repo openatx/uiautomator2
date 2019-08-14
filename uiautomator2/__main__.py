@@ -9,11 +9,9 @@ import logging
 import os
 import re
 import shutil
-import sys
 import tarfile
-import time
+import json
 
-import fire
 import humanize
 import progress.bar
 import requests
@@ -230,82 +228,6 @@ class Initer():
         response = requests.get("http://127.0.0.1:%d/version" % port).text
         logger.debug("atx-agent version %s", response.strip())
 
-    # def check_apk_installed(self, apk_version):
-    #     """ in OPPO device, if you check immediatelly, package_info will return None """
-    #     pkg_info = self.package_info("com.github.uiautomator")
-    #     if not pkg_info:
-    #         raise EnvironmentError(
-    #             "package com.github.uiautomator not installed")
-    #     if pkg_info['version_name'] != apk_version:
-    #         raise EnvironmentError(
-    #             "package com.github.uiautomator version expect \"%s\" got \"%s\""
-    #             % (apk_version, pkg_info['version_name']))
-
-    #             r = requests.get(
-    #                 'http://localhost:%d/version' % lport, timeout=10)
-    #             r.raise_for_status()
-    #             log.info("atx-agent version: %s", r.text)
-    #             # todo finish the retry logic
-    #             print("atx-agent output:", output.strip())
-    #             # open uiautomator2 github URL
-    #             self.shell("am", "start", "-a", "android.intent.action.VIEW",
-    #                        "-d", "https://github.com/openatx/uiautomator2")
-
-
-class MyFire(object):
-    def update_apk(self, ip):
-        """ update com.github.uiautomator apk remotely """
-        u = u2.connect(ip)
-        apk_version = __apk_version__
-        app_url = GITHUB_BASEURL + \
-            '/android-uiautomator-server/releases/download/%s/app-uiautomator.apk' % apk_version
-        app_test_url = GITHUB_BASEURL + \
-            '/android-uiautomator-server/releases/download/%s/app-uiautomator-test.apk' % apk_version
-        u.app_install(app_url)
-        u.app_install(app_test_url)
-
-    def clear_cache(self):
-        logger.info("clear cache dir: %s", appdir)
-        shutil.rmtree(appdir, ignore_errors=True)
-
-    def install(self, arg1, arg2=None):
-        """
-        Example:
-            install "http://some-host.apk"
-            install "$serial" "http://some-host.apk"
-        """
-        if arg2 is None:
-            device_ip, apk_url = None, arg1
-        else:
-            device_ip, apk_url = arg1, arg2
-        u = u2.connect(device_ip)
-        pkg_name = u.app_install(apk_url)
-        print("Installed", pkg_name)
-
-    def unlock(self, device_ip=None):
-        u = u2.connect(device_ip)
-        u.unlock()
-
-    def app_stop_all(self, device_ip=None):
-        u = u2.connect(device_ip)
-        u.app_stop_all()
-
-    def uninstall_all(self, device_ip=None):
-        u = u2.connect(device_ip)
-        u.app_uninstall_all(verbose=True)
-
-    def identify(self, device_ip=None, theme='black'):
-        u = u2.connect(device_ip)
-        u.open_identify(theme)
-
-    def screenshot(self, device_ip, filename):
-        u = u2.connect(device_ip)
-        u.screenshot(filename)
-
-    def healthcheck(self, device_ip):
-        u = u2.connect(device_ip)
-        u.healthcheck()
-
 
 def cmd_init(args):
     if args.serial:
@@ -320,7 +242,57 @@ def cmd_init(args):
 
 
 def cmd_screenshot(args):
-    raise NotImplementedError()
+    d = u2.connect(args.serial)
+    d.screenshot().save(args.filename)
+
+
+def cmd_identify(args):
+    d = u2.connect(args.serial)
+    d.press("home")
+    d.open_identify(args.theme)
+
+
+def cmd_install(args):
+    u = u2.connect(args.serial)
+    pkg_name = u.app_install(args.url)
+    print("Installed", pkg_name)
+
+
+def cmd_uninstall(args):
+    d = u2.connect(args.serial)
+    if args.all:
+        d.app_uninstall_all(verbose=True)
+    else:
+        for package_name in args.package_name:
+            print("Uninstall \"%s\" " % package_name, end="", flush=True)
+            ok = d.app_uninstall(package_name)
+            print("OK" if ok else "FAIL")
+
+
+def cmd_healthcheck(args):
+    d = u2.connect(args.serial)
+    d.healthcheck()
+
+
+def cmd_start(args):
+    d = u2.connect(args.serial)
+    d.app_start(args.package_name)
+
+
+def cmd_stop(args):
+    d = u2.connect(args.serial)
+    if args.all:
+        d.app_stop_all()
+        return
+
+    for package_name in args.package_name:
+        print("am force-stop \"%s\" " % package_name)
+        d.app_stop(package_name)
+
+
+def cmd_current(args):
+    d = u2.connect(args.serial)
+    print(json.dumps(d.current_app(), indent=4))
 
 
 _commands = [
@@ -329,51 +301,99 @@ _commands = [
          help="install enssential resources to device",
          flags=[
              dict(args=['--serial', '-s'], type=str, help='serial number'),
-             dict(name=['server'], type=str, help='atxserver address')
+             dict(name=['server'], type=str, help='atxserver address'),
+             dict(args=['serial'],
+                  nargs='?',
+                  help='serial number, same as --serial'),
          ]),
     dict(action=cmd_screenshot,
          command="screenshot",
-         help="not implemented",
+         help="take device screenshot",
          flags=[
-             dict(args=['-o', '--output'], type=str, help="output filename")
-         ])
+             dict(args=['filename'],
+                  type=str,
+                  help="output filename, jpg or png")
+         ]),
+    dict(action=cmd_identify,
+         command="identify",
+         help="quickly find your device by change device screen color",
+         flags=[
+             dict(args=['--theme'],
+                  type=str,
+                  default='red',
+                  help="black or red")
+         ]),
+    dict(action=cmd_install,
+         command="install",
+         help="install packages",
+         flags=[
+             dict(args=["url"], help="package url"),
+         ]),
+    dict(action=cmd_uninstall,
+         command="uninstall",
+         help="uninstall packages",
+         flags=[
+             dict(args=["--all"],
+                  action="store_true",
+                  help="uninstall all packages"),
+             dict(args=["package_name"], nargs="*", help="package name")
+         ]),
+    dict(action=cmd_healthcheck,
+         command="healthcheck",
+         help="recover uiautomator service"),
+    dict(action=cmd_start,
+         command="start",
+         help="start application",
+         flags=[
+             dict(args=["package_name"],
+                  type=str,
+                  nargs=None,
+                  help="package name")
+         ]),
+    dict(action=cmd_stop,
+         command="stop",
+         help="stop application",
+         flags=[
+             dict(args=["--all"], action="store_true", help="stop all"),
+             dict(args=["package_name"], nargs="*", help="package name")
+         ]),
+    dict(action=cmd_current,
+         command="current",
+         help="show current application"),
 ]
 
 
 def main():
     # yapf: disable
-    if True or len(sys.argv) >= 2 and sys.argv[1] in ('init', 'screenshot'):
-        parser = argparse.ArgumentParser(
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-        parser.add_argument('-s', '--serial', type=str,
-                            help='device serial number')
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-s', '--serial', type=str,
+                        help='device serial number')
 
-        subparser = parser.add_subparsers(dest='subparser')
+    subparser = parser.add_subparsers(dest='subparser')
 
-        actions = {}
-        for c in _commands:
-            cmd_name = c['command']
-            actions[cmd_name] = c['action']
-            sp = subparser.add_parser(cmd_name, help=c.get('help'),
-                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-            for f in c.get('flags', []):
-                args = f.get('args')
-                if not args:
-                    args = ['-'*min(2, len(n)) + n for n in f['name']]
-                kwargs = f.copy()
-                kwargs.pop('name', None)
-                kwargs.pop('args', None)
-                sp.add_argument(*args, **kwargs)
+    actions = {}
+    for c in _commands:
+        cmd_name = c['command']
+        actions[cmd_name] = c['action']
+        sp = subparser.add_parser(cmd_name, help=c.get('help'),
+                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        for f in c.get('flags', []):
+            args = f.get('args')
+            if not args:
+                args = ['-'*min(2, len(n)) + n for n in f['name']]
+            kwargs = f.copy()
+            kwargs.pop('name', None)
+            kwargs.pop('args', None)
+            sp.add_argument(*args, **kwargs)
 
-        args = parser.parse_args()
-        print(args, args.subparser)
+    args = parser.parse_args()
+    print("DEBUG:", args, args.subparser)
 
-        if args.subparser:
-            actions[args.subparser](args)
-        return
+    if args.subparser:
+        actions[args.subparser](args)
+    return
     # yapf: enable
-
-    fire.Fire(MyFire)
 
 
 if __name__ == '__main__':
