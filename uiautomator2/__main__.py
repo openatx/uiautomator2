@@ -188,6 +188,8 @@ class Initer():
         if self.abi == "x86":
             logger.info(
                 "abi:x86 seems to be android emulator, skip install minicap")
+        elif int(self.sdk) >= 29:
+            logger.info("Android Q (sdk:29) has no minicap resource")
         else:
             for url in self.minicap_urls:
                 self.push_url(url)
@@ -341,6 +343,9 @@ _commands = [
     dict(action=cmd_healthcheck,
          command="healthcheck",
          help="recover uiautomator service"),
+    dict(action=cmd_healthcheck,
+         command="check",
+         help="alias of healthcheck"),
     dict(action=cmd_start,
          command="start",
          help="start application",

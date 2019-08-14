@@ -220,10 +220,12 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 
 如需指定设备需要传入`--serial` 如 `python3 -m uiautomator2 --serial bff1234 <SubCommand>`, SubCommand为子命令（init,或者screenshot等）
 
+> 1.0.3 Added: `python3 -m uiautomator2`可以简写为`uiautomator2`
+
 - init: 为设备安装所需要的程序
 
     ```bash
-    python3 -m uiautomator2 init 
+    uiautomator2 init 
     # If you need specify device to init, pass --serial <serial> 
     python3 -m uiautomator2 init --serial your-device-serial
     ```

@@ -163,7 +163,7 @@ def connect_usb(serial=None, healthcheck=False):
         warnings.warn("backend atx-agent is not alive, start again ...",
                     RuntimeWarning)
         # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
-        device.shell(["/data/local/tmp/atx-agent", "server", "-d"])
+        device.shell(["/data/local/tmp/atx-agent", "server", "--nouia", "-d"])
         deadline = time.time() + 3
         while time.time() < deadline:
             if d.agent_alive:
