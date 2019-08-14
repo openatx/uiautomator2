@@ -211,7 +211,7 @@ class TimeoutRequestsSession(requests.Session):
         self.mount("https://", adapter)
 
     def request(self, method, url, **kwargs):
-        if kwargs.get('timeout') is None:
+        if 'timeout' not in kwargs:
             kwargs['timeout'] = HTTP_TIMEOUT
         verbose = hasattr(self, 'debug') and self.debug
         if verbose:
@@ -753,6 +753,7 @@ class UIAutomatorServer(object):
             return self._reqsess.get(
                 self.path2url("/shell/stream"),
                 params={"command": cmdargs},
+                timeout=None,
                 stream=True)
         ret = self._reqsess.post(
             self.path2url('/shell'),
