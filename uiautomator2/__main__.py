@@ -304,11 +304,17 @@ def cmd_console(args):
     d = u2.connect(args.serial)
     model = d.shell("getprop ro.product.model").output.strip()
     serial = d.serial
-    _vars = globals().copy()
-    _vars.update(locals())
-    shell = code.InteractiveConsole(_vars)
-    shell.interact(banner="Python: %s\nDevice: %s(%s)" % (platform.python_version(), model, serial))
-
+    try:
+        import IPython
+        from traitlets.config import get_config
+        c = get_config()
+        c.InteractiveShellEmbed.colors = "Linux"
+        IPython.embed(config=c)
+    except ImportError:
+        _vars = globals().copy()
+        _vars.update(locals())
+        shell = code.InteractiveConsole(_vars)
+        shell.interact(banner="Python: %s\nDevice: %s(%s)" % (platform.python_version(), model, serial))
 
 _commands = [
     dict(action=cmd_init,

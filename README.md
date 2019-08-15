@@ -1163,21 +1163,8 @@ You can register [watchers](http://developer.android.com/tools/help/uiautomator/
   d.watchers.run()
   ```
 
-* Run all watchers when page update.
+* ~~Run all watchers when page update.~~ (因为稳定性原因，目前已废弃)
 
-  通常可以用来自动点击权限确认框，或者自动安装
-
-  ```python
-  d.watcher("OK").when(text="OK").click(text="OK")
-  # enable auto trigger watchers
-  d.watchers.watched = True
-
-  # disable auto trigger watchers
-  d.watchers.watched = False
-
-  # get current trigger watchers status
-  assert d.watchers.watched == False
-  ```
 
 另外文档还是有很多没有写，推荐直接去看源码[__init__.py](uiautomator2/__init__.py)
 
