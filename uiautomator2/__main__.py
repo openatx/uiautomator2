@@ -23,14 +23,14 @@ from uiautomator2 import adbutils
 from uiautomator2.version import __apk_version__, __atx_agent_version__
 
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
-logger.debug("use cache directory: %s", appdir)
 
 GITHUB_BASEURL = "https://github.com/openatx"
 
 
-class DownloadBar(progress.bar.Bar):
+class DownloadBar(progress.bar.PixelBar):
     message = "Downloading"
-    suffix = '%(current_size)s / %(total_size)s'
+    suffix = '%(current_size)s/%(total_size)s'
+    width = 10
 
     @property
     def total_size(self):
@@ -92,7 +92,7 @@ def mirror_download(url, filename: str):
         try:
             return cache_download(mirror_url, filename, timeout=60)
         except requests.RequestException as e:
-            logger.debug("download from mirror error, use origin source")
+            logger.debug("download mirror err: %s, use origin source", e)
 
     return cache_download(url, filename)
 
@@ -232,11 +232,11 @@ class Initer():
 
 
 def cmd_init(args):
-    if args.serial:
-        device = adbutils.adb.device(args.serial)
+    serial = args.serial or args.serial_optional
+    if serial:
+        device = adbutils.adb.device(serial)
         init = Initer(device)
         init.install(args.server)
-
     else:
         for device in adbutils.adb.iter_device():
             init = Initer(device)
@@ -314,7 +314,9 @@ def cmd_console(args):
         _vars = globals().copy()
         _vars.update(locals())
         shell = code.InteractiveConsole(_vars)
-        shell.interact(banner="Python: %s\nDevice: %s(%s)" % (platform.python_version(), model, serial))
+        shell.interact(banner="Python: %s\nDevice: %s(%s)" %
+                       (platform.python_version(), model, serial))
+
 
 _commands = [
     dict(action=cmd_init,
@@ -323,7 +325,7 @@ _commands = [
          flags=[
              dict(args=['--serial', '-s'], type=str, help='serial number'),
              dict(name=['server'], type=str, help='atxserver address'),
-             dict(args=['serial'],
+             dict(args=['serial_optional'],
                   nargs='?',
                   help='serial number, same as --serial'),
          ]),
@@ -362,9 +364,8 @@ _commands = [
     dict(action=cmd_healthcheck,
          command="healthcheck",
          help="recover uiautomator service"),
-    dict(action=cmd_healthcheck,
-         command="check",
-         help="alias of healthcheck"),
+    dict(action=cmd_healthcheck, command="check",
+         help="alias of healthcheck"),  # yapf: disable
     dict(action=cmd_start,
          command="start",
          help="start application",
@@ -394,6 +395,8 @@ def main():
     # yapf: disable
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("-d", "--debug", action="store_true",
+                        help="show log")
     parser.add_argument('-s', '--serial', type=str,
                         help='device serial number')
 
@@ -404,7 +407,7 @@ def main():
         cmd_name = c['command']
         actions[cmd_name] = c['action']
         sp = subparser.add_parser(cmd_name, help=c.get('help'),
-                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         for f in c.get('flags', []):
             args = f.get('args')
             if not args:
@@ -415,11 +418,14 @@ def main():
             sp.add_argument(*args, **kwargs)
 
     args = parser.parse_args()
-    print("DEBUG:", args, args.subparser)
+    if args.debug:
+        logger.debug("args: %s", args)
 
     if args.subparser:
         actions[args.subparser](args)
-    return
+        return
+
+    parser.print_help()
     # yapf: enable
 
 
