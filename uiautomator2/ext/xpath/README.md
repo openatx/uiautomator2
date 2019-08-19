@@ -116,15 +116,42 @@ for el in d.xpath('//android.widget.EditText').all():
 ```python
 el = d.xpath("@com.example:id/home_searchedit").get()
 
-lx, ly, width, height = el.rect() # 获取左上角坐标和宽高
+lx, ly, width, height = el.rect # 获取左上角坐标和宽高
+lx, ly, rx, ry = el.bounds # 左上角与右下角的坐标
 x, y = el.center() # get element center position
 x, y = el.offset(0.5, 0.5) # same as center()
 
 # send click
-el.click() 
+el.click()
 
 # 打印文本内容
 print(el.text) 
+
+# 获取组内的属性, dict类型
+print(el.attrib)
+
+# 控件截图 （原理为先整张截图，然后再crop）
+el.screenshot()
+
+# 控件滑动
+el.swipe("right") # left, right, up, down
+el.swipe("right", scale=0.9) # scale默认0.9, 意思是滑动距离为控件宽度的90%, 上滑则为高度的90%
+```
+
+**弹窗监控**
+
+```python
+# watchers 监控弹窗
+d.xpath.when("跳过").click()
+d.xpath.when("同意").click()
+
+d.xpath.sleep_watch(2) # 等待并监控弹窗，时间大约2s
+d.xpath("转到上一层级").click() # click操作再执行前会先检查弹窗，不过不影响速度
+d.xpath("转到上一层级").click(watch=False) # 点击不检查弹窗 without trigger watch
+
+d.xpath.watch_background() # 开启后台监控模式，默认每4s检查一次
+d.xpath.watch_background(interval=2.0) # 每2s检查一次
+d.xpath.watch_stop() # 停止监控
 ```
 
 **比较完整的例子**
@@ -156,10 +183,21 @@ def main():
     d.xpath.watch_stop() # 停止监控
 
     for el in d.xpath('//android.widget.EditText').all():
-        print("rect:", el.rect) # output tuple: (x, y, width, height)
+        print("rect:", el.rect) # output tuple: (left_x, top_y, width, height)
+        print("bounds:", el.bounds) # output tuple: （left, top, right, bottom)
         print("center:", el.center())
         el.click() # click operation
         print(el.elem) # 输出lxml解析出来的Node
+    
+    # 滑动
+    el = d.xpath('@com.taobao.taobao:id/fl_banner_container').get()
+    el.swipe("right") # 从右滑到左
+    el.swipe("left")
+    el.swipe("up") # 从下滑到上
+    el.swipe("down")
+
+    el.swipe("right", scale=0.9) # scale 默认0.9, 滑动距离为控件宽度的80%, 滑动的中心点与控件中心点一致
+    el.swipe("up", scale=0.5) # 滑动距离为控件高度的50%
 ```
 
 ## XPath规则
