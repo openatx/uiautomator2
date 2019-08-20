@@ -13,8 +13,12 @@ from logzero import logger
 
 
 CLICK = "click"
+# swipe
 SWIPE_UP = "swipe_up"
 SWIPE_RIGHT = "swipe_up"
+SWIPE_LEFT = "swipe_left"
+SWIPE_DOWN = "swipe_down"
+
 SCREENSHOT = "screenshot"
 EXIST = "assert_exist"
 
@@ -24,6 +28,8 @@ def split_step(text: str):
         "点击": CLICK,
         "上滑": SWIPE_UP,
         "右滑": SWIPE_RIGHT,
+        "左滑": SWIPE_LEFT,
+        "下滑": SWIPE_DOWN,
         "截图": SCREENSHOT,
         "存在": EXIST,
     }
@@ -50,9 +56,12 @@ def run_step(cf: bunch.Bunch, app: u2.Session, step: str):
 
     elif oper == SWIPE_RIGHT:
         app.xpath(body).swipe("right")
-
     elif oper == SWIPE_UP:
         app.xpath(body).swipe("up")
+    elif oper == SWIPE_LEFT:
+        app.xpath(body).swipe("left")
+    elif oper == SWIPE_DOWN:
+        app.xpath(body).swipe("down")
 
     elif oper == SCREENSHOT:
         output_dir = "./output"

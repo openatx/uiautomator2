@@ -338,7 +338,7 @@ d.app_list_running()
 ```python
 if d.app_wait("com.example.android"): # 等待应用运行, return bool
     print("com.example.android is running")
-    
+
 d.app_wait("com.example.android", front=True) # 等待应用前台运行
 d.app_wait("com.example.android", timeout=20.0) # 最长等待时间20s（默认）
 ```
@@ -664,6 +664,14 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
     ```python
     d.swipe(sx, sy, ex, ey)
     d.swipe(sx, sy, ex, ey, 0.5) # swipe for 0.5s(default)
+    ```
+
+* SwipeExt 扩展功能
+
+    ```python
+    d.swipe_ext("right") # 屏幕右滑，4选1 "left", "right", "up", "bottom"
+    d.swipe_ext("right", scale=0.9) # 默认0.9, 滑动距离为屏幕宽度的90%
+    d.swipe_ext("right", box=(0, 0, 100, 100)) # 在 (0,0) -> (100, 100) 这个区域做滑动
     ```
 
 * Drag

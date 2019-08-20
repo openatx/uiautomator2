@@ -17,10 +17,10 @@ from retry import retry
 
 from uiautomator2.exceptions import (NullPointerExceptionError,
                                      UiObjectNotFoundError)
-from uiautomator2.utils import Exists, U, check_alive, hooks_wrap, intersect
+from uiautomator2.utils import Exists, U, check_alive, hooks_wrap, intersect, cache_return
+from uiautomator2.swipe import SwipeExt
 
 _INPUT_METHOD_RE = re.compile(r'mCurMethodId=([-_./\w]+)')
-
 _fail_prompt_enabled = False
 
 
@@ -82,6 +82,11 @@ class Session(object):
     @property
     def xpath(self):
         return self.server.xpath
+    
+    @property
+    @cache_return
+    def swipe_ext(self):
+        return SwipeExt(self.server)
     
     @property
     def shell(self):
