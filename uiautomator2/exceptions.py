@@ -5,6 +5,9 @@
 #     pass
 
 
+class BaseError(Exception):
+    pass
+
 class UiaError(Exception):
     pass
 

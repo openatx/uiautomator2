@@ -1,0 +1,11 @@
+---
+author: shengxiang.ssx 圣翔
+description: 扫一扫测试
+package: com.taobao.taobao
+link: https://aone.xxx.com/xxxx
+output_directory: output # optional
+steps:
+- 点击扫一扫
+- 点击拍立淘
+- 截图
+- 存在 扫一扫

@@ -308,8 +308,8 @@ def cmd_console(args):
         import IPython
         from traitlets.config import get_config
         c = get_config()
-        c.InteractiveShellEmbed.colors = "Linux"
-        IPython.embed(config=c)
+        c.InteractiveShellEmbed.colors = "neutral"
+        IPython.embed(config=c, header="IPython -- d.info is ready")
     except ImportError:
         _vars = globals().copy()
         _vars.update(locals())

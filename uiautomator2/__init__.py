@@ -846,7 +846,7 @@ class UIAutomatorServer(object):
             ])
         else:
             # launch with atx-agent
-            data = {"flags": "-W"}
+            data = {"flags": "-S"} # default -W -S
             if launch_timeout:
                 data["timeout"] = str(launch_timeout)
             resp = self._reqsess.post(
@@ -921,6 +921,38 @@ class UIAutomatorServer(object):
             time.sleep(.5)
         return False
 
+    def app_wait(self, package_name: str, timeout:float = 20.0, front=False) -> bool:
+        """ Wait until app launched
+        Args:
+            package_name (str): package name
+            timeout (float): maxium wait time
+            front (bool): wait until app is current app
+        
+        Returns:
+            bool if app is running
+        """
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if front:
+                if self.current_app()['package'] == package_name:
+                    return True
+            else:
+                if package_name in self.app_list_running():
+                    return True
+            time.sleep(1)
+        return False
+
+    def app_list_running(self) -> list:
+        """
+        Returns:
+            list of running apps
+        """
+        our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
+        output, _ = self.shell(['pm', 'list', 'packages', '-3'])
+        packages = re.findall(r'package:([^\s]+)', output)
+        process_names = re.findall(r'([^\s]+)$', self.shell('ps').output, re.M)
+        return list(set(packages).intersection(process_names))
+
     def app_stop(self, pkg_name):
         """ Stop one application: am force-stop"""
         self.shell(['am', 'force-stop', pkg_name])
@@ -934,15 +966,10 @@ class UIAutomatorServer(object):
             a list of killed apps
         """
         our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
-        output, _ = self.shell(['pm', 'list', 'packages', '-3'])
-        pkgs = re.findall(r'package:([^\s]+)', output)
-        process_names = re.findall(r'([^\s]+)$', self.shell('ps')[0], re.M)
-        kill_pkgs = set(pkgs).intersection(process_names).difference(our_apps +
-                                                                     excludes)
-        kill_pkgs = list(kill_pkgs)
+        kill_pkgs = set(self.app_list_running()).difference(our_apps + excludes)
         for pkg_name in kill_pkgs:
             self.app_stop(pkg_name)
-        return kill_pkgs
+        return list(kill_pkgs)
 
     def app_clear(self, pkg_name):
         """ Stop and clear app data: pm clear """

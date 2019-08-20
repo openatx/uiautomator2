@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* add swipe and screenshot to d.xpath element
 * fix  init with serial
 * update changelog, remove d.watchers.watched, use IPython.embed first in cmd:uiautomator2 console
 * add console in command line

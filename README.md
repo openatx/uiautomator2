@@ -326,6 +326,23 @@ d.app_info("com.examples.demo")
 img = d.app_icon("com.examples.demo")
 img.save("icon.png")
 ```
+
+### List all running apps
+```python
+d.app_list_running()
+# expect output
+# ["com.xxxx.xxxx", "com.github.uiautomator", "xxxx"]
+```
+
+### Wait until app running
+```python
+if d.app_wait("com.example.android"): # 等待应用运行, return bool
+    print("com.example.android is running")
+    
+d.app_wait("com.example.android", front=True) # 等待应用前台运行
+d.app_wait("com.example.android", timeout=20.0) # 最长等待时间20s（默认）
+```
+
 ### Push and pull files
 * push a file to the device
 
