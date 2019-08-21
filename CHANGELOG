@@ -1,8 +1,109 @@
 CHANGES
 =======
 
-## 1.0.0
-移除了 `d.watchers.watched`
+* add swipe and screenshot to d.xpath element
+* fix  init with serial
+* update changelog, remove d.watchers.watched, use IPython.embed first in cmd:uiautomator2 console
+* add console in command line
+* fix shell(stream=True) timeout error, close #394
+
+1.0.3
+-----
+
+* fix android Q support again
+
+1.0.2
+-----
+
+* replace google-fire with argparse, add current, stop, start subcommand in command line
+* remove useless u2cli
+
+1.0.1
+-----
+
+* fix init unknown host service, close #373
+* add develop.md
+
+1.0.0
+-----
+
+* upgrade atx-agent version, and android-uiautomator-version, update doc
+* fix swipe\_points usage in readme
+* init add mirror of appetizer
+* fix str decode error
+
+0.3.3
+-----
+
+* add watch\_clear and address
+* add xpath.watch\_stop()
+
+0.3.2
+-----
+
+* fix debug curl print
+* fix shell calls in connect
+
+0.3.1
+-----
+
+* fix #370
+* test with 3.5
+
+0.3.0
+-----
+
+* fix fix
+* fix travis again
+* fix travis
+* update readme
+* add missing dep:adbutils
+* update xpath doc, add set\_text to xpath
+* remove uiautomator2/adbutils.py, use thirdparty adbutils
+* add quickstart, fix healthcheck for OnePlus
+* fix screenshot method
+* say goodbye to python2 and welcome python3
+* Update ISSUE\_TEMPLATE.md
+* use /dump/hierarchy to instead of call:dumpHierarchy
+* update atx-agent version
+
+0.2.3
+-----
+
+* xpath element support click
+* add http\_timeout for shell function, resolve #353
+* add xpath quicksheet
+* resolve #348
+* remove code which leads to minicap install error
+* add get method of xpath
+* add xpath::get\_text(), close #337
+* add connect\_adb\_wifi function
+* add probot link
+* auto stale issue when tagged as invalid
+* serial support none
+* 修复多台设备时，list-forward失败 (#327)
+* \`python -m uiautomator2 init\`初始化403报错，增加header atx\_agent\_url中报错变量错误修复
+
+0.2.2
+-----
+
+* update atx-agent version
+* typo (#318)
+* fix connect\_usb error
+
+0.2.1
+-----
+
+* fix #317, fix #316
+
+0.2.0
+-----
+
+* merge change
+* remove pure-python-adb dependency, use adbutils.py instead
+* format \_\_init\_\_.py, update adbutils with ADB Protocol
+* update changelog
+* part of job
 
 0.1.11
 ------

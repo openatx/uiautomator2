@@ -1,0 +1,15 @@
+---
+author: shengxiang.ssx 圣翔
+description: 扫一扫测试
+package: com.taobao.taobao
+link: https://aone.xxx.com/xxxx
+output_directory: output # optional [default "output"]
+action_before_delay: 0.5 # optional [default 0]
+action_after_delay: 1 # optional [default 0]
+skip_cleanup: false # optional [default true]
+steps:
+- 等待 我的淘宝
+- 点击 扫一扫
+- 点击 拍立淘
+- 截图
+- 存在 扫一扫

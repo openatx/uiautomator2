@@ -1,7 +1,9 @@
 # coding: utf-8
 #
 
-__apk_version__ = '2.0.0'
+__apk_version__ = '2.0.2'
+# 2.0.2 fix error: AndroidQ Service must be explicit
+# 2.0.1 fix AndroidQ support
 # 2.0.0 remove runWatchersOnWndowsChange, add setToastListener(bool), add floatWindow
 # 1.1.7 fix dumpHierarchy XML charactor error
 # 1.1.6 fix android P support

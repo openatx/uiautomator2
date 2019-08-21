@@ -218,39 +218,37 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 # Command line
 其中的`$device_ip`代表设备的ip地址
 
+如需指定设备需要传入`--serial` 如 `python3 -m uiautomator2 --serial bff1234 <SubCommand>`, SubCommand为子命令（init,或者screenshot等）
+
+> 1.0.3 Added: `python3 -m uiautomator2`可以简写为`uiautomator2`
+
 - init: 为设备安装所需要的程序
-- install: 安装apk，apk通过URL给出
 
     ```bash
-    $ python -m uiautomator2.cli install $device_ip https://example.org/some.apk
-    MainThread: 15:37:55,731 downloading 80.4 kB / 770.6 kB
-    MainThread: 15:37:56,763 installing 770.6 kB / 770.6 kB
-    MainThread: 15:37:58,780 success installed 770.6 kB / 770.6 kB
-    ```
-
-- clear-cache: 清空缓存
-
-    ```bash
-    $ python -m uiautomator2 clear-cache
-    ```
-
-- `app-stop-all`: 停止所有应用
-
-    ```bash
-    $ python -m uiautomator2 app-stop-all $device_ip
+    uiautomator2 init 
+    # If you need specify device to init, pass --serial <serial> 
+    python3 -m uiautomator2 init --serial your-device-serial
     ```
 
 - screenshot: 截图
 
     ```bash
-    $ python -m uiautomator2 screenshot $device_ip screenshot.jpg
+    $ python -m uiautomator2 screenshot screenshot.jpg
     ```
 
-- healthcheck: 健康检查
+- uninstall： 卸载
 
     ```bash
-    $ python -m uiautomator2 healthcheck $device_ip
+    python -m uiautomator2 uninstall <package-name> # 卸载一个包
+    python -m uiautomator2 uninstall <package-name-1> <package-name-2> # 卸载多个包
+    python -m uiautomator2 uninstall --all # 全部卸载
     ```
+
+- install: 安装apk，apk通过URL给出 (暂时不能用)
+- clear-cache: 清空缓存 (废弃中，目前已经不需要改接口）
+- `app-stop-all`: 停止所有应用 （暂不能用）
+- healthcheck: 健康检查 (咱不能用)
+
     
 # API Documents
 ## Global settings
@@ -328,6 +326,28 @@ d.app_info("com.examples.demo")
 img = d.app_icon("com.examples.demo")
 img.save("icon.png")
 ```
+
+### List all running apps
+```python
+d.app_list_running()
+# expect output
+# ["com.xxxx.xxxx", "com.github.uiautomator", "xxxx"]
+```
+
+### Wait until app running
+```python
+pid = d.app_wait("com.example.android") # 等待应用运行, return pid(int)
+if not pid:
+    print("com.example.android is not running")
+else:
+    print("com.example.android pid is %d" % pid)
+
+d.app_wait("com.example.android", front=True) # 等待应用前台运行
+d.app_wait("com.example.android", timeout=20.0) # 最长等待时间20s（默认）
+```
+
+> Add in version 1.2.0
+
 ### Push and pull files
 * push a file to the device
 
@@ -438,6 +458,7 @@ Session represent an app lifecycle. Can be used to start app, detect app crash.
     ```python
     sess = d.session("com.netease.cloudmusic") # start 网易云音乐
     sess.close() # 停止网易云音乐
+    sess.restart() # 冷启动网易云音乐
     ```
 
 * Use python `with` to launch and close app
@@ -450,7 +471,11 @@ Session represent an app lifecycle. Can be used to start app, detect app crash.
 * Attach to the running app
 
     ```python
+    # launch app if not running, skip launch if already running
     sess = d.session("com.netease.cloudmusic", attach=True)
+
+    # raise SessionBrokenError if not running
+    sess = d.session("com.netease.cloudmusic", attach=True, strict=True)
     ```
 
 * Detect app crash
@@ -649,6 +674,14 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
     ```python
     d.swipe(sx, sy, ex, ey)
     d.swipe(sx, sy, ex, ey, 0.5) # swipe for 0.5s(default)
+    ```
+
+* SwipeExt 扩展功能
+
+    ```python
+    d.swipe_ext("right") # 屏幕右滑，4选1 "left", "right", "up", "bottom"
+    d.swipe_ext("right", scale=0.9) # 默认0.9, 滑动距离为屏幕宽度的90%
+    d.swipe_ext("right", box=(0, 0, 100, 100)) # 在 (0,0) -> (100, 100) 这个区域做滑动
     ```
 
 * Drag
@@ -1165,21 +1198,8 @@ You can register [watchers](http://developer.android.com/tools/help/uiautomator/
   d.watchers.run()
   ```
 
-* Run all watchers when page update.
+* ~~Run all watchers when page update.~~ (因为稳定性原因，目前已废弃)
 
-  通常可以用来自动点击权限确认框，或者自动安装
-
-  ```python
-  d.watcher("OK").when(text="OK").click(text="OK")
-  # enable auto trigger watchers
-  d.watchers.watched = True
-
-  # disable auto trigger watchers
-  d.watchers.watched = False
-
-  # get current trigger watchers status
-  assert d.watchers.watched == False
-  ```
 
 另外文档还是有很多没有写，推荐直接去看源码[__init__.py](uiautomator2/__init__.py)
 

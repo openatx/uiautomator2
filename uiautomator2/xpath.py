@@ -10,6 +10,7 @@ from logzero import logger
 import uiautomator2
 from uiautomator2.exceptions import XPathElementNotFoundError
 from uiautomator2.utils import U
+from PIL import Image
 
 try:
     from lxml import etree
@@ -39,12 +40,18 @@ class XPathError(Exception):
 
 
 class XPath(object):
-    def __init__(self, d):
+    def __init__(self, d: "uiautomator2.Device"):
         """
         Args:
             d (uiautomator2 instance)
         """
         self._d = d
+        assert hasattr(d, "click")
+        assert hasattr(d, "swipe")
+        assert hasattr(d, "window_size")
+        assert hasattr(d, "dump_hierarchy")
+        assert hasattr(d, "screenshot")
+
         self._watchers = []  # item: {"xpath": .., "callback": func}
         self._timeout = 10.0
         self._click_before_delay = 0.0
@@ -87,6 +94,15 @@ class XPath(object):
 
     def send_swipe(self, sx, sy, tx, ty):
         self._d.swipe(sx, sy, tx, ty)
+
+    def send_text(self, text: str = None):
+        self._d.set_fastinput_ime()
+        self._d.clear_text()
+        if text:
+            self._d.send_keys(text)
+
+    def take_screenshot(self) -> Image.Image:
+        return self._d.screenshot()
 
     def match(self, xpath, source=None):
         return len(self(xpath, source).all()) > 0
@@ -296,10 +312,9 @@ class XPathSelector(object):
 
     def set_text(self, text: str = ""):
         el = self.get()
-        self._d.set_fastinput_ime()
+        self._parent.send_text()  # switch ime
         el.click()  # focus input-area
-        self._d.clear_text()
-        self._d.send_keys(text)
+        self._parent.send_text(text)
 
     def wait(self, timeout=None):
         """
@@ -328,6 +343,10 @@ class XPathSelector(object):
             timeout (float): max wait timeout
         """
         self._parent.click(self._xpath, watch=watch, timeout=timeout)
+
+    def screenshot(self) -> Image.Image:
+        el = self.get()
+        return el.screenshot()
 
 
 class XMLElement(object):
@@ -368,14 +387,63 @@ class XMLElement(object):
         x, y = self.center()
         self._parent.send_click(x, y)
 
+    def screenshot(self):
+        """
+        Take screenshot of element
+        """
+        im = self._parent.take_screenshot()
+        return im.crop(self.bounds)
+
+    def swipe(self, direction: str, scale: float = 0.9):
+        """
+        Args:
+            direction: one of ["left", "right", "up", "down"]
+            scale: percent of swipe, range (0, 1.0)
+        """
+        def _swipe(_from, _to):
+            self._parent.send_swipe(_from[0], _from[1], _to[0], _to[1])
+
+        assert 0 < scale <= 1.0
+
+        lx, ly, rx, ry = self.bounds
+        width, height = rx - lx, ry - ly
+
+        h_offset = int(width * (1 - scale)) // 2
+        v_offset = int(height * (1 - scale)) // 2
+
+        left = lx+h_offset, ly + height // 2
+        up = lx + width // 2, ly + v_offset
+        right = rx - h_offset, ly + height // 2
+        bottom = lx + width // 2, ry - v_offset
+
+        if direction == "left":
+            _swipe(right, left)
+        elif direction == "right":
+            _swipe(left, right)
+        elif direction == "up":
+            _swipe(bottom, up)
+        elif direction == "down":
+            _swipe(up, bottom)
+        else:
+            raise RuntimeError("Unknown direction:", direction)
+
+    @property
+    def bounds(self):
+        """
+        Returns:
+            tuple of (left, top, right, bottom)
+        """
+        bounds = self.elem.attrib.get("bounds")
+        lx, ly, rx, ry = map(int, re.findall(r"\d+", bounds))
+        return (lx, ly, rx, ry)
+
     @property
     def rect(self):
         """
         Returns:
             (left_top_x, left_top_y, width, height)
         """
-        bounds = self.elem.attrib.get("bounds")
-        lx, ly, rx, ry = map(int, re.findall(r"\d+", bounds))
+        lx, ly, rx, ry = self.bounds
         return lx, ly, rx - lx, ry - ly
 
     @property
