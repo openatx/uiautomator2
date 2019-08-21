@@ -471,7 +471,11 @@ Session represent an app lifecycle. Can be used to start app, detect app crash.
 * Attach to the running app
 
     ```python
+    # launch app if not running, skip launch if already running
     sess = d.session("com.netease.cloudmusic", attach=True)
+
+    # raise SessionBrokenError if not running
+    sess = d.session("com.netease.cloudmusic", attach=True, strict=True)
     ```
 
 * Detect app crash

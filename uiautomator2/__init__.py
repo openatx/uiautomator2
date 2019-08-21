@@ -1211,7 +1211,7 @@ class Device(object):
         else:
             self.jsonrpc.setAccessibilityPatterns({})
 
-    def session(self, pkg_name=None, attach=False, launch_timeout=None):
+    def session(self, pkg_name=None, attach=False, launch_timeout=None, strict=False):
         """
         Create a new session
 
@@ -1219,6 +1219,8 @@ class Device(object):
             pkg_name (str): android package name
             attach (bool): attach to already running app
             launch_timeout (int): launch timeout
+            strict (bool): used along with attach, 
+                when attach and strict both true, SessionBrokenError will raise if app not running
 
         Raises:
             requests.HTTPError, SessionBrokenError
@@ -1227,7 +1229,7 @@ class Device(object):
             return self._default_session
 
         if not attach:
-            request_data = {"flags": "-W -S"}
+            request_data = {"flags": "-S"}
             if launch_timeout:
                 request_data["timeout"] = str(launch_timeout)
             resp = self._reqsess.post(
@@ -1243,7 +1245,10 @@ class Device(object):
             time.sleep(2.5)  # wait launch finished, maybe no need
         pid = self._pidof_app(pkg_name)
         if not pid:
-            raise SessionBrokenError(pkg_name)
+            if strict:
+                raise SessionBrokenError(pkg_name)
+            return self.session(pkg_name, attach=False, launch_timeout=launch_timeout)
+
         return Session(self, pkg_name, pid)
 
     @property
