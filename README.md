@@ -336,12 +336,17 @@ d.app_list_running()
 
 ### Wait until app running
 ```python
-if d.app_wait("com.example.android"): # 等待应用运行, return bool
-    print("com.example.android is running")
+pid = d.app_wait("com.example.android") # 等待应用运行, return pid(int)
+if not pid:
+    print("com.example.android is not running")
+else:
+    print("com.example.android pid is %d" % pid)
 
 d.app_wait("com.example.android", front=True) # 等待应用前台运行
 d.app_wait("com.example.android", timeout=20.0) # 最长等待时间20s（默认）
 ```
+
+> Add in version 1.2.0
 
 ### Push and pull files
 * push a file to the device
@@ -453,6 +458,7 @@ Session represent an app lifecycle. Can be used to start app, detect app crash.
     ```python
     sess = d.session("com.netease.cloudmusic") # start 网易云音乐
     sess.close() # 停止网易云音乐
+    sess.restart() # 冷启动网易云音乐
     ```
 
 * Use python `with` to launch and close app

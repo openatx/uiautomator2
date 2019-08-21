@@ -2,6 +2,7 @@
 # coding: utf-8
 #
 
+import re
 import os
 import time
 import argparse
@@ -21,6 +22,7 @@ SWIPE_DOWN = "swipe_down"
 
 SCREENSHOT = "screenshot"
 EXIST = "assert_exist"
+WAIT = "wait"
 
 
 def split_step(text: str):
@@ -32,6 +34,7 @@ def split_step(text: str):
         "下滑": SWIPE_DOWN,
         "截图": SCREENSHOT,
         "存在": EXIST,
+        "等待": WAIT,
     }
 
     for keyword in __alias.keys():
@@ -79,6 +82,15 @@ def run_step(cf: bunch.Bunch, app: u2.Session, step: str):
     elif oper == EXIST:
         assert app.xpath(body).wait(), body
 
+    elif oper == WAIT:
+        #if re.match("^[\d\.]+$")
+        if body.isdigit():
+            seconds = int(body)
+            logger.info("Sleep %d seconds", seconds)
+            time.sleep(seconds)
+        else:
+            app.xpath(body).wait()
+
     else:
         raise RuntimeError("Unhandled operation", oper)
     
@@ -91,16 +103,35 @@ def run_conf(d, conf_filename: str):
     cf = yaml.load(read_file_content(conf_filename), Loader=yaml.SafeLoader)
     default = {
         "output_directory": "output",
+        "action_before_delay": 0,
+        "action_after_delay": 0,
+        "skip_cleanup": False,
     }
-    cf.update(default)
+    for k, v in default.items():
+        cf.setdefault(k, v)
     cf = bunch.Bunch(cf)
+
     print("Author:", cf.author)
     print("Description:", cf.description)
     print("Package:", cf.package)
+    logger.debug("action_delay: %.1f / %.1f", cf.action_before_delay, cf.action_after_delay)
 
     app = d.session(cf.package)
     for step in cf.steps:
+        time.sleep(cf.action_before_delay)
         run_step(cf, app, step)
+        time.sleep(cf.action_after_delay)
+
+    if not cf.skip_cleanup:
+        app.close()
+
+
+device = None
+conf_filename = None
+
+def test_entry():
+    pass
+
 
 
 if __name__ == "__main__":

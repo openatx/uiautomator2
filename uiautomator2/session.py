@@ -105,6 +105,20 @@ class Session(object):
         """ close app """
         if self._pkg_name:
             self.server.app_stop(self._pkg_name)
+    
+    def restart(self):
+        """
+        Stop app and start
+
+        Raises:
+            RuntimeError
+        """
+        self.close()
+        self.server.app_start(self._pkg_name)
+        pid = self.server.app_wait(self._pkg_name, timeout=3)
+        if not pid:
+            raise RuntimeError("app start failed")
+        self._pid = pid
 
     def running(self):
         """

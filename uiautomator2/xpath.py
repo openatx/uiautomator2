@@ -40,7 +40,7 @@ class XPathError(Exception):
 
 
 class XPath(object):
-    def __init__(self, d):
+    def __init__(self, d: "uiautomator2.Device"):
         """
         Args:
             d (uiautomator2 instance)
@@ -48,6 +48,9 @@ class XPath(object):
         self._d = d
         assert hasattr(d, "click")
         assert hasattr(d, "swipe")
+        assert hasattr(d, "window_size")
+        assert hasattr(d, "dump_hierarchy")
+        assert hasattr(d, "screenshot")
 
         self._watchers = []  # item: {"xpath": .., "callback": func}
         self._timeout = 10.0

@@ -99,7 +99,7 @@ def connect(addr=None):
         addr (str): uiautomator server address or serial number. default from env-var ANDROID_DEVICE_IP
 
     Returns:
-        UIAutomatorServer
+        Device
     
     Raises:
         ConnectError
@@ -145,7 +145,7 @@ def connect_usb(serial=None, healthcheck=False):
         healthcheck (bool): start uiautomator if not ready
 
     Returns:
-        UIAutomatorServer
+        Device
     
     Raises:
         ConnectError
@@ -177,13 +177,13 @@ def connect_usb(serial=None, healthcheck=False):
             d.healthcheck()
     return d
 
-def connect_wifi(addr:str) -> "UIAutomatorServer":
+def connect_wifi(addr:str) -> "Device":
     """
     Args:
         addr (str) uiautomator server address.
 
     Returns:
-        UIAutomatorServer
+        Device
 
     Raises:
         ConnectError
@@ -199,7 +199,7 @@ def connect_wifi(addr:str) -> "UIAutomatorServer":
     u = urlparse.urlparse(addr)
     host = u.hostname
     port = u.port or 7912
-    return UIAutomatorServer(host, port)
+    return Device(host, port)
 
 
 class TimeoutRequestsSession(requests.Session):
@@ -242,7 +242,7 @@ class TimeoutRequestsSession(requests.Session):
 
 def plugin_register(name, plugin, *args, **kwargs):
     """
-    Add plugin into UIAutomatorServer
+    Add plugin into Device
 
     Args:
         name: string
@@ -260,14 +260,14 @@ def plugin_register(name, plugin, *args, **kwargs):
         d = u2.connect()
         d.ext_upload_screenshot()
     """
-    UIAutomatorServer.plugins()[name] = (plugin, args, kwargs)
+    Device.plugins()[name] = (plugin, args, kwargs)
 
 
 def plugin_clear():
-    UIAutomatorServer.plugins().clear()
+    Device.plugins().clear()
 
 
-class UIAutomatorServer(object):
+class Device(object):
     __isfrozen = False
     __plugins = {}
 
@@ -304,7 +304,7 @@ class UIAutomatorServer(object):
 
     @staticmethod
     def plugins():
-        return UIAutomatorServer.__plugins
+        return Device.__plugins
 
     def __setattr__(self, key, value):
         """ Prevent creating new attributes outside __init__ """
@@ -791,7 +791,7 @@ class UIAutomatorServer(object):
                   pkg_name,
                   activity=None,
                   extras={},
-                  wait=True,
+                  wait=False,
                   stop=False,
                   unlock=False, launch_timeout=None, use_monkey=False):
         """ Launch application
@@ -800,7 +800,7 @@ class UIAutomatorServer(object):
             activity (str): app activity
             stop (bool): Stop app before starting the activity. (require activity)
             use_monkey (bool): use monkey command to start app when activity is not given
-            wait (bool): wait until app started. default True
+            wait (bool): wait until app started. default False
 
         Raises:
             SessionBrokenError
@@ -921,7 +921,7 @@ class UIAutomatorServer(object):
             time.sleep(.5)
         return False
 
-    def app_wait(self, package_name: str, timeout:float = 20.0, front=False) -> bool:
+    def app_wait(self, package_name: str, timeout:float = 20.0, front=False) -> int:
         """ Wait until app launched
         Args:
             package_name (str): package name
@@ -929,18 +929,22 @@ class UIAutomatorServer(object):
             front (bool): wait until app is current app
         
         Returns:
-            bool if app is running
+            pid (int) 0 if launch failed
         """
+        pid = None
         deadline = time.time() + timeout
         while time.time() < deadline:
             if front:
                 if self.current_app()['package'] == package_name:
-                    return True
+                    pid = self._pidof_app(package_name)
+                    break
             else:
                 if package_name in self.app_list_running():
-                    return True
+                    pid = self._pidof_app(package_name)
+                    break
             time.sleep(1)
-        return False
+
+        return pid or 0
 
     def app_list_running(self) -> list:
         """
@@ -1267,7 +1271,7 @@ class UIAutomatorServer(object):
             return getattr(self._default_session, attr)
         except AttributeError:
             raise AttributeError(
-                "'Session or UIAutomatorServer' object has no attribute '%s'" %
+                "'Session or Device' object has no attribute '%s'" %
                 attr)
 
     def __call__(self, **kwargs) -> Session:
@@ -1319,3 +1323,6 @@ class AdbShell(object):
         x0, y0 = self._adjust_pos(x0, y0, w, h)
         x1, y1 = self._adjust_pos(x1, y1, w, h)
         self.shell("input swipe %d %d %d %d" % (x0, y0, x1, y1))
+
+
+UIAutomatorServer = Device # Deprecated UIAutomatorServer
