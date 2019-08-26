@@ -38,6 +38,8 @@ install:
 #   - python tests/test_simple.py
 script:
   - echo "Skip test"
+notifications:
+  webhooks: https://oapi.dingtalk.com/robot/send?access_token=1334bdf5a1e41f260226ac54f2756f3cdf8480c4c09d9594f9d9fc5233c8e9bc
 deploy:
   skip_cleanup: true
   skip_existing: true
