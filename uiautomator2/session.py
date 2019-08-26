@@ -79,6 +79,13 @@ class Session(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    def _update_pid(self, pid: int):
+        """ Update package running pid """
+        self._pid = pid
+        jsonrpc_url = self.server.path2url('/session/%d:%s/jsonrpc/0' %
+                                          (pid, self._pkg_name))
+        self._jsonrpc = self.server.setup_jsonrpc(jsonrpc_url)
+
     @property
     def xpath(self):
         return self.server.xpath
@@ -118,7 +125,7 @@ class Session(object):
         pid = self.server.app_wait(self._pkg_name, timeout=3)
         if not pid:
             raise RuntimeError("app start failed")
-        self._pid = pid
+        self._update_pid(pid)
 
     def running(self):
         """
