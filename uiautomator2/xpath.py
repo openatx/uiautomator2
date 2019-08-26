@@ -56,12 +56,14 @@ class XPath(object):
         self._timeout = 10.0
         self._click_before_delay = 0.0
         self._click_after_delay = None
+        self._last_source = None
 
         # used for click("#back") and back is the key
         self._alias = {}
         self._alias_strict = False
         self._watch_stop_event = threading.Event()
         self._watch_stopped = threading.Event()
+        self._dump_lock = threading.Lock()
 
     def global_set(self, key, value):  #dicts):
         valid_keys = {
@@ -77,7 +79,12 @@ class XPath(object):
         self._timeout = timeout
 
     def dump_hierarchy(self):
-        return self._d.dump_hierarchy()
+        with self._dump_lock:
+            self._last_source = self._d.dump_hierarchy()
+            return self._last_source
+    
+    def get_last_hierarchy(self):
+        return self._last_source
 
     def send_click(self, x, y):
         if self._click_before_delay:
