@@ -144,8 +144,10 @@ class XPath(object):
 
     def _watch_forever(self, interval: float):
         try:
-            while not self._watch_stopped.wait(timeout=interval):
-                self.run_watchers()
+            wait_timeout = interval
+            while not self._watch_stopped.wait(timeout=wait_timeout):
+                triggered = self.run_watchers()
+                wait_timeout = min(0.5, interval) if triggered else interval
         finally:
             self._watch_stopped.clear()
             self._watch_stop_event.set()
@@ -195,7 +197,7 @@ class XPath(object):
             source = self.dump_hierarchy()
             if watch and self.run_watchers(source):
                 time.sleep(.5)  # post delay
-                deadline = time.time() + timeout
+                deadline = time.time() + timeout # correct deadline
                 continue
 
             selector = self(xpath, source)
@@ -330,6 +332,18 @@ class XPathSelector(object):
                 return self.get_last_match()
             time.sleep(.2)
         return None
+    
+    def wait_gone(self, timeout=None):
+        """
+        Returns:
+            True if gone else False
+        """
+        deadline = time.time() + (timeout or self._global_timeout)
+        while time.time() < deadline:
+            if not self.exists:
+                return True
+            time.sleep(.2)
+        return False
 
     def click_nowait(self):
         x, y = self.all()[0].center()

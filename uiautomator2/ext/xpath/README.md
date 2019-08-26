@@ -87,6 +87,10 @@ sl = d.xpath("@com.example:id/home_searchedit") # sl为XPathSelector对象
 el = sl.wait()
 el = sl.wait(timeout=15) # 等待15s, 没有找到会返回None
 
+# 等待元素消失
+sl.wait_gone()
+sl.wait_gone(timeout=15) 
+
 # 跟wait用法类似，区别是如果没找到直接抛出 XPathElementNotFoundError 异常
 el = sl.get() 
 el = sl.get(timeout=15)
