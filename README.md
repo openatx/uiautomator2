@@ -291,7 +291,15 @@ d.app_install('http://some-domain.com/some.apk')
 
 ### Launch an app
 ```python
-d.app_start("com.example.hello_world") # start with package name
+# 默认的这种方法是先通过atx-agent解析apk包的mainActivity，然后调用am start -n $package/$activity启动
+d.app_start("com.example.hello_world")
+
+# 使用 monkey -p com.example.hello_world -c android.intent.category.LAUNCHER 1 启动
+# 这种方法有个附带的问题，它自动会将手机的旋转锁定给关掉
+d.app_start("com.example.hello_world", use_monkey=True) # start with package name
+
+# 通过指定main activity的方式启动应用，等价于调用am start -n com.example.hello_world/.MainActivity
+d.app_start("com.example.hello_world", ".MainActivity")
 ```
 
 ### Stop an app

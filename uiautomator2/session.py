@@ -16,7 +16,7 @@ import six
 from retry import retry
 
 from uiautomator2.exceptions import (NullPointerExceptionError,
-                                     UiObjectNotFoundError)
+                                     UiObjectNotFoundError, UiautomatorQuitError)
 from uiautomator2.utils import Exists, U, check_alive, hooks_wrap, intersect, cache_return
 from uiautomator2.swipe import SwipeExt
 
@@ -113,7 +113,7 @@ class Session(object):
         if self._pkg_name:
             self.server.app_stop(self._pkg_name)
     
-    def restart(self):
+    def restart(self, use_monkey=False):
         """
         Stop app and start
 
@@ -121,7 +121,7 @@ class Session(object):
             RuntimeError
         """
         self.close()
-        self.server.app_start(self._pkg_name)
+        self.server.app_start(self._pkg_name, use_monkey=use_monkey)
         pid = self.server.app_wait(self._pkg_name, timeout=3)
         if not pid:
             raise RuntimeError("app start failed")
@@ -485,6 +485,7 @@ class Session(object):
         else:
             raise RuntimeError("Invalid format " + format)
 
+    @retry(UiautomatorQuitError, delay=1.0, tries=3, jitter=1.5, logger=logging)
     def dump_hierarchy(self, compressed=False, pretty=False) -> str:
         """
         Args:
@@ -498,6 +499,11 @@ class Session(object):
         """
         res = self.server._reqsess.get(self.server.path2url("/dump/hierarchy"))
         try:
+            if res.status_code == 500:
+                if not self.server.uiautomator.running():
+                    self.server.uiautomator.start() # 恢复uiautomator的运行
+                    raise UiautomatorQuitError("dump hierarchy", res.text)
+
             res.raise_for_status()
         except requests.HTTPError:
             logging.warning("request error: %s", res.text)

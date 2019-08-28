@@ -8,7 +8,12 @@
 class BaseError(Exception):
     pass
 
-class UiaError(Exception):
+
+class UiaError(BaseError):
+    pass
+
+
+class UiautomatorQuitError(UiaError):
     pass
 
 
