@@ -113,7 +113,7 @@ def connect(addr=None):
         connect("cff1123ea")  # adb device serial number
     """
     if not addr or addr == '+':
-        addr = os.getenv('ANDROID_DEVICE_IP')
+        addr = os.getenv('ANDROID_DEVICE_IP') or os.getenv("ANDROID_SERIAL")
     wifi_addr = fix_wifi_addr(addr)
     if wifi_addr:
         return connect_wifi(addr)
@@ -205,7 +205,7 @@ def connect_wifi(addr:str) -> "Device":
 class TimeoutRequestsSession(requests.Session):
     def __init__(self):
         super(TimeoutRequestsSession, self).__init__()
-        retries = Retry(total=5, connect=5, backoff_factor=0.1)
+        retries = Retry(total=3, connect=3, backoff_factor=0.5)
         # refs: https://stackoverflow.com/questions/33895739/python-requests-cant-load-any-url-remote-end-closed-connection-without-respo
         # refs: https://stackoverflow.com/questions/15431044/can-i-set-max-retries-for-requests-request
         adapter = requests.adapters.HTTPAdapter(max_retries=retries)
@@ -942,8 +942,7 @@ class Device(object):
         Returns:
             list of running apps
         """
-        our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
-        output, _ = self.shell(['pm', 'list', 'packages', '-3'])
+        output, _ = self.shell(['pm', 'list', 'packages'])
         packages = re.findall(r'package:([^\s]+)', output)
         process_names = re.findall(r'([^\s]+)$', self.shell('ps').output, re.M)
         return list(set(packages).intersection(process_names))
