@@ -351,8 +351,8 @@ class Session(object):
             def move(self, x, y):
                 obj.jsonrpc.injectInputEvent(ACTION_MOVE, x, y, 0)
 
-            def up(self, x=0, y=0):
-                """ ACTION_UP x, y seems no use """
+            def up(self, x, y):
+                """ ACTION_UP x, y """
                 obj.jsonrpc.injectInputEvent(ACTION_UP, x, y, 0)
 
         return _Touch()
