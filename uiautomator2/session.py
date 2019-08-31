@@ -470,10 +470,8 @@ class Session(object):
                 num_list = []
                 for i in str_list:
                     num_list.append(int(i))
-                if num_list[0] == 0:
-                    return None
-                else:
-                    return((num_list[0]+num_list[2])/2,(num_list[1]+num_list[3])/2)
+                return((num_list[0]+num_list[2])/2,(num_list[1]+num_list[3])/2)
+            
             def get_a_touch_pos(touch_list):
         
                 length = len(touch_list)
