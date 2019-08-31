@@ -447,7 +447,59 @@ class Session(object):
         sx, sy = rel2abs(sx, sy)
         ex, ey = rel2abs(ex, ey)
         return self.jsonrpc.drag(sx, sy, ex, ey, int(duration * 200))
+    
+    def ui_random_click(self, click_count=0, duration=0):
+        """
+        通过dump_hierarchy()查询UI控件坐标，随机点击
+        Args:
+            count: click count,0 means forever/随机点击的次数，0表示没有次数限制
+            delay_time: time between two click/两次点击之间的延时
+        """
+        from xml.dom.minidom import parseString
+        import random
+        
+        counting = 0
+        while counting <= click_count:
+            touch_list = []
+            xml_content = self.dump_hierarchy()
+            doc = parseString(xml_content)
+            
+            def bounds2pos(bounds):
+                nums = re.compile(r'\d+')
+                str_list = nums.findall(bounds)
+                num_list = []
+                for i in str_list:
+                    num_list.append(int(i))
+                if num_list[0] == 0:
+                    return None
+                else:
+                    return((num_list[0]+num_list[2])/2,(num_list[1]+num_list[3])/2)
+            def get_a_touch_pos(touch_list):
+        
+                length = len(touch_list)
+                if length <= 0:
+                    return (1,1)                  
+                num = random.randint(0, length)-1
+                if touch_list[num] != None:
+                    return touch_list[num]
+                else:
+                    return (1,1)        
+            
+            for node in doc.getElementsByTagName('hierarchy'):
+                for nextnode in node.getElementsByTagName('node'):
+                    bounds = nextnode.getAttribute('bounds')
+                    touch_list.append(bounds2pos(bounds))
+                    
+            pos = get_a_touch_pos(touch_list)
+            self.click(pos[0], pos[1])
 
+            time.sleep(duration)
+            if click_count == 0:
+                continue
+            
+            counting += 1    
+    
+    
     @retry((IOError, SyntaxError), delay=.5, tries=5, jitter=0.1,
            max_delay=1)  # delay .5, .6, .7, .8 ...
     def screenshot(self, filename=None, format='pillow'):
@@ -531,7 +583,12 @@ class Session(object):
                 key, meta) if meta else self.server.jsonrpc.pressKeyCode(key)
         else:
             return self.jsonrpc.pressKey(key)
-
+    
+    def pressKeys(self, keys, duration=0.5):
+        for key in keys:
+            self.press(key,meta=None)
+            time.sleep(duration)
+    
     def screen_on(self):
         self.jsonrpc.wakeUp()
 
