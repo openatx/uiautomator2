@@ -3,10 +3,6 @@
 """
 @version: 1.0.0
 @author: rainy008
-@connect:  https://github.com/rainy008/uiautomator2
-@license: Apache Licence 
-@file: baiduOCR.py
-@time: 2019/8/13 17:52
 @description: 使用百度OCR实现截屏选取元素
 """
 
@@ -103,14 +99,3 @@ class OCRCustom(OCR):
             if item['word_name'] == option:
                 return item['word']
 
-
-if __name__ == '__main__':
-    import uiautomator2 as u2
-
-    APP_ID = ''
-    API_KEY = ''
-    SECRECT_KEY = ''
-    options = {"templateSign": ''}
-
-    d = u2.connect()
-    print(OCR(d, APP_ID, API_KEY, SECRECT_KEY)('规则').get_text())
