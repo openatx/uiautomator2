@@ -38,9 +38,10 @@ import requests
 import six
 import six.moves.urllib.parse as urlparse
 from retry import retry
+from urllib3.util.retry import Retry
 
 import adbutils
-from uiautomator2.exceptions import (ConnectError, GatewayError, JsonRpcError,
+from uiautomator2.exceptions import (BaseError, ConnectError, GatewayError, JsonRpcError,
                                      NullObjectExceptionError,
                                      NullPointerExceptionError,
                                      SessionBrokenError,
@@ -112,7 +113,7 @@ def connect(addr=None):
         connect("cff1123ea")  # adb device serial number
     """
     if not addr or addr == '+':
-        addr = os.getenv('ANDROID_DEVICE_IP')
+        addr = os.getenv('ANDROID_DEVICE_IP') or os.getenv("ANDROID_SERIAL")
     wifi_addr = fix_wifi_addr(addr)
     if wifi_addr:
         return connect_wifi(addr)
@@ -155,12 +156,11 @@ def connect_usb(serial=None, healthcheck=False):
         device = adb.device()
     else:
         device = adbutils.AdbDevice(adb, serial)
-    # adb = adbutils.Adb(serial)
     lport = device.forward_port(7912)
     d = connect_wifi('127.0.0.1:' + str(lport))
     d._serial = device.serial
     if not d.agent_alive:
-        warnings.warn("backend atx-agent is not alive, start again ...",
+        warnings.warn("start atx-agent ...",
                     RuntimeWarning)
         # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
         device.shell(["/data/local/tmp/atx-agent", "server", "--nouia", "-d"])
@@ -173,7 +173,7 @@ def connect_usb(serial=None, healthcheck=False):
 
     if healthcheck:
         if not d.alive:
-            warnings.warn("backend uiautomator2 is not alive, start again ...",RuntimeWarning)
+            warnings.warn("start uiautomator2 ...",RuntimeWarning)
             d.healthcheck()
     return d
 
@@ -205,8 +205,10 @@ def connect_wifi(addr:str) -> "Device":
 class TimeoutRequestsSession(requests.Session):
     def __init__(self):
         super(TimeoutRequestsSession, self).__init__()
+        retries = Retry(total=3, connect=3, backoff_factor=0.5)
         # refs: https://stackoverflow.com/questions/33895739/python-requests-cant-load-any-url-remote-end-closed-connection-without-respo
-        adapter = requests.adapters.HTTPAdapter(max_retries=3)
+        # refs: https://stackoverflow.com/questions/15431044/can-i-set-max-retries-for-requests-request
+        adapter = requests.adapters.HTTPAdapter(max_retries=retries)
         self.mount("http://", adapter)
         self.mount("https://", adapter)
 
@@ -226,10 +228,9 @@ class TimeoutRequestsSession(requests.Session):
         try:
             resp = super(TimeoutRequestsSession, self).request(
                 method, url, **kwargs)
-        except requests.ConnectionError:
-            raise EnvironmentError(
-                "atx-agent is not running. Fix it with following steps.\n1. Plugin device into computer.\n2. Run command \"python -m uiautomator2 init\""
-            )
+        except requests.ConnectionError as e:
+            # High possibly atx-agent is down
+            raise
         else:
             if verbose:
                 print(
@@ -511,8 +512,9 @@ class Device(object):
     def agent_alive(self):
         try:
             r = self._reqsess.get(self.path2url('/version'), timeout=2)
-            return r.status_code == 200
-        except:
+            if r.status_code == 200:
+                return True
+        except (requests.HTTPError, requests.ConnectionError) as e:
             return False
 
     @property
@@ -844,21 +846,10 @@ class Device(object):
                 'monkey', '-p', pkg_name, '-c',
                 'android.intent.category.LAUNCHER', '1'
             ])
+            if wait:
+                self.app_wait(pkg_name)
         else:
-            # launch with atx-agent
-            data = {"flags": "-S"} # default -W -S
-            if launch_timeout:
-                data["timeout"] = str(launch_timeout)
-            resp = self._reqsess.post(
-                self.path2url("/session/" + pkg_name), data=data)
-            if resp.status_code != 200: # 410: Gone
-                raise SessionBrokenError(pkg_name, resp.text)
-            jsondata = resp.json()
-            if not jsondata["success"]:
-                raise SessionBrokenError(pkg_name,
-                                         jsondata["error"], jsondata["output"])
-            
-    
+            self.session(pkg_name, attach=True, launch_timeout=launch_timeout)
 
     @retry(EnvironmentError, delay=.5, tries=3, jitter=.1)
     def current_app(self):
@@ -951,8 +942,7 @@ class Device(object):
         Returns:
             list of running apps
         """
-        our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
-        output, _ = self.shell(['pm', 'list', 'packages', '-3'])
+        output, _ = self.shell(['pm', 'list', 'packages'])
         packages = re.findall(r'package:([^\s]+)', output)
         process_names = re.findall(r'([^\s]+)$', self.shell('ps').output, re.M)
         return list(set(packages).intersection(process_names))

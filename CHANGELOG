@@ -1,6 +1,16 @@
 CHANGES
 =======
 
+* add wait gone
+* add strict argument to session()
+* rename UIAutomatorServer to Device, add session.restart() method
+* change http://tool.appetizer.io to https protocol
+* add swipe\_ext('right', 0.9) method
+* add app\_wait, app\_list\_running
+
+1.1.0
+-----
+
 * add swipe and screenshot to d.xpath element
 * fix  init with serial
 * update changelog, remove d.watchers.watched, use IPython.embed first in cmd:uiautomator2 console

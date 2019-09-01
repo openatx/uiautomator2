@@ -35,7 +35,7 @@
 - Android版本 4.4+
 - Python 3.6+
 
->如果仍在用python2, 需要使用命令`pip install -U "uiautomator2<=1.0.0"`安装
+>如果用python2的pip安装，会安装本库的老版本0.2.3；如果用python3.5的pip安装，会安装本库的老版本0.3.3；两者均已经不会再维护；PYPI上的最近版本是这个：https://pypi.org/project/uiautomator2/
 
 ## QUICK START
 先准备一台（不要两台）开启了`开发者选项`的安卓手机，连接上电脑，确保执行`adb devices`可以看到连接上的设备。
@@ -65,8 +65,8 @@ screenOn': True, 'sdkInt': 27, 'naturalOrientation': True}
 ## 相关项目
 - 设备管理平台，设备多了就会用到 [atxserver2](https://github.com/openatx/atxserver2)
 - 专门与adb进行交互的库 [adbutils](https://github.com/openatx/adbutils)
-- <https://github.com/openatx/atx-agent>
-- weditor[https://github.com/openatx/weditor] 类似于uiautomatorviewer，专门为本项目开发的辅助编辑器
+- [atx-agent](https://github.com/openatx/atx-agent) 运行在设备上的驻守程序，go开发，用于保活设备上相关的服务
+- [weditor](https://github.com/openatx/weditor) 类似于uiautomatorviewer，专门为本项目开发的辅助编辑器
 
 **[Installation](#installation)**
 
@@ -172,7 +172,7 @@ screenOn': True, 'sdkInt': 27, 'naturalOrientation': True}
     [AppetizerIO](https://www.appetizer.io) 提供了对uiautomator2的深度集成，可以图形化管理ATX设备，还有所见即所得脚本编辑器
     * 到网站下载直接打开，首次使用需要注册账号
     * `设备管理` 界面里可以检查设备是否正常init，起停atx-agent，抓取atx-agent.log文件
-    * `APP测试->脚本助手`调出脚本助手，实时界面同步，点击界面直接插入各种代码，同时支持uiautomator和Appium
+    * `测试脚本`调出脚本助手，实时界面同步，点击界面直接插入各种代码，同时支持uiautomator和Appium
     * **[视频教程 请戳这里](https://github.com/openatx/uiautomator2/wiki/Appetizer%E6%89%80%E8%A7%81%E5%8D%B3%E6%89%80%E5%BE%97u2%E8%84%9A%E6%9C%AC%E7%BC%96%E8%BE%91%E5%99%A8)**  [其他文档在此](http://doc.appetizer.io)
     
 # Connect to a device
@@ -212,7 +212,7 @@ d = u2.connect_adb_wifi("10.0.0.1:5555")
 # + Python: u2.connect_usb("10.0.0.1:5555")
 ```
 
-Calling `u2.connect()` with no argument, `uiautomator2` will obtain device IP from the environment variable `ANDROID_DEVICE_IP`.
+Calling `u2.connect()` with no argument, `uiautomator2` will obtain device IP from the environment variable `ANDROID_DEVICE_IP` or `ANDROID_SERIAL`.
 If this environment variable is empty, uiautomator will fall back to `connect_usb` and you need to make sure that there is only one device connected to the computer.
 
 # Command line
@@ -291,7 +291,15 @@ d.app_install('http://some-domain.com/some.apk')
 
 ### Launch an app
 ```python
-d.app_start("com.example.hello_world") # start with package name
+# 默认的这种方法是先通过atx-agent解析apk包的mainActivity，然后调用am start -n $package/$activity启动
+d.app_start("com.example.hello_world")
+
+# 使用 monkey -p com.example.hello_world -c android.intent.category.LAUNCHER 1 启动
+# 这种方法有个附带的问题，它自动会将手机的旋转锁定给关掉
+d.app_start("com.example.hello_world", use_monkey=True) # start with package name
+
+# 通过指定main activity的方式启动应用，等价于调用am start -n com.example.hello_world/.MainActivity
+d.app_start("com.example.hello_world", ".MainActivity")
 ```
 
 ### Stop an app
