@@ -22,7 +22,8 @@ __apk_version__ = '2.0.2'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__atx_agent_version__ = '0.6.1'
+__atx_agent_version__ = '0.6.2'
+# 0.6.2 fix app_info fd leak error, update androidbinary to fix parse apk manifest err
 # 0.6.1 make dump_hierarchy more robust, add cpu,mem collect
 # 0.6.0 add /dump/hierarchy (works fine even if uiautomator is down)
 # 0.5.5 add minitouch reset, /screenshot support download param, fix dns error
