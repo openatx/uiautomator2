@@ -41,17 +41,17 @@ from retry import retry
 from urllib3.util.retry import Retry
 
 import adbutils
-from uiautomator2.exceptions import (BaseError, ConnectError, GatewayError, JsonRpcError,
-                                     NullObjectExceptionError,
-                                     NullPointerExceptionError,
-                                     SessionBrokenError,
-                                     StaleObjectExceptionError, UiaError,
-                                     UiAutomationNotConnectedError,
-                                     UiObjectNotFoundError)
-from uiautomator2.session import Session, set_fail_prompt  # noqa: F401
-from uiautomator2.version import __atx_agent_version__
-from uiautomator2.utils import cache_return
-import uiautomator2.xpath as xpath
+
+from . import xpath
+from .exceptions import (BaseError, ConnectError, GatewayError, JsonRpcError,
+                         NullObjectExceptionError, NullPointerExceptionError,
+                         SessionBrokenError, StaleObjectExceptionError,
+                         UiaError, UiAutomationNotConnectedError,
+                         UiObjectNotFoundError)
+from .init import Initer
+from .session import Session, set_fail_prompt  # noqa: F401
+from .utils import cache_return
+from .version import __atx_agent_version__
 
 if six.PY2:
     FileNotFoundError = OSError
@@ -139,11 +139,12 @@ def connect_adb_wifi(addr):
     return connect_usb(addr)
 
 
-def connect_usb(serial=None, healthcheck=False):
+def connect_usb(serial=None, healthcheck=False, init=False):
     """
     Args:
         serial (str): android device serial
         healthcheck (bool): start uiautomator if not ready
+        init (bool): initial with apk and atx-agent
 
     Returns:
         Device
@@ -159,17 +160,23 @@ def connect_usb(serial=None, healthcheck=False):
     lport = device.forward_port(7912)
     d = connect_wifi('127.0.0.1:' + str(lport))
     d._serial = device.serial
+    
     if not d.agent_alive:
-        warnings.warn("start atx-agent ...",
-                    RuntimeWarning)
-        # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
-        device.shell(["/data/local/tmp/atx-agent", "server", "--nouia", "-d"])
-        deadline = time.time() + 3
-        while time.time() < deadline:
-            if d.agent_alive:
-                break
+        initer = Initer(device)
+        if not initer.check_install():
+            if not init:
+                raise RuntimeError("Device need to be init with command: uiautomator2 init -s " + device.serial)
+            initer.install() # same as run cli: uiautomator2 init
         else:
-            raise RuntimeError("atx-agent recover failed")
+            warnings.warn("start atx-agent ...", RuntimeWarning)
+            # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
+            device.shell(["/data/local/tmp/atx-agent", "server", "--nouia", "-d"])
+            deadline = time.time() + 3
+            while time.time() < deadline:
+                if d.agent_alive:
+                    break
+            else:
+                raise RuntimeError("atx-agent recover failed")
 
     if healthcheck:
         if not d.alive:

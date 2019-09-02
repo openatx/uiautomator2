@@ -37,7 +37,8 @@ class SimpleTestCase(unittest.TestCase):
             d(text="Show Short Notification").click()
         except u2.UiObjectNotFoundError:
             d(text="SHOW SHORT NOTIFICATION").click()
-        self.assertEqual(d.toast.get_message(2, 5, ""), "Short notification")
+        #self.assertEqual(d.toast.get_message(2, 5, ""), "Short notification")
+        self.assertIn("Short notification", d.toast.get_message(2, 5, ""))
         time.sleep(.5)
         self.assertIsNone(d.toast.get_message(0, 0.4))
         # d.toast.reset()
