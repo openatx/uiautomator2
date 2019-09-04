@@ -1,16 +1,22 @@
 # coding: utf-8
 #
 
+import abc
+import io
+import json
 import re
 import threading
 import time
 
 from logzero import logger
+from PIL import Image
 
+import adbutils
 import uiautomator2
 from uiautomator2.exceptions import XPathElementNotFoundError
 from uiautomator2.utils import U
-from PIL import Image
+
+
 
 try:
     from lxml import etree
@@ -37,6 +43,28 @@ class TimeoutException(Exception):
 
 class XPathError(Exception):
     """ basic error for xpath plugin """
+
+
+class UIMeta(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def click(self, x: int, y: int):
+        pass
+    
+    @abc.abstractmethod
+    def swipe(self, fx: int, fy: int, tx: int, ty: int, duration: float):
+        """ duration is float type, indicate seconds """
+    
+    @abc.abstractmethod
+    def window_size(self) -> tuple:
+        """ return (width, height) """
+    
+    @abc.abstractmethod
+    def dump_hierarchy(self) -> str:
+        """ return xml content """
+    
+    @abc.abstractmethod
+    def screenshot(self):
+        """ return PIL.Image.Image """
 
 
 class XPath(object):
@@ -476,23 +504,72 @@ class XMLElement(object):
         return self.elem.attrib
 
 
+class AdbUI(UIMeta):
+    """
+    Use adb command to run ui test
+    """
+    def __init__(self, d: adbutils.AdbDevice):
+        self._d = d
+
+    def click(self, x, y):
+        self._d.click(x, y)
+    
+    def swipe(self, sx, sy, ex, ey, duration):
+        self._d.swipe(sx, sy, ex, ey, duration)
+    
+    def window_size(self):
+        w, h = self._d.window_size()
+        return w, h
+    
+    def dump_hierarchy(self):
+        return self._d.dump_hierarchy()
+    
+    def screenshot(self):
+        d = self._d
+        json_output = d.shell(["LD_LIBRARY_PATH=/data/local/tmp", "/data/local/tmp/minicap", "-i", "2&>/dev/null"]).strip()
+        data = json.loads(json_output)
+        w, h, r = data["width"], data["height"], data["rotation"]
+        remote_image_path = "/sdcard/minicap.jpg"
+        d.shell(["rm", remote_image_path])
+        d.shell([
+            "LD_LIBRARY_PATH=/data/local/tmp", 
+            "/data/local/tmp/minicap", 
+            "-P", "{0}x{1}@{0}x{1}/{2}".format(w, h, r), 
+            "-s", ">"+remote_image_path])
+
+        if d.sync.stat(remote_image_path).size == 0:
+            raise RuntimeError("screenshot using minicap error")
+        
+        buf = io.BytesIO()
+        for data in d.sync.iter_content(remote_image_path):
+            buf.write(data)
+        return Image.open(buf)
+
+
+
 if __name__ == "__main__":
-    init()
-    import uiautomator2.ext.htmlreport as htmlreport
+    d = AdbUI(adbutils.adb.device())
+    xpath = XPath(d)
+    # print(d.screenshot())
+    # print(d.dump_hierarchy()[:20])
+    xpath("App").click()
+    xpath("Alarm").click()
+    # init()
+    # import uiautomator2.ext.htmlreport as htmlreport
 
-    d = uiautomator2.connect()
-    hrp = htmlreport.HTMLReport(d)
+    # d = uiautomator2.connect()
+    # hrp = htmlreport.HTMLReport(d)
 
-    # take screenshot before each click
-    hrp.patch_click()
-    d.app_start("com.netease.cloudmusic", stop=True)
+    # # take screenshot before each click
+    # hrp.patch_click()
+    # d.app_start("com.netease.cloudmusic", stop=True)
 
-    # watchers
-    d.ext_xpath.when("跳过").click()
-    # d.ext_xpath.when("知道了").click()
+    # # watchers
+    # d.ext_xpath.when("跳过").click()
+    # # d.ext_xpath.when("知道了").click()
 
-    # steps
-    d.ext_xpath("//*[@text='私人FM']/../android.widget.ImageView").click()
-    d.ext_xpath("下一首").click()
-    d.ext_xpath.sleep_watch(2)
-    d.ext_xpath("转到上一层级").click()
+    # # steps
+    # d.ext_xpath("//*[@text='私人FM']/../android.widget.ImageView").click()
+    # d.ext_xpath("下一首").click()
+    # d.ext_xpath.sleep_watch(2)
+    # d.ext_xpath("转到上一层级").click()
