@@ -1,6 +1,11 @@
 # coding: utf-8
 #
 
+<<<<<<< HEAD
+=======
+from __future__ import absolute_import
+
+>>>>>>> add adcd.py(abstract class about device) and implement pure adb to run test
 import abc
 import io
 import json
@@ -15,8 +20,12 @@ import adbutils
 import uiautomator2
 from uiautomator2.exceptions import XPathElementNotFoundError
 from uiautomator2.utils import U
+<<<<<<< HEAD
 
 
+=======
+from uiautomator2.abcd import BasicUIMeta
+>>>>>>> add adcd.py(abstract class about device) and implement pure adb to run test
 
 try:
     from lxml import etree
@@ -504,7 +513,11 @@ class XMLElement(object):
         return self.elem.attrib
 
 
+<<<<<<< HEAD
 class AdbUI(UIMeta):
+=======
+class AdbUI(BasicUIMeta):
+>>>>>>> add adcd.py(abstract class about device) and implement pure adb to run test
     """
     Use adb command to run ui test
     """
