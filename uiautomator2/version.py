@@ -1,6 +1,11 @@
 # coding: utf-8
 #
 
+import pkg_resources
+
+__version__ = pkg_resources.get_distribution("uiautomator2").version
+# See ChangeLog for details
+
 __apk_version__ = '2.0.2'
 # 2.0.2 fix error: AndroidQ Service must be explicit
 # 2.0.1 fix AndroidQ support

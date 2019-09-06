@@ -1,10 +1,11 @@
 six
-requests>=2.7.0
+requests
 humanize
+whichcraft
+logzero~=1.5
 progress~=1.3
 retry~=0.9
-whichcraft
-logzero
-adbutils>=0.4.2
+adbutils>=0.4.2,==0.*
+Deprecated~=1.2.6
 Pillow # not support in QPython
 lxml>=4.3 # not support in QPython

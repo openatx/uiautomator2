@@ -41,6 +41,7 @@ from retry import retry
 from urllib3.util.retry import Retry
 
 import adbutils
+from deprecated import deprecated
 
 from . import xpath
 from .exceptions import (BaseError, ConnectError, GatewayError, JsonRpcError,
@@ -797,7 +798,7 @@ class Device(object):
         return self.shell(cmdline)[0]
 
     def app_start(self,
-                  pkg_name,
+                  package_name,
                   activity=None,
                   extras={},
                   wait=False,
@@ -805,7 +806,7 @@ class Device(object):
                   unlock=False, launch_timeout=None, use_monkey=False):
         """ Launch application
         Args:
-            pkg_name (str): package name
+            package_name (str): package name
             activity (str): app activity
             stop (bool): Stop app before starting the activity. (require activity)
             use_monkey (bool): use monkey command to start app when activity is not given
@@ -818,48 +819,57 @@ class Device(object):
             self.unlock()
 
         if stop:
-            self.app_stop(pkg_name)
+            self.app_stop(package_name)
 
-        if activity:
-            # -D: enable debugging
-            # -W: wait for launch to complete
-            # -S: force stop the target app before starting the activity
-            # --user <USER_ID> | current: Specify which user to run as; if not
-            #    specified then run as the current user.
-            # -e <EXTRA_KEY> <EXTRA_STRING_VALUE>
-            # --ei <EXTRA_KEY> <EXTRA_INT_VALUE>
-            # --ez <EXTRA_KEY> <EXTRA_BOOLEAN_VALUE>
-            args = [
-                'am', 'start', '-a', 'android.intent.action.MAIN', '-c',
-                'android.intent.category.LAUNCHER'
-            ]
-            if wait:
-                args.append('-W')
-            args += ['-n', '{}/{}'.format(pkg_name, activity)]
-            # -e --ez
-            extra_args = []
-            for k, v in extras.items():
-                if isinstance(v, bool):
-                    extra_args.extend(['--ez', k, 'true' if v else 'false'])
-                elif isinstance(v, int):
-                    extra_args.extend(['--ei', k, str(v)])
-                else:
-                    extra_args.extend(['-e', k, v])
-            args += extra_args
-            # 'am', 'start', '-W', '-n', '{}/{}'.format(pkg_name, activity))
-            self.shell(args)
-        elif use_monkey:
+        if use_monkey:
             self.shell([
-                'monkey', '-p', pkg_name, '-c',
+                'monkey', '-p', package_name, '-c',
                 'android.intent.category.LAUNCHER', '1'
             ])
             if wait:
-                self.app_wait(pkg_name)
-        else:
-            self.session(pkg_name, attach=True, launch_timeout=launch_timeout)
+                self.app_wait(package_name)
+            return
+        
+        if not activity:
+            info = self.app_info(package_name)
+            activity = info['mainActivity']
+            if activity.find(".") == -1:
+                activity = "." + activity
+
+        # -D: enable debugging
+        # -W: wait for launch to complete
+        # -S: force stop the target app before starting the activity
+        # --user <USER_ID> | current: Specify which user to run as; if not
+        #    specified then run as the current user.
+        # -e <EXTRA_KEY> <EXTRA_STRING_VALUE>
+        # --ei <EXTRA_KEY> <EXTRA_INT_VALUE>
+        # --ez <EXTRA_KEY> <EXTRA_BOOLEAN_VALUE>
+        args = [
+            'am', 'start', '-a', 'android.intent.action.MAIN', '-c',
+            'android.intent.category.LAUNCHER'
+        ]
+        args += ['-n', '{}/{}'.format(package_name, activity)]
+        # -e --ez
+        extra_args = []
+        for k, v in extras.items():
+            if isinstance(v, bool):
+                extra_args.extend(['--ez', k, 'true' if v else 'false'])
+            elif isinstance(v, int):
+                extra_args.extend(['--ei', k, str(v)])
+            else:
+                extra_args.extend(['-e', k, v])
+        args += extra_args
+        self.shell(args)
+
+        if wait:
+            self.app_wait(package_name)
+        
+    @deprecated(version="2.0.0", reason="You should use app_current instead")
+    def current_app(self):
+        return self.app_current()
 
     @retry(EnvironmentError, delay=.5, tries=3, jitter=.1)
-    def current_app(self):
+    def app_current(self):
         """
         Returns:
             dict(package, activity, pid?)
@@ -1166,7 +1176,7 @@ class Device(object):
         resp.raise_for_status()
         resp = resp.json()
         if not resp.get('success'):
-            raise UiaError(resp.get('description', 'unknown'))
+            raise BaseError(resp.get('description', 'unknown'))
         return resp.get('data')
 
     def app_icon(self, pkg_name):
