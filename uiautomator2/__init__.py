@@ -602,6 +602,7 @@ class Device(object):
         brand = self.shell("getprop ro.product.brand").output.strip()
         print("Product-brand:", brand)
         self.uiautomator.stop() # stop uiautomator keeper first
+        self.app_stop("com.github.uiautomator")
 
         if brand.lower() == "oneplus":
             self.app_start("com.github.uiautomator", launch_timeout=10)
@@ -623,7 +624,7 @@ class Device(object):
                 # keyevent BACK if current is com.github.uiautomator
                 # XiaoMi uiautomator will kill the app(com.github.uiautomator) when launch
                 #   it is better to start a service to make uiautomator live longer
-                if self.current_app()['package'] != 'com.github.uiautomator':
+                if self.app_current()['package'] != 'com.github.uiautomator':
                     self.shell([
                         'am', 'startservice', '-n',
                         'com.github.uiautomator/.Service'
@@ -646,7 +647,6 @@ class Device(object):
         Raises:
             RuntimeError
         """
-        self.app_start("com.github.uiautomator")
         sh = self.ash
         if not sh.is_screen_on():
             print(time.strftime("[%Y-%m-%d %H:%M:%S]"), "wakeup screen")
@@ -923,7 +923,7 @@ class Device(object):
         """
         deadline = time.time() + timeout
         while time.time() < deadline:
-            current_activity = self.current_app().get('activity')
+            current_activity = self.app_current().get('activity')
             if activity == current_activity:
                 return True
             time.sleep(.5)
@@ -943,7 +943,7 @@ class Device(object):
         deadline = time.time() + timeout
         while time.time() < deadline:
             if front:
-                if self.current_app()['package'] == package_name:
+                if self.app_current()['package'] == package_name:
                     pid = self._pidof_app(package_name)
                     break
             else:

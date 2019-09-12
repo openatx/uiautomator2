@@ -85,7 +85,7 @@ def cmd_stop(args):
 
 def cmd_current(args):
     d = u2.connect(args.serial)
-    print(json.dumps(d.current_app(), indent=4))
+    print(json.dumps(d.app_current(), indent=4))
 
 
 def cmd_console(args):

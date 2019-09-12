@@ -539,7 +539,7 @@ print(d.window_size())
 Get current app info. For some android devices, the output could be empty (see *Output example 3*)
 
 ```python
-print(d.current_app())
+print(d.app_current())
 # Output example 1: {'activity': '.Client', 'package': 'com.netease.example', 'pid': 23710}
 # Output example 2: {'activity': '.Client', 'package': 'com.netease.example'}
 # Output example 3: {'activity': None, 'package': None}
