@@ -37,6 +37,7 @@ def cmd_init(args):
 def cmd_screenshot(args):
     d = u2.connect(args.serial)
     d.screenshot().save(args.filename)
+    print("Save screenshot to %s" % args.filename)
 
 
 def cmd_identify(args):
@@ -125,6 +126,8 @@ _commands = [
          help="take device screenshot",
          flags=[
              dict(args=['filename'],
+                  nargs='?',
+                  default="screenshot.jpg",
                   type=str,
                   help="output filename, jpg or png")
          ]),

@@ -173,7 +173,7 @@ class Initer():
         if not self._device.package_info("com.github.uiautomator.test"):
             return True
         return False
-    
+
     def check_install(self):
         """
         Only check atx-agent and test apks (Do not check minicap and minitouch)
@@ -184,13 +184,13 @@ class Initer():
         d = self._device
         if d.sync.stat("/data/local/tmp/atx-agent").size == 0:
             return False
-        
+
         packages = d.list_packages()
         if 'com.github.uiautomator' not in packages:
             return False
         if 'com.github.uiautomator.test' not in packages:
             return False
-        
+
         return True
 
     def install(self, server_addr=None):
@@ -240,7 +240,7 @@ class Initer():
         logger.debug("Forward: local:tcp:%d -> remote:tcp:%d", port, 7912)
         response = requests.get("http://127.0.0.1:%d/version" % port).text
         logger.debug("atx-agent version %s", response.strip())
-    
+
     def uninstall(self):
         self._device.shell(["/data/local/tmp/atx-agent", "server", "--stop"])
         self._device.shell(["rm", "/data/local/tmp/atx-agent"])

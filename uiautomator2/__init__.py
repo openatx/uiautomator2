@@ -140,7 +140,7 @@ def connect_adb_wifi(addr):
     return connect_usb(addr)
 
 
-def connect_usb(serial=None, healthcheck=False, init=False):
+def connect_usb(serial=None, healthcheck=False, init=True):
     """
     Args:
         serial (str): android device serial
