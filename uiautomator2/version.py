@@ -2,8 +2,11 @@
 #
 
 import pkg_resources
+try:
+    __version__ = pkg_resources.get_distribution("uiautomator2").version
+except pkg_resources.DistributionNotFound:
+    __version__ = "unknown"
 
-__version__ = pkg_resources.get_distribution("uiautomator2").version
 # See ChangeLog for details
 
 __apk_version__ = '2.0.2'
@@ -27,7 +30,8 @@ __apk_version__ = '2.0.2'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__atx_agent_version__ = '0.6.2'
+__atx_agent_version__ = '0.7.0'
+# 0.7.0 add webview support, kill uiautomator if no activity in 3 minutes
 # 0.6.2 fix app_info fd leak error, update androidbinary to fix parse apk manifest err
 # 0.6.1 make dump_hierarchy more robust, add cpu,mem collect
 # 0.6.0 add /dump/hierarchy (works fine even if uiautomator is down)
