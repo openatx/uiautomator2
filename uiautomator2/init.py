@@ -102,7 +102,7 @@ class Initer():
                      or self.abi).split(",")
         self.server_addr = None
         self.logger = setup_logger(level=loglevel)
-        self.logger.info(">>> Initial device %s", device)
+        self.logger.debug("Initial device %s", device)
 
     def shell(self, *args):
         self.logger.debug("Shell: %s", args)
@@ -176,6 +176,18 @@ class Initer():
             return True
         return False
 
+    def is_atx_agent_outdate(self):
+        agent_version = self._device.shell("/data/local/tmp/atx-agent version")
+        # semver major.minor.patch
+        real_ver = map(int, agent_version.split("."))
+        want_ver = map(int, __atx_agent_version__.split("."))
+        self.logger.debug("Real version: %s, Expect version: %s", real_ver, want_ver)
+
+        if real_ver[:2] == want_ver[:2]:
+            return False
+
+        return real_ver[3] < want_ver[3]
+
     def check_install(self):
         """
         Only check atx-agent and test apks (Do not check minicap and minitouch)
@@ -185,6 +197,9 @@ class Initer():
         """
         d = self._device
         if d.sync.stat("/data/local/tmp/atx-agent").size == 0:
+            return False
+
+        if self.is_atx_agent_outdate():
             return False
 
         packages = d.list_packages()
