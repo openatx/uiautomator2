@@ -39,7 +39,7 @@ install:
 script:
   - echo "Skip test"
 notifications:
-  webhooks: https://oapi.dingtalk.com/robot/send?access_token=2c4e40992567a460167012a193253c45f84b1faba0e91ee3678d03a9c192b8f2
+  webhooks: https://oapi.dingtalk.com/robot/send?access_token=88258de495d04be65cfc365944db36f83e1986107488c83e58d2b2c90c0e7e14
 deploy:
   skip_cleanup: true
   skip_existing: true
