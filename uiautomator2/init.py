@@ -5,11 +5,12 @@ import hashlib
 import os
 import shutil
 import tarfile
+import logging
 
 import humanize
 import progress.bar
 import requests
-from logzero import logger
+from logzero import logger, setup_logger
 from retry import retry
 
 from uiautomator2.version import __apk_version__, __atx_agent_version__
@@ -33,7 +34,7 @@ class DownloadBar(progress.bar.PixelBar):
         return humanize.naturalsize(self.index, gnu=True)
 
 
-def cache_download(url, filename=None, timeout=None):
+def cache_download(url, filename=None, timeout=None, logger=logger):
     """ return downloaded filepath """
     # check cache
     if not filename:
@@ -76,22 +77,21 @@ def cache_download(url, filename=None, timeout=None):
     return storepath
 
 
-def mirror_download(url, filename: str):
+def mirror_download(url, filename: str, logger=logger):
     github_host = "https://github.com"
     if url.startswith(github_host):
         mirror_url = "https://tool.appetizer.io" + url[len(
             github_host):]  # mirror of github
         try:
-            return cache_download(mirror_url, filename, timeout=60)
+            return cache_download(mirror_url, filename, timeout=60, logger=logger)
         except requests.RequestException as e:
             logger.debug("download mirror err: %s, use origin source", e)
 
-    return cache_download(url, filename)
+    return cache_download(url, filename, logger=logger)
 
 
 class Initer():
-    def __init__(self, device):
-        logger.info(">>> Initial device %s", device)
+    def __init__(self, device, loglevel=logging.INFO):
         d = self._device = device
 
         self.sdk = d.getprop('ro.build.version.sdk')
@@ -101,9 +101,11 @@ class Initer():
         self.abis = (d.getprop('ro.product.cpu.abilist').strip()
                      or self.abi).split(",")
         self.server_addr = None
+        self.logger = setup_logger(level=loglevel)
+        self.logger.info(">>> Initial device %s", device)
 
     def shell(self, *args):
-        logger.debug("Shell: %s", args)
+        self.logger.debug("Shell: %s", args)
         return self._device.shell(args)
 
     @property
@@ -152,7 +154,7 @@ class Initer():
         ])
 
     def push_url(self, url, dest=None, mode=0o755, tgz=False, extract_name=None):  # yapf: disable
-        path = mirror_download(url, os.path.basename(url))
+        path = mirror_download(url, os.path.basename(url), logger=self.logger)
         if tgz:
             tar = tarfile.open(path, 'r:gz')
             path = os.path.join(os.path.dirname(path), extract_name)
@@ -160,7 +162,7 @@ class Initer():
         if not dest:
             dest = "/data/local/tmp/" + os.path.basename(path)
 
-        logger.debug("Push to %s:0%o", dest, mode)
+        self.logger.debug("Push to %s:0%o", dest, mode)
         self._device.sync.push(path, dest, mode=mode)
         return dest
 
@@ -194,18 +196,18 @@ class Initer():
         return True
 
     def install(self, server_addr=None):
-        logger.info("Install minicap, minitouch")
+        self.logger.info("Install minicap, minitouch")
         self.push_url(self.minitouch_url)
         if self.abi == "x86":
-            logger.info(
+            self.logger.info(
                 "abi:x86 seems to be android emulator, skip install minicap")
         elif int(self.sdk) >= 29:
-            logger.info("Android Q (sdk:29) has no minicap resource")
+            self.logger.info("Android Q (sdk:29) has no minicap resource")
         else:
             for url in self.minicap_urls:
                 self.push_url(url)
 
-        logger.info(
+        self.logger.info(
             "Install com.github.uiautomator, com.github.uiautomator.test")
 
         if self.is_apk_outdate():
@@ -215,9 +217,9 @@ class Initer():
                 path = self.push_url(url, mode=0o644)
                 self.shell("pm", "install", "-r", "-t", path)
         else:
-            logger.info("Already installed com.github.uiautomator apks")
+            self.logger.info("Already installed com.github.uiautomator apks")
 
-        logger.info("Install atx-agent")
+        self.logger.info("Install atx-agent")
         path = self.push_url(self.atx_agent_url,
                              tgz=True,
                              extract_name="atx-agent")
@@ -227,7 +229,7 @@ class Initer():
         self.shell(path, "server", "--stop")
         self.shell(*args)
 
-        logger.info("Check install")
+        self.logger.info("Check install")
         self.check_atx_agent_version()
         print("Successfully init %s" % self._device)
 
@@ -237,9 +239,9 @@ class Initer():
         tries=10)
     def check_atx_agent_version(self):
         port = self._device.forward_port(7912)
-        logger.debug("Forward: local:tcp:%d -> remote:tcp:%d", port, 7912)
+        self.logger.debug("Forward: local:tcp:%d -> remote:tcp:%d", port, 7912)
         response = requests.get("http://127.0.0.1:%d/version" % port).text
-        logger.debug("atx-agent version %s", response.strip())
+        self.logger.debug("atx-agent version %s", response.strip())
 
     def uninstall(self):
         self._device.shell(["/data/local/tmp/atx-agent", "server", "--stop"])

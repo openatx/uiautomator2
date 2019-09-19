@@ -30,7 +30,7 @@ def cmd_init(args):
         init.install(args.server)
     else:
         for device in adbutils.adb.iter_device():
-            init = Initer(device)
+            init = Initer(device, loglevel=logging.DEBUG)
             init.install(args.server)
 
 

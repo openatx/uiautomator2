@@ -162,7 +162,7 @@ def connect_usb(serial=None, healthcheck=False, init=True):
     d = connect_wifi('127.0.0.1:' + str(lport))
     d._serial = device.serial
     
-    if not d.agent_alive:
+    if not d.agent_alive or not d.alive:
         initer = Initer(device)
         if not initer.check_install():
             if not init:
