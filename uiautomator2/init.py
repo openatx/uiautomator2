@@ -179,14 +179,14 @@ class Initer():
     def is_atx_agent_outdate(self):
         agent_version = self._device.shell("/data/local/tmp/atx-agent version")
         # semver major.minor.patch
-        real_ver = map(int, agent_version.split("."))
-        want_ver = map(int, __atx_agent_version__.split("."))
+        real_ver = list(map(int, agent_version.split(".")))
+        want_ver = list(map(int, __atx_agent_version__.split(".")))
         self.logger.debug("Real version: %s, Expect version: %s", real_ver, want_ver)
 
         if real_ver[:2] == want_ver[:2]:
             return False
 
-        return real_ver[3] < want_ver[3]
+        return real_ver[2] < want_ver[2]
 
     def check_install(self):
         """
@@ -273,5 +273,5 @@ if __name__ == "__main__":
 
     serial = None
     device = adbutils.adb.device(serial)
-    init = Initer(device)
-    init.install('http://xxx')
+    init = Initer(device, loglevel=logging.DEBUG)
+    print(init.check_install())
