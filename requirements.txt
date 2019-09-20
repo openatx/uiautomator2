@@ -5,7 +5,7 @@ whichcraft
 logzero~=1.5
 progress~=1.3
 retry~=0.9
-adbutils~=0.5.1
+adbutils>=0.5.2,<1.0
 Deprecated~=1.2.6
 Pillow # not support in QPython
 lxml>=4.3 # not support in QPython
