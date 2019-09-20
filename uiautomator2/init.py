@@ -179,8 +179,12 @@ class Initer():
     def is_atx_agent_outdate(self):
         agent_version = self._device.shell("/data/local/tmp/atx-agent version")
         # semver major.minor.patch
-        real_ver = list(map(int, agent_version.split(".")))
-        want_ver = list(map(int, __atx_agent_version__.split(".")))
+        try:
+            real_ver = list(map(int, agent_version.split(".")))
+            want_ver = list(map(int, __atx_agent_version__.split(".")))
+        except ValueError:
+            return True
+
         self.logger.debug("Real version: %s, Expect version: %s", real_ver, want_ver)
 
         if real_ver[:2] == want_ver[:2]:
@@ -223,7 +227,7 @@ class Initer():
                 self.push_url(url)
 
         self.logger.info(
-            "Install com.github.uiautomator, com.github.uiautomator.test")
+            "Install com.github.uiautomator, com.github.uiautomator.test %s", __apk_version__)
 
         if self.is_apk_outdate():
             self.shell("pm", "uninstall", "com.github.uiautomator")
@@ -234,7 +238,7 @@ class Initer():
         else:
             self.logger.info("Already installed com.github.uiautomator apks")
 
-        self.logger.info("Install atx-agent")
+        self.logger.info("Install atx-agent %s", __atx_agent_version__)
         path = self.push_url(self.atx_agent_url,
                              tgz=True,
                              extract_name="atx-agent")
