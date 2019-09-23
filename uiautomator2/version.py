@@ -9,7 +9,8 @@ except pkg_resources.DistributionNotFound:
 
 # See ChangeLog for details
 
-__apk_version__ = '2.0.2'
+__apk_version__ = '2.0.3'
+# 2.0.3 use android.app.Service instead of android.app.intentService to simpfy logic
 # 2.0.2 fix error: AndroidQ Service must be explicit
 # 2.0.1 fix AndroidQ support
 # 2.0.0 remove runWatchersOnWndowsChange, add setToastListener(bool), add floatWindow
