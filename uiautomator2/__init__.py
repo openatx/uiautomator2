@@ -42,6 +42,7 @@ from urllib3.util.retry import Retry
 
 import adbutils
 from deprecated import deprecated
+from logzero import logger
 
 from . import xpath
 from .exceptions import (BaseError, ConnectError, GatewayError, JsonRpcError,
@@ -67,8 +68,8 @@ class _ProgressBar(progress.bar.Bar):
 
     @property
     def speed(self):
-        return humanize.naturalsize(
-            self.elapsed and self.index / self.elapsed, gnu=True) + '/s'
+        return humanize.naturalsize(self.elapsed and self.index / self.elapsed,
+                                    gnu=True) + '/s'
 
 
 def log_print(s):
@@ -77,20 +78,20 @@ def log_print(s):
           " " + s)
 
 
-def fix_wifi_addr(addr:str) -> Optional[str]:
+def fix_wifi_addr(addr: str) -> Optional[str]:
     if not addr:
         return None
-    if re.match(r"^https?://", addr): # eg: http://example.org
+    if re.match(r"^https?://", addr):  # eg: http://example.org
         return addr
-    
+
     # make a request
     # eg: 10.0.0.1, 10.0.0.1:7912
     if ':' not in addr:
-        addr += ":7912" # make default port 7912
+        addr += ":7912"  # make default port 7912
     try:
-        r = requests.get("http://"+addr+"/version", timeout=2)
+        r = requests.get("http://" + addr + "/version", timeout=2)
         r.raise_for_status()
-        return "http://"+addr
+        return "http://" + addr
     except:
         return None
 
@@ -120,6 +121,7 @@ def connect(addr=None):
         return connect_wifi(addr)
     return connect_usb(addr)
 
+
 def connect_adb_wifi(addr):
     """
     Run adb connect, and then call connect_usb(..)
@@ -134,7 +136,8 @@ def connect_adb_wifi(addr):
 
     subprocess.call([adbutils.adb_path(), "connect", addr])
     try:
-        subprocess.call([adbutils.adb_path(), "-s", addr, "wait-for-device"], timeout=2)
+        subprocess.call([adbutils.adb_path(), "-s", addr, "wait-for-device"],
+                        timeout=2)
     except subprocess.TimeoutExpired:
         raise ConnectError("Fail execute", "adb connect " + addr)
     return connect_usb(addr)
@@ -161,17 +164,20 @@ def connect_usb(serial=None, healthcheck=False, init=True):
     lport = device.forward_port(7912)
     d = connect_wifi('127.0.0.1:' + str(lport))
     d._serial = device.serial
-    
+
     if not d.agent_alive or not d.alive:
         initer = Initer(device)
         if not initer.check_install():
             if not init:
-                raise RuntimeError("Device need to be init with command: uiautomator2 init -s " + device.serial)
-            initer.install() # same as run cli: uiautomator2 init
+                raise RuntimeError(
+                    "Device need to be init with command: uiautomator2 init -s "
+                    + device.serial)
+            initer.install()  # same as run cli: uiautomator2 init
         else:
             warnings.warn("start atx-agent ...", RuntimeWarning)
             # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
-            device.shell(["/data/local/tmp/atx-agent", "server", "--nouia", "-d"])
+            device.shell(
+                ["/data/local/tmp/atx-agent", "server", "--nouia", "-d"])
             deadline = time.time() + 3
             while time.time() < deadline:
                 if d.agent_alive:
@@ -181,11 +187,12 @@ def connect_usb(serial=None, healthcheck=False, init=True):
 
     if healthcheck:
         if not d.alive:
-            warnings.warn("start uiautomator2 ...",RuntimeWarning)
+            warnings.warn("start uiautomator2 ...", RuntimeWarning)
             d.healthcheck()
     return d
 
-def connect_wifi(addr:str) -> "Device":
+
+def connect_wifi(addr: str) -> "Device":
     """
     Args:
         addr (str) uiautomator server address.
@@ -203,7 +210,7 @@ def connect_wifi(addr:str) -> "Device":
         addr = "http://" + addr
     # fixed_addr = fix_wifi_addr(addr)
     # if fixed_addr is None:
-        # raise ConnectError("addr is invalid or atx-agent is not running", addr)
+    # raise ConnectError("addr is invalid or atx-agent is not running", addr)
     u = urlparse.urlparse(addr)
     host = u.hostname
     port = u.port or 7912
@@ -232,10 +239,10 @@ class TimeoutRequestsSession(requests.Session):
             print(
                 datetime.now().strftime("%H:%M:%S.%f")[:-3],
                 "$ curl -X {method} -d '{data}' '{url}'".format(
-                    method=method, url=url, data=data))
+                    method=method, url=url, data=data)) # yaml: disable
         try:
-            resp = super(TimeoutRequestsSession, self).request(
-                method, url, **kwargs)
+            resp = super(TimeoutRequestsSession,
+                         self).request(method, url, **kwargs)
         except requests.ConnectionError as e:
             # High possibly atx-agent is down
             raise
@@ -243,9 +250,9 @@ class TimeoutRequestsSession(requests.Session):
             if verbose:
                 print(
                     datetime.now().strftime("%H:%M:%S.%f")[:-3],
-                    "Response (%d ms) >>>\n" % (
-                        (time.time() - time_start) * 1000) +
-                    resp.text.rstrip() + "\n<<< END")
+                    "Response (%d ms) >>>\n" %
+                    ((time.time() - time_start) * 1000) + resp.text.rstrip() +
+                    "\n<<< END")
             return resp
 
 
@@ -298,8 +305,11 @@ class Device(object):
         self._server_jsonrpc_url = self._server_url + "/jsonrpc/0"
         self._default_session = Session(self, None)
         self._cached_plugins = {}
-        self.__devinfo = None
         self._hooks = {}
+
+        self.__devinfo = None
+        self.__uiautomator_failed = False
+
         self.platform = None  # hot fix for weditor
 
         self.ash = AdbShell(self.shell)  # the powerful adb shell
@@ -330,14 +340,13 @@ class Device(object):
     def _atx_agent_check(self):
         """ check atx-agent health status and version """
         try:
-            version = self._reqsess.get(
-                self.path2url('/version'), timeout=5).text
+            version = self._reqsess.get(self.path2url('/version'),
+                                        timeout=5).text
             if version != __atx_agent_version__:
-                warnings.warn(
-                    'Version dismatch, expect "%s" actually "%s"' %
-                    (__atx_agent_version__, version),
-                    Warning,
-                    stacklevel=2)
+                warnings.warn('Version dismatch, expect "%s" actually "%s"' %
+                              (__atx_agent_version__, version),
+                              Warning,
+                              stacklevel=2)
             # Cancel bellow code to make connect() return faster.
             # launch service to prevent uiautomator killed by Android system
             # self.adb_shell('am', 'startservice', '-n', 'com.github.uiautomator/.Service')
@@ -362,7 +371,7 @@ class Device(object):
     @property
     def address(self):
         return f"http://{self._host}:{self._port}"
-        
+
     @property
     def jsonrpc(self):
         """
@@ -424,8 +433,17 @@ class Device(object):
 
         return JSONRpcWrapper(self)
 
+    @retry((EnvironmentError, GatewayError, UiAutomationNotConnectedError,
+            NullObjectExceptionError, NullPointerExceptionError,
+            StaleObjectExceptionError),
+           delay=3.0,
+           jitter=0.5,
+           tries=3)
     def jsonrpc_retry_call(self, *args,
                            **kwargs):  # method, params=[], http_timeout=60):
+        if self.__uiautomator_failed:
+            self.reset_uiautomator()
+
         try:
             return self.jsonrpc_call(*args, **kwargs)
         except (GatewayError, ):
@@ -433,16 +451,15 @@ class Device(object):
                 "uiautomator2 is not reponding, restart uiautomator2 automatically",
                 RuntimeWarning,
                 stacklevel=1)
-            # for XiaoMi, want to recover uiautomator2 must start app:com.github.uiautomator
-            self.reset_uiautomator()
-            return self.jsonrpc_call(*args, **kwargs)
+            self.__uiautomator_failed = True
+            raise
         except UiAutomationNotConnectedError:
-            warnings.warn(
-                "UiAutomation not connected, restart uiautoamtor",
-                RuntimeWarning,
-                stacklevel=1)
-            self.reset_uiautomator()
-            return self.jsonrpc_call(*args, **kwargs)
+            logger.debug("UiAutomation not connected, restart uiautomator")
+            # warnings.warn("UiAutomation not connected, restart uiautoamtor",
+            #               RuntimeWarning,
+            #               stacklevel=1)
+            self.__uiautomator_failed = True
+            raise
         except (NullObjectExceptionError, NullPointerExceptionError,
                 StaleObjectExceptionError) as e:
             if args[1] != 'dumpWindowHierarchy':  # args[1] method
@@ -531,17 +548,17 @@ class Device(object):
             r = self._reqsess.get(self.path2url('/ping'), timeout=2)
             if r.status_code != 200:
                 return False
-            r = self._reqsess.post(
-                self.path2url('/jsonrpc/0'),
-                data=json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "deviceInfo"
-                }),
-                timeout=2)
+            r = self._reqsess.post(self.path2url('/jsonrpc/0'),
+                                   data=json.dumps({
+                                       "jsonrpc": "2.0",
+                                       "id": 1,
+                                       "method": "deviceInfo"
+                                   }),
+                                   timeout=2)
             if r.status_code != 200:
                 return False
             if r.json().get('error'):
+                # logger.debug("alive error:", r.json().get('error'))
                 return False
             return True
         except requests.exceptions.ReadTimeout:
@@ -572,14 +589,14 @@ class Device(object):
                 res = u2obj._reqsess.delete(u2obj.path2url('/uiautomator'))
                 if res.status_code != 200:
                     warnings.warn(res.text)
-            
+
             def running(self) -> bool:
                 res = u2obj._reqsess.get(u2obj.path2url("/uiautomator"))
                 res.raise_for_status()
                 return res.json().get("running")
 
         return _Service(name)
-    
+
     @property
     def uiautomator(self):
         return self.service("uiautomator")
@@ -601,8 +618,9 @@ class Device(object):
         """
         brand = self.shell("getprop ro.product.brand").output.strip()
         print("Product-brand:", brand)
-        self.uiautomator.stop() # stop uiautomator keeper first
+        # self.uiautomator.stop()  # stop uiautomator keeper first
         self.app_stop("com.github.uiautomator")
+        # self.shell('am startservice -n com.github.uiautomator/.Service')
 
         if brand.lower() == "oneplus":
             self.app_start("com.github.uiautomator", launch_timeout=10)
@@ -615,9 +633,9 @@ class Device(object):
         # wait until uiautomator2 service working
         deadline = time.time() + 20.0
         while time.time() < deadline:
-            print(
-                time.strftime("[%Y-%m-%d %H:%M:%S]"),
-                "uiautomator is starting ...")
+            # print(time.strftime("[%Y-%m-%d %H:%M:%S]"),
+            #       "uiautomator is starting ...")
+            logger.debug("uiautomator is starting ...")
             if not self.uiautomator.running():
                 break
             if self.alive:
@@ -634,9 +652,12 @@ class Device(object):
                     time.sleep(.5)
                     self.shell(['input', 'keyevent', 'BACK'])
                 print("uiautomator back to normal")
+                self.__uiautomator_failed = False
                 return True
             time.sleep(1)
-        raise RuntimeError(
+
+        self.uiautomator.stop()
+        raise EnvironmentError(
             "Uiautomator started failed. Find solutions in https://github.com/openatx/uiautomator2/wiki/Common-issues"
         )
 
@@ -701,9 +722,9 @@ class Device(object):
                     if hasattr(sys.stdout, 'isatty'):
                         if sys.stdout.isatty():
                             if not bar:
-                                bar = _ProgressBar(
-                                    time.strftime('%H:%M:%S') + ' downloading',
-                                    max=pg['totalSize'])
+                                bar = _ProgressBar(time.strftime('%H:%M:%S') +
+                                                   ' downloading',
+                                                   max=pg['totalSize'])
                             written = pg['copiedSize']
                             bar.next(written - bar.index)
                         else:
@@ -760,17 +781,16 @@ class Device(object):
         if isinstance(cmdargs, (list, tuple)):
             cmdargs = list2cmdline(cmdargs)
         if stream:
-            return self._reqsess.get(
-                self.path2url("/shell/stream"),
-                params={"command": cmdargs},
-                timeout=None,
-                stream=True)
-        ret = self._reqsess.post(
-            self.path2url('/shell'),
-            data={
-                'command': cmdargs,
-                'timeout': str(timeout)
-            }, timeout=timeout+10)
+            return self._reqsess.get(self.path2url("/shell/stream"),
+                                     params={"command": cmdargs},
+                                     timeout=None,
+                                     stream=True)
+        ret = self._reqsess.post(self.path2url('/shell'),
+                                 data={
+                                     'command': cmdargs,
+                                     'timeout': str(timeout)
+                                 },
+                                 timeout=timeout + 10)
         if ret.status_code != 200:
             raise RuntimeError(
                 "device agent responds with an error code %d" %
@@ -803,7 +823,9 @@ class Device(object):
                   extras={},
                   wait=False,
                   stop=False,
-                  unlock=False, launch_timeout=None, use_monkey=False):
+                  unlock=False,
+                  launch_timeout=None,
+                  use_monkey=False):
         """ Launch application
         Args:
             package_name (str): package name
@@ -829,7 +851,7 @@ class Device(object):
             if wait:
                 self.app_wait(package_name)
             return
-        
+
         if not activity:
             info = self.app_info(package_name)
             activity = info['mainActivity']
@@ -863,7 +885,7 @@ class Device(object):
 
         if wait:
             self.app_wait(package_name)
-        
+
     @deprecated(version="2.0.0", reason="You should use app_current instead")
     def current_app(self):
         return self.app_current()
@@ -893,8 +915,8 @@ class Device(object):
         )
         m = _focusedRE.search(self.shell(['dumpsys', 'window', 'windows'])[0])
         if m:
-            return dict(
-                package=m.group('package'), activity=m.group('activity'))
+            return dict(package=m.group('package'),
+                        activity=m.group('activity'))
 
         # try: adb shell dumpsys activity top
         _activityRE = re.compile(
@@ -904,10 +926,9 @@ class Device(object):
         ms = _activityRE.finditer(output)
         ret = None
         for m in ms:
-            ret = dict(
-                package=m.group('package'),
-                activity=m.group('activity'),
-                pid=int(m.group('pid')))
+            ret = dict(package=m.group('package'),
+                       activity=m.group('activity'),
+                       pid=int(m.group('pid')))
         if ret:  # get last result
             return ret
         raise EnvironmentError("Couldn't get focused app")
@@ -929,7 +950,8 @@ class Device(object):
             time.sleep(.5)
         return False
 
-    def app_wait(self, package_name: str, timeout:float = 20.0, front=False) -> int:
+    def app_wait(self, package_name: str, timeout: float = 20.0,
+                 front=False) -> int:
         """ Wait until app launched
         Args:
             package_name (str): package name
@@ -977,7 +999,8 @@ class Device(object):
             a list of killed apps
         """
         our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
-        kill_pkgs = set(self.app_list_running()).difference(our_apps + excludes)
+        kill_pkgs = set(self.app_list_running()).difference(our_apps +
+                                                            excludes)
         for pkg_name in kill_pkgs:
             self.app_stop(pkg_name)
         return list(kill_pkgs)
@@ -1045,13 +1068,12 @@ class Device(object):
             FileNotFoundError(py3) OSError(py2)
         """
         modestr = oct(mode).replace('o', '')
-        r = self._reqsess.post(
-            self.path2url('/download'),
-            data={
-                'url': url,
-                'filepath': dst,
-                'mode': modestr
-            })
+        r = self._reqsess.post(self.path2url('/download'),
+                               data={
+                                   'url': url,
+                                   'filepath': dst,
+                                   'mode': modestr
+                               })
         if r.status_code != 200:
             raise IOError("push-url", "%s -> %s" % (url, dst), r.text)
         key = r.text.strip()
@@ -1097,8 +1119,9 @@ class Device(object):
         pathname = self.path2url('/upload/' + dst.lstrip('/'))
         if isinstance(src, six.string_types):
             src = open(src, 'rb')
-        r = self._reqsess.post(
-            pathname, data={'mode': modestr}, files={'file': src})
+        r = self._reqsess.post(pathname,
+                               data={'mode': modestr},
+                               files={'file': src})
         if r.status_code == 200:
             return r.json()
         raise IOError("push", "%s -> %s" % (src, dst), r.text)
@@ -1118,8 +1141,8 @@ class Device(object):
             raise FileNotFoundError("pull", src, r.text)
         with open(dst, 'wb') as f:
             shutil.copyfileobj(r.raw, f)
-        
-    def pull_content(self, src:str) -> bytes:
+
+    def pull_content(self, src: str) -> bytes:
         """
         Read remote file content
 
@@ -1135,7 +1158,7 @@ class Device(object):
     @property
     def screenshot_uri(self):
         return 'http://%s:%d/screenshot/0' % (self._host, self._port)
-    
+
     def screenshot(self, *args, **kwargs):
         """
         Take screenshot of device
@@ -1218,7 +1241,11 @@ class Device(object):
         else:
             self.jsonrpc.setAccessibilityPatterns({})
 
-    def session(self, pkg_name=None, attach=False, launch_timeout=None, strict=False):
+    def session(self,
+                pkg_name=None,
+                attach=False,
+                launch_timeout=None,
+                strict=False):
         """
         Create a new session
 
@@ -1239,8 +1266,8 @@ class Device(object):
             request_data = {"flags": "-S"}
             if launch_timeout:
                 request_data["timeout"] = str(launch_timeout)
-            resp = self._reqsess.post(
-                self.path2url("/session/" + pkg_name), data=request_data)
+            resp = self._reqsess.post(self.path2url("/session/" + pkg_name),
+                                      data=request_data)
             if resp.status_code == 410:  # Gone
                 raise SessionBrokenError(pkg_name, resp.text)
             resp.raise_for_status()
@@ -1254,7 +1281,9 @@ class Device(object):
         if not pid:
             if strict:
                 raise SessionBrokenError(pkg_name)
-            return self.session(pkg_name, attach=False, launch_timeout=launch_timeout)
+            return self.session(pkg_name,
+                                attach=False,
+                                launch_timeout=launch_timeout)
 
         return Session(self, pkg_name, pid)
 
@@ -1273,8 +1302,8 @@ class Device(object):
                     import uiautomator2.xpath as xpath
                     xpath.init()
                 else:
-                    raise ValueError(
-                        "plugin \"%s\" not registed" % plugin_name)
+                    raise ValueError("plugin \"%s\" not registed" %
+                                     plugin_name)
             func, args, kwargs = self.__plugins[plugin_name]
             obj = functools.partial(func, self)(*args, **kwargs)
             self._cached_plugins[attr] = obj
@@ -1283,8 +1312,7 @@ class Device(object):
             return getattr(self._default_session, attr)
         except AttributeError:
             raise AttributeError(
-                "'Session or Device' object has no attribute '%s'" %
-                attr)
+                "'Session or Device' object has no attribute '%s'" % attr)
 
     def __call__(self, **kwargs) -> Session:
         return self._default_session(**kwargs)
@@ -1337,4 +1365,4 @@ class AdbShell(object):
         self.shell("input swipe %d %d %d %d" % (x0, y0, x1, y1))
 
 
-UIAutomatorServer = Device # Deprecated UIAutomatorServer
+UIAutomatorServer = Device  # Deprecated UIAutomatorServer

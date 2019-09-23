@@ -9,7 +9,9 @@ import json
 import re
 import threading
 import time
+import inspect
 
+from logzero import setup_logger
 from logzero import logger
 from PIL import Image
 
@@ -93,6 +95,8 @@ class XPath(object):
         self._watch_stop_event = threading.Event()
         self._watch_stopped = threading.Event()
         self._dump_lock = threading.Lock()
+        
+        self.logger = setup_logger()
 
     def global_set(self, key, value):  #dicts):
         valid_keys = {
@@ -117,14 +121,14 @@ class XPath(object):
 
     def send_click(self, x, y):
         if self._click_before_delay:
-            logger.debug("click before delay %.1f seconds",
+            self.logger.debug("click before delay %.1f seconds",
                          self._click_after_delay)
             time.sleep(self._click_before_delay)
 
         self._d.click(x, y)
 
         if self._click_after_delay:
-            logger.debug("click after delay %.1f seconds",
+            self.logger.debug("click after delay %.1f seconds",
                          self._click_after_delay)
             time.sleep(self._click_after_delay)
 
@@ -173,8 +177,24 @@ class XPath(object):
         for h in self._watchers:
             selector = self(h['xpath'], source)
             if selector.exists:
-                logger.info("XPath(hook) %s", h['xpath'])
-                h['callback'](selector)
+                self.logger.info("XPath(hook) %s", h['xpath'])
+                cb = h['callback']
+                defaults = {
+                    "selector": selector,
+                    "d": self._d,
+                    "source": source,
+                }
+                st = inspect.signature(cb)
+                kwargs = {
+                    key: defaults[key]
+                    for key in st.parameters.keys() if key in defaults
+                }
+                ba = st.bind(**kwargs)
+                ba.apply_defaults()
+                try:
+                    cb(*ba.args, **ba.kwargs)
+                except Exception as e:
+                    self.logger.warning("watchers exception: %s", e)
                 return True
         return False
 
@@ -226,7 +246,7 @@ class XPath(object):
             TimeoutException
         """
         timeout = timeout or self._timeout
-        logger.info("XPath(timeout %.1f) %s", timeout, xpath)
+        self.logger.info("XPath(timeout %.1f) %s", timeout, xpath)
 
         deadline = time.time() + timeout
         while True:
@@ -294,6 +314,8 @@ class XPathSelector(object):
         self._source = source
         self._last_source = None
         self._watchers = []
+        
+        self.logger = parent.logger
 
     @property
     def _global_timeout(self):
@@ -383,7 +405,7 @@ class XPathSelector(object):
 
     def click_nowait(self):
         x, y = self.all()[0].center()
-        logger.info("click %d, %d", x, y)
+        self.logger.info("click %d, %d", x, y)
         self._parent.send_click(x, y)
 
     def click(self, watch=True, timeout=None):
@@ -477,6 +499,14 @@ class XMLElement(object):
         else:
             raise RuntimeError("Unknown direction:", direction)
 
+    def percent_size(self):
+        """ Returns:
+                (float, float): eg, (0.5, 0.5) means 50%, 50%
+        """
+        ww, wh = self._parent._d.window_size()
+        _, _, w, h = self.rect
+        return (w/ww, wh/h)
+        
     @property
     def bounds(self):
         """
