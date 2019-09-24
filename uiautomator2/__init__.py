@@ -617,9 +617,9 @@ class Device(object):
                 5. uiautomator will go back to normal
         """
         brand = self.shell("getprop ro.product.brand").output.strip()
-        print("Product-brand:", brand)
+        logger.debug("Product-brand: %s", brand)
         # self.uiautomator.stop()  # stop uiautomator keeper first
-        self.app_stop("com.github.uiautomator")
+        # self.app_stop("com.github.uiautomator")
         # self.shell('am startservice -n com.github.uiautomator/.Service')
 
         if brand.lower() == "oneplus":
@@ -651,7 +651,7 @@ class Device(object):
                 else:
                     time.sleep(.5)
                     self.shell(['input', 'keyevent', 'BACK'])
-                print("uiautomator back to normal")
+                logger.info("uiautomator back to normal")
                 self.__uiautomator_failed = False
                 return True
             time.sleep(1)

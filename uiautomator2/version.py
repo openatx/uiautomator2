@@ -31,7 +31,8 @@ __apk_version__ = '2.0.3'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__atx_agent_version__ = '0.7.0'
+__atx_agent_version__ = '0.7.1'
+# 0.7.1 fix UIAutomation not connected error.
 # 0.7.0 add webview support, kill uiautomator if no activity in 3 minutes
 # 0.6.2 fix app_info fd leak error, update androidbinary to fix parse apk manifest err
 # 0.6.1 make dump_hierarchy more robust, add cpu,mem collect
