@@ -253,6 +253,14 @@ class TimeoutRequestsSession(requests.Session):
                     "Response (%d ms) >>>\n" %
                     ((time.time() - time_start) * 1000) + resp.text.rstrip() +
                     "\n<<< END")
+            
+            from types import MethodType
+
+            def raise_for_status(_self):
+                if _self.status_code != 200:
+                    raise requests.HTTPError(_self.status_code, _self.text)
+            
+            resp.raise_for_status = MethodType(raise_for_status, resp)
             return resp
 
 
