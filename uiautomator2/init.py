@@ -64,7 +64,7 @@ def cache_download(url, filename=None, timeout=None, logger=logger):
 
     file_size = int(r.headers.get("Content-Length"))
     bar = DownloadBar(filename, max=file_size)
-    with open(storepath + '.tmp', 'wb') as f:
+    with open(storepath + '.part', 'wb') as f:
         chunk_length = 16 * 1024
         while 1:
             buf = r.raw.read(chunk_length)
@@ -73,7 +73,9 @@ def cache_download(url, filename=None, timeout=None, logger=logger):
             f.write(buf)
             bar.next(len(buf))
         bar.finish()
-    shutil.move(storepath + '.tmp', storepath)
+    
+    assert file_size == os.path.getsize(storepath+".part")
+    shutil.move(storepath + '.part', storepath)
     return storepath
 
 
