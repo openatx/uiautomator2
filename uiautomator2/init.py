@@ -189,8 +189,8 @@ class Initer():
 
         self.logger.debug("Real version: %s, Expect version: %s", real_ver, want_ver)
 
-        if real_ver[:2] == want_ver[:2]:
-            return False
+        if real_ver[:2] != want_ver[:2]:
+            return True
 
         return real_ver[2] < want_ver[2]
 
