@@ -10,6 +10,7 @@ import re
 import threading
 import time
 import inspect
+from types import ModuleType
 
 from logzero import setup_logger
 from logzero import logger
@@ -95,7 +96,8 @@ class XPath(object):
         self._watch_stop_event = threading.Event()
         self._watch_stopped = threading.Event()
         self._dump_lock = threading.Lock()
-        
+        self._watch_running = False
+
         self.logger = setup_logger()
 
     def global_set(self, key, value):  #dicts):
@@ -147,18 +149,21 @@ class XPath(object):
     def match(self, xpath, source=None):
         return len(self(xpath, source).all()) > 0
 
-    def when(self, xpath: str):
+    def when(self, xquery: str):
         obj = self
 
         def _click(selector):
             selector.get_last_match().click()
 
         class _Watcher():
+            def __init__(self, xquery):
+                self._xqueries = [xquery]
+
+            def when(self, xquery: str):
+                self._xqueries.append(xquery)
+
             def click(self):
-                obj._watchers.append({
-                    "xpath": xpath,
-                    "callback": _click,
-                })
+                self.call(_click)
 
             def call(self, func):
                 """
@@ -166,21 +171,70 @@ class XPath(object):
                     func: accept only one argument "selector"
                 """
                 obj._watchers.append({
-                    "xpath": xpath,
+                    "xqueries": self._xqueries,
                     "callback": func,
                 })
 
-        return _Watcher()
+        return _Watcher(xquery)
+
+    def apply_watch_from_yaml(self, data):
+        """
+        Examples of argument data
+
+            ---
+            - when: "@com.example.app/popup"
+            then: >
+                def callback(d):
+                    d.click(0.5, 0.5)
+            - when: 继续
+            then: click
+        """
+        try:
+            import yaml
+        except ImportError:
+            self.logger.warning("missing lib pyyaml")
+
+        data = yaml.load(data, Loader=yaml.SafeLoader)
+        for item in data:
+            when, then = item['when'], item['then']
+
+            trigger = lambda: None
+            if then == 'click':
+                trigger = lambda selector: selector.get_last_match().click()
+                trigger.__doc__ = "click"
+            elif then.lstrip().startswith("def callback"):
+                mod = ModuleType("_inner_module")
+                exec(then, mod.__dict__)
+                trigger = mod.callback
+                trigger.__doc__ = then
+                trigger = lambda d: d.xpath("Alarm").click()
+            else:
+                self.logger.warning("Unknown then: %r", then)
+
+            self.logger.debug("When: %r, Trigger: %r", when, trigger.__doc__)
+            self.when(when).call(trigger)
 
     def run_watchers(self, source=None):
+        self._watch_running = True
+        try:
+            self._exec_watchers(source=source)
+        finally:
+            self._watch_running = False
+
+    def _exec_watchers(self, source=None):
         source = source or self.dump_hierarchy()
         for h in self._watchers:
-            selector = self(h['xpath'], source)
-            if selector.exists:
-                self.logger.info("XPath(hook) %s", h['xpath'])
+            last_selector = None
+            for xquery in h['xqueries']:
+                last_selector = self(xquery, source)
+                if not last_selector.exists:
+                    last_selector = None
+                    break
+            if last_selector:
+                self.logger.info("XPath(hook) %s", h['xqueries'])
                 cb = h['callback']
                 defaults = {
-                    "selector": selector,
+                    "selector": last_selector,
                     "d": self._d,
                     "source": source,
                 }
@@ -235,7 +289,7 @@ class XPath(object):
             left_time = max(0, deadline - time.time())
             time.sleep(min(0.5, left_time))
 
-    def click(self, xpath, source=None, watch=True, timeout=None):
+    def click(self, xpath, source=None, watch=None, timeout=None):
         """
         Args:
             xpath (str): xpath string
@@ -247,6 +301,9 @@ class XPath(object):
         """
         timeout = timeout or self._timeout
         self.logger.info("XPath(timeout %.1f) %s", timeout, xpath)
+
+        if watch is None:
+            watch = not self._watch_running
 
         deadline = time.time() + timeout
         while True:
@@ -408,7 +465,7 @@ class XPathSelector(object):
         self.logger.info("click %d, %d", x, y)
         self._parent.send_click(x, y)
 
-    def click(self, watch=True, timeout=None):
+    def click(self, watch=None, timeout=None):
         """
         Args:
             watch (bool): click popup element before real operation

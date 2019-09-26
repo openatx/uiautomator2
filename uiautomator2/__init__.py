@@ -173,7 +173,7 @@ def connect_usb(serial=None, healthcheck=False, init=True):
                     "Device need to be init with command: uiautomator2 init -s "
                     + device.serial)
             initer.install()  # same as run cli: uiautomator2 init
-        else:
+        elif not d.agent_alive:
             warnings.warn("start atx-agent ...", RuntimeWarning)
             # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
             device.shell(
@@ -372,9 +372,8 @@ class Device(object):
 
     @property
     def serial(self):
-        if self._serial:
-            return self._serial
-        return self.shell(['getprop', 'ro.serialno'])[0].strip()
+        return self._serial
+        #return self.shell(['getprop', 'ro.serialno'])[0].strip()
 
     @property
     def address(self):
