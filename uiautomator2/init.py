@@ -2,17 +2,16 @@
 #
 
 import hashlib
+import logging
 import os
 import shutil
 import tarfile
-import logging
 
 import humanize
 import progress.bar
 import requests
 from logzero import logger, setup_logger
 from retry import retry
-
 from uiautomator2.version import __apk_version__, __atx_agent_version__
 
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
@@ -73,8 +72,8 @@ def cache_download(url, filename=None, timeout=None, logger=logger):
             f.write(buf)
             bar.next(len(buf))
         bar.finish()
-    
-    assert file_size == os.path.getsize(storepath+".part")
+
+    assert file_size == os.path.getsize(storepath + ".part")
     shutil.move(storepath + '.part', storepath)
     return storepath
 
@@ -85,7 +84,10 @@ def mirror_download(url, filename: str, logger=logger):
         mirror_url = "https://tool.appetizer.io" + url[len(
             github_host):]  # mirror of github
         try:
-            return cache_download(mirror_url, filename, timeout=60, logger=logger)
+            return cache_download(mirror_url,
+                                  filename,
+                                  timeout=60,
+                                  logger=logger)
         except requests.RequestException as e:
             logger.debug("download mirror err: %s, use origin source", e)
 
@@ -187,7 +189,8 @@ class Initer():
         except ValueError:
             return True
 
-        self.logger.debug("Real version: %s, Expect version: %s", real_ver, want_ver)
+        self.logger.debug("Real version: %s, Expect version: %s", real_ver,
+                          want_ver)
 
         if real_ver[:2] != want_ver[:2]:
             return True
@@ -229,14 +232,24 @@ class Initer():
                 self.push_url(url)
 
         self.logger.info(
-            "Install com.github.uiautomator, com.github.uiautomator.test %s", __apk_version__)
+            "Install com.github.uiautomator, com.github.uiautomator.test %s",
+            __apk_version__)
 
         if self.is_apk_outdate():
             self.shell("pm", "uninstall", "com.github.uiautomator")
             self.shell("pm", "uninstall", "com.github.uiautomator.test")
             for url in self.apk_urls:
                 path = self.push_url(url, mode=0o644)
-                self.shell("pm", "install", "-r", "-t", path)
+                package_name = "com.github.uiautomator.test" if "test.apk" in url else "com.github.uiautomator"
+                if os.getenv("TMQ"):
+                    # used inside TMQ platform
+                    self.shell(
+                        "CLASSPATH=/sdcard/tmq.jar", "exec", "app_process",
+                        "/system/bin",
+                        "com.android.commands.monkey.other.InstallCommand",
+                        "-r", "-v", "-p", package_name, path)
+                else:
+                    self.shell("pm", "install", "-r", "-t", path)
         else:
             self.logger.info("Already installed com.github.uiautomator apks")
 
