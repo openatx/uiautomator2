@@ -1,12 +1,12 @@
 # coding: utf-8
 #
 
-import six
 import functools
+import shlex
+from typing import Union
 
-from uiautomator2.exceptions import (
-    SessionBrokenError,
-    UiObjectNotFoundError)
+import six
+from uiautomator2.exceptions import SessionBrokenError, UiObjectNotFoundError
 
 
 def U(x):
@@ -107,3 +107,7 @@ class Exists(object):
 
     def __repr__(self):
         return str(bool(self))
+
+
+def list2cmdline(args: Union[list, tuple]):
+    return ' '.join(list(map(shlex.quote, args)))

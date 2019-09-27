@@ -29,7 +29,6 @@ import time
 import warnings
 from collections import namedtuple
 from datetime import datetime
-from subprocess import list2cmdline
 from typing import Optional
 
 import humanize
@@ -45,6 +44,7 @@ from deprecated import deprecated
 from logzero import logger
 
 from . import xpath
+from .utils import list2cmdline
 from .exceptions import (BaseError, ConnectError, GatewayError, JsonRpcError,
                          NullObjectExceptionError, NullPointerExceptionError,
                          SessionBrokenError, StaleObjectExceptionError,
@@ -173,7 +173,7 @@ def connect_usb(serial=None, healthcheck=False, init=True):
                     "Device need to be init with command: uiautomator2 init -s "
                     + device.serial)
             initer.install()  # same as run cli: uiautomator2 init
-        else:
+        elif not d.agent_alive:
             warnings.warn("start atx-agent ...", RuntimeWarning)
             # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
             device.shell(
@@ -372,9 +372,8 @@ class Device(object):
 
     @property
     def serial(self):
-        if self._serial:
-            return self._serial
-        return self.shell(['getprop', 'ro.serialno'])[0].strip()
+        return self._serial
+        #return self.shell(['getprop', 'ro.serialno'])[0].strip()
 
     @property
     def address(self):
@@ -786,16 +785,15 @@ class Device(object):
         For atx-agent is not support return exit code now.
         When command got something wrong, exit_code is always 1, otherwise exit_code is always 0
         """
-        if isinstance(cmdargs, (list, tuple)):
-            cmdargs = list2cmdline(cmdargs)
+        cmdline = list2cmdline(cmdargs) if isinstance(cmdargs, (list, tuple)) else cmdargs
         if stream:
             return self._reqsess.get(self.path2url("/shell/stream"),
-                                     params={"command": cmdargs},
+                                     params={"command": cmdline},
                                      timeout=None,
                                      stream=True)
         ret = self._reqsess.post(self.path2url('/shell'),
                                  data={
-                                     'command': cmdargs,
+                                     'command': cmdline,
                                      'timeout': str(timeout)
                                  },
                                  timeout=timeout + 10)
