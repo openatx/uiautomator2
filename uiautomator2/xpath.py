@@ -93,10 +93,12 @@ class XPath(object):
         # used for click("#back") and back is the key
         self._alias = {}
         self._alias_strict = False
+        self._dump_lock = threading.Lock()
         self._watch_stop_event = threading.Event()
         self._watch_stopped = threading.Event()
-        self._dump_lock = threading.Lock()
-        self._watch_running = False
+        self._watch_running = False # func run_watchers is calling
+        self._watching = False # func watch_forever is calling
+        # self._watch_lock = threading.Lock() # thread-safe watch start/stop
 
         self.logger = setup_logger()
 
@@ -199,6 +201,7 @@ class XPath(object):
             when, then = item['when'], item['then']
 
             trigger = lambda: None
+            self.logger.info("%s, %s", when, then)
             if then == 'click':
                 trigger = lambda selector: selector.get_last_match().click()
                 trigger.__doc__ = "click"
@@ -207,7 +210,6 @@ class XPath(object):
                 exec(then, mod.__dict__)
                 trigger = mod.callback
                 trigger.__doc__ = then
-                trigger = lambda d: d.xpath("Alarm").click()
             else:
                 self.logger.warning("Unknown then: %r", then)
 
@@ -259,10 +261,14 @@ class XPath(object):
                 triggered = self.run_watchers()
                 wait_timeout = min(0.5, interval) if triggered else interval
         finally:
+            self._watching = False
             self._watch_stopped.clear()
             self._watch_stop_event.set()
 
     def watch_background(self, interval: float = 4.0):
+        if self._watching:
+            self.watch_stop()
+        self._watching = True
         th = threading.Thread(name="xpath_watch",
                               target=self._watch_forever,
                               args=(interval, ))
@@ -272,8 +278,13 @@ class XPath(object):
 
     def watch_stop(self):
         """ stop watch background """
+        if not self._watching:
+            self.logger.warning("watch already stopped")
+            return
+
         if self._watch_stopped.is_set():
             return
+
         self._watch_stopped.set()
         self._watch_stop_event.wait(timeout=10)
         self._watch_stop_event.clear()

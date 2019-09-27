@@ -3,6 +3,7 @@
 
 import threading
 from functools import partial
+from pprint import pprint
 
 import uiautomator2 as u2
 import pytest
@@ -28,7 +29,6 @@ def test_all(sess: u2.Session):
 def test_watcher(sess: u2.Session, request):
     sess.xpath.when("App").click()
     sess.xpath.watch_background(interval=1.0)
-    request.addfinalizer(lambda: sess.xpath.watch_stop() and sess.xpath.watch_clear())
 
     event = threading.Event()
     def _set_event(e):
@@ -45,10 +45,13 @@ def test_watcher_from_yaml(sess: u2.Session, request):
 - when: Action Bar
   then: >
     def callback(d):
+        print("D:", d)
         d.xpath("Alarm").click()
+    
+    def hello():
+        print("World")
 """
     sess.xpath.apply_watch_from_yaml(yaml_content)
     sess.xpath.watch_background(interval=1.0)
-    request.addfinalizer(lambda: sess.xpath.watch_stop() and sess.xpath.watch_clear())
 
     assert sess.xpath("Alarm Controller").wait(timeout=10)
