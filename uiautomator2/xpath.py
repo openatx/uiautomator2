@@ -163,6 +163,7 @@ class XPath(object):
 
             def when(self, xquery: str):
                 self._xqueries.append(xquery)
+                return self
 
             def click(self):
                 self.call(_click)

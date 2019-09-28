@@ -317,6 +317,7 @@ class Device(object):
 
         self.__devinfo = None
         self.__uiautomator_failed = False
+        self.__uiautomator_lock = threading.Lock()
 
         self.platform = None  # hot fix for weditor
 
@@ -623,6 +624,13 @@ class Device(object):
                 4. start ATX app again. (ATX app will be killed again by uiautomator)
                 5. uiautomator will go back to normal
         """
+        with self.__uiautomator_lock:
+            if self.alive:
+                return
+            logger.debug("force reset uiautomator")
+            return self._force_reset_uiautomator()
+        
+    def _force_reset_uiautomator(self):
         brand = self.shell("getprop ro.product.brand").output.strip()
         logger.debug("Product-brand: %s", brand)
         # self.uiautomator.stop()  # stop uiautomator keeper first
@@ -637,6 +645,7 @@ class Device(object):
         else:
             self.uiautomator.start()
 
+        self.app_start("com.github.uiautomator")
         # wait until uiautomator2 service working
         deadline = time.time() + 20.0
         while time.time() < deadline:
@@ -649,14 +658,16 @@ class Device(object):
                 # keyevent BACK if current is com.github.uiautomator
                 # XiaoMi uiautomator will kill the app(com.github.uiautomator) when launch
                 #   it is better to start a service to make uiautomator live longer
-                if self.app_current()['package'] != 'com.github.uiautomator':
-                    self.shell([
-                        'am', 'startservice', '-n',
-                        'com.github.uiautomator/.Service'
-                    ])
-                    time.sleep(1.5)
-                else:
-                    time.sleep(.5)
+                #if self.app_current()['package'] != 'com.github.uiautomator':
+                #    self.shell([
+                #        'am', 'startservice', '-n',
+                #        'com.github.uiautomator/.Service'
+                #    ])
+                #    time.sleep(1.5)
+                #else:
+                #    time.sleep(.5)
+
+                if self.app_current()['package'] == 'com.github.uiautomator':
                     self.shell(['input', 'keyevent', 'BACK'])
                 logger.info("uiautomator back to normal")
                 self.__uiautomator_failed = False
