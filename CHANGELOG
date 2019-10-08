@@ -7,6 +7,7 @@ CHANGES
 * change http://tool.appetizer.io to https protocol
 * add swipe\_ext('right', 0.9) method
 * add app\_wait, app\_list\_running
+* add clipboard support
 
 1.1.0
 -----

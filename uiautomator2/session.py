@@ -649,6 +649,18 @@ class Session(object):
     def info(self):
         return self.jsonrpc.deviceInfo()
 
+    @property
+    def clipboard(self):
+        return self.jsonrpc.getClipboard()
+
+    def set_clipboard(self, text, label=None):
+        '''
+        Args:
+            text: The actual text in the clip.
+            label: User-visible label for the clip data.
+        '''
+        self.jsonrpc.setClipboard(label, text)
+
     def __call__(self, **kwargs):
         return UiObject(self, Selector(**kwargs))
 
