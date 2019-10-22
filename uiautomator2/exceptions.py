@@ -4,6 +4,8 @@
 # class ATXError(Exception):
 #     pass
 
+import json
+
 
 class BaseError(Exception):
     pass
@@ -57,6 +59,10 @@ class JsonRpcError(UiaError):
         self.message = error.get('message', '')
         self.data = error.get('data', '')
         self.method = method
+        try:
+            self.exception_name = json.loads(self.data).get("exceptionTypeName")
+        except (json.JSONDecodeError, AttributeError):
+            self.exception_name = None
 
     def __str__(self):
         return '%d %s: <%s> data: %s, method: %s' % (

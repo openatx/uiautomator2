@@ -517,22 +517,26 @@ class Device(object):
         # error happends
         err = JsonRpcError(error, method)
 
+        def is_exception(err, exception_name):
+            return err.exception_name == exception_name or exception_name in err.message
+
+
         if isinstance(
                 err.data,
                 six.string_types) and 'UiAutomation not connected' in err.data:
             err.__class__ = UiAutomationNotConnectedError
         elif err.message:
-            if 'uiautomator.UiObjectNotFoundException' in err.message:
+            if is_exception(err, 'uiautomator.UiObjectNotFoundException'):
                 err.__class__ = UiObjectNotFoundError
-            elif 'android.support.test.uiautomator.StaleObjectException' in err.message:
+            elif is_exception(err, 'android.support.test.uiautomator.StaleObjectException'):
                 # StaleObjectException
                 # https://developer.android.com/reference/android/support/test/uiautomator/StaleObjectException.html
                 # A StaleObjectException exception is thrown when a UiObject2 is used after the underlying View has been destroyed.
                 # In this case, it is necessary to call findObject(BySelector) to obtain a new UiObject2 instance.
                 err.__class__ = StaleObjectExceptionError
-            elif 'java.lang.NullObjectException' in err.message:
+            elif is_exception(err, 'java.lang.NullObjectException'):
                 err.__class__ = NullObjectExceptionError
-            elif 'java.lang.NullPointerException' == err.message:
+            elif is_exception(err, 'java.lang.NullPointerException'):
                 err.__class__ = NullPointerExceptionError
         raise err
 
@@ -553,9 +557,9 @@ class Device(object):
     @property
     def alive(self):
         try:
-            r = self._reqsess.get(self.path2url('/ping'), timeout=2)
-            if r.status_code != 200:
-                return False
+            # r = self._reqsess.get(self.path2url('/ping'), timeout=2)
+            # if r.status_code != 200:
+            #     return False
             r = self._reqsess.post(self.path2url('/jsonrpc/0'),
                                    data=json.dumps({
                                        "jsonrpc": "2.0",
@@ -588,19 +592,26 @@ class Device(object):
                 self.name = name
                 # FIXME(ssx): support other service: minicap, minitouch
                 assert name == 'uiautomator'
+                self.service_url = u2obj.path2url("/services/uiautomator-1.0")
+            
+            def raise_for_status(self, res):
+                if res.status_code != 200:
+                    if res.headers['content-type'].startswith("application/json"):
+                        raise RuntimeError(res.json()["description"])
+                    warnings.warn(res.text)
+                    res.raise_for_status()
 
             def start(self):
-                res = u2obj._reqsess.post(u2obj.path2url('/uiautomator'))
-                res.raise_for_status()
+                res = u2obj._reqsess.post(self.service_url)
+                self.raise_for_status(res)
 
             def stop(self):
-                res = u2obj._reqsess.delete(u2obj.path2url('/uiautomator'))
-                if res.status_code != 200:
-                    warnings.warn(res.text)
-
+                res = u2obj._reqsess.delete(self.service_url)
+                self.raise_for_status(res)
+                
             def running(self) -> bool:
-                res = u2obj._reqsess.get(u2obj.path2url("/uiautomator"))
-                res.raise_for_status()
+                res = u2obj._reqsess.get(self.service_url)
+                self.raise_for_status(res)
                 return res.json().get("running")
 
         return _Service(name)
@@ -628,9 +639,22 @@ class Device(object):
             if self.alive:
                 return
             logger.debug("force reset uiautomator")
-            return self._force_reset_uiautomator()
-        
-    def _force_reset_uiautomator(self):
+            return self._force_reset_uiautomator_v1() # uiautomator 1.0
+    
+    def _force_reset_uiautomator_v1(self):
+        self.uiautomator.start()
+        deadline = time.time() + 20.0
+        while time.time() < deadline:
+            logger.debug("uiautomator(1.0) is starting ...")
+            if self.alive:
+                logger.info("uiautomator back to normal")
+                return True
+            time.sleep(1)
+        raise EnvironmentError(
+            "Uiautomator started failed. Find solutions in https://github.com/openatx/uiautomator2/wiki/Common-issues"
+        )
+
+    def _force_reset_uiautomator_v2(self):
         brand = self.shell("getprop ro.product.brand").output.strip()
         logger.debug("Product-brand: %s", brand)
         # self.uiautomator.stop()  # stop uiautomator keeper first

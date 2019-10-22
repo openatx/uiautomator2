@@ -26,6 +26,7 @@
 * 修复了[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)经常性退出的问题
 * 代码进行了重构和精简，方便维护
 * 实现了一个设备管理平台(也支持iOS) [atxserver2](https://github.com/openatx/atxserver2)
+* 扩充了toast获取和展示的功能
 
 >这里要先说明下，因为经常有很多人问 openatx/uiautomator2 并不支持iOS测试，需要iOS自动化测试，可以转到这个库 [openatx/facebook-wda](https://github.com/openatx/facebook-wda)。
 

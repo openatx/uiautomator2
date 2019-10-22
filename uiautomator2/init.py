@@ -12,7 +12,7 @@ import progress.bar
 import requests
 from logzero import logger, setup_logger
 from retry import retry
-from uiautomator2.version import __apk_version__, __atx_agent_version__
+from uiautomator2.version import __apk_version__, __atx_agent_version__, __jar_version__
 
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
 
@@ -114,12 +114,29 @@ class Initer():
 
     @property
     def apk_urls(self):
+        """
+        Returns:
+            iter([name, url], [name, url])
+        """
         for name in ["app-uiautomator.apk", "app-uiautomator-test.apk"]:
-            yield "".join([
+            yield (name, "".join([
                 GITHUB_BASEURL,
                 "/android-uiautomator-server/releases/download/",
                 __apk_version__, "/", name
-            ])
+            ]))
+    
+    @property
+    def jar_urls(self):
+        """
+        Returns:
+            iter([name, url], [name, url])
+        """
+        for name in ['bundle.jar', 'uiautomator-stub.jar']:
+            yield (name, "".join([
+                GITHUB_BASEURL,
+                "/android-uiautomator-jsonrpcserver/releases/download/",
+                __jar_version__, "/", name
+            ]))
 
     @property
     def atx_agent_url(self):
@@ -170,7 +187,7 @@ class Initer():
         self._device.sync.push(path, dest, mode=mode)
         return dest
 
-    def is_apk_outdate(self):
+    def is_apk_outdated(self):
         apk1 = self._device.package_info("com.github.uiautomator")
         if not apk1:
             return True
@@ -180,8 +197,12 @@ class Initer():
             return True
         return False
 
-    def is_atx_agent_outdate(self):
-        agent_version = self._device.shell("/data/local/tmp/atx-agent version")
+    def is_atx_agent_outdated(self):
+        agent_version = self._device.shell("/data/local/tmp/atx-agent version").strip()
+        if agent_version == "dev":
+            self.logger.info("skip version check for atx-agent dev")
+            return False
+
         # semver major.minor.patch
         try:
             real_ver = list(map(int, agent_version.split(".")))
@@ -208,7 +229,7 @@ class Initer():
         if d.sync.stat("/data/local/tmp/atx-agent").size == 0:
             return False
 
-        if self.is_atx_agent_outdate():
+        if self.is_atx_agent_outdated():
             return False
 
         packages = d.list_packages()
@@ -218,6 +239,39 @@ class Initer():
             return False
 
         return True
+
+    def _install_apks(self):
+        """ use uiautomator 2.0 to run uiautomator test """
+        self.shell("pm", "uninstall", "com.github.uiautomator")
+        self.shell("pm", "uninstall", "com.github.uiautomator.test")
+        for _, url in self.apk_urls:
+            path = self.push_url(url, mode=0o644)
+            package_name = "com.github.uiautomator.test" if "test.apk" in url else "com.github.uiautomator"
+            if os.getenv("TMQ"):
+                # used inside TMQ platform
+                self.shell(
+                    "CLASSPATH=/sdcard/tmq.jar", "exec", "app_process",
+                    "/system/bin",
+                    "com.android.commands.monkey.other.InstallCommand",
+                    "-r", "-v", "-p", package_name, path)
+            else:
+                self.shell("pm", "install", "-r", "-t", path)
+    
+    def _install_jars(self):
+        """ use uiautomator 1.0 to run uiautomator test """
+        for (name, url) in self.jar_urls:
+            self.push_url(url, "/data/local/tmp/"+name, mode=0o644)
+    
+    def _install_atx_agent(self):
+        self.logger.info("Install atx-agent %s", __atx_agent_version__)
+        self.push_url(self.atx_agent_url,
+                            tgz=True,
+                            extract_name="atx-agent")
+        args = ["/data/local/tmp/atx-agent", "server", "--nouia", "-d"]
+        if server_addr:
+            args.extend(['-t', server_addr])
+        self.shell("/data/local/tmp/atx-agent", "server", "--stop")
+        self.shell(*args)
 
     def install(self, server_addr=None):
         self.logger.info("Install minicap, minitouch")
@@ -231,37 +285,17 @@ class Initer():
             for url in self.minicap_urls:
                 self.push_url(url)
 
-        self.logger.info(
-            "Install com.github.uiautomator, com.github.uiautomator.test %s",
-            __apk_version__)
-
+        self._install_jars()
         if self.is_apk_outdate():
-            self.shell("pm", "uninstall", "com.github.uiautomator")
-            self.shell("pm", "uninstall", "com.github.uiautomator.test")
-            for url in self.apk_urls:
-                path = self.push_url(url, mode=0o644)
-                package_name = "com.github.uiautomator.test" if "test.apk" in url else "com.github.uiautomator"
-                if os.getenv("TMQ"):
-                    # used inside TMQ platform
-                    self.shell(
-                        "CLASSPATH=/sdcard/tmq.jar", "exec", "app_process",
-                        "/system/bin",
-                        "com.android.commands.monkey.other.InstallCommand",
-                        "-r", "-v", "-p", package_name, path)
-                else:
-                    self.shell("pm", "install", "-r", "-t", path)
+            self.logger.info(
+                "Install com.github.uiautomator, com.github.uiautomator.test %s",
+                __apk_version__)
+            self._install_apks()
         else:
             self.logger.info("Already installed com.github.uiautomator apks")
 
-        self.logger.info("Install atx-agent %s", __atx_agent_version__)
-        path = self.push_url(self.atx_agent_url,
-                             tgz=True,
-                             extract_name="atx-agent")
-        args = [path, "server", "--nouia", "-d"]
-        if server_addr:
-            args.extend(['-t', server_addr])
-        self.shell(path, "server", "--stop")
-        self.shell(*args)
+        if self.is_atx_agent_outdated():
+            self._install_atx_agent()
 
         self.logger.info("Check install")
         self.check_atx_agent_version()
@@ -274,8 +308,8 @@ class Initer():
     def check_atx_agent_version(self):
         port = self._device.forward_port(7912)
         self.logger.debug("Forward: local:tcp:%d -> remote:tcp:%d", port, 7912)
-        response = requests.get("http://127.0.0.1:%d/version" % port).text
-        self.logger.debug("atx-agent version %s", response.strip())
+        version = requests.get("http://127.0.0.1:%d/version" % port).text.strip()
+        self.logger.debug("atx-agent version %s", version)
 
     def uninstall(self):
         self._device.shell(["/data/local/tmp/atx-agent", "server", "--stop"])

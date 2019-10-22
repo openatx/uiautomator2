@@ -31,7 +31,11 @@ __apk_version__ = '2.0.3'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__atx_agent_version__ = '0.7.2'
+__jar_version__ = 'v0.1.6'
+# v0.1.6 first release version
+
+__atx_agent_version__ = '0.7.3'
+# 0.7.3 add uiautomator-1.0 support
 # 0.7.2 fix stop already stopped uiautomator return status 500 error
 # 0.7.1 fix UIAutomation not connected error.
 # 0.7.0 add webview support, kill uiautomator if no activity in 3 minutes
