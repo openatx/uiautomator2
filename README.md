@@ -601,6 +601,14 @@ Below is a possible output:
  'presenceChangedAt': '0001-01-01T00:00:00Z',
  'usingBeganAt': '0001-01-01T00:00:00Z'}
 ```
+### Clipboard
+设置粘贴板内容或获取内容,目前已知问题是9.0之后的后台程序无法获取剪贴板的内容
+
+* clipboard/set_clipboard
+    ```python
+    d.set_clipboard('text', 'label')
+    print(d.clipboard)
+    ```
 
 ### Key Events
 
