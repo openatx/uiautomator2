@@ -262,7 +262,7 @@ class Initer():
         for (name, url) in self.jar_urls:
             self.push_url(url, "/data/local/tmp/"+name, mode=0o644)
     
-    def _install_atx_agent(self):
+    def _install_atx_agent(self, server_addr=None):
         self.logger.info("Install atx-agent %s", __atx_agent_version__)
         self.push_url(self.atx_agent_url,
                             tgz=True,
@@ -286,7 +286,7 @@ class Initer():
                 self.push_url(url)
 
         self._install_jars()
-        if self.is_apk_outdate():
+        if self.is_apk_outdated():
             self.logger.info(
                 "Install com.github.uiautomator, com.github.uiautomator.test %s",
                 __apk_version__)
@@ -295,7 +295,7 @@ class Initer():
             self.logger.info("Already installed com.github.uiautomator apks")
 
         if self.is_atx_agent_outdated():
-            self._install_atx_agent()
+            self._install_atx_agent(server_addr)
 
         self.logger.info("Check install")
         self.check_atx_agent_version()

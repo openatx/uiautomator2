@@ -15,7 +15,7 @@ import requests
 import six
 from retry import retry
 
-from uiautomator2.exceptions import (NullPointerExceptionError,
+from uiautomator2.exceptions import (RetryError, NullPointerExceptionError,
                                      UiObjectNotFoundError, UiautomatorQuitError)
 from uiautomator2.utils import Exists, U, check_alive, hooks_wrap, intersect, cache_return
 from uiautomator2.swipe import SwipeExt
@@ -485,6 +485,7 @@ class Session(object):
         else:
             raise RuntimeError("Invalid format " + format)
 
+    @retry(RetryError, delay=1.0, tries=2) 
     def dump_hierarchy(self, compressed=False, pretty=False) -> str:
         """
         Args:
@@ -499,6 +500,8 @@ class Session(object):
         v-1.3.4 change back to jsonrpc.dumpWindowHierarchy
         """
         content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
+        if content == "":
+            raise RetryError("dump hierarchy is empty")
 
         if pretty and "\n " not in content:
             xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))

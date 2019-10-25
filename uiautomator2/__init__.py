@@ -449,6 +449,7 @@ class Device(object):
            tries=3)
     def jsonrpc_retry_call(self, *args,
                            **kwargs):  # method, params=[], http_timeout=60):
+
         if self.__uiautomator_failed:
             self.reset_uiautomator()
 
@@ -557,9 +558,6 @@ class Device(object):
     @property
     def alive(self):
         try:
-            # r = self._reqsess.get(self.path2url('/ping'), timeout=2)
-            # if r.status_code != 200:
-            #     return False
             r = self._reqsess.post(self.path2url('/jsonrpc/0'),
                                    data=json.dumps({
                                        "jsonrpc": "2.0",
@@ -639,20 +637,26 @@ class Device(object):
             if self.alive:
                 return
             logger.debug("force reset uiautomator")
-            return self._force_reset_uiautomator_v1() # uiautomator 1.0
-    
+            success = self._force_reset_uiautomator_v1() # uiautomator 1.0
+            if not success:
+                raise EnvironmentError("Uiautomator started failed. Find solutions in https://github.com/openatx/uiautomator2/wiki/Common-issues")
+            logger.info("uiautomator back to normal")
+            self.__uiautomator_failed = False
+
     def _force_reset_uiautomator_v1(self):
+        """ uiautomator v1 only need bundle.jar and uiautomator-stub.jar
+
+        Refs:
+            https://github.com/openatx/android-uiautomator-jsonrpcserver
+        """
         self.uiautomator.start()
         deadline = time.time() + 20.0
         while time.time() < deadline:
             logger.debug("uiautomator(1.0) is starting ...")
             if self.alive:
-                logger.info("uiautomator back to normal")
                 return True
             time.sleep(1)
-        raise EnvironmentError(
-            "Uiautomator started failed. Find solutions in https://github.com/openatx/uiautomator2/wiki/Common-issues"
-        )
+        return False
 
     def _force_reset_uiautomator_v2(self):
         brand = self.shell("getprop ro.product.brand").output.strip()
@@ -693,15 +697,11 @@ class Device(object):
 
                 if self.app_current()['package'] == 'com.github.uiautomator':
                     self.shell(['input', 'keyevent', 'BACK'])
-                logger.info("uiautomator back to normal")
-                self.__uiautomator_failed = False
                 return True
             time.sleep(1)
 
         self.uiautomator.stop()
-        raise EnvironmentError(
-            "Uiautomator started failed. Find solutions in https://github.com/openatx/uiautomator2/wiki/Common-issues"
-        )
+        return False
 
     def healthcheck(self):
         """

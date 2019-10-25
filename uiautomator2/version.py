@@ -34,7 +34,8 @@ __apk_version__ = '2.0.3'
 __jar_version__ = 'v0.1.6'
 # v0.1.6 first release version
 
-__atx_agent_version__ = '0.7.3'
+__atx_agent_version__ = '0.7.4'
+# 0.7.4 add /finfo/{filepath:.*} api
 # 0.7.3 add uiautomator-1.0 support
 # 0.7.2 fix stop already stopped uiautomator return status 500 error
 # 0.7.1 fix UIAutomation not connected error.

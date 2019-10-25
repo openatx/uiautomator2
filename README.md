@@ -688,7 +688,7 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
 * SwipeExt 扩展功能
 
     ```python
-    d.swipe_ext("right") # 屏幕右滑，4选1 "left", "right", "up", "bottom"
+    d.swipe_ext("right") # 屏幕右滑，4选1 "left", "right", "up", "down"
     d.swipe_ext("right", scale=0.9) # 默认0.9, 滑动距离为屏幕宽度的90%
     d.swipe_ext("right", box=(0, 0, 100, 100)) # 在 (0,0) -> (100, 100) 这个区域做滑动
     ```

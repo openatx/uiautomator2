@@ -49,34 +49,6 @@ def main():
 
 >下面的代码为了方便就不写`import`和`main`了，默认存在`d`这个变量
 
-**别名定义**
-
-这种写法有点类似selenium中的[PageObjects](https://selenium-python.readthedocs.io/page-objects.html)
-
-```python
-# 这里是Python3的写法，python2的string定义需要改成 u"菜单" 注意前的这个u
-d.xpath.global_set("alias", {
-    "菜单": "@com.netease.cloudmusic:id/qh", # TODO(ssx): maybe we can support P("@com.netease.cloudmusic:id/qh", wait_timeout=2) someday
-    "设置": "//android.widget.TextView[@text='设置']",
-})
-
-# 这里需要 $ 开头
-d.xpath("$菜单").click() # 等价于 d.xpath()
-d.xpath("$设置").click()
-
-
-d.xpath("$菜单").click()
-# 等价于 d.xpath("@com.netease.cloudmusic:id/qh").click()
-
-d.xpath("$小吃").click() # 在这里会直接跑出XPathError异常，因为并不存在 小吃 这个alias
-
-# alias_strict 设置项
-d.xpath.global_set("alias_strict", False) # 默认 True
-d.xpath("$小吃").click() # 这里就会正常运行
-# 等价于
-d.xpath('//*[@text="小吃" or @content-desc="小吃"]').click()
-```
-
 **`XPathSelector`的操作**
 
 ```python
@@ -276,3 +248,32 @@ def main():
 - [XPath Quicksheet](https://devhints.io/xpath)
 
 如有其他资料，欢迎提[Issues](https://github.com/openatx/uiautomator2/issues/new)补充
+
+## 废弃功能
+**别名定义** 从`1.3.4`版本不再支持别名
+
+这种写法有点类似selenium中的[PageObjects](https://selenium-python.readthedocs.io/page-objects.html)
+
+```python
+# 这里是Python3的写法，python2的string定义需要改成 u"菜单" 注意前的这个u
+d.xpath.global_set("alias", {
+    "菜单": "@com.netease.cloudmusic:id/qh", # TODO(ssx): maybe we can support P("@com.netease.cloudmusic:id/qh", wait_timeout=2) someday
+    "设置": "//android.widget.TextView[@text='设置']",
+})
+
+# 这里需要 $ 开头
+d.xpath("$菜单").click() # 等价于 d.xpath()
+d.xpath("$设置").click()
+
+
+d.xpath("$菜单").click()
+# 等价于 d.xpath("@com.netease.cloudmusic:id/qh").click()
+
+d.xpath("$小吃").click() # 在这里会直接跑出XPathError异常，因为并不存在 小吃 这个alias
+
+# alias_strict 设置项
+d.xpath.global_set("alias_strict", False) # 默认 True
+d.xpath("$小吃").click() # 这里就会正常运行
+# 等价于
+d.xpath('//*[@text="小吃" or @content-desc="小吃"]').click()
+```
