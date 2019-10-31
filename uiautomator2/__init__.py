@@ -1343,6 +1343,12 @@ class Device(object):
     @cache_return
     def xpath(self) -> xpath.XPath:
         return xpath.XPath(self)
+    
+    @property
+    @cache_return
+    def image(self):
+        from uiautomator2 import image as _image
+        return _image.ImageX(self)
 
     def __getattr__(self, attr):
         if attr in self._cached_plugins:

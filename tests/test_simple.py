@@ -25,6 +25,7 @@ class SimpleTestCase(unittest.TestCase):
     def tearDown(self):
         self.sess.watchers.remove()
 
+    @pytest.mark.skip("Removed")
     def test_toast_get_message(self):
         d = self.sess
         d.toast.reset()
@@ -73,6 +74,7 @@ class SimpleTestCase(unittest.TestCase):
         self.assertTrue(d(text="Status Bar").exists(timeout=3))
         d.watchers.watched = False
 
+    @pytest.mark.skip("TODO:: not fixed")
     def test_count(self):
         d = self.sess
         count = d(resourceId="android:id/list").child(
@@ -110,6 +112,7 @@ class SimpleTestCase(unittest.TestCase):
         # getText may take 1~2s
         self.assertLess(time_used, 2 + 3)
 
+    @pytest.mark.skip("TODO:: not fixed")
     def test_select_iter(self):
         d = self.sess
         d(text='OS').click()

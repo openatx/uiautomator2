@@ -19,11 +19,22 @@ def test_click(sess: u2.Session):
     assert sess.xpath("Alarm").exists
 
 
-def test_all(sess: u2.Session):
+def test_xpath_query(sess: u2.Session):
+    assert sess.xpath("Accessibility").wait()
+    assert sess.xpath("%ccessibility").wait()
+    assert sess.xpath("Accessibilit%").wait()
+
+
+def test_element_all(sess: u2.Session):
     app = sess.xpath('//*[@text="App"]')
     assert app.wait()
     assert len(app.all()) == 1
     assert app.exists
+
+    elements = sess.xpath('//*[@resource-id="android:id/list"]/android.widget.TextView').all()
+    assert len(elements) == 11
+    el = elements[0]
+    assert el.text == 'Accessibility'
 
 
 def test_watcher(sess: u2.Session, request):

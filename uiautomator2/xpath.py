@@ -7,6 +7,7 @@ import abc
 import io
 import json
 import re
+import logging
 import threading
 import time
 import inspect
@@ -44,8 +45,10 @@ def string_quote(s):
     return '"' + s + '"'
 
 
-def strict_xpath(xpath: str) -> str:
+def strict_xpath(xpath: str, logger=logger) -> str:
     """ make xpath to be computer recognized xpath """
+    orig_xpath = xpath
+
     if xpath.startswith('//'):
         pass
     elif xpath.startswith('@'):
@@ -59,15 +62,20 @@ def strict_xpath(xpath: str) -> str:
         xpath = '//*[contains(@text, {})]'.format(string_quote(
             xpath[1:-1]))
     elif xpath.startswith('%'):
-        xpath = '//*[starts-with(@text, {})]'.format(
-            string_quote(xpath[1:]))
+        text = xpath[1:]
+        for c in ".*[]?-":
+            text = text.replace(c, "\\"+c)
+        xpath = '//*[re:match(@text, {})]'.format(string_quote(text))
     elif xpath.endswith('%'):
-        # //*[ends-with(@text, "suffix")] only valid in Xpath2.0
-        xpath = '//*[ends-with(@text, {})]'.format(string_quote(
-            xpath[:-1]))
+        text = xpath[:-1]
+        for c in ".*[]?-":
+            text = text.replace(c, "\\"+c)
+        xpath = '//*[re:match(@text, {})]'.format(string_quote(text))
     else:
         xpath = '//*[@text={0} or @content-desc={0}]'.format(
             string_quote(xpath))
+
+    logger.debug("xpath %s -> %s", orig_xpath, xpath)
     return xpath
 
 
@@ -130,7 +138,10 @@ class XPath(object):
         self._watch_running = False # func run_watchers is calling
         self._watching = False # func watch_forever is calling
 
+        # 这里setup_logger不可以通过level参数传入logging.INFO
+        # 不然其StreamHandler都要重新setLevel，没看懂也没关系，反正就是不要这么干. 特此备注
         self.logger = setup_logger()
+        self.logger.setLevel(logging.INFO)
 
     def global_set(self, key, value):  #dicts):
         valid_keys = {
@@ -390,8 +401,6 @@ class XPath(object):
             value = key
         return value
 
-    
-
     def __call__(self, xpath: str, source=None):
         # print("XPATH:", xpath)
         return XPathSelector(self, xpath, source)
@@ -399,18 +408,19 @@ class XPath(object):
 
 class XPathSelector(object):
     def __init__(self, parent: XPath, xpath: Union[list, str], source=None):
+        self.logger = parent.logger
+
         self._parent = parent
         self._d = parent._d
-        self._xpath_list = [strict_xpath(xpath)] if isinstance(xpath, str) else xpath
+        self._xpath_list = [strict_xpath(xpath, self.logger)] if isinstance(xpath, str) else xpath
         self._source = source
         self._last_source = None
         self._watchers = []
         
-        self.logger = self._parent.logger
         self.click = functools.partial(self._parent.click, self._xpath_list) # parent click
 
     def xpath(self, xpath: str):
-        xpath = strict_xpath(xpath)
+        xpath = strict_xpath(xpath, self.logger)
         self._xpath_list.append(xpath)
         return self
 

@@ -277,3 +277,14 @@ d.xpath("$小吃").click() # 这里就会正常运行
 # 等价于
 d.xpath('//*[@text="小吃" or @content-desc="小吃"]').click()
 ```
+
+# 调整xpath的日志级别
+目前默认logging.INFO
+
+调整方法 
+
+```python
+import logging
+
+d.xpath.logger.setLevel(logging.DEBUG)
+```
