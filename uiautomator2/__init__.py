@@ -1017,6 +1017,17 @@ class Device(object):
 
         return pid or 0
 
+    def app_list(self, filter: str = None) -> list:
+        """
+        Args:
+            filter: [-f] [-d] [-e] [-s] [-3] [-i] [-u] [--user USER_ID] [FILTER]
+        Returns:
+            list of apps by filter
+        """
+        output, _ = self.shell(['pm', 'list', 'packages', filter])
+        packages = re.findall(r'package:([^\s]+)', output)
+        return list(packages)
+
     def app_list_running(self) -> list:
         """
         Returns:
