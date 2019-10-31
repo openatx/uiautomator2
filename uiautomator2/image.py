@@ -23,7 +23,7 @@ def pil2cv(pil_image):
     # convert PIL to OpenCV
     pil_image = pil_image.convert('RGB')
     cv2_image = np.array(pil_image)
-    # Convert RGB to BGR 
+    # Convert RGB to BGR
     cv2_image = cv2_image[:, :, ::-1].copy()
     return cv2_image
 
@@ -78,7 +78,7 @@ def imread(data):
         if im is None:
             raise IOError("Image format error: %s" % data)
         return im
-    
+
     raise IOError("image read invalid data: %s" % data)
 
 
@@ -90,12 +90,14 @@ class ImageX(object):
         """
         self.logger = setup_logger()
         self._d = d
+        assert hasattr(d, 'click')
+        assert hasattr(d, 'screenshot')
 
-        self.logger.setLevel(logging.INFO)
-    
+        # self.logger.setLevel(logging.INFO)
+
     def send_click(self, x, y):
         return self._d.click(x, y)
-    
+
     def match(self, imdata: Union[np.ndarray, str]):
         """
         Args:
@@ -105,35 +107,47 @@ class ImageX(object):
             templateMatch result
         """
         cvimage = imread(imdata)
-        fi = findit.FindIt(engine=['template'], engine_template_scale=(0.9, 1.1, 3), pro_mode=True)
+        fi = findit.FindIt(engine=['template'],
+                           engine_template_scale=(0.9, 1.1, 3),
+                           pro_mode=True)
         fi.load_template("template", pic_object=cvimage)
 
         target = self._d.screenshot(format='opencv')
         raw_result = fi.find("target", target_pic_object=target)
         result = raw_result['data']['template']['TemplateEngine']
-        target_sim = result['target_sim'] # 相似度  similarity
-        self.logger.info("similarity %.2f", target_sim)
-        return {
-            "similarity": target_sim,
-            "point": result['target_point']
-        }
-    
+        target_sim = result['target_sim']  # 相似度  similarity
+
+        return {"similarity": target_sim, "point": result['target_point']}
+
+    def __wait(self, imdata, timeout=30.0, threshold=0.8):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            m = self.match(imdata)
+            sim = m['similarity']
+            self.logger.debug("similarity %.2f [~%.2f], left time: %.1fs", sim,
+                              threshold, deadline - time.time())
+            if sim < threshold:
+                continue
+            time.sleep(.1)
+            return m
+
+    def wait(self, imdata, timeout=30.0):
+        m = self.__wait(imdata, timeout=timeout, threshold=0.8)
+        if m is None:
+            return m
+        # time.sleep(.1)
+        return self.__wait(imdata, timeout=timeout, threshold=0.9)
+
     def click(self, imdata, timeout=30.0):
         """
         Args:
             imdata: file, url, pillow or opencv image object
         """
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            m = self.match(imdata)
-            sim = m['similarity']
-            if sim < 0.8:
-                continue
-
-            x, y = m['point']
-            return self.send_click(x, y)
-
-        raise RuntimeError("image object not found")
+        res = self.wait(imdata, timeout=timeout)
+        if res is None:
+            raise RuntimeError("image object not found")
+        x, y = res['point']
+        return self.send_click(x, y)
 
 
 if __name__ == "__main__":
@@ -151,7 +165,9 @@ if __name__ == "__main__":
     taobao = imread("screenshot.jpg")
     import findit
 
-    fi = findit.FindIt(engine=['template'], engine_template_scale=(1,1,1), pro_mode=True)
+    fi = findit.FindIt(engine=['template'],
+                       engine_template_scale=(1, 1, 1),
+                       pro_mode=True)
     fi.load_template("template", pic_object=taobao)
 
     import uiautomator2 as u2
