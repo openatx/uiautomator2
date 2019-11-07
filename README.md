@@ -256,7 +256,7 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 - install: 安装apk，apk通过URL给出 (暂时不能用)
 - clear-cache: 清空缓存 (废弃中，目前已经不需要改接口）
 - `app-stop-all`: 停止所有应用 （暂不能用）
-- healthcheck: 健康检查 (咱不能用)
+- healthcheck: 健康检查 (暂不能用)
 
     
 # API Documents
