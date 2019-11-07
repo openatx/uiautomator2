@@ -45,6 +45,12 @@ def string_quote(s):
     return '"' + s + '"'
 
 
+def str2bytes(v) -> bytes:
+    if isinstance(v, bytes):
+        return v
+    return v.encode('utf-8')
+
+
 def strict_xpath(xpath: str, logger=logger) -> str:
     """ make xpath to be computer recognized xpath """
     orig_xpath = xpath
@@ -436,9 +442,9 @@ class XPathSelector(object):
         xml_content = source or self._source or self._parent.dump_hierarchy()
         self._last_source = xml_content
 
-        root = etree.fromstring(xml_content.encode('utf-8'))
+        root = etree.fromstring(str2bytes(xml_content))
         for node in root.xpath("//node"):
-            node.tag = safe_xmlstr(node.attrib.pop("class"))
+            node.tag = safe_xmlstr(node.attrib.pop("class", "")) or "node"
         
         match_sets = []
         for xpath in self._xpath_list:
@@ -447,7 +453,7 @@ class XPathSelector(object):
             match_sets.append(matches)
         # find out nodes which match all xpaths
         match_nodes = functools.reduce(lambda x, y: set(x).intersection(y), match_sets)
-        return [XMLElement(node, self._parent) for node in match_nodes]
+        return [XMLElement(node, self._d) for node in match_nodes]
 
     @property
     def exists(self):
@@ -529,14 +535,14 @@ class XPathSelector(object):
 
 
 class XMLElement(object):
-    def __init__(self, elem, parent: XPath):
+    def __init__(self, elem, d: "uiautomator2.Device"):
         """
         Args:
             elem: lxml node
             d: uiautomator2 instance
         """
         self.elem = elem
-        self._parent = parent
+        self._d = d
 
     def center(self):
         """
@@ -570,7 +576,7 @@ class XMLElement(object):
         """
         Take screenshot of element
         """
-        im = self._parent.take_screenshot()
+        im = self._d.screenshot()
         return im.crop(self.bounds)
 
     def swipe(self, direction: str, scale: float = 0.9):
@@ -610,7 +616,7 @@ class XMLElement(object):
         """ Returns:
                 (float, float): eg, (0.5, 0.5) means 50%, 50%
         """
-        ww, wh = self._parent._d.window_size()
+        ww, wh = self._d.window_size()
         _, _, w, h = self.rect
         return (w/ww, wh/h)
         
