@@ -19,6 +19,14 @@ def test_click(sess: u2.Session):
     assert sess.xpath("Alarm").exists
 
 
+def test_swipe(sess: u2.Session):
+    d = sess
+    d.xpath("App").click()
+    d.xpath("Alarm").wait()
+    assert not d.xpath("Voice Recognition").exists
+    d.xpath("@android:id/list").get().swipe("up", 0.5)
+    assert d.xpath("Voice Recognition").wait()
+
 def test_xpath_query(sess: u2.Session):
     assert sess.xpath("Accessibility").wait()
     assert sess.xpath("%ccessibility").wait()

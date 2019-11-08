@@ -453,7 +453,7 @@ class XPathSelector(object):
             match_sets.append(matches)
         # find out nodes which match all xpaths
         match_nodes = functools.reduce(lambda x, y: set(x).intersection(y), match_sets)
-        return [XMLElement(node, self._d) for node in match_nodes]
+        return [XMLElement(node, self._parent) for node in match_nodes]
 
     @property
     def exists(self):
@@ -535,14 +535,14 @@ class XPathSelector(object):
 
 
 class XMLElement(object):
-    def __init__(self, elem, d: "uiautomator2.Device"):
+    def __init__(self, elem, parent: XPath):
         """
         Args:
             elem: lxml node
             d: uiautomator2 instance
         """
         self.elem = elem
-        self._d = d
+        self._parent = parent
 
     def center(self):
         """
@@ -576,7 +576,7 @@ class XMLElement(object):
         """
         Take screenshot of element
         """
-        im = self._d.screenshot()
+        im = self._parent.take_screenshot()
         return im.crop(self.bounds)
 
     def swipe(self, direction: str, scale: float = 0.9):
@@ -616,7 +616,7 @@ class XMLElement(object):
         """ Returns:
                 (float, float): eg, (0.5, 0.5) means 50%, 50%
         """
-        ww, wh = self._d.window_size()
+        ww, wh = self._parent.window_size()
         _, _, w, h = self.rect
         return (w/ww, wh/h)
         

@@ -15,7 +15,7 @@ import findit
 import numpy as np
 import requests
 from logzero import setup_logger
-from PIL import Image
+from PIL import Image, ImageDraw
 
 
 def pil2cv(pil_image):
@@ -52,6 +52,25 @@ def _open_image_url(url: str, flag=cv2.IMREAD_COLOR):
     image = np.asarray(bytearray(content), dtype="uint8")
     image = cv2.imdecode(image, flag)
     return image
+
+
+def draw_point(im: Image.Image, x: int, y: int):
+    """
+    Mark position to show which point clicked
+
+    Args:
+        im: pillow.Image
+    """
+    draw = ImageDraw.Draw(im)
+    w, h = im.size
+    draw.line((x, 0, x, h), fill='red', width=5)
+    draw.line((0, y, w, y), fill='red', width=5)
+    r = min(im.size) // 40
+    draw.ellipse((x - r, y - r, x + r, y + r), fill='red')
+    r = min(im.size) // 50
+    draw.ellipse((x - r, y - r, x + r, y + r), fill='white')
+    del draw
+    return im
 
 
 def imread(data):
