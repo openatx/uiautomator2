@@ -16,6 +16,73 @@ import numpy as np
 import requests
 from logzero import setup_logger
 from PIL import Image, ImageDraw
+from skimage.metrics import structural_similarity
+import imutils
+
+
+compare_ssim = structural_similarity
+
+
+def color_bgr2gray(image: Union[np.ndarray, Image.Image]):
+    """ change color image to gray
+    Returns:
+        opencv-image
+    """
+    if ispil(image):
+        image = pil2cv(image)
+
+    if len(image.shape) == 2:
+        return image
+    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+
+def template_ssim(image_a, image_b):
+    """
+    Refs:
+        https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_template_matching/py_template_matching.html
+    """
+    a = color_bgr2gray(image_a)
+    b = color_bgr2gray(image_b) # template (small)
+    res = cv2.matchTemplate(a, b, cv2.TM_CCOEFF_NORMED)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+    return max_val
+
+
+def compare_ssim(image_a, image_b, full=False):
+    a = color_bgr2gray(image_a)
+    b = color_bgr2gray(image_b) # template (small)
+    return structural_similarity(a, b, full=full)
+
+
+def compare_ssim_debug(image_a, image_b, color=(255, 0, 0)):
+    """
+    Args:
+        image_a, image_b: opencv image or PIL.Image
+        color: (r, g, b) eg: (255, 0, 0) for red
+
+    Refs:
+        https://www.pyimagesearch.com/2017/06/19/image-difference-with-opencv-and-python/
+    """
+    ima, imb = conv2cv(image_a), conv2cv(image_b)
+    score, diff = compare_ssim(ima, imb, full=True)
+    diff = (diff * 255).astype('uint8')
+    _, thresh = cv2.threshold(diff, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+    cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = imutils.grab_contours(cnts)
+
+    cv2color = tuple(reversed(color))
+    im = ima.copy()
+    for c in cnts:
+        x, y, w, h = cv2.boundingRect(c)
+        cv2.rectangle(im, (x, y), (x+w, y+h), cv2color, 2)
+    # todo: show image
+    cv2pil(im).show()
+    return im
+
+
+def show_image(im: Union[np.ndarray, Image.Image]):
+    pilim = conv2pil(im)
+    pilim.show()
 
 
 def pil2cv(pil_image):
@@ -31,6 +98,31 @@ def pil2cv(pil_image):
 def cv2pil(cv_image):
     """ Convert opencv to pillow image """
     return Image.fromarray(cv_image[:, :, ::-1].copy())
+
+
+def iscv2(im):
+    return isinstance(im, np.ndarray)
+
+
+def ispil(im):
+    return isinstance(im, Image.Image)
+
+
+def conv2cv(im: Union[np.ndarray, Image.Image]) -> np.ndarray:
+    if iscv2(im):
+        return im
+    if ispil(im):
+        return pil2cv(im)
+    raise TypeError("Unknown image type:", type(im))
+
+
+def conv2pil(im: Union[np.ndarray, Image.Image]) -> Image.Image:
+    if ispil(im):
+        return im
+    elif iscv2(im):
+        return cv2pil(im)
+    else:
+        raise TypeError(f"Unknown image type: {type(im)}")
 
 
 def _open_data_url(data, flag=cv2.IMREAD_COLOR):
@@ -169,7 +261,11 @@ class ImageX(object):
         return self.send_click(x, y)
 
 
-if __name__ == "__main__":
+def _main():
+    ima = imread("http://localhost:17310/widgets/00006/template.jpg")
+    imb = imread("http://localhost:17310/widgets/00007/template.jpg")
+    compare_ssim_debug(ima, imb, color=(0, 0, 255))
+    return
     im = imread("https://www.baidu.com/img/bd_logo1.png")
     assert im.shape == (258, 540, 3)
     print(im.shape)
@@ -189,12 +285,16 @@ if __name__ == "__main__":
                        pro_mode=True)
     fi.load_template("template", pic_object=taobao)
 
-    import uiautomator2 as u2
-    d = u2.connect()
-    bg = d.screenshot(format="opencv")
-    res = fi.find("target", target_pic_object=bg)
-    from pprint import pprint
-    pprint(res)
+
+if __name__ == "__main__":
+    _main()
+
+    # import uiautomator2 as u2
+    # d = u2.connect()
+    # bg = d.screenshot(format="opencv")
+    # res = fi.find("target", target_pic_object=bg)
+    # from pprint import pprint
+    # pprint(res)
     # {'target_name': 'target',
     #  'target_path': None,
     #  'data': {
@@ -215,5 +315,5 @@ if __name__ == "__main__":
     #               'max_loc': [111, 1713],
     #               'all': [[111.0, 1713.5]]},
     #               'ok': True}}}}
-    x, y = res["data"]["template"]["TemplateEngine"]["target_point"]
-    d.click(x, y)
+    # x, y = res["data"]["template"]["TemplateEngine"]["target_point"]
+    # d.click(x, y)

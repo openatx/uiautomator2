@@ -396,9 +396,32 @@ class Device(object):
         """ return (width, height) """
         info = self._reqsess.get(self.path2url('/info')).json()
         w, h = info['display']['width'], info['display']['height']
-        if (w > h) != (self.info["displayRotation"] % 2 == 1):
+        rotation = self._get_orientation() 
+        if (w > h) != (rotation % 2 == 1):
             w, h = h, w
         return w, h
+    
+    def _get_orientation(self):
+        """
+        Rotaion of the phone
+        0: normal
+        1: home key on the right
+        2: home key on the top
+        3: home key on the left
+        """
+        _DISPLAY_RE = re.compile(
+                r'.*DisplayViewport{valid=true, .*orientation=(?P<orientation>\d+), .*deviceWidth=(?P<width>\d+), deviceHeight=(?P<height>\d+).*')
+        self.shell("dumpsys display")
+        for line in self.shell(['dumpsys', 'display']).output.splitlines():
+            m = _DISPLAY_RE.search(line, 0)
+            if not m:
+                continue
+            # w = int(m.group('width'))
+            # h = int(m.group('height'))
+            o = int(m.group('orientation'))
+            # w, h = min(w, h), max(w, h)
+            return o
+        return self.info["displayRotation"]
 
     def hooks_register(self, func):
         """
@@ -637,7 +660,7 @@ class Device(object):
             if self.alive:
                 return
             logger.debug("force reset uiautomator")
-            success = self._force_reset_uiautomator_v1() # uiautomator 1.0
+            success = self._force_reset_uiautomator_v2() # uiautomator 1.0
             if not success:
                 raise EnvironmentError("Uiautomator started failed. Find solutions in https://github.com/openatx/uiautomator2/wiki/Common-issues")
             logger.info("uiautomator back to normal")

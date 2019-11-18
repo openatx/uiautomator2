@@ -89,6 +89,12 @@ class Session(object):
     @property
     def xpath(self):
         return self.server.xpath
+
+    @property
+    @cache_return
+    def widget(self):
+        from uiautomator2.widget import Widget
+        return Widget(self)
     
     @property
     @cache_return
@@ -663,6 +669,11 @@ class Session(object):
             label: User-visible label for the clip data.
         '''
         self.jsonrpc.setClipboard(label, text)
+
+    def __getattr__(self, key):
+        if hasattr(self.server, key):
+            return getattr(self.server, key)
+        raise AttributeError(f"Session object has no attribute '{key}'")
 
     def __call__(self, **kwargs):
         return UiObject(self, Selector(**kwargs))
