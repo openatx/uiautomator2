@@ -106,7 +106,7 @@ class Initer():
                      or self.abi).split(",")
         self.server_addr = None
         self.logger = setup_logger(level=loglevel)
-        self.logger.debug("Initial device %s", device)
+        # self.logger.debug("Initial device %s", device)
 
     def shell(self, *args):
         self.logger.debug("Shell: %s", args)
@@ -285,7 +285,7 @@ class Initer():
             for url in self.minicap_urls:
                 self.push_url(url)
 
-        self._install_jars()
+        # self._install_jars() # disable jars
         if self.is_apk_outdated():
             self.logger.info(
                 "Install com.github.uiautomator, com.github.uiautomator.test %s",
@@ -314,11 +314,15 @@ class Initer():
     def uninstall(self):
         self._device.shell(["/data/local/tmp/atx-agent", "server", "--stop"])
         self._device.shell(["rm", "/data/local/tmp/atx-agent"])
+        self.logger.info("atx-agent stopped and removed")
         self._device.shell(["rm", "/data/local/tmp/minicap"])
         self._device.shell(["rm", "/data/local/tmp/minicap.so"])
         self._device.shell(["rm", "/data/local/tmp/minitouch"])
+        self.logger.info("minicap, minitouch removed")
         self._device.shell(["am", "uninstall", "com.github.uiautomator"])
         self._device.shell(["am", "uninstall", "com.github.uiautomator.test"])
+        self.logger.info("com.github.uiautomator uninstalled, all done !!!")
+
 
 
 if __name__ == "__main__":

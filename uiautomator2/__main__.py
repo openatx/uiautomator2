@@ -34,6 +34,13 @@ def cmd_init(args):
             init.install(args.server)
 
 
+def cmd_purge(args):
+    """ remove minicap, minitouch, uiautomator ... """
+    device = adbutils.adb.device(args.serial)
+    init = Initer(device, loglevel=logging.DEBUG)
+    init.uninstall()
+
+
 def cmd_screenshot(args):
     d = u2.connect(args.serial)
     d.screenshot().save(args.filename)
@@ -182,6 +189,9 @@ _commands = [
     dict(action=cmd_console,
          command="console",
          help="launch interactive python console"),
+    dict(action=cmd_purge,
+        command="purge",
+        help="remove minitouch, minicap, atx app etc, from device"),
 ]
 
 

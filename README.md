@@ -263,6 +263,15 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 ## Global settings
 This part contains some global settings
 
+### New command timeout
+How long (in seconds) will wait for a new command from the client before assuming the client quit and ending the uiautomator service
+
+Default 3 minutes
+
+```python
+d.set_new_command_timeout(300) # change to 5 minutes
+```
+
 ### Debug HTTP requests
 Trace HTTP requests and response to find out how it works.
 

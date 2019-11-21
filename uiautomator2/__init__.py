@@ -613,7 +613,7 @@ class Device(object):
                 self.name = name
                 # FIXME(ssx): support other service: minicap, minitouch
                 assert name == 'uiautomator'
-                self.service_url = u2obj.path2url("/services/uiautomator-1.0")
+                self.service_url = u2obj.path2url("/services/" + name)
             
             def raise_for_status(self, res):
                 if res.status_code != 200:
@@ -640,6 +640,16 @@ class Device(object):
     @property
     def uiautomator(self):
         return self.service("uiautomator")
+
+    def set_new_command_timeout(self, timeout: int):
+        """ default 3 minutes
+        Args:
+            timeout (int): seconds
+        """
+        r = self._reqsess.post(self.path2url("/newCommandTimeout"), data=str(int(timeout)))
+        data = r.json()
+        assert data['success'], data['description']
+        logger.info("%s", data['description'])
 
     def reset_uiautomator(self):
         """
