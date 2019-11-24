@@ -1226,6 +1226,8 @@ class Device(object):
             raise FileNotFoundError("pull", src, r.text)
         with open(dst, 'wb') as f:
             shutil.copyfileobj(r.raw, f)
+            if os.name == 'nt': # hotfix windows file size zero bug
+                f.close()
 
     def pull_content(self, src: str) -> bytes:
         """
