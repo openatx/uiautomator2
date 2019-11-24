@@ -1211,7 +1211,7 @@ class Device(object):
             return r.json()
         raise IOError("push", "%s -> %s" % (src, dst), r.text)
 
-    def pull(self, src, dst):
+    def pull(self, src: str, dst: str):
         """
         Pull file from device to local
 
@@ -1221,7 +1221,7 @@ class Device(object):
         Require atx-agent >= 0.0.9
         """
         pathname = self.path2url("/raw/" + src.lstrip("/"))
-        r = self._reqsess.get(pathname, stream=True)
+        r = requests.get(pathname, stream=True)
         if r.status_code != 200:
             raise FileNotFoundError("pull", src, r.text)
         with open(dst, 'wb') as f:
