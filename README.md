@@ -34,17 +34,16 @@
 
 ## Requirements
 - Android版本 4.4+
-- Python 3.6+
+- Python 3.6+ (社区反馈 3.8还不支持）
 
 >如果用python2的pip安装，会安装本库的老版本0.2.3；如果用python3.5的pip安装，会安装本库的老版本0.3.3；两者均已经不会再维护；PYPI上的最近版本是这个：https://pypi.org/project/uiautomator2/
 
 ## QUICK START
 先准备一台（不要两台）开启了`开发者选项`的安卓手机，连接上电脑，确保执行`adb devices`可以看到连接上的设备。
 
-- 运行`pip3 install -U uiautomator2`安装uiautomator2
-- 运行`python3 -m uiautomator2 init`安装包含httprpc服务的apk到手机+`atx-agent, minicap, minitouch`
+运行`pip3 install -U uiautomator2` 安装uiautomator2
 
-一般情况下都会成功，不过也可能会有意外。可以加QQ群反馈问题，群里有很多大佬可以帮你解决问题。
+运行`python3 -m uiautomator2 init`安装包含httprpc服务的apk到手机+`atx-agent, minicap, minitouch` （在过去的版本中，这一步是必须执行的，但是从1.3.0之后的版本，当运行python代码`u2.connect()`时就会自动推送这些文件了）
 
 命令行运行`python`打开python交互窗口。然后将下面的命令输入到窗口中。
 
@@ -61,6 +60,8 @@ print(d.info)
 {'currentPackageName': 'net.oneplus.launcher', 'displayHeight': 1920, 'displayRotation': 0, 'displaySizeDpX': 411, 'displaySizeDpY': 731, 'displayWidth': 1080, 'productName': 'OnePlus5', '
 screenOn': True, 'sdkInt': 27, 'naturalOrientation': True}
 ```
+
+一般情况下都会成功，不过也可能会有意外。可以加QQ群反馈问题，群里有很多大佬可以帮你解决问题。
 
 ## Sponsors
 Thank you to all our sponsors! ✨🍰✨
@@ -141,15 +142,30 @@ Thank you to all our sponsors! ✨🍰✨
     git clone https://github.com/openatx/uiautomator2
     pip install -e uiautomator2
     ```
-
-    Optionally, `pillow` is needed to process screenshot data.
     
-    ```bash
-    pip install pillow
-    ```
+    测试是否安装成功 `uiautomator2 --help`
+    
+2. Install weditor (UI Inspector)
 
-2. Install daemons to a device 
-    电脑连接上一个手机或多个手机, 确保adb已经添加到环境变量中，执行下面的命令会自动安装本库所需要的设备端程序：[uiautomator-server](https://github.com/openatx/android-uiautomator-server/releases) 、[atx-agent](https://github.com/openatx/atx-agent)、[openstf/minicap](https://github.com/openstf/minicap)、[openstf/minitouch](https://github.com/openstf/minitouch)
+    因为uiautomator是独占资源，所以当atx运行的时候uiautomatorviewer是不能用的，为了减少atx频繁的启停，我们开发了基于浏览器技术的weditor UI查看器。<https://github.com/openatx/weditor>
+
+    安装方法(备注: 目前最新的稳定版为 0.1.0)
+
+    ```bash
+    pip install -U weditor
+    ```
+    
+    安装好之后，就可以在命令行运行`weditor --help` 确认是否安装成功了。
+
+    > Windows系统可以使用命令在桌面创建一个快捷方式 `weditor --shortcut`
+
+    命令行直接输入 `weditor` 会自动打开浏览器，输入设备的ip或者序列号，点击Connect即可。
+
+    具体参考文章：[浅谈自动化测试工具python-uiautomator2](https://testerhome.com/topics/11357)
+    
+3. Install daemons to a device (Optional)
+
+    电脑连接上一个手机或多个手机, 确保adb已经添加到环境变量中，执行下面的命令会自动安装本库所需要的设备端程序：[uiautomator-server](https://github.com/openatx/android-uiautomator-server/releases) 、[atx-agent](https://github.com/openatx/atx-agent)、[openstf/minicap](https://github.com/openstf/minicap)、[openstf/minitouch](https://github.com/openstf/minitouch)
 
     ```bash
     # init 所有的已经连接到电脑的设备
@@ -159,22 +175,6 @@ Thank you to all our sponsors! ✨🍰✨
     有时候init也会出错，请参考[手动Init指南](https://github.com/openatx/uiautomator2/wiki/Manual-Init)
 
     安装提示`success`即可
-
-3. Install weditor (UI Inspector)
-
-    因为uiautomator是独占资源，所以当atx运行的时候uiautomatorviewer是不能用的，为了减少atx频繁的启停，我们开发了基于浏览器技术的weditor UI查看器。<https://github.com/openatx/weditor>
-
-    安装方法(备注: 目前最新的稳定版为 0.1.0)
-
-    ```bash
-    pip install -U weditor
-    ```
-
-    > Windows系统可以使用命令在桌面创建一个快捷方式 `python -m weditor --shortcut`
-
-    命令行启动 `python -m weditor` 会自动打开浏览器，输入设备的ip或者序列号，点击Connect即可。
-
-    具体参考文章：[浅谈自动化测试工具python-uiautomator2](https://testerhome.com/topics/11357)
 
 4. 【可选】AppetizerIO 所见即所得脚本编辑器
 
@@ -231,45 +231,53 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 
 > 1.0.3 Added: `python3 -m uiautomator2`可以简写为`uiautomator2`
 
-- init: 为设备安装所需要的程序
-
-    ```bash
-    uiautomator2 init 
-    # If you need specify device to init, pass --serial <serial> 
-    python3 -m uiautomator2 init --serial your-device-serial
-    ```
-
 - screenshot: 截图
 
     ```bash
-    $ python -m uiautomator2 screenshot screenshot.jpg
+    $ uiautomator2 screenshot screenshot.jpg
     ```
 
+- current: 获取当前包名和activity
+
+    ```bash
+    $ uiautomator2 current
+    {
+        "package": "com.android.browser",
+        "activity": "com.uc.browser.InnerUCMobile",
+        "pid": 28478
+    }
+    ```
+    
 - uninstall： 卸载
 
     ```bash
-    python -m uiautomator2 uninstall <package-name> # 卸载一个包
-    python -m uiautomator2 uninstall <package-name-1> <package-name-2> # 卸载多个包
-    python -m uiautomator2 uninstall --all # 全部卸载
+    $ uiautomator2 uninstall <package-name> # 卸载一个包
+    $ uiautomator2 uninstall <package-name-1> <package-name-2> # 卸载多个包
+    $ uiautomator2 uninstall --all # 全部卸载
     ```
 
+- stop: 停止应用
+
+    ```bash
+    $ uiautomator2 stop com.example.app # 停止一个app
+    $ uiautomator2 stop --all # 停止所有的app
+    ```
+    
 - install: 安装apk，apk通过URL给出 (暂时不能用)
-- clear-cache: 清空缓存 (废弃中，目前已经不需要改接口）
-- `app-stop-all`: 停止所有应用 （暂不能用）
 - healthcheck: 健康检查 (暂不能用)
 
     
 # API Documents
-## Global settings
+## Global settings (全局配置）
 This part contains some global settings
 
 ### New command timeout
-How long (in seconds) will wait for a new command from the client before assuming the client quit and ending the uiautomator service
+How long (in seconds) will wait for a new command from the client before assuming the client quit and ending the uiautomator service （Default 3 minutes）
 
-Default 3 minutes
+配置accessibility服务的最大空闲时间，超时将自动释放。默认3分钟。
 
 ```python
-d.set_new_command_timeout(300) # change to 5 minutes
+d.set_new_command_timeout(300) # change to 5 minutes, unit seconds
 ```
 
 ### Debug HTTP requests
@@ -287,6 +295,8 @@ Trace HTTP requests and response to find out how it works.
 
 ### Implicit wait
 Set default element wait time, unit seconds
+
+设置元素查找等待时间（默认10s）
 
 ```python
 d.implicitly_wait(10.0)
@@ -313,7 +323,7 @@ d.app_install('http://some-domain.com/some.apk')
 d.app_start("com.example.hello_world")
 
 # 使用 monkey -p com.example.hello_world -c android.intent.category.LAUNCHER 1 启动
-# 这种方法有个附带的问题，它自动会将手机的旋转锁定给关掉
+# 这种方法有个副作用，它自动会将手机的旋转锁定给关掉
 d.app_start("com.example.hello_world", use_monkey=True) # start with package name
 
 # 通过指定main activity的方式启动应用，等价于调用am start -n com.example.hello_world/.MainActivity
@@ -372,7 +382,7 @@ d.app_wait("com.example.android", front=True) # 等待应用前台运行
 d.app_wait("com.example.android", timeout=20.0) # 最长等待时间20s（默认）
 ```
 
-> Add in version 1.2.0
+> Added in version 1.2.0
 
 ### Push and pull files
 * push a file to the device
@@ -620,9 +630,12 @@ Below is a possible output:
  'usingBeganAt': '0001-01-01T00:00:00Z'}
 ```
 ### Clipboard
-设置粘贴板内容或获取内容,目前已知问题是9.0之后的后台程序无法获取剪贴板的内容
+Get of set clipboard content
+
+设置粘贴板内容或获取内容 (目前已知问题是9.0之后的后台程序无法获取剪贴板的内容)
 
 * clipboard/set_clipboard
+
     ```python
     d.set_clipboard('text', 'label')
     print(d.clipboard)
@@ -1289,7 +1302,7 @@ _什么时候该使用这个函数呢？_
 这个时候就需要`send_action`函数了，这里用到了只有输入法才能用的[IME_ACTION_CODE](https://developer.android.com/reference/android/view/inputmethod/EditorInfo)。
 `send_action`先broadcast命令发送给输入法操作`IME_ACTION_CODE`，由输入法完成后续跟EditText的通信。（原理我不太清楚，有了解的，提issue告诉我)
 
-### ~~Toast~~ (2.0之后暂时移除，因为退回到了uiautomator-1.0)
+### Toast (2.2版本之后有添加回来)
 Show Toast
 
 ```python
@@ -1315,6 +1328,7 @@ d.toast.reset()
 ```
 
 ### XPath
+Java uiautoamtor中默认是不支持xpath的，所以这里属于扩展的一个功能。速度不是这么的快。
 
 For example: 其中一个节点的内容
 
