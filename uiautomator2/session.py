@@ -109,10 +109,18 @@ class Session(object):
         """set default wait timeout
         Args:
             seconds(float): to wait element show up
+
+        Deprecated:
+            recommend use: d.settings['wait_timeout'] = 10
         """
-        if seconds is not None:
-            self.server.wait_timeout = seconds
-        return self.server.wait_timeout
+        if seconds is None:
+            return self.server.settings['wait_timeout']
+        else:
+            self.server.settings["wait_timeout"] = seconds
+
+        # if seconds is not None:
+        #     self.server.wait_timeout = seconds
+        # return self.server.wait_timeout
 
     def close(self):
         """ close app """

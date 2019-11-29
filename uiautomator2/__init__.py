@@ -29,7 +29,7 @@ import time
 import warnings
 from collections import namedtuple
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 
 import humanize
 import progress.bar
@@ -54,6 +54,7 @@ from .init import Initer
 from .session import Session, set_fail_prompt  # noqa: F401
 from .utils import cache_return
 from .version import __atx_agent_version__
+from .settings import Settings
 
 if six.PY2:
     FileNotFoundError = OSError
@@ -164,6 +165,7 @@ def connect_usb(serial=None, healthcheck=False, init=True):
     lport = device.forward_port(7912)
     d = connect_wifi('127.0.0.1:' + str(lport))
     d._serial = device.serial
+    d._adb_device = device
 
     if not d.agent_alive or not d.alive:
         initer = Initer(device)
@@ -306,6 +308,7 @@ class Device(object):
         """
         self._host = host
         self._port = port
+        self._adb_device = None # adbutils.Device
         self._serial = None
         self._reqsess = TimeoutRequestsSession(
         )  # use requests.Session to enable HTTP Keep-Alive
@@ -323,12 +326,41 @@ class Device(object):
 
         self.ash = AdbShell(self.shell)  # the powerful adb shell
         self.wait_timeout = 20.0  # wait element timeout
-        self.click_post_delay = None  # wait after each click
         self._freeze()  # prevent creating new attrs
         # self._atx_agent_check()
 
     def _freeze(self):
         self.__isfrozen = True
+
+    def request_agent(self, relative_url: str, method="get", timeout=60.0):
+        """ send http-request to atx-agent """
+        return self._reqsess.request(method, self.path2url(relative_url), timeout=timeout)
+
+    # for compatible with old version
+    @property
+    def wait_timeout(self):
+        return self.settings['wait_timeout']
+    
+    @wait_timeout.setter
+    def wait_timeout(self, v: Union[int, float]):
+        self.settings['wait_timeout'] = v
+
+    @property
+    def click_post_delay(self):
+        return self.settings['post_delay']
+    
+    @click_post_delay.setter
+    def click_post_delay(self, v: Union[int, float]):
+        self.settings['post_delay'] = v
+    # end of compatible code
+
+    @property
+    def debug(self):
+        return hasattr(self._reqsess, 'debug') and self._reqsess.debug
+
+    @debug.setter
+    def debug(self, value):
+        self._reqsess.debug = bool(value)
 
     @staticmethod
     def plugins():
@@ -362,14 +394,6 @@ class Device(object):
         except (requests.ConnectionError, ) as e:
             raise EnvironmentError(
                 "atx-agent is not responding, need to init device first")
-
-    @property
-    def debug(self):
-        return hasattr(self._reqsess, 'debug') and self._reqsess.debug
-
-    @debug.setter
-    def debug(self, value):
-        self._reqsess.debug = bool(value)
 
     @property
     def serial(self):
@@ -1379,6 +1403,11 @@ class Device(object):
     def xpath(self) -> xpath.XPath:
         return xpath.XPath(self)
     
+    @property
+    @cache_return
+    def settings(self) -> Settings:
+        return Settings()
+
     @property
     @cache_return
     def image(self):

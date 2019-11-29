@@ -25,7 +25,7 @@ class SimpleTestCase(unittest.TestCase):
     def tearDown(self):
         self.sess.watchers.remove()
 
-    @pytest.mark.skip("Removed")
+    # @pytest.mark.skip("Removed")
     def test_toast_get_message(self):
         d = self.sess
         d.toast.reset()

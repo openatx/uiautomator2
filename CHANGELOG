@@ -1,13 +1,136 @@
 CHANGES
 =======
 
+2.2.0
+-----
+
+* add cmd\_purge, add set\_new\_command\_timeout api
+
+2.1.0
+-----
+
+* add image.py, change uiautomator from v1 to v2
+* add uauto
+* typo (#476)
+* fix missing \_parent error, close #477
+* hot fix for #475
+* fix spell error
+* fix logo not show error in readme
+* add hogwarts sponsor
+* add wait to image.py
+* fix xpath start-with and ends-with, add image click
+
+2.0.0
+-----
+
+* remove toast from readme
+* add app list api
+* support multi xpath(xx).xpath(xx), and add .info in xpath
+* add clipboard doc
+* change to uiautomator 1.0
+* Fixes #451
+* add clipboard support
+* Update README.md
+* fix d.xpath.when(..).when(..), thread-safe reset-uiautomator
+
+1.3.6
+-----
+
+* use monkey command to install apk on TMQ platform
+* fix d.xpath.watcher, fix d.shell can not handle & and ? bug
+
+1.3.5
+-----
+
+* add xpath.apply\_watch\_from\_yaml, support xpath.when(1).when(2)
+* fix homepage link
+* fix atx-agent version compare check
+
+1.3.4
+-----
+
+* remove useless cli
+* use jsonrpc.dumpWindowsHierarchy instead of http GET /dump/hierarchy
+* assert file\_size when cache\_download
+
+1.3.3
+-----
+
+* fix uiautomator start error
+
+1.3.2
+-----
+
+* update atx-agent to fix UIAutomation not connected error
+* upgrade apk version
+* enhance reset\_uiautomator()
+
+1.3.1
+-----
+
+* fix adbutils dep version
+
+1.3.0
+-----
+
+* fix check atx-agent
+* fix last commit
+* add function to check atx-agent version
+* update atx-agent version
+* update dingtalk webhook again
+* update dingtalk webhook
+
+1.2.6
+-----
+
+* fix when uiautomator not alive, func connect can not auto init error
+
+1.2.5
+-----
+
+* update dingtalk robot webhook url
+* set init as default, set default screenshot name when use cli:uiautomator2 screenshot
+* rename current\_app to app\_current
+* add webview for future develop
+
+1.2.4
+-----
+
+* fix app\_start without activity not launch error
+* add adcd.py(abstract class about device) and implement pure adb to run test
+* implement pure adb to run test
+* use Baidu OCR to select element (#419)
+
+1.2.3
+-----
+
+* update androidbinary to fix momo can not start error #393
+* add support u2.connect\_usb(serial, init=False)
+* change function behavior d.touch.up() to d.touch.up(x, y)
+
+1.2.2
+-----
+
+* fix app\_list\_running() only show 3rd party apps bug, add support to read from env-var ANDROID\_SERIAL
+
+1.2.1
+-----
+
+* fix and add doc for app\_start #425, add uiautomator check in dump\_hierarchy
+* add thread lock in dump\_hierarchy
+* fix session restart
+* Update README.md
+* add notification about dingtalk travis
+
+1.2.0
+-----
+
 * add wait gone
 * add strict argument to session()
 * rename UIAutomatorServer to Device, add session.restart() method
 * change http://tool.appetizer.io to https protocol
 * add swipe\_ext('right', 0.9) method
 * add app\_wait, app\_list\_running
-* add clipboard support
 
 1.1.0
 -----
@@ -42,6 +165,7 @@ CHANGES
 * fix swipe\_points usage in readme
 * init add mirror of appetizer
 * fix str decode error
+* fix debug mode decode error
 
 0.3.3
 -----
