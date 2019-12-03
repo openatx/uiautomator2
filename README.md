@@ -1157,8 +1157,46 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
   
 ### Watcher
 
-You can register [watchers](http://developer.android.com/tools/help/uiautomator/UiWatcher.html) to perform some actions when a selector does not find a match.
+~~You can register [watchers](http://developer.android.com/tools/help/uiautomator/UiWatcher.html) to perform some actions when a selector does not find a match.~~
 
+2.0.0之前使用的是 uiautomator-jar库中提供的[Watcher]((http://developer.android.com/tools/help/uiautomator/UiWatcher.html)方法，但在实践中发现一旦uiautomator所有的watcher配置都是丢失，这肯定是无法接受的。
+所以目前采用了后台运行了一个线程的方法(依赖threading库），然后每隔一段时间dump一次hierarchy，匹配到元素之后执行相应的操作。
+
+用法举例
+
+注册监控
+
+```python
+# 常用写法，注册匿名监控
+d.watcher.when("安装").click()
+
+# 注册名为ANR的监控，当出现ANR和Force Close时，点击Force Close
+d.watcher("ANR").when(xpath="ANR").when("Force Close").click()
+
+# 其他回调例子
+d.watcher.when("抢红包").press("back")
+d.watcher.when("//*[@text = 'Out of memory']").call(lambda d: d.shell('am force-stop com.im.qq'))
+```
+
+监控操作
+
+```
+# 移除ANR的监控
+d.watcher.remove("ANR")
+
+# 移除所有的监控
+d.watcher.remove()
+
+# 开始后台监控
+d.watcher.start()
+d.watcher.start(2.0) # 默认监控间隔2.0s
+
+# 停止监控
+d.watcher.stop()
+
+# 停止并移除所有的监控，常用于初始化
+d.watcher.reset()
+```
 
 * Register Watcher
 
@@ -1373,9 +1411,7 @@ for elem in d.xpath("//android.widget.TextView").all():
     print("Position:", elem.center())
 ```
 
-其他XPath常见用法
-
-See also: https://github.com/openatx/uiautomator2/blob/master/uiautomator2/ext/xpath/README.md
+点击查看[其他XPath常见用法](XPATH.md)
 
 # 常见问题
 很多没写在这个地方的，都放到了这里 [Common Issues](https://github.com/openatx/uiautomator2/wiki/Common-issues)

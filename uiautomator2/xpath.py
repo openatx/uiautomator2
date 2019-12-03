@@ -20,6 +20,7 @@ from logzero import setup_logger
 from logzero import logger
 from PIL import Image
 
+from deprecated import deprecated
 import adbutils
 import uiautomator2
 from uiautomator2.exceptions import XPathElementNotFoundError
@@ -127,9 +128,8 @@ class XPath(object):
         assert hasattr(d, "window_size")
         assert hasattr(d, "dump_hierarchy")
         assert hasattr(d, "screenshot")
+        assert hasattr(d, 'wait_timeout')
 
-        self._watchers = []  # item: {"xpath": .., "callback": func}
-        self._timeout = 10.0
         self._click_before_delay = 0.0 # pre delay
         self._click_after_delay = None # post delay
         self._last_source = None
@@ -139,10 +139,6 @@ class XPath(object):
         self._alias = {}
         self._alias_strict = False
         self._dump_lock = threading.Lock()
-        self._watch_stop_event = threading.Event()
-        self._watch_stopped = threading.Event()
-        self._watch_running = False # func run_watchers is calling
-        self._watching = False # func watch_forever is calling
 
         # 这里setup_logger不可以通过level参数传入logging.INFO
         # 不然其StreamHandler都要重新setLevel，没看懂也没关系，反正就是不要这么干. 特此备注
@@ -156,11 +152,22 @@ class XPath(object):
         }
         if key not in valid_keys:
             raise ValueError("invalid key", key)
-        setattr(self, "_" + key, value)
+        if key == "timeout":
+            self.implicitly_wait(value)
+        else:
+            setattr(self, "_" + key, value)
 
     def implicitly_wait(self, timeout):
         """ set default timeout when click """
-        self._timeout = timeout
+        self._d.wait_timeout = timeout
+    
+    @property
+    def wait_timeout(self):
+        return self._d.wait_timeout
+    
+    @property
+    def _watcher(self):
+        return self._d.watcher
 
     def dump_hierarchy(self):
         with self._dump_lock:
@@ -206,35 +213,11 @@ class XPath(object):
     def match(self, xpath, source=None):
         return len(self(xpath, source).all()) > 0
 
+    @deprecated(version="3.0.0", reason="use d.watcher.when(..) instead")
     def when(self, xquery: str):
-        obj = self
+        return self._watcher.when(xquery)
 
-        def _click(selector):
-            selector.get_last_match().click()
-
-        class _Watcher():
-            def __init__(self, xquery):
-                self._xqueries = [xquery]
-
-            def when(self, xquery: str):
-                self._xqueries.append(xquery)
-                return self
-
-            def click(self):
-                self.call(_click)
-
-            def call(self, func):
-                """
-                Args:
-                    func: accept only one argument "selector"
-                """
-                obj._watchers.append({
-                    "xqueries": self._xqueries,
-                    "callback": func,
-                })
-
-        return _Watcher(xquery)
-
+    @deprecated(version="3.0.0", reason="deprecated")
     def apply_watch_from_yaml(self, data):
         """
         Examples of argument data
@@ -272,82 +255,24 @@ class XPath(object):
             self.logger.debug("When: %r, Trigger: %r", when, trigger.__doc__)
             self.when(when).call(trigger)
 
+    @deprecated(version="3.0.0", reason="use d.watcher.run() instead")
     def run_watchers(self, source=None):
-        self._watch_running = True
-        try:
-            self._exec_watchers(source=source)
-        finally:
-            self._watch_running = False
+        self._watcher.run()
 
-    def _exec_watchers(self, source=None):
-        source = source or self.dump_hierarchy()
-        for h in self._watchers:
-            last_selector = None
-            for xquery in h['xqueries']:
-                last_selector = self(xquery, source)
-                if not last_selector.exists:
-                    last_selector = None
-                    break
-            if last_selector:
-                self.logger.info("XPath(hook) %s", h['xqueries'])
-                cb = h['callback']
-                defaults = {
-                    "selector": last_selector,
-                    "d": self._d,
-                    "source": source,
-                }
-                st = inspect.signature(cb)
-                kwargs = {
-                    key: defaults[key]
-                    for key in st.parameters.keys() if key in defaults
-                }
-                ba = st.bind(**kwargs)
-                ba.apply_defaults()
-                try:
-                    cb(*ba.args, **ba.kwargs)
-                except Exception as e:
-                    self.logger.warning("watchers exception: %s", e)
-                return True
-        return False
-
-    def _watch_forever(self, interval: float):
-        try:
-            wait_timeout = interval
-            while not self._watch_stopped.wait(timeout=wait_timeout):
-                triggered = self.run_watchers()
-                wait_timeout = min(0.5, interval) if triggered else interval
-        finally:
-            self._watching = False
-            self._watch_stopped.clear()
-            self._watch_stop_event.set()
-
+    @deprecated(version="3.0.0", reason="use d.watcher.start(..) instead")
     def watch_background(self, interval: float = 4.0):
-        if self._watching:
-            self.watch_stop()
-        self._watching = True
-        th = threading.Thread(name="xpath_watch",
-                              target=self._watch_forever,
-                              args=(interval, ))
-        th.daemon = True
-        th.start()
-        return th
+        return self._watcher.start(interval)
 
+    @deprecated(version="3.0.0", reason="use d.watcher.stop() instead")
     def watch_stop(self):
         """ stop watch background """
-        if not self._watching:
-            self.logger.warning("watch already stopped")
-            return
+        self._watcher.stop()
 
-        if self._watch_stopped.is_set():
-            return
-
-        self._watch_stopped.set()
-        self._watch_stop_event.wait(timeout=10)
-        self._watch_stop_event.clear()
-
+    @deprecated(version="3.0.0", reason="use d.watcher.remove() instead")
     def watch_clear(self):
-        self._watchers = []
+        self._watcher.stop()
 
+    @deprecated(version="3.0.0", reason="removed")
     def sleep_watch(self, seconds):
         """ run watchers when sleep """
         deadline = time.time() + seconds
@@ -360,26 +285,28 @@ class XPath(object):
         """
         Args:
             xpath (str): xpath string
-            watch (bool): click popup elements
+            watch (bool): click popup elements (deprecated)
             timeout (float): pass
             pre_delay (float): pre delay wait time before click
 
         Raises:
             TimeoutException
         """
-        timeout = timeout or self._timeout
+        timeout = timeout or self.wait_timeout
         self.logger.info("XPath(timeout %.1f) %s", timeout, xpath)
 
-        if watch is None:
-            watch = not self._watch_running
+        # d.set_run_watcher_before_click(True)
+        # watch = False
+        # if watch is None:
+        #     watch = not self._watcher.running()
 
         deadline = time.time() + timeout
         while True:
             source = self.dump_hierarchy()
-            if watch and self.run_watchers(source):
-                time.sleep(.5)  # post delay
-                deadline = time.time() + timeout # correct deadline
-                continue
+            # if watch and self._watcher.run(source):
+            #     time.sleep(.5)  # post delay
+            #     deadline = time.time() + timeout # correct deadline
+            #     continue
 
             selector = self(xpath, source)
             if selector.exists:
@@ -432,7 +359,7 @@ class XPathSelector(object):
 
     @property
     def _global_timeout(self):
-        return self._parent._timeout
+        return self._parent.wait_timeout
 
     def all(self, source=None):
         """

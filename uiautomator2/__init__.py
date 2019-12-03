@@ -55,6 +55,7 @@ from .session import Session, set_fail_prompt  # noqa: F401
 from .utils import cache_return
 from .version import __atx_agent_version__
 from .settings import Settings
+from .watcher import Watcher
 
 if six.PY2:
     FileNotFoundError = OSError
@@ -325,7 +326,6 @@ class Device(object):
         self.platform = None  # hot fix for weditor
 
         self.ash = AdbShell(self.shell)  # the powerful adb shell
-        self.wait_timeout = 20.0  # wait element timeout
         self._freeze()  # prevent creating new attrs
         # self._atx_agent_check()
 
@@ -338,7 +338,7 @@ class Device(object):
 
     # for compatible with old version
     @property
-    def wait_timeout(self):
+    def wait_timeout(self): # wait element timeout
         return self.settings['wait_timeout']
     
     @wait_timeout.setter
@@ -1407,6 +1407,11 @@ class Device(object):
     @cache_return
     def settings(self) -> Settings:
         return Settings()
+    
+    @property
+    @cache_return
+    def watcher(self) -> Watcher:
+        return Watcher(self)
 
     @property
     @cache_return

@@ -11,8 +11,7 @@ def d():
 
 @pytest.fixture(scope="function")
 def sess(d) -> u2.Session:
-    d.xpath.watch_stop()
-    d.xpath.watch_clear()
+    d.watcher.reset()
     
     s = d.session("io.appium.android.apis")
     yield s

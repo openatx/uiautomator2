@@ -19,13 +19,12 @@ class SimpleTestCase(unittest.TestCase):
         cls.d.implicitly_wait(10)
 
     def setUp(self):
+        self.d.watcher.reset()
         self.sess = self.d.session("io.appium.android.apis")
-        self.sess.watchers.remove()
 
     def tearDown(self):
-        self.sess.watchers.remove()
+        self.d.watcher.reset()
 
-    # @pytest.mark.skip("Removed")
     def test_toast_get_message(self):
         d = self.sess
         d.toast.reset()
@@ -51,28 +50,36 @@ class SimpleTestCase(unittest.TestCase):
         d(text="App").click()
         d(scrollable=True).scroll.to(text="Voice Recognition")
 
-    @pytest.mark.skip("Deprecated")
+    # @pytest.mark.skip("Deprecated")
     def test_watchers(self):
         """
         App -> Notification -> Status Bar
         """
         d = self.sess
-        d.watchers.remove()
-        d.watchers.watched = False
+        d.watcher.remove()
+        d.watcher.stop()
 
-        d.watcher("N").when(text='Notification').click(text='Notification')
+        d.watcher("N").when('Notification').click()
         d(text="App").click()
-        d.watchers.run()
+        d.watcher.run()
+
         self.assertTrue(d(text="Status Bar").wait(timeout=3))
         d.press("back")
         d.press("back")
         # Should auto click Notification when show up
-        self.assertFalse(d.watchers.watched)
-        d.watchers.watched = True
-        self.assertTrue(d.watchers.watched)
+        self.assertFalse(d.watcher.running())
+        d.watcher.start()
+
+        self.assertTrue(d.watcher.running())
         d(text="App").click()
-        self.assertTrue(d(text="Status Bar").exists(timeout=3))
-        d.watchers.watched = False
+        self.assertTrue(d(text="Status Bar").exists(timeout=5))
+
+        d.press("back")
+        d.press("back")
+
+        d.watcher.remove("N")
+        d(text="App").click()
+        self.assertFalse(d(text="Status Bar").wait(timeout=5))
 
     @pytest.mark.skip("TODO:: not fixed")
     def test_count(self):
