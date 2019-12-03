@@ -1191,6 +1191,9 @@ d.watcher.remove()
 d.watcher.start()
 d.watcher.start(2.0) # 默认监控间隔2.0s
 
+# 强制运行所有监控
+d.watcher.run()
+
 # 停止监控
 d.watcher.stop()
 
@@ -1198,95 +1201,7 @@ d.watcher.stop()
 d.watcher.reset()
 ```
 
-* Register Watcher
-
-  When a selector can not find a match, uiautomator2 will run all registered watchers.
-
-  - Click target when conditions match
-
-  ```python
-  d.watcher("AUTO_FC_WHEN_ANR").when(text="ANR").when(text="Wait") \
-                               .click(text="Force Close")
-  # d.watcher(name) ## creates a new named watcher.
-  #  .when(condition)  ## the UiSelector condition of the watcher.
-  #  .click(target)  ## perform click action on the target UiSelector.
-  ```
-
-  There is also a trick about click. You can use click without arguments.
-
-  ```python
-  d.watcher("ALERT").when(text="OK").click()
-  # Same as
-  d.watcher("ALERT").when(text="OK").click(text="OK")
-  ```
-
-  - Press key when a condition becomes true
-
-  ```python
-  d.watcher("AUTO_FC_WHEN_ANR").when(text="ANR").when(text="Wait") \
-                               .press("back", "home")
-  # d.watcher(name) ## creates a new named watcher.
-  #  .when(condition)  ## the UiSelector condition of the watcher.
-  #  .press(<keyname>, ..., <keyname>.()  ## press keys one by one in sequence.
-  ```
-
-* Check if the named watcher triggered
-
-  A watcher is triggered, which means the watcher was run and all its conditions matched.
-
-  ```python
-  d.watcher("watcher_name").triggered
-  # true in case of the specified watcher triggered, else false
-  ```
-
-* Remove a named watcher
-
-  ```python
-  # remove the watcher
-  d.watcher("watcher_name").remove()
-  ```
-
-* List all watchers
-
-  ```python
-  d.watchers
-  # a list of all registered watchers
-  ```
-
-* Check for any triggered watcher
-
-  ```python
-  d.watchers.triggered
-  #  true in case of any watcher triggered
-  ```
-
-* Reset all triggered watchers
-
-  ```python
-  # reset all triggered watchers, after that, d.watchers.triggered will be false.
-  d.watchers.reset()
-  ```
-
-* Remove watchers
-
-  ```python
-  # remove all registered watchers
-  d.watchers.remove()
-  # remove the named watcher, same as d.watcher("watcher_name").remove()
-  d.watchers.remove("watcher_name")
-  ```
-
-* Force to run all watchers
-
-  ```python
-  # force to run all registered watchers
-  d.watchers.run()
-  ```
-
-* ~~Run all watchers when page update.~~ (因为稳定性原因，目前已废弃)
-
-
-另外文档还是有很多没有写，推荐直接去看源码[__init__.py](uiautomator2/__init__.py)
+另外文档还是有很多没有写，推荐直接去看源码[watcher.py](uiautomator2/watcher.py)
 
 ### Global settings
 ```python
