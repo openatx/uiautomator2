@@ -593,7 +593,7 @@ class Session(object):
         self.jsonrpc.setClipboard(label, text)
 
     def __getattr__(self, key):
-        if key in ["wait_timeout", "window_size", "shell", "xpath", "widget", "watcher"]:
+        if key in ["wait_timeout", "window_size", "shell", "xpath", "widget", "watcher", "settings"]:
             return getattr(self.server, key)
         raise AttributeError(f"Session object has no attribute '{key}'")
 

@@ -1,18 +1,24 @@
 # coding: utf-8
 #
 
+import json
+import logging
 import pprint
 from typing import Any
 
 
 class Settings(object):
-    def __init__(self):
+    def __init__(self, d: "uiautomator2.Device"):
+        self._d = d
+
         self._defaults = {
             "post_delay": 0,
             "wait_timeout": 20.0,
+            "xpath_debug": False, #self._set_xpath_debug,
         }
         self._props = {
             "post_delay": (float, int),
+            "xpath_debug": bool,
         }
         for k, v in self._defaults.items():
             if k not in self._props:
@@ -27,6 +33,12 @@ class Settings(object):
         if not isinstance(val, self._props[key]):
             print(key, self._props[key])
             raise TypeError("invalid type, only accept: %r" % self._props[key])
+
+        # function call
+        callback = self._defaults[key]
+        if callable(callback):
+            callback(val)
+
         self._defaults[key] = val
 
     def __setitem__(self, key: str, val: Any):
@@ -39,12 +51,13 @@ class Settings(object):
     
     def __repr__(self):
         return pprint.pformat(self._defaults)
+        # return self._defaults
 
 
 
 
-if __name__ == "__main__":
-    settings = Settings()
-    settings.set("pre_delay", 10)
-    print(settings['pre_delay'])
-    settings["post_delay"] = 10
+# if __name__ == "__main__":
+#     settings = Settings(None)
+#     settings.set("pre_delay", 10)
+#     print(settings['pre_delay'])
+#     settings["post_delay"] = 10

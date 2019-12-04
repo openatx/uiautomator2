@@ -42,8 +42,8 @@ def init():
 
 
 def string_quote(s):
-    """ TODO(ssx): quick way to quote string """
-    return '"' + s + '"'
+    """ quick way to quote string """
+    return "{!r}".format(s)
 
 
 def str2bytes(v) -> bytes:
@@ -59,25 +59,25 @@ def strict_xpath(xpath: str, logger=logger) -> str:
     if xpath.startswith('//'):
         pass
     elif xpath.startswith('@'):
-        xpath = '//*[@resource-id={}]'.format(string_quote(xpath[1:]))
+        xpath = '//*[@resource-id={!r}]'.format(xpath[1:])
     elif xpath.startswith('^'):
-        xpath = '//*[re:match(text(), {})]'.format(string_quote(xpath))
+        xpath = '//*[re:match(text(), {!r})]'.format(xpath)
     # elif xpath.startswith("$"):  # special for objects
     #     key = xpath[1:]
     #     return self(self.__alias_get(key), source)
     elif xpath.startswith('%') and xpath.endswith("%"):
         xpath = '//*[contains(@text, {})]'.format(string_quote(
             xpath[1:-1]))
-    elif xpath.startswith('%'):
+    elif xpath.startswith('%'): # ends-with
         text = xpath[1:]
-        for c in ".*[]?-":
-            text = text.replace(c, "\\"+c)
-        xpath = '//*[re:match(@text, {})]'.format(string_quote(text))
-    elif xpath.endswith('%'):
+        xpath = '//*[{!r} = substring(@text, string-length(@text) - {} + 1)]'.format(text, len(text))
+    elif xpath.endswith('%'): # starts-with
         text = xpath[:-1]
-        for c in ".*[]?-":
-            text = text.replace(c, "\\"+c)
-        xpath = '//*[re:match(@text, {})]'.format(string_quote(text))
+        xpath = "//*[starts-with(@text, {!r})]".format(text)
+        # text = xpath[:-1]
+        # for c in ".*[]?-":
+        #     text = text.replace(c, "\\"+c)
+        # xpath = '//*[ re:match(@text, {})]'.format(string_quote(text))
     else:
         xpath = '//*[@text={0} or @content-desc={0}]'.format(
             string_quote(xpath))
@@ -142,8 +142,8 @@ class XPath(object):
 
         # 这里setup_logger不可以通过level参数传入logging.INFO
         # 不然其StreamHandler都要重新setLevel，没看懂也没关系，反正就是不要这么干. 特此备注
-        self.logger = setup_logger()
-        self.logger.setLevel(logging.INFO)
+        self._logger = setup_logger()
+        self._logger.setLevel(logging.INFO)
 
     def global_set(self, key, value):  #dicts):
         valid_keys = {
@@ -161,6 +161,13 @@ class XPath(object):
         """ set default timeout when click """
         self._d.wait_timeout = timeout
     
+    @property
+    def logger(self):
+        expect_level = logging.DEBUG if self._d.settings['xpath_debug'] else logging.INFO
+        if expect_level != self._logger.level:
+            self._logger.setLevel(expect_level)
+        return self._logger
+
     @property
     def wait_timeout(self):
         return self._d.wait_timeout

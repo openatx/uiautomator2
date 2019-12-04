@@ -1406,7 +1406,7 @@ class Device(object):
     @property
     @cache_return
     def settings(self) -> Settings:
-        return Settings()
+        return Settings(self)
     
     @property
     @cache_return

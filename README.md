@@ -271,6 +271,11 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 ## Global settings (全局配置）
 This part contains some global settings
 
+```python
+d.settings['xpath_debug'] = True # 开启xpath插件的调试功能
+d.settings['wait_timeout'] = 20.0 # 默认控件等待时间（原生操作，xpath插件的等待时间）
+```
+
 ### New command timeout
 How long (in seconds) will wait for a new command from the client before assuming the client quit and ending the uiautomator service （Default 3 minutes）
 
@@ -296,10 +301,10 @@ Trace HTTP requests and response to find out how it works.
 ### Implicit wait
 Set default element wait time, unit seconds
 
-设置元素查找等待时间（默认10s）
+设置元素查找等待时间（默认20s）
 
 ```python
-d.implicitly_wait(10.0)
+d.implicitly_wait(10.0) # 也可以通过d.settings['wait_timeout'] = 10.0 修改
 d(text="Settings").click() # if Settings button not show in 10s, UiObjectNotFoundError will raised
 
 print("wait timeout", d.implicitly_wait()) # get default implicit wait
