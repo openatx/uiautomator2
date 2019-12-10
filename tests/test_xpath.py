@@ -65,7 +65,6 @@ def test_watcher_from_yaml(sess: u2.Session, request):
   then: >
     def callback(d):
         print("D:", d)
-        # d(text="Alarm").click()
         d.xpath("Alarm").click()
     
     def hello():

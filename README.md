@@ -32,6 +32,8 @@
 
 > PS: 这个库 ~~<https://github.com/NeteaseGame/ATX>~~ 目前已经不维护了，请尽快更换。
 
+这里有一份快速参考，适合已经入门的人 [QUICK REFERENCE GUIDE](QUICK_REFERENCE.md)，欢迎多提意见。
+
 ## Requirements
 - Android版本 4.4+
 - Python 3.6+ (社区反馈 3.8还不支持）
