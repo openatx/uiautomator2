@@ -188,12 +188,25 @@ class Initer():
         return dest
 
     def is_apk_outdated(self):
-        apk1 = self._device.package_info("com.github.uiautomator")
-        if not apk1:
+        """
+        If apk signature mismatch, the uiautomator test will fail to start
+        command: am instrument -w -r -e debug false \
+                -e class com.github.uiautomator.stub.Stub \
+                com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner
+        java.lang.SecurityException: Permission Denial: \
+            starting instrumentation ComponentInfo{com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner} \
+            from pid=7877, uid=7877 not allowed \
+            because package com.github.uiautomator.test does not have a signature matching the target com.github.uiautomator
+        """
+        apk_debug = self._device.package_info("com.github.uiautomator")
+        apk_debug_test = self._device.package_info("com.github.uiautomator.test")
+        if not apk_debug or not apk_debug_test:
             return True
-        if apk1['version_name'] != __apk_version__:
+        if apk_debug['version_name'] != __apk_version__:
             return True
-        if not self._device.package_info("com.github.uiautomator.test"):
+        self.logger.debug("signature: %s", apk_debug['signature'])
+        if apk_debug['signature'] != apk_debug_test['signature']:
+            self.logger.info("package com.github.uiautomator does not have a signature matching the target com.github.uiautomator")
             return True
         return False
 
@@ -297,7 +310,9 @@ class Initer():
         if self.is_atx_agent_outdated():
             self._install_atx_agent(server_addr)
 
-        self.logger.info("Check install")
+        # start atx-agent
+        self.shell('/data/local/tmp/atx-agent', 'server', '--nouia', '-d')
+        self.logger.info("Check atx-agent version")
         self.check_atx_agent_version()
         print("Successfully init %s" % self._device)
 
@@ -319,8 +334,8 @@ class Initer():
         self._device.shell(["rm", "/data/local/tmp/minicap.so"])
         self._device.shell(["rm", "/data/local/tmp/minitouch"])
         self.logger.info("minicap, minitouch removed")
-        self._device.shell(["am", "uninstall", "com.github.uiautomator"])
-        self._device.shell(["am", "uninstall", "com.github.uiautomator.test"])
+        self._device.shell(["pm", "uninstall", "com.github.uiautomator"])
+        self._device.shell(["pm", "uninstall", "com.github.uiautomator.test"])
         self.logger.info("com.github.uiautomator uninstalled, all done !!!")
 
 
