@@ -114,22 +114,6 @@ el.swipe("right") # left, right, up, down
 el.swipe("right", scale=0.9) # scale默认0.9, 意思是滑动距离为控件宽度的90%, 上滑则为高度的90%
 ```
 
-**弹窗监控**
-
-```python
-# watchers 监控弹窗
-d.xpath.when("跳过").click()
-d.xpath.when("同意").click()
-
-d.xpath.sleep_watch(2) # 等待并监控弹窗，时间大约2s
-d.xpath("转到上一层级").click() # click操作再执行前会先检查弹窗，不过不影响速度
-d.xpath("转到上一层级").click(watch=False) # 点击不检查弹窗 without trigger watch
-
-d.xpath.watch_background() # 开启后台监控模式，默认每4s检查一次
-d.xpath.watch_background(interval=2.0) # 每2s检查一次
-d.xpath.watch_stop() # 停止监控
-```
-
 **比较完整的例子**
 
 ```python
@@ -138,10 +122,6 @@ import uiautomator2 as u2
 def main():
     d = u2.connect()
     d.app_start("com.netease.cloudmusic", stop=True)
-
-    # watchers 监控弹窗
-    d.xpath.when("跳过").click()
-    d.xpath.when("知道了").click()
 
     # steps
     d.xpath("//*[@text='私人FM']/../android.widget.ImageView").click()

@@ -37,13 +37,26 @@ exit_code = d.shell("pwd").exit_code # 这样也可以
 # 元素操作
 d.xpath("立即开户").wait() # 等待元素，最长等10s（默认）
 d.xpath("立即开户").wait(timeout=10) # 修改默认等待时间
-d.xpath.implicitly_wait(15) # 修改默认等待时间为15s
 
+# 常用配置
+d.settings['wait_timeout'] = 20 # 控件查找默认等待时间(默认20s)
+
+# xpath操作
 d.xpath("立即开户").click() # 包含查找等待+点击操作，匹配text或者description等于立即开户的按钮
+d.xpath("//*[@text='私人FM']/../android.widget.ImageView").click()
+
+d.xpath('//*[@text="私人FM"]').get().info # 获取控件信息
+
+for el in d.xpath('//android.widget.EditText').all():
+    print("rect:", el.rect) # output tuple: (left_x, top_y, width, height)
+    print("bounds:", el.bounds) # output tuple: （left, top, right, bottom)
+    print("center:", el.center())
+    el.click() # click operation
+    print(el.elem) # 输出lxml解析出来的Node
 
 # 监控弹窗(在线程中监控)
 d.watcher.when("跳过").click()
 d.watcher.start()
 ```
 
-欢迎多提意见。更欢迎Pull Request
+**欢迎多提意见。更欢迎Pull Request**
