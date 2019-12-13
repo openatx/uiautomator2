@@ -48,6 +48,8 @@ class SimpleTestCase(unittest.TestCase):
     def test_scroll(self):
         d = self.sess
         d(text="App").click()
+        if not d(scrollable=True).exists:
+            pytest.skip("screen to large, no need to scroll")
         d(scrollable=True).scroll.to(text="Voice Recognition")
 
     # @pytest.mark.skip("Deprecated")

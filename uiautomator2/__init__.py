@@ -397,8 +397,9 @@ class Device(object):
 
     @property
     def serial(self):
+        if not self._serial:
+            self._serial = self.shell('getprop ro.serialno').output.strip()
         return self._serial
-        #return self.shell(['getprop', 'ro.serialno'])[0].strip()
 
     @property
     def address(self):
