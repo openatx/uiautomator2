@@ -15,6 +15,7 @@ class Settings(object):
             "post_delay": 0,
             "wait_timeout": 20.0,
             "xpath_debug": False, #self._set_xpath_debug,
+            "uiautomator_runtest_app_background": True,
         }
         self._props = {
             "post_delay": (float, int),

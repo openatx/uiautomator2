@@ -1219,6 +1219,16 @@ d.click_post_delay = 1.5 # default no delay
 d.wait_timeout = 30.0 # default 20.0
 ```
 
+**uiautomator恢复方式设置**
+
+细心的你可能发现，实际上手机安装了两个APK，一个在前台可见（小黄车）。一个包名为`com.github.uiautomator.test`在后台不可见。这两个apk使用同一个证书签名的。
+不可见的应用实际上是一个测试包，包含有所有的测试代码，核心的测试服务也是通过其启动的。
+但是运行的时候，系统却需要那个小黄车一直在运行（在后台运行也可以）。一旦小黄车应用被杀，后台运行的测试服务也很快的会被杀掉。就算什么也不做，应用应用在后台，也会很快被系统回收掉。（这里希望高手指点一下，如何才能不依赖小黄车应用，感觉理论上是可以的，但是目前我还不会）。
+
+让小黄车在后台运行有两种方式，一种启动应用后，放到后台（默认）。另外通过`am startservice`启动一个后台服务也行。
+
+通过 `d.settings["uiautomator_runtest_app_background"] = True` 可以调整该行为。True代表启动应用，False代表启动服务。
+
 UiAutomator中的超时设置(隐藏方法)
 
 ```python

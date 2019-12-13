@@ -695,7 +695,7 @@ class Device(object):
             if self.alive:
                 return
             logger.debug("force reset uiautomator")
-            success = self._force_reset_uiautomator_v2() # uiautomator 1.0
+            success = self._force_reset_uiautomator_v2() # uiautomator 2.0
             if not success:
                 raise EnvironmentError("Uiautomator started failed. Find solutions in https://github.com/openatx/uiautomator2/wiki/Common-issues")
             logger.info("uiautomator back to normal")
@@ -716,6 +716,15 @@ class Device(object):
             time.sleep(1)
         return False
 
+    def _start_uiautomator_app(self):
+        """ bring back com.github.uiautomator to keep uiautomator alive """
+        package_name = "com.github.uiautomator"
+        if self.settings['uiautomator_runtest_app_background']:
+            self.shell(f"pm grant {package_name} android.permission.READ_PHONE_STATE")
+            self.app_start(package_name, launch_timeout=10)
+        else:
+            self.shell(f'am startservice -n {package_name}/.Service')
+
     def _force_reset_uiautomator_v2(self):
         brand = self.shell("getprop ro.product.brand").output.strip()
         logger.debug("Product-brand: %s", brand)
@@ -724,14 +733,15 @@ class Device(object):
         # self.shell('am startservice -n com.github.uiautomator/.Service')
 
         if brand.lower() == "oneplus":
-            self.app_start("com.github.uiautomator", launch_timeout=10)
+            self._start_uiautomator_app()
             self.uiautomator.start()
             time.sleep(1.5)
+            self._start_uiautomator_app()
             self.app_start("com.github.uiautomator")
         else:
             self.uiautomator.start()
 
-        self.app_start("com.github.uiautomator")
+        self._start_uiautomator_app()
         # wait until uiautomator2 service working
         deadline = time.time() + 20.0
         while time.time() < deadline:
@@ -1416,7 +1426,7 @@ class Device(object):
 
     @property
     @cache_return
-    def image(self):
+    def image(self) -> "uiautomator2.image.ImageX":
         from uiautomator2 import image as _image
         return _image.ImageX(self)
 
