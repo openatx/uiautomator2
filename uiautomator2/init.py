@@ -12,7 +12,7 @@ import progress.bar
 import requests
 from logzero import logger, setup_logger
 from retry import retry
-from uiautomator2.version import __apk_version__, __atx_agent_version__, __jar_version__
+from uiautomator2.version import __apk_version__, __atx_agent_version__, __jar_version__, __version__
 
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
 
@@ -107,6 +107,7 @@ class Initer():
         self.server_addr = None
         self.logger = setup_logger(level=loglevel)
         # self.logger.debug("Initial device %s", device)
+        self.logger.info("uiautomator2 version: %s", __version__)
 
     def shell(self, *args):
         self.logger.debug("Shell: %s", args)
@@ -253,7 +254,7 @@ class Initer():
 
         return True
 
-    def _install_apks(self):
+    def _install_uiautomator_apks(self):
         """ use uiautomator 2.0 to run uiautomator test """
         self.shell("pm", "uninstall", "com.github.uiautomator")
         self.shell("pm", "uninstall", "com.github.uiautomator.test")
@@ -303,7 +304,7 @@ class Initer():
             self.logger.info(
                 "Install com.github.uiautomator, com.github.uiautomator.test %s",
                 __apk_version__)
-            self._install_apks()
+            self._install_uiautomator_apks()
         else:
             self.logger.info("Already installed com.github.uiautomator apks")
 
