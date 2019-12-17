@@ -728,42 +728,32 @@ class Device(object):
     def _force_reset_uiautomator_v2(self):
         brand = self.shell("getprop ro.product.brand").output.strip()
         logger.debug("Product-brand: %s", brand)
-        # self.uiautomator.stop()  # stop uiautomator keeper first
-        # self.app_stop("com.github.uiautomator")
-        # self.shell('am startservice -n com.github.uiautomator/.Service')
+        package_name = "com.github.uiautomator"
 
-        if brand.lower() == "oneplus":
-            self._start_uiautomator_app()
-            self.uiautomator.start()
-            time.sleep(1.5)
-            self._start_uiautomator_app()
-            self.app_start("com.github.uiautomator")
-        else:
-            self.uiautomator.start()
-
+        first_killed = False
+        logger.debug("app-start com.github.uiautomator")
         self._start_uiautomator_app()
-        # wait until uiautomator2 service working
+        self.uiautomator.start()
+
+        def is_infront():
+            return self.app_current()['package'] == package_name
+
+        time.sleep(1)
+        # wait until uiautomator2 service is working
         deadline = time.time() + 20.0
         while time.time() < deadline:
-            # print(time.strftime("[%Y-%m-%d %H:%M:%S]"),
-            #       "uiautomator is starting ...")
             logger.debug("uiautomator is starting ...")
             if not self.uiautomator.running():
                 break
-            if self.alive:
-                # keyevent BACK if current is com.github.uiautomator
-                # XiaoMi uiautomator will kill the app(com.github.uiautomator) when launch
-                #   it is better to start a service to make uiautomator live longer
-                #if self.app_current()['package'] != 'com.github.uiautomator':
-                #    self.shell([
-                #        'am', 'startservice', '-n',
-                #        'com.github.uiautomator/.Service'
-                #    ])
-                #    time.sleep(1.5)
-                #else:
-                #    time.sleep(.5)
 
-                if self.app_current()['package'] == 'com.github.uiautomator':
+            # apk might killed when call uiautomator runtest, so here launch again
+            if not first_killed and not is_infront():
+                logger.debug("app-start com.github.uiautomator again")
+                self._start_uiautomator_app()
+                first_killed = True
+
+            if self.alive:
+                if is_infront():
                     self.shell(['input', 'keyevent', 'BACK'])
                 return True
             time.sleep(1)
