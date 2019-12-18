@@ -16,7 +16,8 @@ import six
 from retry import retry
 
 from uiautomator2.exceptions import (RetryError, NullPointerExceptionError,
-                                     UiObjectNotFoundError, UiautomatorQuitError)
+                                     UiObjectNotFoundError,
+                                     UiautomatorQuitError)
 from uiautomator2.utils import Exists, U, check_alive, hooks_wrap, intersect, cache_return
 from uiautomator2.swipe import SwipeExt
 
@@ -83,7 +84,7 @@ class Session(object):
         """ Update package running pid """
         self._pid = pid
         jsonrpc_url = self.server.path2url('/session/%d:%s/jsonrpc/0' %
-                                          (pid, self._pkg_name))
+                                           (pid, self._pkg_name))
         self._jsonrpc = self.server.setup_jsonrpc(jsonrpc_url)
 
     @property
@@ -91,7 +92,7 @@ class Session(object):
     def widget(self):
         from uiautomator2.widget import Widget
         return Widget(self)
-    
+
     @property
     @cache_return
     def swipe_ext(self):
@@ -118,7 +119,7 @@ class Session(object):
         """ close app """
         if self._pkg_name:
             self.server.app_stop(self._pkg_name)
-    
+
     def restart(self, use_monkey=False):
         """
         Stop app and start
@@ -491,7 +492,7 @@ class Session(object):
         else:
             raise RuntimeError("Invalid format " + format)
 
-    @retry(RetryError, delay=1.0, tries=2) 
+    @retry(RetryError, delay=1.0, tries=2)
     def dump_hierarchy(self, compressed=False, pretty=False) -> str:
         """
         Args:
@@ -593,7 +594,11 @@ class Session(object):
         self.jsonrpc.setClipboard(label, text)
 
     def __getattr__(self, key):
-        if key in ["wait_timeout", "window_size", "shell", "xpath", "widget", "watcher", "settings"]:
+        if key in [
+                "wait_timeout", "window_size", "shell", "xpath", "widget",
+                "watcher", "settings", 
+                "app_current", "app_start", "app_stop"
+        ]:
             return getattr(self.server, key)
         raise AttributeError(f"Session object has no attribute '{key}'")
 

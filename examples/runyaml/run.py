@@ -16,7 +16,7 @@ from logzero import logger
 CLICK = "click"
 # swipe
 SWIPE_UP = "swipe_up"
-SWIPE_RIGHT = "swipe_up"
+SWIPE_RIGHT = "swipe_right"
 SWIPE_LEFT = "swipe_left"
 SWIPE_DOWN = "swipe_down"
 

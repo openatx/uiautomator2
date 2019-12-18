@@ -552,7 +552,7 @@ class XMLElement(object):
         """
         ww, wh = self._parent.window_size()
         _, _, w, h = self.rect
-        return (w/ww, wh/h)
+        return (w/ww, h/wh)
         
     @property
     def bounds(self):
