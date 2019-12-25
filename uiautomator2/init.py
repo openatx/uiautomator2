@@ -1,6 +1,7 @@
 # coding: utf-8
 #
 
+import datetime
 import hashlib
 import logging
 import os
@@ -12,7 +13,9 @@ import progress.bar
 import requests
 from logzero import logger, setup_logger
 from retry import retry
-from uiautomator2.version import __apk_version__, __atx_agent_version__, __jar_version__, __version__
+
+from uiautomator2.version import (__apk_version__, __atx_agent_version__,
+                                  __jar_version__, __version__)
 
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
 
@@ -201,14 +204,21 @@ class Initer():
         """
         apk_debug = self._device.package_info("com.github.uiautomator")
         apk_debug_test = self._device.package_info("com.github.uiautomator.test")
+        self.logger.debug("apk-debug package-info: %s", apk_debug)
+        self.logger.debug("apk-debug-test package-info: %s", apk_debug_test)
         if not apk_debug or not apk_debug_test:
             return True
         if apk_debug['version_name'] != __apk_version__:
+            self.logger.info("package com.github.uiautomator version %s, latest %s", apk_debug['version_name'], __apk_version__)
             return True
-        self.logger.debug("signature: %s", apk_debug['signature'])
+        
         if apk_debug['signature'] != apk_debug_test['signature']:
-            self.logger.info("package com.github.uiautomator does not have a signature matching the target com.github.uiautomator")
-            return True
+            # On vivo-Y67 signature might not same, but signature matched. 
+            # So here need to check first_install_time again
+            max_delta = datetime.timedelta(minutes=3)
+            if abs(apk_debug['first_install_time'] - apk_debug_test['first_install_time']) > max_delta:
+                self.logger.debug("package com.github.uiautomator does not have a signature matching the target com.github.uiautomator")
+                return True
         return False
 
     def is_atx_agent_outdated(self):
@@ -245,11 +255,8 @@ class Initer():
 
         if self.is_atx_agent_outdated():
             return False
-
-        packages = d.list_packages()
-        if 'com.github.uiautomator' not in packages:
-            return False
-        if 'com.github.uiautomator.test' not in packages:
+        
+        if self.is_apk_outdated():
             return False
 
         return True

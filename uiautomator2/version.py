@@ -9,7 +9,9 @@ except pkg_resources.DistributionNotFound:
 
 # See ChangeLog for details
 
-__apk_version__ = '2.0.3'
+__apk_version__ = '2.0.5'
+# 2.0.5 add ToastActivity to show toast or just launch and quit
+# 2.0.4 fix floatingWindow crash on Sumsung Android 9
 # 2.0.3 use android.app.Service instead of android.app.intentService to simpfy logic
 # 2.0.2 fix error: AndroidQ Service must be explicit
 # 2.0.1 fix AndroidQ support

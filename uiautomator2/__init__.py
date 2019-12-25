@@ -624,6 +624,12 @@ class Device(object):
         except EnvironmentError:
             return False
 
+    def _kill_process_by_name(self, name):
+        for p in self._iter_process():
+            if p.name == name and p.user == "shell":
+                logger.debug("kill uiautomator")
+                self.shell(["kill", "-9", str(p.pid)])
+
     def service(self, name):
         """ Manage service start or stop
 
@@ -648,10 +654,20 @@ class Device(object):
                     res.raise_for_status()
 
             def start(self):
+                """
+                Manually run with the following command:
+                    adb shell am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub \
+                        com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner
+                """
+                # kill uiautomator
                 res = u2obj._reqsess.post(self.service_url)
                 self.raise_for_status(res)
 
             def stop(self):
+                """
+                1. stop command which launched with uiautomator 1.0
+                    Eg: adb shell uiautomator runtest androidUiAutomator.jar
+                """
                 res = u2obj._reqsess.delete(self.service_url)
                 self.raise_for_status(res)
                 
@@ -694,6 +710,7 @@ class Device(object):
         with self.__uiautomator_lock:
             if self.alive:
                 return
+            
             logger.debug("force reset uiautomator")
             success = self._force_reset_uiautomator_v2() # uiautomator 2.0
             if not success:
@@ -721,42 +738,47 @@ class Device(object):
         package_name = "com.github.uiautomator"
         if self.settings['uiautomator_runtest_app_background']:
             self.shell(f"pm grant {package_name} android.permission.READ_PHONE_STATE")
-            self.app_start(package_name, launch_timeout=10)
+            self.app_start(package_name, ".ToastActivity")
         else:
             self.shell(f'am startservice -n {package_name}/.Service')
 
     def _force_reset_uiautomator_v2(self):
         brand = self.shell("getprop ro.product.brand").output.strip()
-        logger.debug("Product-brand: %s", brand)
+        logger.debug("Device: %s, %s", brand, self.serial)
         package_name = "com.github.uiautomator"
-
         first_killed = False
-        logger.debug("app-start com.github.uiautomator")
-        self._start_uiautomator_app()
+
+        # logger.debug("app-start com.github.uiautomator")
+
+        self.shell(["am", "force-stop", package_name])
+        logger.debug("stop app: %s", package_name)
+        # self._start_uiautomator_app()
+        # self.uiautomator.start()
+        self.uiautomator.stop()
+
+        # stop command which launched with uiautomator 1.0
+        # eg: adb shell uiautomator runtest androidUiAutomator.jar
+
+        logger.debug("kill process(ps): uiautomator")
+        self._kill_process_by_name("uiautomator")
         self.uiautomator.start()
 
-        def is_infront():
-            return self.app_current()['package'] == package_name
-
-        time.sleep(1)
         # wait until uiautomator2 service is working
+        time.sleep(.5)
         deadline = time.time() + 20.0
         while time.time() < deadline:
-            logger.debug("uiautomator is starting ...")
+            logger.debug("uiautomator-v2 is starting ...")
             if not self.uiautomator.running():
                 break
 
             # apk might killed when call uiautomator runtest, so here launch again
-            if not first_killed and not is_infront():
-                logger.debug("app-start com.github.uiautomator again")
-                self._start_uiautomator_app()
+            if not first_killed and package_name not in self.app_list_running():
                 first_killed = True
+                # self._start_uiautomator_app()
 
             if self.alive:
-                if is_infront():
-                    self.shell(['input', 'keyevent', 'BACK'])
                 return True
-            time.sleep(1)
+            time.sleep(1.0)
 
         self.uiautomator.stop()
         return False
@@ -1093,8 +1115,31 @@ class Device(object):
         """
         output, _ = self.shell(['pm', 'list', 'packages'])
         packages = re.findall(r'package:([^\s]+)', output)
-        process_names = re.findall(r'([^\s]+)$', self.shell('ps').output, re.M)
+        process_names = re.findall(r'([^\s]+)$', self.shell('ps; ps -A').output, re.M)
         return list(set(packages).intersection(process_names))
+    
+    def _iter_process(self):
+        """
+        List processes by cmd:ps
+
+        Returns:
+            list of Process(pid, name)
+        """
+        headers, pids = [], {}
+        Header = None
+        Process = namedtuple("Process", ["user", "pid", "name"])
+        for line in self.shell("ps; ps -A").output.splitlines():
+            # USER PID ..... NAME
+            fields = line.strip().split()
+            if fields[0] == "USER":
+                continue
+            if not fields[1].isdigit():
+                continue
+            user, pid, name = fields[0], int(fields[1]), fields[-1]
+            if pid in pids:
+                continue
+            pids[pid] = True
+            yield Process(user, pid, name)
 
     def app_stop(self, pkg_name):
         """ Stop one application: am force-stop"""

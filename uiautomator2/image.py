@@ -208,6 +208,14 @@ class ImageX(object):
 
     def send_click(self, x, y):
         return self._d.click(x, y)
+    
+    def getpixel(self, x, y):
+        """
+        Returns:
+            (r, g, b)
+        """
+        screenshot = self.screenshot()
+        return screenshot.convert("RGB").getpixel((x, y))
 
     def match(self, imdata: Union[np.ndarray, str]):
         """

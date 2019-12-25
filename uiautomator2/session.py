@@ -596,8 +596,7 @@ class Session(object):
     def __getattr__(self, key):
         if key in [
                 "wait_timeout", "window_size", "shell", "xpath", "widget",
-                "watcher", "settings", 
-                "app_current", "app_start", "app_stop"
+                "watcher", "settings", "app_current", "app_start", "app_stop"
         ]:
             return getattr(self.server, key)
         raise AttributeError(f"Session object has no attribute '{key}'")
