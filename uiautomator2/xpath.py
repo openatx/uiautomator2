@@ -204,6 +204,9 @@ class XPath(object):
             self.logger.debug("click after delay %.1f seconds",
                          self._click_after_delay)
             time.sleep(self._click_after_delay)
+    
+    def send_longclick(self, x, y):
+        self._d.long_click(x, y)
 
     def send_swipe(self, sx, sy, tx, ty):
         self._d.swipe(sx, sy, tx, ty)
@@ -288,47 +291,37 @@ class XPath(object):
             left_time = max(0, deadline - time.time())
             time.sleep(min(0.5, left_time))
 
-    def click(self, xpath, source=None, watch=None, timeout=None, pre_delay:float=None):
-        """
-        Args:
-            xpath (str): xpath string
-            watch (bool): click popup elements (deprecated)
-            timeout (float): pass
-            pre_delay (float): pre delay wait time before click
-
-        Raises:
-            TimeoutException
-        """
+    def _get_after_watch(self, xpath: Union[str, list], timeout=None):
         timeout = timeout or self.wait_timeout
         self.logger.info("XPath(timeout %.1f) %s", timeout, xpath)
-
-        # d.set_run_watcher_before_click(True)
-        # watch = False
-        # if watch is None:
-        #     watch = not self._watcher.running()
-
         deadline = time.time() + timeout
         while True:
             source = self.dump_hierarchy()
-            # if watch and self._watcher.run(source):
-            #     time.sleep(.5)  # post delay
-            #     deadline = time.time() + timeout # correct deadline
-            #     continue
 
             selector = self(xpath, source)
             if selector.exists:
-                if pre_delay:
-                    self.logger.debug("pre-delay %.1f seconds", pre_delay)
-                    time.sleep(pre_delay)
-                selector.get_last_match().click()
-                time.sleep(.5)  # post sleep
-                return
+                return selector.get_last_match()
 
             if time.time() > deadline:
                 break
             time.sleep(.5)
 
         raise TimeoutException("timeout %.1f, xpath: %s" % (timeout, xpath))
+
+    def click(self, xpath: Union[str, list], timeout=None, pre_delay:float=None):
+        """
+        Find element and perform click
+
+        Args:
+            xpath (str): xpath string
+            timeout (float): pass
+            pre_delay (float): pre delay wait time before click
+
+        Raises:
+            TimeoutException
+        """
+        el = self._get_after_watch(xpath, timeout)
+        el.click() # 100ms
 
     def __alias_get(self, key, default=None):
         """
@@ -356,8 +349,6 @@ class XPathSelector(object):
         self._source = source
         self._last_source = None
         self._watchers = []
-        
-        self.click = functools.partial(self._parent.click, self._xpath_list) # parent click
 
     def xpath(self, xpath: str):
         xpath = strict_xpath(xpath, self.logger)
@@ -462,8 +453,17 @@ class XPathSelector(object):
         x, y = self.all()[0].center()
         self.logger.info("click %d, %d", x, y)
         self._parent.send_click(x, y)
+    
+    def click(self):
+        """ find element and perform click """
+        self.get().click()
+    
+    def long_click(self):
+        """ find element and perform long click """
+        self.get().long_click()
 
     def screenshot(self) -> Image.Image:
+        """ take element screenshot """
         el = self.get()
         return el.screenshot()
 
@@ -501,10 +501,17 @@ class XMLElement(object):
 
     def click(self):
         """
-        click element
+        click element, 100ms between down and up
         """
         x, y = self.center()
         self._parent.send_click(x, y)
+    
+    def long_click(self):
+        """
+        Sometime long click is needed, 400ms between down and up
+        """
+        x, y = self.center()
+        self._parent.send_longclick(x, y)
 
     def screenshot(self):
         """
