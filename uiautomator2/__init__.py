@@ -498,8 +498,8 @@ class Device(object):
     def jsonrpc_retry_call(self, *args,
                            **kwargs):  # method, params=[], http_timeout=60):
 
-        if self.__uiautomator_failed:
-            self.reset_uiautomator()
+        # if self.__uiautomator_failed:
+        #     self.reset_uiautomator()
 
         try:
             return self.jsonrpc_call(*args, **kwargs)
@@ -508,14 +508,15 @@ class Device(object):
                 "uiautomator2 is not reponding, restart uiautomator2 automatically",
                 RuntimeWarning,
                 stacklevel=1)
-            self.__uiautomator_failed = True
+            self.reset_uiautomator("uiautomator not running")
+            # self.__uiautomator_failed = True
             raise
         except UiAutomationNotConnectedError:
-            logger.debug("UiAutomation not connected, restart uiautomator")
             # warnings.warn("UiAutomation not connected, restart uiautoamtor",
             #               RuntimeWarning,
             #               stacklevel=1)
-            self.__uiautomator_failed = True
+            self.reset_uiautomator("UiAutomation not connected")
+            # self.__uiautomator_failed = True
             raise
         except (NullObjectExceptionError, NullPointerExceptionError,
                 StaleObjectExceptionError) as e:
@@ -692,7 +693,7 @@ class Device(object):
         assert data['success'], data['description']
         logger.info("%s", data['description'])
 
-    def reset_uiautomator(self):
+    def reset_uiautomator(self, reason="unknown"):
         """
         Reset uiautomator
 
@@ -707,16 +708,17 @@ class Device(object):
                 4. start ATX app again. (ATX app will be killed again by uiautomator)
                 5. uiautomator will go back to normal
         """
+        logger.debug("restart-uiautomator since \"%s\"", reason)
         with self.__uiautomator_lock:
             if self.alive:
                 return
             
-            logger.debug("force reset uiautomator")
+            # logger.debug("force reset uiautomator")
             success = self._force_reset_uiautomator_v2() # uiautomator 2.0
             if not success:
                 raise EnvironmentError("Uiautomator started failed. Find solutions in https://github.com/openatx/uiautomator2/wiki/Common-issues")
             logger.info("uiautomator back to normal")
-            self.__uiautomator_failed = False
+            # self.__uiautomator_failed = False
 
     def _force_reset_uiautomator_v1(self):
         """ uiautomator v1 only need bundle.jar and uiautomator-stub.jar
@@ -750,11 +752,11 @@ class Device(object):
 
         # logger.debug("app-start com.github.uiautomator")
 
+        self.uiautomator.stop()
         self.shell(["am", "force-stop", package_name])
         logger.debug("stop app: %s", package_name)
         # self._start_uiautomator_app()
         # self.uiautomator.start()
-        self.uiautomator.stop()
 
         # stop command which launched with uiautomator 1.0
         # eg: adb shell uiautomator runtest androidUiAutomator.jar
@@ -799,7 +801,7 @@ class Device(object):
 
         sh.keyevent("HOME")
         sh.keyevent("BACK")
-        self.reset_uiautomator()
+        self.reset_uiautomator("healthcheck")
 
     def app_install(self, url, installing_callback=None, server=None):
         """
