@@ -473,6 +473,9 @@ class Session(object):
             screenshot().save("saved.png")
             cv2.imwrite('saved.jpg', screenshot(format='opencv'))
         """
+        # Another way to take screenshot is use jsonrpc
+        # self.jsonrpc.takeScreenshot(1.0, 70) # scale, quality -> base64
+
         r = requests.get(self.server.screenshot_uri, timeout=10)
         if filename:
             with open(filename, 'wb') as f:
@@ -595,8 +598,18 @@ class Session(object):
 
     def __getattr__(self, key):
         if key in [
-                "wait_timeout", "window_size", "shell", "xpath", "widget",
-                "watcher", "settings", "app_current", "app_start", "app_stop"
+                "wait_timeout",
+                "window_size",
+                "shell",
+                "app_current",
+                "app_start",
+                "app_stop",
+                # plugins bellow
+                "widget",
+                "xpath",
+                "watcher",
+                "settings",
+                "taobao",
         ]:
             return getattr(self.server, key)
         raise AttributeError(f"Session object has no attribute '{key}'")

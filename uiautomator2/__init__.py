@@ -1458,6 +1458,15 @@ class Device(object):
     @cache_return
     def watcher(self) -> Watcher:
         return Watcher(self)
+    
+    @property
+    @cache_return
+    def taobao(self):
+        try:
+            import uiautomator2_taobao as tb
+        except ImportError:
+            raise RuntimeError("This method can only use inside alibaba network")
+        return tb.Taobao(self)
 
     @property
     @cache_return
