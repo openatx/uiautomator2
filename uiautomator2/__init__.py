@@ -489,14 +489,13 @@ class Device(object):
 
         return JSONRpcWrapper(self)
 
-    @retry((EnvironmentError, GatewayError, UiAutomationNotConnectedError,
-            NullObjectExceptionError, NullPointerExceptionError,
-            StaleObjectExceptionError),
-           delay=3.0,
-           jitter=0.5,
-           tries=3)
-    def jsonrpc_retry_call(self, *args,
-                           **kwargs):  # method, params=[], http_timeout=60):
+    # @retry((EnvironmentError, GatewayError, UiAutomationNotConnectedError,
+    #         NullObjectExceptionError, NullPointerExceptionError,
+    #         StaleObjectExceptionError),
+    #        delay=3.0,
+    #        jitter=0.5,
+    #        tries=3)
+    def jsonrpc_retry_call(self, *args, **kwargs):
 
         # if self.__uiautomator_failed:
         #     self.reset_uiautomator()
@@ -510,14 +509,14 @@ class Device(object):
                 stacklevel=1)
             self.reset_uiautomator("uiautomator not running")
             # self.__uiautomator_failed = True
-            raise
+            # raise
         except UiAutomationNotConnectedError:
             # warnings.warn("UiAutomation not connected, restart uiautoamtor",
             #               RuntimeWarning,
             #               stacklevel=1)
             self.reset_uiautomator("UiAutomation not connected")
             # self.__uiautomator_failed = True
-            raise
+            # raise
         except (NullObjectExceptionError, NullPointerExceptionError,
                 StaleObjectExceptionError) as e:
             if args[1] != 'dumpWindowHierarchy':  # args[1] method
@@ -526,7 +525,8 @@ class Device(object):
                     RuntimeWarning,
                     stacklevel=1)
             time.sleep(1)
-            return self.jsonrpc_call(*args, **kwargs)
+        
+        return self.jsonrpc_call(*args, **kwargs)
 
     def jsonrpc_call(self, jsonrpc_url, method, params=[], http_timeout=60):
         """ jsonrpc2 call
@@ -714,9 +714,10 @@ class Device(object):
                 return
             
             # logger.debug("force reset uiautomator")
-            success = self._force_reset_uiautomator_v2() # uiautomator 2.0
-            if not success:
-                raise EnvironmentError("Uiautomator started failed. Find solutions in https://github.com/openatx/uiautomator2/wiki/Common-issues")
+            ok = self._force_reset_uiautomator_v2() # uiautomator 2.0
+            if not ok:
+                if not self._force_reset_uiautomator_v2(launch_test_app=True):
+                    raise EnvironmentError("Uiautomator started failed. Find solutions in https://github.com/openatx/uiautomator2/wiki/Common-issues")
             logger.info("uiautomator back to normal")
             # self.__uiautomator_failed = False
 
@@ -744,7 +745,7 @@ class Device(object):
         else:
             self.shell(f'am startservice -n {package_name}/.Service')
 
-    def _force_reset_uiautomator_v2(self):
+    def _force_reset_uiautomator_v2(self, launch_test_app=False):
         brand = self.shell("getprop ro.product.brand").output.strip()
         logger.debug("Device: %s, %s", brand, self.serial)
         package_name = "com.github.uiautomator"
@@ -763,6 +764,9 @@ class Device(object):
 
         logger.debug("kill process(ps): uiautomator")
         self._kill_process_by_name("uiautomator")
+
+        if launch_test_app:
+            self.app_start(package_name, ".ToastActivity")
         self.uiautomator.start()
 
         # wait until uiautomator2 service is working
