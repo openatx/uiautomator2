@@ -489,17 +489,7 @@ class Device(object):
 
         return JSONRpcWrapper(self)
 
-    # @retry((EnvironmentError, GatewayError, UiAutomationNotConnectedError,
-    #         NullObjectExceptionError, NullPointerExceptionError,
-    #         StaleObjectExceptionError),
-    #        delay=3.0,
-    #        jitter=0.5,
-    #        tries=3)
     def jsonrpc_retry_call(self, *args, **kwargs):
-
-        # if self.__uiautomator_failed:
-        #     self.reset_uiautomator()
-
         try:
             return self.jsonrpc_call(*args, **kwargs)
         except (GatewayError, ):
@@ -508,15 +498,8 @@ class Device(object):
                 RuntimeWarning,
                 stacklevel=1)
             self.reset_uiautomator("uiautomator not running")
-            # self.__uiautomator_failed = True
-            # raise
         except UiAutomationNotConnectedError:
-            # warnings.warn("UiAutomation not connected, restart uiautoamtor",
-            #               RuntimeWarning,
-            #               stacklevel=1)
             self.reset_uiautomator("UiAutomation not connected")
-            # self.__uiautomator_failed = True
-            # raise
         except (NullObjectExceptionError, NullPointerExceptionError,
                 StaleObjectExceptionError) as e:
             if args[1] != 'dumpWindowHierarchy':  # args[1] method
@@ -557,7 +540,7 @@ class Device(object):
             raise SessionBrokenError("app quit or crash", jsonrpc_url,
                                      res.text)
         if res.status_code != 200:
-            raise UiaError(jsonrpc_url, data, res.status_code, res.text,
+            raise BaseError(jsonrpc_url, data, res.status_code, res.text,
                            "HTTP Return code is not 200", res.text)
         jsondata = res.json()
         error = jsondata.get('error')
@@ -700,26 +683,25 @@ class Device(object):
         Raises:
             RuntimeError
         
-        Notes:
-            OnePlus(China) need to treat specially.
-                1. stop uiautomator keeper
-                2. start ATX app
-                3. stop uiautomator keeper (ATX app will be killed by uiautomator)
-                4. start ATX app again. (ATX app will be killed again by uiautomator)
-                5. uiautomator will go back to normal
+        Orders:
+            - stop uiautomator keeper
+            - am force-stop com.github.uiautomator
+            - start uiautomator keeper(am instrument -w ...)
+            - wait until uiautomator service is ready
         """
         logger.debug("restart-uiautomator since \"%s\"", reason)
         with self.__uiautomator_lock:
             if self.alive:
                 return
-            
-            # logger.debug("force reset uiautomator")
             ok = self._force_reset_uiautomator_v2() # uiautomator 2.0
             if not ok:
+                shret = self.shell("am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner", timeout=3)
+                if "does not have a signature matching the target " in shret.output:
+                    raise RuntimeError("com.github.uiautomator does not have a signature matching the target com.github.uiautomator.test, please reinstall apks")
                 if not self._force_reset_uiautomator_v2(launch_test_app=True):
                     raise EnvironmentError("Uiautomator started failed. Find solutions in https://github.com/openatx/uiautomator2/wiki/Common-issues")
+
             logger.info("uiautomator back to normal")
-            # self.__uiautomator_failed = False
 
     def _force_reset_uiautomator_v1(self):
         """ uiautomator v1 only need bundle.jar and uiautomator-stub.jar
@@ -749,19 +731,14 @@ class Device(object):
         brand = self.shell("getprop ro.product.brand").output.strip()
         logger.debug("Device: %s, %s", brand, self.serial)
         package_name = "com.github.uiautomator"
-        first_killed = False
-
-        # logger.debug("app-start com.github.uiautomator")
 
         self.uiautomator.stop()
+
         self.shell(["am", "force-stop", package_name])
         logger.debug("stop app: %s", package_name)
-        # self._start_uiautomator_app()
-        # self.uiautomator.start()
 
         # stop command which launched with uiautomator 1.0
         # eg: adb shell uiautomator runtest androidUiAutomator.jar
-
         logger.debug("kill process(ps): uiautomator")
         self._kill_process_by_name("uiautomator")
 
@@ -773,14 +750,9 @@ class Device(object):
         time.sleep(.5)
         deadline = time.time() + 20.0
         while time.time() < deadline:
-            logger.debug("uiautomator-v2 is starting ...")
+            logger.debug("uiautomator-v2 is starting ... left: %.1fs", deadline - time.time())
             if not self.uiautomator.running():
                 break
-
-            # apk might killed when call uiautomator runtest, so here launch again
-            if not first_killed and package_name not in self.app_list_running():
-                first_killed = True
-                # self._start_uiautomator_app()
 
             if self.alive:
                 return True

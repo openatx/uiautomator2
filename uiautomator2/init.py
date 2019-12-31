@@ -81,7 +81,12 @@ def cache_download(url, filename=None, timeout=None, logger=logger):
     return storepath
 
 
-def mirror_download(url, filename: str, logger=logger):
+def mirror_download(url: str, filename=None, logger=logger):
+    """
+    Download from mirror, then fallback to origin url
+    """
+    if not filename:
+        filename = os.path.basename(url)
     github_host = "https://github.com"
     if url.startswith(github_host):
         mirror_url = "https://tool.appetizer.io" + url[len(
@@ -95,6 +100,17 @@ def mirror_download(url, filename: str, logger=logger):
             logger.debug("download mirror err: %s, use origin source", e)
 
     return cache_download(url, filename, logger=logger)
+
+
+def app_uiautomator_apk_urls():
+    ret = []
+    for name in ["app-uiautomator.apk", "app-uiautomator-test.apk"]:
+        ret.append((name, "".join([
+            GITHUB_BASEURL,
+            "/android-uiautomator-server/releases/download/",
+            __apk_version__, "/", name
+        ])))
+    return ret
 
 
 class Initer():
@@ -115,19 +131,6 @@ class Initer():
     def shell(self, *args):
         self.logger.debug("Shell: %s", args)
         return self._device.shell(args)
-
-    @property
-    def apk_urls(self):
-        """
-        Returns:
-            iter([name, url], [name, url])
-        """
-        for name in ["app-uiautomator.apk", "app-uiautomator-test.apk"]:
-            yield (name, "".join([
-                GITHUB_BASEURL,
-                "/android-uiautomator-server/releases/download/",
-                __apk_version__, "/", name
-            ]))
     
     @property
     def jar_urls(self):
@@ -179,7 +182,7 @@ class Initer():
         ])
 
     def push_url(self, url, dest=None, mode=0o755, tgz=False, extract_name=None):  # yapf: disable
-        path = mirror_download(url, os.path.basename(url), logger=self.logger)
+        path = mirror_download(url, filename=os.path.basename(url), logger=self.logger)
         if tgz:
             tar = tarfile.open(path, 'r:gz')
             path = os.path.join(os.path.dirname(path), extract_name)
@@ -265,7 +268,7 @@ class Initer():
         """ use uiautomator 2.0 to run uiautomator test """
         self.shell("pm", "uninstall", "com.github.uiautomator")
         self.shell("pm", "uninstall", "com.github.uiautomator.test")
-        for _, url in self.apk_urls:
+        for _, url in app_uiautomator_apk_urls():
             path = self.push_url(url, mode=0o644)
             package_name = "com.github.uiautomator.test" if "test.apk" in url else "com.github.uiautomator"
             if os.getenv("TMQ"):
