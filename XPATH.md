@@ -85,6 +85,10 @@ for el in d.xpath('//android.widget.EditText').all():
     el.click() # click operation
     print(el.elem) # 输出lxml解析出来的Node
     print(el.text)
+
+# 尚未测试的方法
+# 点击位于控件包含坐标(50%, 50%)的方法
+d.xpath("//*").position(0.5, 0.5).click() 
 ```
 
 **`XMLElement`的操作**
@@ -186,7 +190,7 @@ def main():
 
 `%知道%` 匹配包含`知道`的文本，相当于 `//*[contains(text(), '知道')]`
 
-**规则5**
+**~~规则5~~(目前该功能已移除）**
 
 > 另外来自Selenium PageObjects
 
@@ -196,7 +200,7 @@ def main():
 
 会匹配text 和 description字段
 
-如 `搜索` 相当于 XPath `//*[@text="搜索" or @content-desc="搜索"]`
+如 `搜索` 相当于 XPath `//*[@text="搜索" or @content-desc="搜索" or @resource-id="搜索"]`
 
 ## 特殊说明
 - 有时className中包含有`$`字符，这个字符在XML中是不合法的，所以全部替换成了`-`
