@@ -10,7 +10,6 @@ import re
 import logging
 import threading
 import time
-import inspect
 import functools
 from collections import defaultdict
 from types import ModuleType
@@ -24,7 +23,7 @@ from deprecated import deprecated
 import adbutils
 import uiautomator2
 from uiautomator2.exceptions import XPathElementNotFoundError
-from uiautomator2.utils import U
+from uiautomator2.utils import U, inject_call
 from uiautomator2.abcd import BasicUIMeta
 
 try:
@@ -74,10 +73,6 @@ def strict_xpath(xpath: str, logger=logger) -> str:
     elif xpath.endswith('%'):  # starts-with
         text = xpath[:-1]
         xpath = "//*[starts-with(@text, {!r})]".format(text)
-        # text = xpath[:-1]
-        # for c in ".*[]?-":
-        #     text = text.replace(c, "\\"+c)
-        # xpath = '//*[ re:match(@text, {})]'.format(string_quote(text))
     else:
         xpath = '//*[@text={0} or @content-desc={0} or @resource-id={0}]'.format(
             string_quote(xpath))
@@ -85,6 +80,17 @@ def strict_xpath(xpath: str, logger=logger) -> str:
     logger.debug("xpath %s -> %s", orig_xpath, xpath)
     return xpath
 
+
+def _gen_click(x, y):
+    """ generate click callback function """
+    def inner(d):
+        d.click(x, y)
+    return inner
+
+
+_CALLBACKS = {
+    "click": _gen_click,
+}
 
 class TimeoutException(Exception):
     pass
@@ -350,6 +356,7 @@ class XPathSelector(object):
         self._source = source
         self._last_source = None
         self._position = None
+        self._callback = None
 
     def xpath(self, xpath: str):
         xpath = strict_xpath(xpath, self.logger)
@@ -361,6 +368,17 @@ class XPathSelector(object):
         assert 0 < x < 1
         assert 0 < y < 1
         self._position = (x, y)
+        return self
+    
+    def callback(self, func=None, *args, **kwargs):
+        """
+        callback on failure
+        """
+        if isinstance(func, str):
+            func = _CALLBACKS[func](*args, **kwargs)
+        
+        assert callable(func)
+        self._callback = func
         return self
 
     @property
@@ -409,9 +427,12 @@ class XPathSelector(object):
     def exists(self):
         return len(self.all()) > 0
 
-    def get(self):
+    def get(self, timeout=None):
         """
         Get first matched element
+
+        Args:
+            timeout (float): max seconds to wait
 
         Returns:
             XMLElement
@@ -419,7 +440,7 @@ class XPathSelector(object):
         Raises:
             XPathElementNotFoundError
         """
-        if not self.wait(self._global_timeout):
+        if not self.wait(timeout or self._global_timeout):
             raise XPathElementNotFoundError(self._xpath_list)
         return self.get_last_match()
 
@@ -479,9 +500,16 @@ class XPathSelector(object):
         self.logger.info("click %d, %d", x, y)
         self._parent.send_click(x, y)
 
-    def click(self):
+    def click(self, timeout=None):
         """ find element and perform click """
-        self.get().click()
+        try:
+            el = self.get(timeout=timeout)
+            el.click()
+        except XPathElementNotFoundError:
+            if not self._callback:
+                raise
+            self.logger.info("element not found, run callback")
+            return self._callback(d=self._d)
 
     def long_click(self):
         """ find element and perform long click """

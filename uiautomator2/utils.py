@@ -3,6 +3,7 @@
 
 import functools
 import shlex
+import inspect
 from typing import Union
 
 import six
@@ -111,3 +112,27 @@ class Exists(object):
 
 def list2cmdline(args: Union[list, tuple]):
     return ' '.join(list(map(shlex.quote, args)))
+
+
+def inject_call(fn, *args, **kwargs):
+    """
+    Call function without known all the arguments
+
+    Args:
+        fn: function
+        args: arguments
+        kwargs: key-values
+    
+    Returns:
+        as the fn returns
+    """
+    assert callable(fn), "first argument must be callable"
+
+    st = inspect.signature(fn)
+    fn_kwargs = {
+        key: kwargs[key]
+        for key in st.parameters.keys() if key in kwargs
+    }
+    ba = st.bind(*args, **fn_kwargs)
+    ba.apply_defaults()
+    return fn(*ba.args, **ba.kwargs)
