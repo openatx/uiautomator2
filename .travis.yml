@@ -41,7 +41,7 @@ script:
 notifications:
   webhooks:
     urls:
-      - https://oapi.dingtalk.com/robot/send?access_token=$DINGTALK_ROBOT_TOKEN
+      - https://oapi.dingtalk.com/robot/send?access_token=5e8d4207463024dd88089f37f0ee37ceb75bd30f3c2aee270f680298861021c0
     # Conditions doc: https://docs.travis-ci.com/user/conditions-v1
     #if: tag IS present
 deploy:
