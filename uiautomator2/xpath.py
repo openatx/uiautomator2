@@ -356,7 +356,7 @@ class XPathSelector(object):
         self._source = source
         self._last_source = None
         self._position = None
-        self._callback = None
+        self._fallback = None
 
     def xpath(self, xpath: str):
         xpath = strict_xpath(xpath, self.logger)
@@ -370,7 +370,7 @@ class XPathSelector(object):
         self._position = (x, y)
         return self
     
-    def callback(self, func=None, *args, **kwargs):
+    def fallback(self, func=None, *args, **kwargs):
         """
         callback on failure
         """
@@ -378,7 +378,7 @@ class XPathSelector(object):
             func = _CALLBACKS[func](*args, **kwargs)
         
         assert callable(func)
-        self._callback = func
+        self._fallback = func
         return self
 
     @property
@@ -506,10 +506,10 @@ class XPathSelector(object):
             el = self.get(timeout=timeout)
             el.click()
         except XPathElementNotFoundError:
-            if not self._callback:
+            if not self._fallback:
                 raise
-            self.logger.info("element not found, run callback")
-            return self._callback(d=self._d)
+            self.logger.info("element not found, run fallback")
+            return inject_call(self._fallback, d=self._d)
 
     def long_click(self):
         """ find element and perform long click """
