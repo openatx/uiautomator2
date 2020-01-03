@@ -27,4 +27,5 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest
+        pip install -e ".[image]"
         pytest tests/test_utils.py
