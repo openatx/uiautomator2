@@ -1448,7 +1448,7 @@ class Device(object):
 
     @property
     @cache_return
-    def image(self) -> "uiautomator2.image.ImageX":
+    def image(self):
         from uiautomator2 import image as _image
         return _image.ImageX(self)
 

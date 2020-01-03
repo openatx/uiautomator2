@@ -85,7 +85,7 @@ class Widget(object):
         "lo": "http://localhost:17310",
     }
 
-    def __init__(self, d: "uiautomator2.Device"):
+    def __init__(self, d: "u2.Device"):
         self._d = d
         self._widgets = {}
         self._compare_results = {}

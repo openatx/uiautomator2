@@ -19,6 +19,8 @@ from PIL import Image, ImageDraw
 from skimage.metrics import structural_similarity
 import imutils
 
+import uiautomator2
+
 
 compare_ssim = structural_similarity
 

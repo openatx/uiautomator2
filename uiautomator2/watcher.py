@@ -7,6 +7,7 @@ import threading
 
 from logzero import setup_logger
 
+import uiautomator2
 from uiautomator2.xpath import XPath
 
 

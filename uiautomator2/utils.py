@@ -7,6 +7,7 @@ import inspect
 from typing import Union
 
 import six
+import uiautomator2
 from uiautomator2.exceptions import SessionBrokenError, UiObjectNotFoundError
 
 
@@ -19,7 +20,7 @@ def U(x):
 def E(x):
     if six.PY3:
         return x
-    return x.encode('utf-8') if type(x) is unicode else x
+    return x.encode('utf-8') if type(x) is unicode else x # noqa: F821
 
 
 def check_alive(fn):

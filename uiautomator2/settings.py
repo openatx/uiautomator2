@@ -8,7 +8,7 @@ from typing import Any
 
 
 class Settings(object):
-    def __init__(self, d: "uiautomator2.Device"):
+    def __init__(self, d):
         self._d = d
 
         self._defaults = {

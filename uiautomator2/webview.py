@@ -83,7 +83,7 @@ class BrowserTab():
         })""", url=url)
 
     def find_element_by_xpath(self, xpath: str):
-        elf._evaluate('''(function(xpath){
+        self._evaluate('''(function(xpath){
             var obj = document.evaluate(xpath, document, null, XPathResult.ANY_TYPE, null);
             var button = obj.iterateNext();
             _C[1] = button;
