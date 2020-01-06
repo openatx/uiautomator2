@@ -20,6 +20,7 @@ import adbutils
 import uiautomator2 as u2
 
 from .init import Initer
+from .version import __version__
 
 
 def cmd_init(args):
@@ -96,6 +97,10 @@ def cmd_current(args):
     print(json.dumps(d.app_current(), indent=4))
 
 
+def cmd_version(args):
+    print("uiautomator2 version: %s" % __version__)
+
+
 def cmd_console(args):
     import code
     import platform
@@ -118,6 +123,9 @@ def cmd_console(args):
 
 
 _commands = [
+    dict(action=cmd_version,
+         command="version",
+         help="show version"),
     dict(action=cmd_init,
          command="init",
          help="install enssential resources to device",
