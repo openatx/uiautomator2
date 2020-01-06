@@ -616,8 +616,8 @@ class Session(object):
                 "jsonrpc",
                 "open_identify",
                 "shell",
-                "settings",
                 "set_new_command_timeout",
+                "settings", # plugin
                 "taobao", # plugin
                 "xpath", # plugin
         ]:
