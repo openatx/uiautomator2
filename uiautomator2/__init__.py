@@ -523,7 +523,7 @@ class Device(object):
             "method": method,
             "params": params,
         }
-        data = json.dumps(data).encode('utf-8')
+        data = json.dumps(data)
         res = self._reqsess.post(
             jsonrpc_url,  # +"?m="+method, #?method is for debug
             headers={"Content-Type": "application/json"},

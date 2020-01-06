@@ -598,18 +598,28 @@ class Session(object):
 
     def __getattr__(self, key):
         if key in [
-                "wait_timeout",
-                "window_size",
-                "shell",
                 "app_current",
                 "app_start",
                 "app_stop",
-                # plugins bellow
-                "widget",
-                "xpath",
-                "watcher",
+                "app_stop_all",
+                "app_list",
+                "app_list_running",
+                "app_info",
+                "app_wait",
+                "wait_activity",
+                "wait_timeout",
+                "window_size",
+                "wlan_ip",
+                "widget", # plugin
+                "watcher", # plugin
+                "image", # plugin
+                "jsonrpc",
+                "open_identify",
+                "shell",
                 "settings",
-                "taobao",
+                "set_new_command_timeout",
+                "taobao", # plugin
+                "xpath", # plugin
         ]:
             return getattr(self.server, key)
         raise AttributeError(f"Session object has no attribute '{key}'")

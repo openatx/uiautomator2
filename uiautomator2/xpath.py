@@ -81,17 +81,6 @@ def strict_xpath(xpath: str, logger=logger) -> str:
     return xpath
 
 
-def _gen_click(x, y):
-    """ generate click callback function """
-    def inner(d):
-        d.click(x, y)
-    return inner
-
-
-_CALLBACKS = {
-    "click": _gen_click,
-}
-
 class TimeoutException(Exception):
     pass
 
@@ -375,7 +364,12 @@ class XPathSelector(object):
         callback on failure
         """
         if isinstance(func, str):
-            func = _CALLBACKS[func](*args, **kwargs)
+            if func == "click":
+                if len(args) == 0:
+                    args = self._position
+                func = lambda d: d.click(*args)
+            else:
+                raise ValueError("func should be \"click\" or callable function")
         
         assert callable(func)
         self._fallback = func
@@ -530,6 +524,7 @@ class XMLElement(object):
         """
         self.elem = elem
         self._parent = parent
+        self._d = parent._d
 
     def center(self):
         """
@@ -610,7 +605,7 @@ class XMLElement(object):
         """ Returns:
                 (float, float): eg, (0.5, 0.5) means 50%, 50%
         """
-        ww, wh = self._parent.window_size()
+        ww, wh = self._d.window_size()
         _, _, w, h = self.rect
         return (w / ww, h / wh)
 
@@ -629,7 +624,7 @@ class XMLElement(object):
             list of 4 float, eg: 0.1, 0.2, 0.5, 0.8
         """
         lx, ly, rx, ry = self.bounds
-        ww, wh = self._parent.window_size()
+        ww, wh = self._d.window_size()
         return (lx / ww, ly / wh, rx / ww, ry / wh)
 
     @property
