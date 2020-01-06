@@ -1,6 +1,76 @@
 CHANGES
 =======
 
+* add uiautomator2 version in command line
+* add session test
+
+2.4.3
+-----
+
+* add fallback and session add some missing method
+* fix github workflow
+* fix flake8 warning
+* test github actions
+* change callback to fallback
+* add d.xpath(xxxxx).callback(click, px, py).click() support
+* add back token again
+* check if travis notification is working
+* add d.xpath.position方法
+
+2.4.2
+-----
+
+* change am instrument logic again
+* rewrite jsonrpc\_retry\_call logic
+* make recover uiautomator logic more simple
+
+2.4.1
+-----
+
+* add taobao plugin for internal network
+* add long\_click to d.xpath
+
+2.4.0
+-----
+
+* change logic of start uiautomator, upgrade apk version
+* fix bug, reported by h.t
+* am start apk twice to make sure, uiautomator can be recovered
+
+2.3.4
+-----
+
+* show lib version when init for easily debug
+* support config service recover behavior
+
+2.3.3
+-----
+
+* fix d.serial return None bug, fix tests on large screen
+* update doc, add quick-reference.md
+* add quick ref guide
+
+2.3.2
+-----
+
+* fix init command not resolve signature mismatch bug, fix uninstall can not uninstall apk bug
+
+2.3.1
+-----
+
+* add xpath\_debug to settings, fix xpath %xx and xx%
+* update watcher doc
+
+2.3.0
+-----
+
+* add d.watcher method to handle popups
+* add settings code
+* add basic settings.py
+* Update README.md
+* hotfix for windows
+* remove timeout for function: pull
+
 2.2.0
 -----
 

@@ -76,7 +76,7 @@ def cache_download(url, filename=None, timeout=None, logger=logger):
             bar.next(len(buf))
         bar.finish()
 
-    assert file_size == os.path.getsize(storepath + ".part")
+    assert file_size == os.path.getsize(storepath + ".part") # may raise FileNotFoundError
     shutil.move(storepath + '.part', storepath)
     return storepath
 
@@ -96,7 +96,7 @@ def mirror_download(url: str, filename=None, logger=logger):
                                   filename,
                                   timeout=60,
                                   logger=logger)
-        except requests.RequestException as e:
+        except (requests.RequestException, FileNotFoundError) as e:
             logger.debug("download mirror err: %s, use origin source", e)
 
     return cache_download(url, filename, logger=logger)
