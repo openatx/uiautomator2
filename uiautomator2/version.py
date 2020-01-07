@@ -9,7 +9,8 @@ except pkg_resources.DistributionNotFound:
 
 # See ChangeLog for details
 
-__apk_version__ = '2.0.5'
+__apk_version__ = '2.1.1'
+# 2.1.1 add show floatWindow support(pm grant, still have no idea), add TC_TREND analysis
 # 2.0.5 add ToastActivity to show toast or just launch and quit
 # 2.0.4 fix floatingWindow crash on Sumsung Android 9
 # 2.0.3 use android.app.Service instead of android.app.intentService to simpfy logic
@@ -36,7 +37,8 @@ __apk_version__ = '2.0.5'
 __jar_version__ = 'v0.1.6' # no useless for now.
 # v0.1.6 first release version
 
-__atx_agent_version__ = '0.8.1'
+__atx_agent_version__ = '0.8.2'
+# 0.8.2 change am instrument maxRetry from 3 to 1
 # 0.8.1 fix --stop can not stop atx-agent error, fix --help format error
 # 0.8.0 add /newCommandTimeout api, ref: appium-newCommandTimeout
 # 0.7.4 add /finfo/{filepath:.*} api

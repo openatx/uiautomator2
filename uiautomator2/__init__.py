@@ -712,8 +712,10 @@ class Device(object):
                     )
                 if not self._force_reset_uiautomator_v2(launch_test_app=True):
                     raise EnvironmentError(
-                        "Uiautomator started failed. Find solutions in https://github.com/openatx/uiautomator2/wiki/Common-issues"
-                    )
+                        "Uiautomator started failed.",
+                        "https://github.com/openatx/uiautomator2/wiki/Common-issues",
+                        "adb shell am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner",
+                        shret.output)
 
             logger.info("uiautomator back to normal")
 
@@ -732,15 +734,14 @@ class Device(object):
             time.sleep(1)
         return False
 
-    def _start_uiautomator_app(self):
-        """ bring back com.github.uiautomator to keep uiautomator alive """
-        package_name = "com.github.uiautomator"
-        if self.settings['uiautomator_runtest_app_background']:
-            self.shell(
-                f"pm grant {package_name} android.permission.READ_PHONE_STATE")
-            self.app_start(package_name, ".ToastActivity")
-        else:
-            self.shell(f'am startservice -n {package_name}/.Service')
+    def _grant_app_permissions(self):
+        logger.debug("grant permissions")
+        for permission in [
+                "android.permission.SYSTEM_ALERT_WINDOW",
+                "android.permission.ACCESS_FINE_LOCATION",
+                "android.permission.READ_PHONE_STATE",
+            ]:
+            self.shell(['pm', 'grant', "com.github.uiautomator", permission])
 
     def _force_reset_uiautomator_v2(self, launch_test_app=False):
         brand = self.shell("getprop ro.product.brand").output.strip()
@@ -758,7 +759,8 @@ class Device(object):
         self._kill_process_by_name("uiautomator")
 
         if launch_test_app:
-            self.app_start(package_name, ".ToastActivity")
+            self._grant_app_permissions()
+            self.app_start(package_name, ".ToastActivity") # -e showFloatWindow true
         self.uiautomator.start()
 
         # wait until uiautomator2 service is working
