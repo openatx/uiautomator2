@@ -484,7 +484,7 @@ class Session(object):
         elif format == 'pillow':
             from PIL import Image
             buff = io.BytesIO(r.content)
-            return Image.open(buff)
+            return Image.open(buff).convert("RGB")
         elif format == 'opencv':
             import cv2
             import numpy as np
