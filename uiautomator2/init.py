@@ -76,7 +76,8 @@ def cache_download(url, filename=None, timeout=None, logger=logger):
             bar.next(len(buf))
         bar.finish()
 
-    assert file_size == os.path.getsize(storepath + ".part") # may raise FileNotFoundError
+    assert file_size == os.path.getsize(storepath +
+                                        ".part")  # may raise FileNotFoundError
     shutil.move(storepath + '.part', storepath)
     return storepath
 
@@ -96,7 +97,8 @@ def mirror_download(url: str, filename=None, logger=logger):
                                   filename,
                                   timeout=60,
                                   logger=logger)
-        except (requests.RequestException, FileNotFoundError) as e:
+        except (requests.RequestException, FileNotFoundError,
+                AssertionError) as e:
             logger.debug("download mirror err: %s, use origin source", e)
 
     return cache_download(url, filename, logger=logger)
@@ -106,8 +108,7 @@ def app_uiautomator_apk_urls():
     ret = []
     for name in ["app-uiautomator.apk", "app-uiautomator-test.apk"]:
         ret.append((name, "".join([
-            GITHUB_BASEURL,
-            "/android-uiautomator-server/releases/download/",
+            GITHUB_BASEURL, "/android-uiautomator-server/releases/download/",
             __apk_version__, "/", name
         ])))
     return ret
@@ -128,10 +129,14 @@ class Initer():
         # self.logger.debug("Initial device %s", device)
         self.logger.info("uiautomator2 version: %s", __version__)
 
+    @property
+    def atx_agent_path(self):
+        return "/data/local/tmp/atx-agent"
+
     def shell(self, *args):
         self.logger.debug("Shell: %s", args)
         return self._device.shell(args)
-    
+
     @property
     def jar_urls(self):
         """
@@ -182,7 +187,9 @@ class Initer():
         ])
 
     def push_url(self, url, dest=None, mode=0o755, tgz=False, extract_name=None):  # yapf: disable
-        path = mirror_download(url, filename=os.path.basename(url), logger=self.logger)
+        path = mirror_download(url,
+                               filename=os.path.basename(url),
+                               logger=self.logger)
         if tgz:
             tar = tarfile.open(path, 'r:gz')
             path = os.path.join(os.path.dirname(path), extract_name)
@@ -206,26 +213,33 @@ class Initer():
             because package com.github.uiautomator.test does not have a signature matching the target com.github.uiautomator
         """
         apk_debug = self._device.package_info("com.github.uiautomator")
-        apk_debug_test = self._device.package_info("com.github.uiautomator.test")
+        apk_debug_test = self._device.package_info(
+            "com.github.uiautomator.test")
         self.logger.debug("apk-debug package-info: %s", apk_debug)
         self.logger.debug("apk-debug-test package-info: %s", apk_debug_test)
         if not apk_debug or not apk_debug_test:
             return True
         if apk_debug['version_name'] != __apk_version__:
-            self.logger.info("package com.github.uiautomator version %s, latest %s", apk_debug['version_name'], __apk_version__)
+            self.logger.info(
+                "package com.github.uiautomator version %s, latest %s",
+                apk_debug['version_name'], __apk_version__)
             return True
-        
+
         if apk_debug['signature'] != apk_debug_test['signature']:
-            # On vivo-Y67 signature might not same, but signature matched. 
+            # On vivo-Y67 signature might not same, but signature matched.
             # So here need to check first_install_time again
             max_delta = datetime.timedelta(minutes=3)
-            if abs(apk_debug['first_install_time'] - apk_debug_test['first_install_time']) > max_delta:
-                self.logger.debug("package com.github.uiautomator does not have a signature matching the target com.github.uiautomator")
+            if abs(apk_debug['first_install_time'] -
+                   apk_debug_test['first_install_time']) > max_delta:
+                self.logger.debug(
+                    "package com.github.uiautomator does not have a signature matching the target com.github.uiautomator"
+                )
                 return True
         return False
 
     def is_atx_agent_outdated(self):
-        agent_version = self._device.shell("/data/local/tmp/atx-agent version").strip()
+        agent_version = self._device.shell(
+            self.atx_agent_path + " version").strip()
         if agent_version == "dev":
             self.logger.info("skip version check for atx-agent dev")
             return False
@@ -253,12 +267,12 @@ class Initer():
             True if everything is fine, else False
         """
         d = self._device
-        if d.sync.stat("/data/local/tmp/atx-agent").size == 0:
+        if d.sync.stat(self.atx_agent_path).size == 0:
             return False
 
         if self.is_atx_agent_outdated():
             return False
-        
+
         if self.is_apk_outdated():
             return False
 
@@ -273,28 +287,25 @@ class Initer():
             package_name = "com.github.uiautomator.test" if "test.apk" in url else "com.github.uiautomator"
             if os.getenv("TMQ"):
                 # used inside TMQ platform
-                self.shell(
-                    "CLASSPATH=/sdcard/tmq.jar", "exec", "app_process",
-                    "/system/bin",
-                    "com.android.commands.monkey.other.InstallCommand",
-                    "-r", "-v", "-p", package_name, path)
+                self.shell("CLASSPATH=/sdcard/tmq.jar", "exec", "app_process",
+                           "/system/bin",
+                           "com.android.commands.monkey.other.InstallCommand",
+                           "-r", "-v", "-p", package_name, path)
             else:
                 self.shell("pm", "install", "-r", "-t", path)
-    
+
     def _install_jars(self):
         """ use uiautomator 1.0 to run uiautomator test """
         for (name, url) in self.jar_urls:
-            self.push_url(url, "/data/local/tmp/"+name, mode=0o644)
-    
+            self.push_url(url, "/data/local/tmp/" + name, mode=0o644)
+
     def _install_atx_agent(self, server_addr=None):
         self.logger.info("Install atx-agent %s", __atx_agent_version__)
-        self.push_url(self.atx_agent_url,
-                            tgz=True,
-                            extract_name="atx-agent")
-        args = ["/data/local/tmp/atx-agent", "server", "--nouia", "-d"]
+        self.push_url(self.atx_agent_url, tgz=True, extract_name="atx-agent")
+        args = [self.atx_agent_path, "server", "--nouia", "-d"]
         if server_addr:
             args.extend(['-t', server_addr])
-        self.shell("/data/local/tmp/atx-agent", "server", "--stop")
+        self.shell(self.atx_agent_path, "server", "--stop")
         self.shell(*args)
 
     def install(self, server_addr=None):
@@ -322,7 +333,7 @@ class Initer():
             self._install_atx_agent(server_addr)
 
         # start atx-agent
-        self.shell('/data/local/tmp/atx-agent', 'server', '--nouia', '-d')
+        self.shell(self.atx_agent_path, 'server', '--nouia', '-d')
         self.logger.info("Check atx-agent version")
         self.check_atx_agent_version()
         print("Successfully init %s" % self._device)
@@ -334,12 +345,13 @@ class Initer():
     def check_atx_agent_version(self):
         port = self._device.forward_port(7912)
         self.logger.debug("Forward: local:tcp:%d -> remote:tcp:%d", port, 7912)
-        version = requests.get("http://127.0.0.1:%d/version" % port).text.strip()
+        version = requests.get("http://127.0.0.1:%d/version" %
+                               port).text.strip()
         self.logger.debug("atx-agent version %s", version)
 
     def uninstall(self):
-        self._device.shell(["/data/local/tmp/atx-agent", "server", "--stop"])
-        self._device.shell(["rm", "/data/local/tmp/atx-agent"])
+        self._device.shell([self.atx_agent_path, "server", "--stop"])
+        self._device.shell(["rm", self.atx_agent_path])
         self.logger.info("atx-agent stopped and removed")
         self._device.shell(["rm", "/data/local/tmp/minicap"])
         self._device.shell(["rm", "/data/local/tmp/minicap.so"])
@@ -348,7 +360,6 @@ class Initer():
         self._device.shell(["pm", "uninstall", "com.github.uiautomator"])
         self._device.shell(["pm", "uninstall", "com.github.uiautomator.test"])
         self.logger.info("com.github.uiautomator uninstalled, all done !!!")
-
 
 
 if __name__ == "__main__":

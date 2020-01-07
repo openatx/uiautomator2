@@ -33,10 +33,11 @@ __apk_version__ = '2.0.5'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__jar_version__ = 'v0.1.6'
+__jar_version__ = 'v0.1.6' # no useless for now.
 # v0.1.6 first release version
 
-__atx_agent_version__ = '0.8.0'
+__atx_agent_version__ = '0.8.1'
+# 0.8.1 fix --stop can not stop atx-agent error, fix --help format error
 # 0.8.0 add /newCommandTimeout api, ref: appium-newCommandTimeout
 # 0.7.4 add /finfo/{filepath:.*} api
 # 0.7.3 add uiautomator-1.0 support
