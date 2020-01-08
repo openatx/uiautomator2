@@ -15,3 +15,8 @@ def sess(d) -> u2.Session:
     
     s = d.session("io.appium.android.apis")
     yield s
+
+
+@pytest.fixture
+def package_name():
+    return "io.appium.android.apis"

@@ -145,12 +145,10 @@ def connect_adb_wifi(addr):
     return connect_usb(addr)
 
 
-def connect_usb(serial=None, healthcheck=False, init=True):
+def connect_usb(serial=None, healthcheck=False, init=False):
     """
     Args:
         serial (str): android device serial
-        healthcheck (bool): start uiautomator if not ready
-        init (bool): initial with apk and atx-agent
 
     Returns:
         Device
@@ -158,41 +156,21 @@ def connect_usb(serial=None, healthcheck=False, init=True):
     Raises:
         ConnectError
     """
+
     adb = adbutils.AdbClient()
     if not serial:
         device = adb.device()
-    else:
-        device = adbutils.AdbDevice(adb, serial)
-    lport = device.forward_port(7912)
-    d = connect_wifi('127.0.0.1:' + str(lport))
-    d._serial = device.serial
-    d._adb_device = device
-
-    if not d.agent_alive or not d.alive:
-        initer = Initer(device)
-        if not initer.check_install():
-            if not init:
-                raise RuntimeError(
-                    "Device need to be init with command: uiautomator2 init -s "
-                    + device.serial)
-            initer.install()  # same as run cli: uiautomator2 init
-        elif not d.agent_alive:
-            warnings.warn("start atx-agent ...", RuntimeWarning)
-            # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
-
-            device.shell([d._atx_agent_path, "server", "--stop"])
-            device.shell([d._atx_agent_path, "server", "--nouia", "-d"])
-            deadline = time.time() + 3
-            while time.time() < deadline:
-                if d.agent_alive:
-                    break
-            else:
-                raise RuntimeError("atx-agent recover failed")
+        serial = device.serial
+    
+    d = Device()
+    d._connect_method = "usb"
+    d._serial = serial
+    d._init_atx_agent()
 
     if healthcheck:
-        if not d.alive:
-            warnings.warn("start uiautomator2 ...", RuntimeWarning)
-            d.healthcheck()
+        warnings.warn("healthcheck param is deprecated", DeprecationWarning)
+    if init:
+        warnings.warn("init param is deprecated", DeprecationWarning)
     return d
 
 
@@ -218,7 +196,9 @@ def connect_wifi(addr: str) -> "Device":
     u = urlparse.urlparse(addr)
     host = u.hostname
     port = u.port or 7912
-    return Device(host, port)
+    d = Device(host, port)
+    d._connect_method = "wifi"
+    return d
 
 
 class TimeoutRequestsSession(requests.Session):
@@ -298,7 +278,7 @@ class Device(object):
     __isfrozen = False
     __plugins = {}
 
-    def __init__(self, host, port=7912):
+    def __init__(self, host="127.0.0.1", port=7912):
         """
         Args:
             host (str): host address
@@ -311,10 +291,9 @@ class Device(object):
         self._port = port
         self._adb_device = None  # adbutils.Device
         self._serial = None
+        self._connect_method = None
         self._reqsess = TimeoutRequestsSession(
         )  # use requests.Session to enable HTTP Keep-Alive
-        self._server_url = 'http://{}:{}'.format(host, port)
-        self._server_jsonrpc_url = self._server_url + "/jsonrpc/0"
         self._default_session = Session(self, None)
         self._cached_plugins = {}
         self._hooks = {}
@@ -338,6 +317,50 @@ class Device(object):
         return self._reqsess.request(method,
                                      self.path2url(relative_url),
                                      timeout=timeout)
+
+    def _init_atx_agent(self):
+        """
+        Install atx-agent and app-uiautomator apks, only usb connected device is ok
+        """
+        assert self._connect_method == "usb"
+        assert self._serial
+        if not self._adb_device:
+            self._adb_device = adbutils.adb.device(self._serial)
+        
+        ad = self._adb_device
+        lport = ad.forward_port(7912)
+        self._port = lport
+
+        if self.agent_alive and self.alive:
+            return
+
+        initer = Initer(ad)
+        if not initer.check_install():
+            initer.install()  # same as run cli: uiautomator2 init
+        
+        if not self.agent_alive:
+            warnings.warn("start atx-agent ...", RuntimeWarning)
+            # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
+
+            ad.shell([self._atx_agent_path, "server", "--stop"])
+            ad.shell([self._atx_agent_path, "server", "--nouia", "-d"])
+            deadline = time.time() + 3
+            while time.time() < deadline:
+                if self.agent_alive:
+                    break
+            else:
+                raise RuntimeError("atx-agent recover failed")
+
+        if not self.alive:
+            self.reset_uiautomator("atx-agent restarted")
+
+    @property
+    def _server_url(self):
+        return 'http://{}:{}'.format(self._host, self._port)
+
+    @property
+    def _jsonrpc_url(self):
+        return self._server_url + "/jsonrpc/0"
 
     # for compatible with old version
     @property
@@ -418,7 +441,7 @@ class Device(object):
         """
         return self.setup_jsonrpc()
 
-    def path2url(self, path):
+    def path2url(self, path: str):
         return urlparse.urljoin(self._server_url, path)
 
     def window_size(self):
@@ -474,8 +497,6 @@ class Device(object):
         Usage example:
             self.setup_jsonrpc().pressKey("home")
         """
-        if not jsonrpc_url:
-            jsonrpc_url = self._server_jsonrpc_url
 
         class JSONRpcWrapper():
             def __init__(self, server):
@@ -489,8 +510,7 @@ class Device(object):
             def __call__(self, *args, **kwargs):
                 http_timeout = kwargs.pop('http_timeout', HTTP_TIMEOUT)
                 params = args if args else kwargs
-                return self.server.jsonrpc_retry_call(jsonrpc_url, self.method,
-                                                      params, http_timeout)
+                return self.server.jsonrpc_retry_call(self.method, params, http_timeout)
 
         return JSONRpcWrapper(self)
 
@@ -513,14 +533,21 @@ class Device(object):
                     RuntimeWarning,
                     stacklevel=1)
             time.sleep(1)
+        except requests.ConnectionError:
+            logger.info("Device connection is not stable, rerun init-atx-agent ...")
+            if self._connect_method == "usb":
+                self._init_atx_agent()
+            else:
+                raise
 
         return self.jsonrpc_call(*args, **kwargs)
 
-    def jsonrpc_call(self, jsonrpc_url, method, params=[], http_timeout=60):
+    def jsonrpc_call(self, method, params=[], http_timeout=60):
         """ jsonrpc2 call
         Refs:
             - http://www.jsonrpc.org/specification
         """
+        jsonrpc_url = self._jsonrpc_url
         request_start = time.time()
         data = {
             "jsonrpc": "2.0",

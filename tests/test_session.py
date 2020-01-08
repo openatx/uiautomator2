@@ -3,7 +3,6 @@
 
 from collections import namedtuple
 
-package_name = "com.github.uiautomator"
 
 def test_session(sess):
     sess.wlan_ip
@@ -19,7 +18,7 @@ def test_session(sess):
     sess.xpath
 
 
-def test_session_app(sess):
+def test_session_app(sess, package_name):
     sess.app_start(package_name)
     assert sess.app_current()['package'] == package_name
 
