@@ -41,9 +41,11 @@ def cache_download(url, filename=None, timeout=None, logger=logger):
     # check cache
     if not filename:
         filename = os.path.basename(url)
-    storepath = os.path.join(appdir,
-                             hashlib.sha224(url.encode()).hexdigest(),
-                             filename)
+    storepath = os.path.join(
+        appdir,
+        "cache",
+        filename.replace(" ", "_") + "-" +
+        hashlib.sha224(url.encode()).hexdigest()[:10], filename)
     storedir = os.path.dirname(storepath)
     if not os.path.isdir(storedir):
         os.makedirs(storedir)
@@ -82,7 +84,7 @@ def cache_download(url, filename=None, timeout=None, logger=logger):
     return storepath
 
 
-def mirror_download(url: str, filename=None, logger=logger):
+def mirror_download(url: str, filename=None, logger: logging.Logger = logger):
     """
     Download from mirror, then fallback to origin url
     """
@@ -186,6 +188,7 @@ class Initer():
             self.abi + "/bin/minitouch"
         ])
 
+    @retry(tries=2, logger=logger)
     def push_url(self, url, dest=None, mode=0o755, tgz=False, extract_name=None):  # yapf: disable
         path = mirror_download(url,
                                filename=os.path.basename(url),
@@ -193,7 +196,8 @@ class Initer():
         if tgz:
             tar = tarfile.open(path, 'r:gz')
             path = os.path.join(os.path.dirname(path), extract_name)
-            tar.extract(extract_name, os.path.dirname(path))
+            tar.extract(extract_name, os.path.dirname(path)) # zlib.error may raise
+
         if not dest:
             dest = "/data/local/tmp/" + os.path.basename(path)
 
@@ -238,8 +242,8 @@ class Initer():
         return False
 
     def is_atx_agent_outdated(self):
-        agent_version = self._device.shell(
-            self.atx_agent_path + " version").strip()
+        agent_version = self._device.shell(self.atx_agent_path +
+                                           " version").strip()
         if agent_version == "dev":
             self.logger.info("skip version check for atx-agent dev")
             return False
