@@ -339,27 +339,29 @@ class Device(object):
             initer.install()  # same as run cli: uiautomator2 init
         
         if not self.agent_alive:
-            warnings.warn("start atx-agent ...", RuntimeWarning)
-            # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
-
-            ad.shell([self._atx_agent_path, "server", "--stop"])
-            ad.shell([self._atx_agent_path, "server", "--nouia", "-d"])
-            deadline = time.time() + 3
-            while time.time() < deadline:
-                if self.agent_alive:
-                    break
-            else:
-                raise RuntimeError("atx-agent recover failed")
+            self._start_atx_agent()
 
         if not self.alive:
             self.reset_uiautomator("atx-agent restarted")
+
+    def _start_atx_agent(self):
+        warnings.warn("start atx-agent ...", RuntimeWarning)
+        # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
+        ad = self._adb_device
+        ad.shell([self._atx_agent_path, "server", "--stop"])
+        ad.shell([self._atx_agent_path, "server", "--nouia", "-d"])
+        deadline = time.time() + 3
+        while time.time() < deadline:
+            if self.agent_alive:
+                return
+        raise RuntimeError("atx-agent recover failed")
 
     @property
     def _server_url(self):
         return 'http://{}:{}'.format(self._host, self._port)
 
     @property
-    def _jsonrpc_url(self):
+    def jsonrpc_url(self):
         return self._server_url + "/jsonrpc/0"
 
     # for compatible with old version
@@ -547,7 +549,7 @@ class Device(object):
         Refs:
             - http://www.jsonrpc.org/specification
         """
-        jsonrpc_url = self._jsonrpc_url
+        jsonrpc_url = self.jsonrpc_url
         request_start = time.time()
         data = {
             "jsonrpc": "2.0",
@@ -792,10 +794,11 @@ class Device(object):
 
         # wait until uiautomator2 service is working
         time.sleep(.5)
-        deadline = time.time() + 20.0
+        deadline = time.time() + 40.0 # in vivo-Y67, launch timeout 24s
         while time.time() < deadline:
             logger.debug("uiautomator-v2 is starting ... left: %.1fs",
                          deadline - time.time())
+            
             if not self.uiautomator.running():
                 break
 
