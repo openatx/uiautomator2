@@ -12,10 +12,12 @@ class Settings(object):
         self._d = d
 
         self._defaults = {
-            "post_delay": 0,
+            "post_delay": 0, # Deprecated
             "wait_timeout": 20.0,
             "xpath_debug": False, #self._set_xpath_debug,
             "uiautomator_runtest_app_background": True,
+            "click_after_delay": 0.0,
+            "click_before_delay": 0.5,
         }
         self._props = {
             "post_delay": (float, int),

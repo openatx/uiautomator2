@@ -1247,8 +1247,12 @@ class Device(object):
 
     def unlock(self):
         """ unlock screen """
-        self.open_identify()
-        self._default_session.press("home")
+        if not self.info['screenOn']:
+            self.press("power")
+            self.swipe(0.1, 0.9, 0.9, 0.1)
+
+        # self.open_identify()
+        # self._default_session.press("home")
 
     def open_identify(self, theme='black'):
         """
@@ -1526,6 +1530,16 @@ class Device(object):
             raise RuntimeError(
                 "This method can only use inside alibaba network")
         return tb.Taobao(self)
+
+    @property
+    @cache_return
+    def alibaba(self):
+        try:
+            import uiautomator2_taobao as tb
+        except ImportError:
+            raise RuntimeError(
+                "This method can only use inside alibaba network")
+        return tb.Alibaba(self)
 
     @property
     @cache_return
