@@ -410,9 +410,11 @@ class XPathSelector(object):
         for e in els:
             lpx, lpy, rpx, rpy = e.percent_bounds()
             # 中心点偏移百分比不应大于控件宽高的50%
-            if abs(px - (lpx + rpx) / 2) > (rpx - lpx) * .5:
+            scale = 1.5
+            
+            if abs(px - (lpx + rpx) / 2) > (rpx - lpx) * .5 * scale:
                 continue
-            if abs(py - (lpy + rpy) / 2) > (rpy - lpy) * .5:
+            if abs(py - (lpy + rpy) / 2) > (rpy - lpy) * .5 * scale:
                 continue
             inside_els.append(e)
         return inside_els

@@ -346,7 +346,7 @@ class Device(object):
         if not self.alive:
             self.reset_uiautomator("atx-agent restarted")
 
-    def __wait_for_device(self, serial: str, timeout=10):
+    def __wait_for_device(self, serial: str, timeout=70.0):
         """
         wait for device came online
         """
@@ -371,7 +371,7 @@ class Device(object):
                 logger.info("wait for device(%s), left(%.1fs)", serial,
                             deadline - time.time())
 
-            time.sleep(1.0)
+            time.sleep(2.0)
         return None
 
     def __start_atx_agent(self):
@@ -1416,7 +1416,7 @@ class Device(object):
             raise BaseError(resp.get('description', 'unknown'))
         return resp.get('data')
 
-    def app_icon(self, pkg_name):
+    def app_icon(self, package_name: str):
         """
         Returns:
             PIL.Image
@@ -1425,7 +1425,7 @@ class Device(object):
             UiaError
         """
         from PIL import Image
-        url = f'/packages/{pkg_name}/icon'
+        url = f'/packages/{package_name}/icon'
         resp = self._request("get", url)
         resp.raise_for_status()
         return Image.open(io.BytesIO(resp.content))
