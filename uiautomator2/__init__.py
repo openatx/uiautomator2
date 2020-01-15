@@ -394,10 +394,18 @@ class Device(object):
     def jsonrpc_url(self):
         return self._server_url + "/jsonrpc/0"
 
-    def _request(self, method: str, url: str, **kwargs):
+    def _request(self, method: str, url: str, reconnect=True, **kwargs):
+        """ make http request with reconnect
+        Args:
+            method (str): get, put, delete or post
+            url: request url
+            reconnect (bool): default True
+        """
         try:
             return self._reqsess.request(method, self.path2url(url), **kwargs)
         except requests.ConnectionError:
+            if not reconnect:
+                raise
             self._init_atx_agent()
             return self._reqsess.request(method, self.path2url(url), **kwargs)
 
@@ -640,7 +648,7 @@ class Device(object):
     @property
     def agent_alive(self):
         try:
-            r = self._request("get", '/version', timeout=2)
+            r = self._request("get", '/version', timeout=2, reconnect=False)
             if r.status_code == 200:
                 return True
         except (requests.HTTPError, requests.ConnectionError) as e:
@@ -656,7 +664,8 @@ class Device(object):
                                   "id": 1,
                                   "method": "deviceInfo"
                               }),
-                              timeout=2)
+                              timeout=2,
+                              reconnect=False)
             if r.status_code != 200:
                 return False
             if r.json().get('error'):
@@ -795,6 +804,11 @@ class Device(object):
                 "android.permission.READ_PHONE_STATE",
         ]:
             self.shell(['pm', 'grant', "com.github.uiautomator", permission])
+
+    def _show_float_window(self, show=True):
+        """ 显示悬浮窗，提高uiautomator运行的稳定性 """
+        arg = "true" if show else "false"
+        self.shell(["am", "start", "-n", "com.github.uiautomator/.ToastActivity", "-e", "showFloatWindow", arg])
 
     def _force_reset_uiautomator_v2(self, launch_test_app=False):
         brand = self.shell("getprop ro.product.brand").output.strip()
