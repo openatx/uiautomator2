@@ -554,7 +554,9 @@ class Device(object):
                 "uiautomator2 is not reponding, restart uiautomator2 automatically",
                 RuntimeWarning,
                 stacklevel=1)
-            self.reset_uiautomator("uiautomator not running")
+            self.reset_uiautomator("UiAutomator stopped")
+        except requests.ReadTimeout as e:
+            self.reset_uiautomator("Http read-timeout: "+ str(e))
         except UiAutomationNotConnectedError:
             self.reset_uiautomator("UiAutomation not connected")
         except (NullObjectExceptionError, NullPointerExceptionError,
