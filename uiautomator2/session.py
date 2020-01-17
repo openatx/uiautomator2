@@ -97,6 +97,9 @@ class Session(object):
     @cache_return
     def swipe_ext(self):
         return SwipeExt(self.server)
+    
+    def _find_element(self, xpath: str, _class=None, pos=None, activity=None, package=None):
+        raise NotImplementedError()
 
     def implicitly_wait(self, seconds=None):
         """set default wait timeout
@@ -605,6 +608,7 @@ class Session(object):
 
     def __getattr__(self, key):
         if key in [
+                "alibaba", # plugin
                 "app_current",
                 "app_start",
                 "app_stop",

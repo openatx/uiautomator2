@@ -1367,7 +1367,7 @@ class Device(object):
         Require atx-agent >= 0.0.9
         """
         pathname = "/raw/" + src.lstrip("/")
-        r = requests.get(pathname, stream=True)
+        r = self._request("get", pathname, stream=True)
         if r.status_code != 200:
             raise FileNotFoundError("pull", src, r.text)
         with open(dst, 'wb') as f:
