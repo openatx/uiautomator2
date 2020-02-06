@@ -9,7 +9,8 @@ except pkg_resources.DistributionNotFound:
 
 # See ChangeLog for details
 
-__apk_version__ = '2.1.1'
+__apk_version__ = '2.2.0'
+# 2.2.0 add MinitouchAgent instead of /data/local/tmp/minitouch
 # 2.1.1 add show floatWindow support(pm grant, still have no idea), add TC_TREND analysis
 # 2.0.5 add ToastActivity to show toast or just launch and quit
 # 2.0.4 fix floatingWindow crash on Sumsung Android 9
@@ -34,10 +35,11 @@ __apk_version__ = '2.1.1'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__jar_version__ = 'v0.1.6' # no useless for now.
+__jar_version__ = 'v0.1.6'  # no useless for now.
 # v0.1.6 first release version
 
-__atx_agent_version__ = '0.8.2'
+__atx_agent_version__ = '0.8.3'
+# 0.8.3 use minitouchagent instead of /data/local/tmp/minitouch
 # 0.8.2 change am instrument maxRetry from 3 to 1
 # 0.8.1 fix --stop can not stop atx-agent error, fix --help format error
 # 0.8.0 add /newCommandTimeout api, ref: appium-newCommandTimeout
