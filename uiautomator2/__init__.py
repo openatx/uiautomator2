@@ -105,7 +105,7 @@ def connect(addr=None):
 
     Returns:
         Device
-    
+
     Raises:
         ConnectError
 
@@ -130,7 +130,7 @@ def connect_adb_wifi(addr):
 
     Args:
         addr: ip+port which can be used for "adb connect" argument
-    
+
     Raises:
         ConnectError
     """
@@ -152,7 +152,7 @@ def connect_usb(serial=None, healthcheck=False, init=False):
 
     Returns:
         Device
-    
+
     Raises:
         ConnectError
     """
@@ -315,7 +315,7 @@ class Device(object):
         """ send http-request to atx-agent """
         return self._reqsess.request(method, relative_url, timeout=timeout)
 
-    def _init_atx_agent(self):
+    def _init_atx_agent(self, start_uiautomator=False):
         """
         Install atx-agent and app-uiautomator apks, only usb connected device is ok
         """
@@ -343,8 +343,9 @@ class Device(object):
         if not self.agent_alive:
             self.__start_atx_agent()
 
-        if not self.alive:
-            self.reset_uiautomator("atx-agent restarted")
+        if start_uiautomator:
+            if not self.alive:
+                self.reset_uiautomator("atx-agent restarted")
 
     def __wait_for_device(self, serial: str, timeout=70.0):
         """
@@ -529,6 +530,7 @@ class Device(object):
         Usage example:
             self.setup_jsonrpc().pressKey("home")
         """
+
         class JSONRpcWrapper():
             def __init__(self, server):
                 self.server = server
@@ -556,7 +558,7 @@ class Device(object):
                 stacklevel=1)
             self.reset_uiautomator("UiAutomator stopped")
         except requests.ReadTimeout as e:
-            self.reset_uiautomator("Http read-timeout: "+ str(e))
+            self.reset_uiautomator("Http read-timeout: " + str(e))
         except UiAutomationNotConnectedError:
             self.reset_uiautomator("UiAutomation not connected")
         except (NullObjectExceptionError, NullPointerExceptionError,
@@ -754,7 +756,7 @@ class Device(object):
 
         Raises:
             RuntimeError
-        
+
         Orders:
             - stop uiautomator keeper
             - am force-stop com.github.uiautomator
@@ -810,7 +812,10 @@ class Device(object):
     def _show_float_window(self, show=True):
         """ 显示悬浮窗，提高uiautomator运行的稳定性 """
         arg = "true" if show else "false"
-        self.shell(["am", "start", "-n", "com.github.uiautomator/.ToastActivity", "-e", "showFloatWindow", arg])
+        self.shell([
+            "am", "start", "-n", "com.github.uiautomator/.ToastActivity", "-e",
+            "showFloatWindow", arg
+        ])
 
     def _force_reset_uiautomator_v2(self, launch_test_app=False):
         brand = self.shell("getprop ro.product.brand").output.strip()
@@ -967,7 +972,7 @@ class Device(object):
         For atx-agent is not support return exit code now.
         When command got something wrong, exit_code is always 1, otherwise exit_code is always 0
         """
-        cmdline = list2cmdline(cmdargs) if isinstance(cmdargs, (list, tuple)) else cmdargs # yapf: disable
+        cmdline = list2cmdline(cmdargs) if isinstance(cmdargs, (list, tuple)) else cmdargs  # yapf: disable
         if stream:
             return self._request("get",
                                  "/shell/stream",
@@ -1140,16 +1145,14 @@ class Device(object):
             time.sleep(.5)
         return False
 
-    def app_wait(self,
-                 package_name: str,
-                 timeout: float = 20.0,
+    def app_wait(self, package_name: str, timeout: float = 20.0,
                  front=False) -> int:
         """ Wait until app launched
         Args:
             package_name (str): package name
             timeout (float): maxium wait time
             front (bool): wait until app is current app
-        
+
         Returns:
             pid (int) 0 if launch failed
         """
@@ -1238,7 +1241,7 @@ class Device(object):
 
     def app_uninstall(self, pkg_name) -> bool:
         """ Uninstall an app 
-        
+
         Returns:
             bool: success
         """
