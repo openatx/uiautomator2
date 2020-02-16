@@ -38,7 +38,8 @@ __apk_version__ = '2.2.0'
 __jar_version__ = 'v0.1.6'  # no useless for now.
 # v0.1.6 first release version
 
-__atx_agent_version__ = '0.8.3'
+__atx_agent_version__ = '0.8.4'
+# 0.8.4 use minicap when sdk less than Android Q
 # 0.8.3 use minitouchagent instead of /data/local/tmp/minitouch
 # 0.8.2 change am instrument maxRetry from 3 to 1
 # 0.8.1 fix --stop can not stop atx-agent error, fix --help format error

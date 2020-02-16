@@ -97,12 +97,15 @@ class UIMeta(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def swipe(self, fx: int, fy: int, tx: int, ty: int, duration: float):
         """ duration is float type, indicate seconds """
+
     @abc.abstractmethod
     def window_size(self) -> tuple:
         """ return (width, height) """
+
     @abc.abstractmethod
     def dump_hierarchy(self) -> str:
         """ return xml content """
+
     @abc.abstractmethod
     def screenshot(self):
         """ return PIL.Image.Image """
@@ -137,7 +140,7 @@ class XPath(object):
         self._logger = setup_logger()
         self._logger.setLevel(logging.INFO)
 
-    def global_set(self, key, value):  #dicts):
+    def global_set(self, key, value):
         valid_keys = {
             "timeout", "alias", "alias_strict", "click_after_delay",
             "click_before_delay"
@@ -318,6 +321,17 @@ class XPath(object):
         el = self._get_after_watch(xpath, timeout)
         el.click()  # 100ms
 
+    def scroll_to(self, xpath: str, direction='up', max_swipes=10):
+        """
+        Need more tests
+        scroll up the whole screen until target element founded
+        """
+        assert max_swipes > 0
+        for i in range(max_swipes):
+            if self(xpath).exists:
+                return
+            self._d.swipe_ext(direction, 0.5)
+
     def __alias_get(self, key, default=None):
         """
         when alias_strict set, if key not in _alias, XPathError will be raised
@@ -358,7 +372,7 @@ class XPathSelector(object):
         assert 0 < y < 1
         self._position = (x, y)
         return self
-    
+
     def fallback(self, func=None, *args, **kwargs):
         """
         callback on failure
@@ -369,8 +383,9 @@ class XPathSelector(object):
                     args = self._position
                 func = lambda d: d.click(*args)
             else:
-                raise ValueError("func should be \"click\" or callable function")
-        
+                raise ValueError(
+                    "func should be \"click\" or callable function")
+
         assert callable(func)
         self._fallback = func
         return self
@@ -411,7 +426,7 @@ class XPathSelector(object):
             lpx, lpy, rpx, rpy = e.percent_bounds()
             # 中心点偏移百分比不应大于控件宽高的50%
             scale = 1.5
-            
+
             if abs(px - (lpx + rpx) / 2) > (rpx - lpx) * .5 * scale:
                 continue
             if abs(py - (lpy + rpy) / 2) > (rpy - lpy) * .5 * scale:
@@ -432,7 +447,7 @@ class XPathSelector(object):
 
         Returns:
             XMLElement
-        
+
         Raises:
             XPathElementNotFoundError
         """
@@ -446,7 +461,7 @@ class XPathSelector(object):
     def get_text(self):
         """
         get element text
-        
+
         Returns:
             string of node text
 
@@ -476,11 +491,19 @@ class XPathSelector(object):
             time.sleep(.2)
         return None
 
+    def match(self):
+        """
+        Returns:
+            None or matched XPathElement
+        """
+        if self.exists:
+            return self.get_last_match()
+
     def wait_gone(self, timeout=None):
         """
         Args:
             timeout (float): seconds
-        
+
         Returns:
             True if gone else False
         """
@@ -542,7 +565,7 @@ class XMLElement(object):
         Args:
             px (float): percent of width
             py (float): percent of height
-        
+
         Example:
             offset(0.5, 0.5) means center
         """
@@ -570,12 +593,13 @@ class XMLElement(object):
         im = self._parent.take_screenshot()
         return im.crop(self.bounds)
 
-    def swipe(self, direction: str, scale: float = 0.9):
+    def swipe(self, direction: str, scale: float = 0.5):
         """
         Args:
             direction: one of ["left", "right", "up", "down"]
             scale: percent of swipe, range (0, 1.0)
         """
+
         def _swipe(_from, _to):
             self._parent.send_swipe(_from[0], _from[1], _to[0], _to[1])
 
@@ -665,6 +689,7 @@ class AdbUI(BasicUIMeta):
     """
     Use adb command to run ui test
     """
+
     def __init__(self, d: adbutils.AdbDevice):
         self._d = d
 

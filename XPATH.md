@@ -54,6 +54,8 @@ def main():
 ```python
 sl = d.xpath("@com.example:id/home_searchedit") # sl为XPathSelector对象
 
+sl.match() # 不匹配返回None, 否则返回XMLElement
+
 # 等到对应的元素出现，返回XMLElement
 # 默认的等待时间是10s
 el = sl.wait()
