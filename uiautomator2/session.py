@@ -466,7 +466,7 @@ class Session(object):
         return self.jsonrpc.drag(sx, sy, ex, ey, int(duration * 200))
 
     @retry((IOError, SyntaxError), delay=.5, tries=5, jitter=0.1,
-           max_delay=1)  # delay .5, .6, .7, .8 ...
+           max_delay=1, logger=logging)  # delay .5, .6, .7, .8 ...
     def screenshot(self, filename=None, format='pillow'):
         """
         Image format is JPEG
@@ -492,9 +492,12 @@ class Session(object):
                 f.write(r.content)
             return filename
         elif format == 'pillow':
-            from PIL import Image
-            buff = io.BytesIO(r.content)
-            return Image.open(buff).convert("RGB")
+            try:
+                from PIL import Image
+                buff = io.BytesIO(r.content)
+                return Image.open(buff).convert("RGB")
+            except Exception as ex:
+                raise IOError("PIL.Image.open IOError", ex)
         elif format == 'opencv':
             import cv2
             import numpy as np

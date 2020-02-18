@@ -1,5 +1,5 @@
 .. uiautomator2 documentation master file, created by
-   sphinx-quickstart on Tue Feb 18 09:46:00 2020.
+   sphinx-quickstart on Tue Feb 18 15:32:23 2020.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
@@ -10,11 +10,8 @@ Welcome to uiautomator2's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-.. automodule:: uiautomator2.Device
-   :members:
+   api
 
-.. automodule:: uiautomator2.Session
-   :members:
 
 Indices and tables
 ==================
