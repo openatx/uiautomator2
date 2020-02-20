@@ -9,7 +9,8 @@ except pkg_resources.DistributionNotFound:
 
 # See ChangeLog for details
 
-__apk_version__ = '2.2.0'
+__apk_version__ = '2.2.1'
+# 2.2.1 fix click bottom(infinitly display) not working bug
 # 2.2.0 add MinitouchAgent instead of /data/local/tmp/minitouch
 # 2.1.1 add show floatWindow support(pm grant, still have no idea), add TC_TREND analysis
 # 2.0.5 add ToastActivity to show toast or just launch and quit
