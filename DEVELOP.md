@@ -13,3 +13,10 @@ See changelog from git history
 ```
 git log --graph --date-order -C -M --pretty=format:"<%h> %ad [%an] %Cgreen%d%Creset %s" --all --date=short
 ```
+
+## 使用Sphinx生成文档
+```bash
+pip3 install -e .
+cd docs
+make publish
+```

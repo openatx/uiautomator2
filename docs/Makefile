@@ -12,6 +12,10 @@ BUILDDIR      = _build
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
+publish: html
+	@oss_upload.py --directory --prefix uiautomator2-docs _build/html
+	@echo "URL: http://tmallwireless-ycombinator.cn-hangzhou.oss-cdn.aliyun-inc.com/uiautomator2-docs/index.html"
+
 .PHONY: help Makefile
 
 # Catch-all target: route all unknown targets to Sphinx using the new
