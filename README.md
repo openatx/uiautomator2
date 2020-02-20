@@ -112,6 +112,8 @@ Thank you to all our sponsors! ✨🍰✨
   - **[Toast](#toast)**
   - **[XPath](#xpath)**
 
+**[相关文章推荐](#article-recommended)**
+
 **常见问题**
   - **[停止UiAutomator守护服务，释放AccessibilityService](#stop-uiautomator)**
   - **[502错误](https://github.com/openatx/uiautomator2/wiki/Common-issues)**
@@ -1369,6 +1371,11 @@ d.service("uiautomator").stop()
 ```
 
 [ATX与Maxim共存AccessibilityService的方法](https://testerhome.com/topics/17179)
+
+# Article Recommended
+优秀文章推荐 (欢迎QQ群里at我反馈）
+
+- [termux里如何部署uiautomator2简介](https://www.cnblogs.com/ze-yan/p/12242383.html) by `成都-测试只会一点点`
 
 # 项目历史
 * 项目重构自 <https://github.com/xiaocong/uiautomator>
