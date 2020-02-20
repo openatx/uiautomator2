@@ -8,9 +8,15 @@ Welcome to uiautomator2's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: 常用接口
 
    api
+
+.. toctree::
+   :maxdepth: 2
+   :caption: 全部接口
+
+   uiautomator2
 
 
 Indices and tables

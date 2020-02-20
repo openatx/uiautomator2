@@ -12,6 +12,10 @@ BUILDDIR      = _build
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
+html:
+	sphinx-apidoc -o . ../
+	$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(0)
+
 publish: html
 	@oss_upload.py --directory --prefix uiautomator2-docs _build/html
 	@echo "URL: http://tmallwireless-ycombinator.cn-hangzhou.oss-cdn.aliyun-inc.com/uiautomator2-docs/index.html"

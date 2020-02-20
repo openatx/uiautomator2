@@ -109,3 +109,5 @@ report/
 *.exe
 node_modules/
 vendor/
+
+docs/*.rst
