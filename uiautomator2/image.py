@@ -206,7 +206,7 @@ class ImageX(object):
         assert hasattr(d, 'click')
         assert hasattr(d, 'screenshot')
 
-        # self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG)
 
     def send_click(self, x, y):
         return self._d.click(x, y)
@@ -251,13 +251,12 @@ class ImageX(object):
                 continue
             time.sleep(.1)
             return m
+        self.logger.debug("image not found")
 
-    def wait(self, imdata, timeout=30.0):
-        m = self.__wait(imdata, timeout=timeout, threshold=0.8)
-        if m is None:
-            return m
-        # time.sleep(.1)
-        return self.__wait(imdata, timeout=timeout, threshold=0.9)
+    def wait(self, imdata, timeout=30.0, threshold=0.9):
+        """ wait until image show up """
+        m = self.__wait(imdata, timeout=timeout, threshold=threshold)
+        return m
 
     def click(self, imdata, timeout=30.0):
         """
