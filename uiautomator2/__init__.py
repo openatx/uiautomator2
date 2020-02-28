@@ -824,8 +824,8 @@ class Device(object):
 
         self.uiautomator.stop()
 
-        self.shell(["am", "force-stop", package_name])
-        logger.debug("stop app: %s", package_name)
+        #self.shell(["am", "force-stop", package_name])
+        #logger.debug("stop app: %s", package_name)
 
         # stop command which launched with uiautomator 1.0
         # eg: adb shell uiautomator runtest androidUiAutomator.jar

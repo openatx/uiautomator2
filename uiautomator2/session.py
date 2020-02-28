@@ -356,15 +356,18 @@ class Session(object):
 
         class _Touch(object):
             def down(self, x, y):
+                x, y = obj.pos_rel2abs(x, y)
                 obj.jsonrpc.injectInputEvent(ACTION_DOWN, x, y, 0)
                 return self
 
             def move(self, x, y):
+                x, y = obj.pos_rel2abs(x, y)
                 obj.jsonrpc.injectInputEvent(ACTION_MOVE, x, y, 0)
                 return self
 
             def up(self, x, y):
                 """ ACTION_UP x, y """
+                x, y = obj.pos_rel2abs(x, y)
                 obj.jsonrpc.injectInputEvent(ACTION_UP, x, y, 0)
                 return self
             
