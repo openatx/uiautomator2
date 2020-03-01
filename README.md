@@ -36,7 +36,7 @@
 
 ## Requirements
 - Android版本 4.4+
-- Python 3.6+ (社区反馈 3.8还不支持）
+- Python 3.6+ (社区反馈3.8.0不支持, 但是3.8.2支持）
 
 >如果用python2的pip安装，会安装本库的老版本0.2.3；如果用python3.5的pip安装，会安装本库的老版本0.3.3；两者均已经不会再维护；PYPI上的最近版本是这个：https://pypi.org/project/uiautomator2/
 
