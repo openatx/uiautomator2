@@ -1185,6 +1185,12 @@ d.watcher("ANR").when(xpath="ANR").when("Force Close").click()
 # 其他回调例子
 d.watcher.when("抢红包").press("back")
 d.watcher.when("//*[@text = 'Out of memory']").call(lambda d: d.shell('am force-stop com.im.qq'))
+
+# 回调说明
+def click_callback(d: u2.Device):
+    d.xpath("确定").click() # 在回调中调用不会再次触发watcher
+
+d.xpath("继续").click() # 使用d.xpath检查元素的时候，会触发watcher（目前最多触发5次）
 ```
 
 监控操作

@@ -19,6 +19,7 @@ class Watcher():
         self._watch_stop_event = threading.Event()
         self._watch_stopped = threading.Event()
         self._watching = False  # func start is calling
+        self._triggering = False
 
         self.logger = setup_logger()
         self.logger.setLevel(logging.INFO)
@@ -81,6 +82,10 @@ class Watcher():
     def running(self) -> bool:
         return self._watching
 
+    @property
+    def triggering(self) -> bool:
+        return self._triggering
+
     def _watch_forever(self, interval: float):
         try:
             wait_timeout = interval
@@ -91,12 +96,18 @@ class Watcher():
             self._watch_stop_event.set()
 
     def run(self, source=None):
-        """ run watchers """
-        self._run_watchers(source=source)
-
-    def _run_watchers(self, source=None):
+        """ run watchers
+        Args:
+            source: hierarchy content
         """
-        returns bool (watched or not)
+        if self.triggering: # avoid to run watcher when run watcher
+            return False
+        return self._run_watchers(source=source)
+
+    def _run_watchers(self, source=None) -> bool:
+        """
+        Returns:
+            bool (watched or not)
         """
         source = source or self._dump_hierarchy()
 
@@ -109,7 +120,8 @@ class Watcher():
                     break
 
             if last_selector:
-                self.logger.info("XPath(hook) name(%s) xpath: %s", h['name'], h['xpaths'])
+                self.logger.info("XPath(hook:%s): %s", h['name'], h['xpaths'])
+                self._triggering = True
                 cb = h['callback']
                 defaults = {
                     "selector": last_selector,
@@ -127,6 +139,8 @@ class Watcher():
                     cb(*ba.args, **ba.kwargs)
                 except Exception as e:
                     self.logger.warning("watchers exception: %s", e)
+                finally:
+                    self._triggering = False
                 return True
         return False
 

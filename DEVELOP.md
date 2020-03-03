@@ -2,7 +2,7 @@
 
 ```
 git clone https://github.com/openatx/uiautomator2
-pip install -e uiautomator2
+pip3 install -e uiautomator2
 ```
 
 `-e`这个选项可以将该目录以软连接的形式添加到Python `site-packages`

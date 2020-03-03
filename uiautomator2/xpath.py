@@ -55,7 +55,7 @@ def strict_xpath(xpath: str, logger=logger) -> str:
     """ make xpath to be computer recognized xpath """
     orig_xpath = xpath
 
-    if xpath.startswith('//'):
+    if xpath.startswith('/'):
         pass
     elif xpath.startswith('@'):
         xpath = '//*[@resource-id={!r}]'.format(xpath[1:])
@@ -77,7 +77,7 @@ def strict_xpath(xpath: str, logger=logger) -> str:
         xpath = '//*[@text={0} or @content-desc={0} or @resource-id={0}]'.format(
             string_quote(xpath))
 
-    logger.debug("xpath %s -> %s", orig_xpath, xpath)
+    # logger.debug("xpath %s -> %s", orig_xpath, xpath)
     return xpath
 
 
@@ -181,6 +181,9 @@ class XPath(object):
 
     def add_event_listener(self, event_name, callback):
         self._event_callbacks[event_name] += [callback]
+
+    # def register_callback(action: str, callback):
+    #     pass
 
     def send_click(self, x, y):
         if self._click_before_delay:
@@ -361,6 +364,9 @@ class XPathSelector(object):
         self._position = None
         self._fallback = None
 
+    def __str__(self):
+        return f"XPathSelector({'|'.join(self._xpath_list)}"
+
     def xpath(self, xpath: str):
         xpath = strict_xpath(xpath, self.logger)
         self._xpath_list.append(xpath)
@@ -401,6 +407,18 @@ class XPathSelector(object):
         """
         xml_content = source or self._source or self._parent.dump_hierarchy()
         self._last_source = xml_content
+
+        # run-watchers
+        if not source and not self._source:
+            trigger_count = 0
+            for _ in range(5): # trigger for most 5 times
+                triggered = self._parent._watcher.run(xml_content)
+                if not triggered:
+                    break
+                trigger_count += 1
+                xml_content = self._parent.dump_hierarchy()
+            if trigger_count:
+                self.logger.debug("watcher triggered %d times", trigger_count)
 
         root = etree.fromstring(str2bytes(xml_content))
         for node in root.xpath("//node"):
@@ -486,6 +504,7 @@ class XPathSelector(object):
         """
         deadline = time.time() + (timeout or self._global_timeout)
         while time.time() < deadline:
+            # self.logger.debug("wait %s left %.1fs", self, deadline-time.time())
             if self.exists:
                 return self.get_last_match()
             time.sleep(.2)
@@ -538,6 +557,10 @@ class XPathSelector(object):
         """ take element screenshot """
         el = self.get()
         return el.screenshot()
+    
+    def __getattr__(self, key: str):
+        el = self.get()
+        return getattr(el, key)
 
 
 class XMLElement(object):
