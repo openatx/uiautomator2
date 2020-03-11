@@ -82,7 +82,6 @@ def cache_download(url, filename=None, timeout=None, logger=logger):
     shutil.move(storepath + '.part', storepath)
     return storepath
 
-
 def mirror_download(url: str, filename=None, logger: logging.Logger = logger):
     """
     Download from mirror, then fallback to origin url
@@ -114,6 +113,22 @@ def app_uiautomator_apk_urls():
         ])))
     return ret
 
+
+def parse_apk(path: str):
+    """
+    Parse APK
+    
+    Returns:
+        dict contains "package" and "main_activity"
+    """
+    import apkutils2
+    apk = apkutils2.APK(path)
+    package_name = apk.manifest.package_name
+    main_activity = apk.manifest.main_activity
+    return {
+        "package": package_name,
+        "main_activity": main_activity,
+    }
 
 class Initer():
     def __init__(self, device, loglevel=logging.INFO):

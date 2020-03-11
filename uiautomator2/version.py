@@ -10,6 +10,7 @@ except pkg_resources.DistributionNotFound:
 # See ChangeLog for details
 
 __apk_version__ = '2.2.1'
+# 2.3.1 support minicapagent, rotationagent, minitouchagent
 # 2.2.1 fix click bottom(infinitly display) not working bug
 # 2.2.0 add MinitouchAgent instead of /data/local/tmp/minitouch
 # 2.1.1 add show floatWindow support(pm grant, still have no idea), add TC_TREND analysis
@@ -39,7 +40,8 @@ __apk_version__ = '2.2.1'
 __jar_version__ = 'v0.1.6'  # no useless for now.
 # v0.1.6 first release version
 
-__atx_agent_version__ = '0.8.4'
+__atx_agent_version__ = '0.9.0'
+# 0.9.0 add /minicap/broadcast api, add service("apkagent")
 # 0.8.4 use minicap when sdk less than Android Q
 # 0.8.3 use minitouchagent instead of /data/local/tmp/minitouch
 # 0.8.2 change am instrument maxRetry from 3 to 1
