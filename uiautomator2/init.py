@@ -99,7 +99,7 @@ def mirror_download(url: str, filename=None, logger: logging.Logger = logger):
                                   logger=logger)
         except (requests.RequestException, FileNotFoundError,
                 AssertionError) as e:
-            logger.debug("download mirror err: %s, use origin source", e)
+            logger.debug("download error from mirror(%s), use origin source", e)
 
     return cache_download(url, filename, logger=logger)
 
