@@ -40,7 +40,10 @@ __apk_version__ = '2.3.1'
 __jar_version__ = 'v0.1.6'  # no useless for now.
 # v0.1.6 first release version
 
-__atx_agent_version__ = '0.9.1'
+__atx_agent_version__ = '0.9.4'
+# 0.9.4 test travis push to qiniu-cdn
+# 0.9.3 fix atx-agent version output too many output
+# 0.9.2 fix when /sdcard/atx-agent.log can't create, atx-agent can't start error
 # 0.9.1 update /minicap to use apkagent and minicap
 # 0.9.0 add /minicap/broadcast api, add service("apkagent")
 # 0.8.4 use minicap when sdk less than Android Q

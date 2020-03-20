@@ -1565,6 +1565,12 @@ class Device(object):
     def image(self):
         from uiautomator2 import image as _image
         return _image.ImageX(self)
+    
+    #@property
+    #@cache_return
+    #def screenrecord(self):
+        #from uiautomator2 import screenrecord as _sr
+        #return _sr.Screenrecord(self)
 
     def __getattr__(self, attr):
         if attr in self._cached_plugins:
