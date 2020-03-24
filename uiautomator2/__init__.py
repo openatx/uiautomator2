@@ -472,10 +472,11 @@ class Device(object):
         """
         return self.setup_jsonrpc()
 
-    def path2url(self, path: str):
-        if re.match(r"^https?://", path):
+    def path2url(self, path: str, scheme: str = "http"):
+        if re.match(r"^(ws|http)s?://", path):
             return path
-        return urlparse.urljoin(self._server_url, path)
+        server_url = self._server_url.replace("http://", scheme+"://")
+        return urlparse.urljoin(server_url, path)
 
     def window_size(self):
         """ return (width, height) """
@@ -1566,11 +1567,11 @@ class Device(object):
         from uiautomator2 import image as _image
         return _image.ImageX(self)
     
-    #@property
-    #@cache_return
-    #def screenrecord(self):
-        #from uiautomator2 import screenrecord as _sr
-        #return _sr.Screenrecord(self)
+    @property
+    @cache_return
+    def screenrecord(self):
+        from uiautomator2 import screenrecord as _sr
+        return _sr.Screenrecord(self)
 
     def __getattr__(self, attr):
         if attr in self._cached_plugins:
