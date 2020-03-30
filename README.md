@@ -1375,9 +1375,7 @@ time.sleep(10)
 d.screenrecord.stop() # 停止录制后，output.mp4文件才能打开
 ```
 
-遗留问题
-
-> 横竖屏切换的时候，录制操作会崩溃。这个还在优化中。
+录制的时候也可以指定fps（当前是20），这个值是率低于minicap输出图片的速度，感觉已经很好了，不建议你修改。
 
 # 常见问题
 很多没写在这个地方的，都放到了这里 [Common Issues](https://github.com/openatx/uiautomator2/wiki/Common-issues)
