@@ -111,6 +111,7 @@ Thank you to all our sponsors! ✨🍰✨
   - **[Input method](#input-method)**
   - **[Toast](#toast)**
   - **[XPath](#xpath)**
+  - **[Screenrecord](#screenrecord)**
 
 **[相关文章推荐](#article-recommended)**
 
@@ -1352,6 +1353,31 @@ for elem in d.xpath("//android.widget.TextView").all():
 ```
 
 点击查看[其他XPath常见用法](XPATH.md)
+
+### Screenrecord
+视频录制
+
+这里没有使用手机中自带的screenrecord命令，是通过获取手机图片合成视频的方法，所以需要安装一些其他的依赖，如imageio, imageio-ffmpeg, numpy等
+因为有些依赖比较大，推荐使用镜像安装。直接运行下面的命令即可。
+
+```bash
+pip3 install -U "uiautomator2[image]" -i https://pypi.doubanio.com/simple
+```
+
+使用方法
+
+```
+d.screenrecord('output.mp4')
+
+time.sleep(10)
+# or do something else
+
+d.screenrecord.stop() # 停止录制后，output.mp4文件才能打开
+```
+
+遗留问题
+
+> 横竖屏切换的时候，录制操作会崩溃。这个还在优化中。
 
 # 常见问题
 很多没写在这个地方的，都放到了这里 [Common Issues](https://github.com/openatx/uiautomator2/wiki/Common-issues)
