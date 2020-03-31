@@ -148,7 +148,7 @@ def _open_image_url(url: str, flag=cv2.IMREAD_COLOR):
     return image
 
 
-def draw_point(im: Image.Image, x: int, y: int):
+def draw_point(im: Image.Image, x: int, y: int) -> Image.Image:
     """
     Mark position to show which point clicked
 
@@ -219,7 +219,7 @@ class ImageX(object):
         screenshot = self.screenshot()
         return screenshot.convert("RGB").getpixel((x, y))
 
-    def match(self, imdata: Union[np.ndarray, str]):
+    def match(self, imdata: Union[np.ndarray, str, Image.Image]):
         """
         Args:
             imdata: file, url, pillow or opencv image object
@@ -232,13 +232,20 @@ class ImageX(object):
                            engine_template_scale=(0.9, 1.1, 3),
                            pro_mode=True)
         fi.load_template("template", pic_object=cvimage)
+        th, tw = cvimage.shape[:2] # template width, height
 
         target = self._d.screenshot(format='opencv')
+        assert isinstance(target, np.ndarray), "screenshot is not opencv format"
         raw_result = fi.find("target", target_pic_object=target)
+        # from pprint import pprint
+        # pprint(raw_result)
+        
         result = raw_result['data']['template']['TemplateEngine']
+        # compress_rate = result['conf']['engine_template_compress_rate'] # useless
         target_sim = result['target_sim']  # 相似度  similarity
-
-        return {"similarity": target_sim, "point": result['target_point']}
+        x, y = result['target_point'] # this is middle point
+        # x, y = lx+tw//2, ly+th//2
+        return {"similarity": target_sim, "point": [x, y]}
 
     def __wait(self, imdata, timeout=30.0, threshold=0.8):
         deadline = time.time() + timeout
