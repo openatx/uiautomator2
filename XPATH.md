@@ -54,6 +54,12 @@ def main():
 ```python
 sl = d.xpath("@com.example:id/home_searchedit") # sl为XPathSelector对象
 
+# 点击
+sl.click()
+sl.click(timeout=10) # 指定超时时间
+sl.click_exists() # 存在即点击，返回是否点击成功
+sl.click_exists(timeout=10) # 等待最多10s钟
+
 sl.match() # 不匹配返回None, 否则返回XMLElement
 
 # 等到对应的元素出现，返回XMLElement

@@ -290,6 +290,8 @@ class XPath(object):
             time.sleep(min(0.5, left_time))
 
     def _get_after_watch(self, xpath: Union[str, list], timeout=None):
+        if timeout == 0:
+            timeout = .01
         timeout = timeout or self.wait_timeout
         self.logger.info("XPath(timeout %.1f) %s", timeout, xpath)
         deadline = time.time() + timeout
@@ -548,6 +550,13 @@ class XPathSelector(object):
                 raise
             self.logger.info("element not found, run fallback")
             return inject_call(self._fallback, d=self._d)
+    
+    def click_exists(self, timeout=None):
+        el = self.wait(timeout=timeout)
+        if el:
+            el.click()
+            return True
+        return False
 
     def long_click(self):
         """ find element and perform long click """
@@ -559,6 +568,12 @@ class XPathSelector(object):
         return el.screenshot()
     
     def __getattr__(self, key: str):
+        """
+        In IPython console, attr:_ipython_canary_method_should_not_exist_ will be called
+        So here ignore all attr startswith _
+        """
+        if key.startswith("_"):
+            raise AttributeError("Invalid attr", key)
         el = self.get()
         return getattr(el, key)
 
