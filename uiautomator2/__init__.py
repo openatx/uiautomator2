@@ -475,7 +475,7 @@ class Device(object):
     def path2url(self, path: str, scheme: str = "http"):
         if re.match(r"^(ws|http)s?://", path):
             return path
-        server_url = self._server_url.replace("http://", scheme+"://")
+        server_url = self._server_url.replace("http://", scheme + "://")
         return urlparse.urljoin(server_url, path)
 
     def window_size(self):
@@ -531,7 +531,6 @@ class Device(object):
         Usage example:
             self.setup_jsonrpc().pressKey("home")
         """
-
         class JSONRpcWrapper():
             def __init__(self, server):
                 self.server = server
@@ -751,7 +750,7 @@ class Device(object):
         assert data['success'], data['description']
         logger.info("%s", data['description'])
 
-    def reset_uiautomator(self, reason="unknown"):
+    def reset_uiautomator(self, reason="unknown", depth=0):
         """
         Reset uiautomator
 
@@ -764,27 +763,49 @@ class Device(object):
             - start uiautomator keeper(am instrument -w ...)
             - wait until uiautomator service is ready
         """
+        if depth >= 2:
+            raise EnvironmentError(
+                "Uiautomator started failed.",
+                reason,
+                "https://github.com/openatx/uiautomator2/wiki/Common-issues",
+                "adb shell am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner",
+            )
+
         logger.debug("restart-uiautomator since \"%s\"", reason)
         with self.__uiautomator_lock:
             if self.alive:
                 return
-            ok = self._force_reset_uiautomator_v2()  # uiautomator 2.0
-            if not ok:
-                shret = self.shell(
-                    "am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner",
-                    timeout=3)
-                if "does not have a signature matching the target " in shret.output:
-                    raise RuntimeError(
-                        "com.github.uiautomator does not have a signature matching the target com.github.uiautomator.test, please reinstall apks"
-                    )
-                if not self._force_reset_uiautomator_v2(launch_test_app=True):
-                    raise EnvironmentError(
-                        "Uiautomator started failed.",
-                        "https://github.com/openatx/uiautomator2/wiki/Common-issues",
-                        "adb shell am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner",
-                        shret.output)
+            ok = self._force_reset_uiautomator_v2(
+                launch_test_app=depth > 0)  # uiautomator 2.0
+            if ok:
+                logger.info("uiautomator back to normal")
+                return
 
-            logger.info("uiautomator back to normal")
+            output = self._test_run_instrument()
+            if "does not have a signature matching the target" in output:
+                self.app_uninstall("com.github.uiautomator")
+                self.app_uninstall("com.github.uiautomator.test")
+                self._reinstall_uiautomator_apks()
+                reason = "signature not match, reinstall uiautomator apks"
+        return self.reset_uiautomator(reason=reason,
+                                      depth=depth + 1)
+
+    def _test_run_instrument(self):
+        shret = self.shell(
+            "am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner",
+            timeout=3)
+        return shret.output
+
+    def _reinstall_uiautomator_apks(self):
+        from uiautomator2 import init
+        for (name, url) in init.app_uiautomator_apk_urls():
+            apk_path = init.cache_download(url)
+            target_path = os.path.join("/data/local/tmp",
+                                       os.path.basename(apk_path))
+            # print("Push to", target_path)
+            self.push(apk_path, target_path)
+            # print("Install")
+            self.shell(['pm', 'install', '-r', '-t', target_path])
 
     def _force_reset_uiautomator_v1(self):
         """ uiautomator v1 only need bundle.jar and uiautomator-stub.jar
@@ -1146,7 +1167,9 @@ class Device(object):
             time.sleep(.5)
         return False
 
-    def app_wait(self, package_name: str, timeout: float = 20.0,
+    def app_wait(self,
+                 package_name: str,
+                 timeout: float = 20.0,
                  front=False) -> int:
         """ Wait until app launched
         Args:
@@ -1566,7 +1589,7 @@ class Device(object):
     def image(self):
         from uiautomator2 import image as _image
         return _image.ImageX(self)
-    
+
     @property
     @cache_return
     def screenrecord(self):
