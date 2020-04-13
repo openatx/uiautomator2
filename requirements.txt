@@ -6,7 +6,7 @@ whichcraft
 logzero~=1.5
 progress~=1.3
 retry~=0.9
-adbutils>=0.7.2,<1.0
+adbutils>=0.7.3,<1.0
 Deprecated~=1.2.6
 
 # Not supported in QPython
