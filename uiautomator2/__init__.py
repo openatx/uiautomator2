@@ -42,6 +42,7 @@ from urllib3.util.retry import Retry
 import adbutils
 from deprecated import deprecated
 from logzero import logger
+from cached_property import cached_property
 
 from . import xpath
 from .utils import list2cmdline
@@ -273,6 +274,140 @@ def plugin_register(name, plugin, *args, **kwargs):
 def plugin_clear():
     Device.plugins().clear()
 
+
+ShellResponse = namedtuple("ShellResponse", ("output", "exit_code"))
+
+
+class BaseClient(object):
+    def __init__(self, serial_or_url):
+        """
+        Args:
+            serial_or_url: device serialno or atx-agent base url
+        
+        Example:
+            08a3d291, http://10.0.0.1:7912
+        """
+        if re.match(r"^https?://", serial_or_url):
+            self._serial = None
+            self._atx_agent_url = serial_or_url
+        else:
+            self._serial = serial_or_url
+            self._atx_agent_url = None
+
+    def _setup_atx_agent(self):
+        assert self._serial, "Device serialno is required"
+        _d = self.__wait_for_device(self._serial)
+        if not _d:
+            raise RuntimeError("USB device %s is offline" % self._serial)
+        
+        # install atx-agent
+        from uiautomator2 import init
+        _initer = init.Initer(_d)
+        _initer._install_atx_agent()
+        _initer.check_atx_agent_version()
+
+        lport = _d.forward_port(7912)
+        self._atx_agent_url = f"http://localhost:{lport}"
+    
+    def _setup_uiautomator(self):
+        self.app_uninstall("com.github.uiautomator")
+        self.app_uninstall("com.github.uiautomator.test")
+        
+        from uiautomator2 import init
+        for (name, url) in init.app_uiautomator_apk_urls():
+            apk_path = init.cache_download(url)
+            target_path = os.path.join("/data/local/tmp",
+                                       os.path.basename(apk_path))
+            # print("Push to", target_path)
+            self.push(apk_path, target_path)
+            # print("Install")
+            self.shell(['pm', 'install', '-r', '-t', target_path])
+    
+    def __wait_for_device(self, serial: str, timeout=70.0):
+        """
+        wait for device came online
+        """
+        deadline = time.time() + timeout
+        first = True
+
+        while time.time() < deadline:
+            device = None
+            for d in adbutils.adb.device_list():
+                if d.serial == serial:
+                    device = d
+                    break
+
+            if device:
+                if not first:
+                    logger.info("device(%s) came online", serial)
+                return device
+
+            if first:
+                first = False
+            else:
+                logger.info("wait for device(%s), left(%.1fs)", serial,
+                            deadline - time.time())
+
+            time.sleep(2.0)
+        return None
+
+    def app_uninstall(self, package_name: str):
+        """ Uninstall package """
+        return self.shell(["pm", "uninstall", package_name])
+    
+    def shell(self, cmdargs, stream=False, timeout=60):
+        """
+        Run adb shell command with arguments and return its output. Require atx-agent >=0.3.3
+
+        Args:
+            cmdargs: str or list, example: "ls -l" or ["ls", "-l"]
+            timeout: seconds of command run, works on when stream is False
+            stream: bool used for long running process.
+
+        Returns:
+            (output, exit_code) when stream is False
+            requests.Response when stream is True, you have to close it after using
+
+        Raises:
+            RuntimeError
+
+        For atx-agent is not support return exit code now.
+        When command got something wrong, exit_code is always 1, otherwise exit_code is always 0
+        """
+        if isinstance(cmdargs, (list, tuple)):
+            cmdline = list2cmdline(cmdargs)
+        elif isinstance(cmdargs, str):
+            cmdline = cmdargs
+        else:
+            raise TypeError("cmdargs type invalid", type(cmdargs))
+
+        if stream:
+            return self.http.get("/shell/stream", params={"command": cmdline}, timeout=None, stream=True)
+            # return self._request("get", "/shell/stream", params={"command": cmdline}, timeout=None, stream=True) # yapf: disable
+        data = dict(command=cmdline, timeout=str(timeout))
+        ret = self.http.post("/shell", data=data, timeout=timeout+10)
+        # ret = self._request("post", '/shell', data={
+        #                         'command': cmdline,
+        #                         'timeout': str(timeout)
+        #                     },
+        #                     timeout=timeout + 10)
+        if ret.status_code != 200:
+            raise RuntimeError(
+                "device agent responds with an error code %d" %
+                ret.status_code, ret.text)
+        resp = ret.json()
+        exit_code = 1 if resp.get('error') else 0
+        exit_code = resp.get('exitCode', exit_code)
+        return ShellResponse(resp.get('output'), exit_code)
+    
+    @cached_property
+    def http(self):
+        # TODO: use default timeout session
+        return requests.Session()
+
+
+# def push_atx_agent(_d: adbutils.AdbDevice):
+#     return _d.shell("pwd")
 
 class Device(object):
     __isfrozen = False
@@ -1015,8 +1150,8 @@ class Device(object):
         resp = ret.json()
         exit_code = 1 if resp.get('error') else 0
         exit_code = resp.get('exitCode', exit_code)
-        shell_response = namedtuple("ShellResponse", ("output", "exit_code"))
-        return shell_response(resp.get('output'), exit_code)
+        ShellResponse = namedtuple("ShellResponse", ("output", "exit_code"))
+        return ShellResponse(resp.get('output'), exit_code)
 
     def adb_shell(self, *args):
         """
@@ -1230,6 +1365,8 @@ class Device(object):
         for line in self.shell("ps; ps -A").output.splitlines():
             # USER PID ..... NAME
             fields = line.strip().split()
+            if len(fields) < 3:
+                continue
             if fields[0] == "USER":
                 continue
             if not fields[1].isdigit():
@@ -1489,18 +1626,18 @@ class Device(object):
         raise NotImplementedError()
         # self.watcher
 
-        if enable:
-            self.jsonrpc.setAccessibilityPatterns({
-                "com.android.packageinstaller":
-                [u"确定", u"安装", u"下一步", u"好", u"允许", u"我知道"],
-                "com.miui.securitycenter": [u"继续安装"],  # xiaomi
-                "com.lbe.security.miui": [u"允许"],  # xiaomi
-                "android": [u"好", u"安装"],  # vivo
-                "com.huawei.systemmanager": [u"立即删除"],  # huawei
-                "com.android.systemui": [u"同意"],  # 锤子
-            })
-        else:
-            self.jsonrpc.setAccessibilityPatterns({})
+        # if enable:
+        #     self.jsonrpc.setAccessibilityPatterns({
+        #         "com.android.packageinstaller":
+        #         [u"确定", u"安装", u"下一步", u"好", u"允许", u"我知道"],
+        #         "com.miui.securitycenter": [u"继续安装"],  # xiaomi
+        #         "com.lbe.security.miui": [u"允许"],  # xiaomi
+        #         "android": [u"好", u"安装"],  # vivo
+        #         "com.huawei.systemmanager": [u"立即删除"],  # huawei
+        #         "com.android.systemui": [u"同意"],  # 锤子
+        #     })
+        # else:
+        #     self.jsonrpc.setAccessibilityPatterns({})
 
     def session(self,
                 pkg_name=None,
