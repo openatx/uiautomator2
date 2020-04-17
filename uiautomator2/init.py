@@ -8,6 +8,7 @@ import os
 import shutil
 import tarfile
 
+import adbutils
 import humanize
 import progress.bar
 import requests
@@ -139,7 +140,7 @@ def parse_apk(path: str):
     }
 
 class Initer():
-    def __init__(self, device, loglevel=logging.INFO):
+    def __init__(self, device: adbutils.AdbDevice, loglevel=logging.INFO):
         d = self._device = device
 
         self.sdk = d.getprop('ro.build.version.sdk')
@@ -157,9 +158,9 @@ class Initer():
     def atx_agent_path(self):
         return "/data/local/tmp/atx-agent"
 
-    def shell(self, *args):
+    def shell(self, *args, timeout=60):
         self.logger.debug("Shell: %s", args)
-        return self._device.shell(args)
+        return self._device.shell(args, timeout=60)
 
     @property
     def jar_urls(self):
