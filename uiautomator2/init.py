@@ -269,6 +269,10 @@ class Initer():
         return False
 
     def is_atx_agent_outdated(self):
+        """
+        Returns:
+            bool
+        """
         agent_version = self._device.shell(self.atx_agent_path +
                                            " version").strip()
         if agent_version == "dev":
@@ -383,6 +387,7 @@ class Initer():
         version = requests.get("http://127.0.0.1:%d/version" %
                                port).text.strip()
         self.logger.debug("atx-agent version %s", version)
+        return version
 
     def uninstall(self):
         self._device.shell([self.atx_agent_path, "server", "--stop"])

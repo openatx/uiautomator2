@@ -29,7 +29,7 @@ import time
 import warnings
 from collections import namedtuple
 from datetime import datetime
-from typing import Optional, Union
+from typing import Optional, Union, List, Tuple
 
 import humanize
 import progress.bar
@@ -46,11 +46,11 @@ from cached_property import cached_property
 
 from . import xpath
 from .utils import list2cmdline
-from .exceptions import (BaseError, ConnectError, GatewayError, JsonRpcError,
+from .exceptions import (BaseError, ConnectError, GatewayError, JSONRPCError,
                          NullObjectExceptionError, NullPointerExceptionError,
                          SessionBrokenError, StaleObjectExceptionError,
                          UiaError, UiAutomationNotConnectedError,
-                         UiObjectNotFoundError)
+                         UiObjectNotFoundError, ServerError)
 from .init import Initer
 from .session import Session, set_fail_prompt  # noqa: F401
 from .utils import cache_return
@@ -277,8 +277,30 @@ def plugin_clear():
 
 ShellResponse = namedtuple("ShellResponse", ("output", "exit_code"))
 
+_production = (os.environ.get("TMQ") == "true")
 
-class BaseClient(object):
+class _AgentRequestSession(TimeoutRequestsSession):
+    def __init__(self, clnt: "_BaseClient"):
+        super().__init__()
+        self.__client = clnt
+        self.debug = True
+    
+    def request(self, method, url, **kwargs):
+        url = self.__client.url_rel2abs(url)
+        retry = kwargs.pop("retry", True)
+        try:
+            return super().request(method, url, **kwargs)
+        except requests.ConnectionError:
+            if not retry:
+                raise
+            self.__client._prepare_atx_agent()
+            return super().request(method, url, **kwargs)
+
+
+class _BaseClient(object):
+    """
+    提供最基础的控制类，这个类暂时先不公开吧
+    """
     def __init__(self, serial_or_url):
         """
         Args:
@@ -294,20 +316,74 @@ class BaseClient(object):
             self._serial = serial_or_url
             self._atx_agent_url = None
 
-    def _setup_atx_agent(self):
+    def get_atx_agent_url(self) -> str:
+        """ get url for python client to connect """
+        if not self._serial:
+            return self._atx_agent_url
+        
+        lport = self._adb_device.forward_port(7912)
+        return f"http://localhost:{lport}"
+
+    def get_atx_agent_path(self) -> str:
+        return "/data/local/tmp/atx-agent"
+
+    def url_rel2abs(self, path: str):
+        """ relative url path to full url path """
+        if re.match(r"^(ws|http)s?://", path):
+            return path
+        return urlparse.urljoin(self.get_atx_agent_url(), path)
+
+    @property
+    def _adb_device(self):
+        """ only avaliable when connected with usb """
+        assert self._serial, "serial should not empty"
+        return adbutils.adb.device(serial=self._serial)
+
+    def _prepare_atx_agent(self):
+        """
+        check running -> push binary -> launch
+        """
         assert self._serial, "Device serialno is required"
-        _d = self.__wait_for_device(self._serial)
+        timeout = 70.0 if _production else 0.0
+        _d = self.__wait_for_device(self._serial, timeout=timeout)
         if not _d:
             raise RuntimeError("USB device %s is offline" % self._serial)
         
-        # install atx-agent
-        from uiautomator2 import init
-        _initer = init.Initer(_d)
-        _initer._install_atx_agent()
-        _initer.check_atx_agent_version()
+        # launch atx-agent is not launched
+        try:
+            version = self.http.get("/version", retry=False).text # retry to prevent dead loop
+            if version != __atx_agent_version__:
+                raise EnvironmentError("atx-agent need upgrade")
+        except (requests.RequestException, EnvironmentError):
+            self._setup_atx_agent()
 
-        lport = _d.forward_port(7912)
-        self._atx_agent_url = f"http://localhost:{lport}"
+        return self.get_atx_agent_url()
+    
+    # def _get_binary(self):
+    #     abi = self._adb_shell(['getprop', 'ro.product.cpu.abi'])
+    #     version = "0.9.4"
+    #     url = f"https://github.com/openatx/atx-agent/releases/download/{version}/atx-agent_{version}_linux_armv6.tar.gz"
+
+    #     from uiautomator2 import init
+    #     return init.cache_download(url)
+    
+    def _setup_atx_agent(self):
+        # check running
+        from uiautomator2 import init
+        _initer = init.Initer(self._adb_device)
+        if not _initer.check_install():
+            _initer.install()
+        self._adb_shell([self.get_atx_agent_path(), "server", "-d"], timeout=10)
+        _initer.check_atx_agent_version()
+        # self.logger.info("Install atx-agent %s", __atx_agent_version__)
+        # self.push_url(self.atx_agent_url, tgz=True, extract_name="atx-agent")
+        # args = [self.atx_agent_path, "server", "--nouia", "-d"]
+        # self._adb_shell([self.atx_agent_path, "server", "--stop"])
+        # self._adb_shell(args)
+    
+    def _adb_shell(self, cmdargs: Union[list, Tuple[str]], timeout=None):
+        """ run command through adb command """
+        return self._adb_device.shell(cmdargs, timeout=timeout)
     
     def _setup_uiautomator(self):
         self.app_uninstall("com.github.uiautomator")
@@ -318,44 +394,43 @@ class BaseClient(object):
             apk_path = init.cache_download(url)
             target_path = os.path.join("/data/local/tmp",
                                        os.path.basename(apk_path))
-            # print("Push to", target_path)
             self.push(apk_path, target_path)
-            # print("Install")
             self.shell(['pm', 'install', '-r', '-t', target_path])
     
-    def __wait_for_device(self, serial: str, timeout=70.0):
+    def __wait_for_device(self, serial: str, timeout: float = 70.0):
         """
         wait for device came online
         """
         deadline = time.time() + timeout
         first = True
 
-        while time.time() < deadline:
-            device = None
+        device = None
+        while True:
             for d in adbutils.adb.device_list():
                 if d.serial == serial:
                     device = d
                     break
-
             if device:
-                if not first:
-                    logger.info("device(%s) came online", serial)
-                return device
+                break
 
-            if first:
-                first = False
-            else:
-                logger.info("wait for device(%s), left(%.1fs)", serial,
-                            deadline - time.time())
+            first = False
+            logger.info("wait for device(%s), left(%.1fs)", serial,
+                    deadline - time.time())
 
+            if time.time() < deadline:
+                break
             time.sleep(2.0)
-        return None
+        
+        if not first and device:
+            logger.info("device(%s) came online", serial)
+
+        return device
 
     def app_uninstall(self, package_name: str):
         """ Uninstall package """
         return self.shell(["pm", "uninstall", package_name])
     
-    def shell(self, cmdargs, stream=False, timeout=60):
+    def shell(self, cmdargs: Union[str, List[str]], stream=False, timeout=60):
         """
         Run adb shell command with arguments and return its output. Require atx-agent >=0.3.3
 
@@ -386,11 +461,6 @@ class BaseClient(object):
             # return self._request("get", "/shell/stream", params={"command": cmdline}, timeout=None, stream=True) # yapf: disable
         data = dict(command=cmdline, timeout=str(timeout))
         ret = self.http.post("/shell", data=data, timeout=timeout+10)
-        # ret = self._request("post", '/shell', data={
-        #                         'command': cmdline,
-        #                         'timeout': str(timeout)
-        #                     },
-        #                     timeout=timeout + 10)
         if ret.status_code != 200:
             raise RuntimeError(
                 "device agent responds with an error code %d" %
@@ -402,12 +472,160 @@ class BaseClient(object):
     
     @cached_property
     def http(self):
-        # TODO: use default timeout session
-        return requests.Session()
+        return _AgentRequestSession(self)
 
+    @property
+    def info(self):
+        return self.jsonrpc.deviceInfo()
+    
+    #
+    # app-uiautomator.apk jsonrpc methods
+    #
 
-# def push_atx_agent(_d: adbutils.AdbDevice):
-#     return _d.shell("pwd")
+    @property
+    def jsonrpc_url(self):
+        return self.get_atx_agent_url() + "/jsonrpc/0"
+    
+    @property
+    def jsonrpc(self):
+        class JSONRpcWrapper():
+            def __init__(self, server):
+                self.server = server
+                self.method = None
+
+            def __getattr__(self, method):
+                self.method = method  # jsonrpc function name
+                return self
+
+            def __call__(self, *args, **kwargs):
+                http_timeout = kwargs.pop('http_timeout', HTTP_TIMEOUT)
+                params = args if args else kwargs
+                return self.server._jsonrpc_retry_call(self.method, params,
+                                                      http_timeout)
+
+        return JSONRpcWrapper(self)
+
+    def _jsonrpc_retry_call(self, *args, **kwargs):
+        try:
+            return self.jsonrpc_call(*args, **kwargs)
+        except (requests.ReadTimeout,
+                ServerError,
+                UiAutomationNotConnectedError) as e:
+            self.reset_uiautomator(str(e)) # uiautomator可能出问题了，强制重启一下
+        except (NullObjectExceptionError,
+                NullPointerExceptionError,
+                StaleObjectExceptionError) as e:
+            logger.warning("jsonrpc call got: %s", str(e))
+        return self.jsonrpc_call(*args, **kwargs)
+
+    def jsonrpc_call(self, method, params=[], http_timeout=60):
+        """ jsonrpc2 call
+        Refs:
+            - http://www.jsonrpc.org/specification
+        
+        Raises:
+            出现的错误一般有2大类:
+                - JSONRPC服务端异常 ServerError
+                - 远程方法返回的错误 RequestError
+        """
+        request_start = time.time()
+        data = {
+            "jsonrpc": "2.0",
+            "id": self._jsonrpc_id(method),
+            "method": method,
+            "params": params,
+        }
+        data = json.dumps(data)
+        res = self.http.post("/jsonrpc/0", 
+            headers={"Content-Type": "application/json"}, 
+            data=data, 
+            timeout=http_timeout)
+
+        if res.status_code == 502:
+            raise GatewayError(
+                res, "gateway error, time used %.1fs" %
+                (time.time() - request_start))
+        if res.status_code == 410:  # http status gone: session broken
+            raise SessionBrokenError("app quit or crash", res.text)
+        if res.status_code != 200:
+            raise BaseError(data, res.status_code, res.text,
+                            "HTTP Return code is not 200", res.text)
+        jsondata = res.json()
+        error = jsondata.get('error')
+        if not error:
+            return jsondata.get('result')
+
+        err = JSONRPCError(error, method)
+
+        def is_exception(err, exception_name):
+            return err.exception_name == exception_name or exception_name in err.message
+
+        if isinstance(
+                err.data,
+                six.string_types) and 'UiAutomation not connected' in err.data:
+            err.__class__ = UiAutomationNotConnectedError
+        elif err.message:
+            if is_exception(err, 'uiautomator.UiObjectNotFoundException'):
+                err.__class__ = UiObjectNotFoundError
+            elif is_exception(
+                    err,
+                    'android.support.test.uiautomator.StaleObjectException'):
+                # StaleObjectException
+                # https://developer.android.com/reference/android/support/test/uiautomator/StaleObjectException.html
+                # A StaleObjectException exception is thrown when a UiObject2 is used after the underlying View has been destroyed.
+                # In this case, it is necessary to call findObject(BySelector) to obtain a new UiObject2 instance.
+                err.__class__ = StaleObjectExceptionError
+            elif is_exception(err, 'java.lang.NullObjectException'):
+                err.__class__ = NullObjectExceptionError
+            elif is_exception(err, 'java.lang.NullPointerException'):
+                err.__class__ = NullPointerExceptionError
+        raise err
+
+    def _jsonrpc_id(self, method):
+        m = hashlib.md5()
+        m.update(("%s at %f" % (method, time.time())).encode("utf-8"))
+        return m.hexdigest()
+    
+    def reset_uiautomator(self, reason="unknown", depth=0):
+        """
+        Reset uiautomator
+
+        Raises:
+            RuntimeError
+
+        Orders:
+            - stop uiautomator keeper
+            - am force-stop com.github.uiautomator
+            - start uiautomator keeper(am instrument -w ...)
+            - wait until uiautomator service is ready
+        """
+        if depth >= 2:
+            raise EnvironmentError(
+                "Uiautomator started failed.",
+                reason,
+                "https://github.com/openatx/uiautomator2/wiki/Common-issues",
+                "adb shell am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner",
+            )
+
+        logger.debug("restart-uiautomator since \"%s\"", reason)
+        
+        
+        if self.alive:
+            return
+        ok = self._force_reset_uiautomator_v2(
+            launch_test_app=depth > 0)  # uiautomator 2.0
+        if ok:
+            logger.info("uiautomator back to normal")
+            return
+
+        output = self._test_run_instrument()
+        if "does not have a signature matching the target" in output:
+            self.app_uninstall("com.github.uiautomator")
+            self.app_uninstall("com.github.uiautomator.test")
+            self._reinstall_uiautomator_apks()
+            reason = "signature not match, reinstall uiautomator apks"
+        return self.reset_uiautomator(reason=reason,
+                                      depth=depth + 1)
 
 class Device(object):
     __isfrozen = False
@@ -753,7 +971,7 @@ class Device(object):
             return jsondata.get('result')
 
         # error happends
-        err = JsonRpcError(error, method)
+        err = JSONRPCError(error, method)
 
         def is_exception(err, exception_name):
             return err.exception_name == exception_name or exception_name in err.message
