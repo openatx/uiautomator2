@@ -19,6 +19,7 @@ import functools
 import hashlib
 import io
 import json
+import logging
 import os
 import re
 import shutil
@@ -29,41 +30,44 @@ import time
 import warnings
 from collections import namedtuple
 from datetime import datetime
-from typing import Optional, Union, List, Tuple
+from typing import List, Optional, Tuple, Union
+import xml.dom.minidom
 
+import adbutils
 import humanize
 import progress.bar
 import requests
 import six
 import six.moves.urllib.parse as urlparse
+from cached_property import cached_property
+from deprecated import deprecated
+from logzero import setup_logger
 from retry import retry
 from urllib3.util.retry import Retry
-
-import adbutils
-from deprecated import deprecated
-from logzero import logger
-from cached_property import cached_property
+from PIL import Image
 
 from . import xpath
-from .utils import list2cmdline
 from .exceptions import (BaseError, ConnectError, GatewayError, JSONRPCError,
                          NullObjectExceptionError, NullPointerExceptionError,
-                         SessionBrokenError, StaleObjectExceptionError,
-                         UiaError, UiAutomationNotConnectedError,
-                         UiObjectNotFoundError, ServerError)
+                         ServerError, SessionBrokenError,
+                         StaleObjectExceptionError, UiaError, RetryError,
+                         UiAutomationNotConnectedError, UiObjectNotFoundError)
 from .init import Initer
 from .session import Session, set_fail_prompt  # noqa: F401
-from .utils import cache_return
-from .version import __atx_agent_version__
 from .settings import Settings
+from .utils import cache_return, list2cmdline
+from .version import __atx_agent_version__
 from .watcher import Watcher
+from ._selector import Selector, UiObject
 
 if six.PY2:
     FileNotFoundError = OSError
 
 DEBUG = False
 HTTP_TIMEOUT = 60
+# logger = logging.getLogger("uiautomator2")
 
+logger = setup_logger("uiautomator2", level=logging.DEBUG)
 
 class _ProgressBar(progress.bar.Bar):
     message = "progress"
@@ -75,10 +79,10 @@ class _ProgressBar(progress.bar.Bar):
                                     gnu=True) + '/s'
 
 
-def log_print(s):
-    thread_name = threading.current_thread().getName()
-    print(thread_name + ": " + datetime.now().strftime('%H:%M:%S,%f')[:-3] +
-          " " + s)
+# def log_print(s):
+#     thread_name = threading.current_thread().getName()
+#     print(thread_name + ": " + datetime.now().strftime('%H:%M:%S,%f')[:-3] +
+#           " " + s)
 
 
 def fix_wifi_addr(addr: str) -> Optional[str]:
@@ -99,107 +103,9 @@ def fix_wifi_addr(addr: str) -> Optional[str]:
         return None
 
 
-def connect(addr=None):
-    """
-    Args:
-        addr (str): uiautomator server address or serial number. default from env-var ANDROID_DEVICE_IP
-
-    Returns:
-        Device
-
-    Raises:
-        ConnectError
-
-    Example:
-        connect("10.0.0.1:7912")
-        connect("10.0.0.1") # use default 7912 port
-        connect("http://10.0.0.1")
-        connect("http://10.0.0.1:7912")
-        connect("cff1123ea")  # adb device serial number
-    """
-    if not addr or addr == '+':
-        addr = os.getenv('ANDROID_DEVICE_IP') or os.getenv("ANDROID_SERIAL")
-    wifi_addr = fix_wifi_addr(addr)
-    if wifi_addr:
-        return connect_wifi(addr)
-    return connect_usb(addr)
 
 
-def connect_adb_wifi(addr):
-    """
-    Run adb connect, and then call connect_usb(..)
 
-    Args:
-        addr: ip+port which can be used for "adb connect" argument
-
-    Raises:
-        ConnectError
-    """
-    assert isinstance(addr, six.string_types)
-
-    subprocess.call([adbutils.adb_path(), "connect", addr])
-    try:
-        subprocess.call([adbutils.adb_path(), "-s", addr, "wait-for-device"],
-                        timeout=2)
-    except subprocess.TimeoutExpired:
-        raise ConnectError("Fail execute", "adb connect " + addr)
-    return connect_usb(addr)
-
-
-def connect_usb(serial=None, healthcheck=False, init=False):
-    """
-    Args:
-        serial (str): android device serial
-
-    Returns:
-        Device
-
-    Raises:
-        ConnectError
-    """
-
-    adb = adbutils.AdbClient()
-    if not serial:
-        device = adb.device()
-        serial = device.serial
-
-    d = Device()
-    d._connect_method = "usb"
-    d._serial = serial
-    d._init_atx_agent()
-
-    if healthcheck:
-        warnings.warn("healthcheck param is deprecated", DeprecationWarning)
-    if init:
-        warnings.warn("init param is deprecated", DeprecationWarning)
-    return d
-
-
-def connect_wifi(addr: str) -> "Device":
-    """
-    Args:
-        addr (str) uiautomator server address.
-
-    Returns:
-        Device
-
-    Raises:
-        ConnectError
-
-    Examples:
-        connect_wifi("10.0.0.1")
-    """
-    if not re.match(r"^https?://", addr):
-        addr = "http://" + addr
-    # fixed_addr = fix_wifi_addr(addr)
-    # if fixed_addr is None:
-    # raise ConnectError("addr is invalid or atx-agent is not running", addr)
-    u = urlparse.urlparse(addr)
-    host = u.hostname
-    port = u.port or 7912
-    d = Device(host, port)
-    d._connect_method = "wifi"
-    return d
 
 
 class TimeoutRequestsSession(requests.Session):
@@ -248,45 +154,85 @@ class TimeoutRequestsSession(requests.Session):
             return resp
 
 
-def plugin_register(name, plugin, *args, **kwargs):
-    """
-    Add plugin into Device
+# def plugin_register(name, plugin, *args, **kwargs):
+#     """
+#     Add plugin into Device
 
-    Args:
-        name: string
-        plugin: class or function which take d as first parameter
+#     Args:
+#         name: string
+#         plugin: class or function which take d as first parameter
 
-    Example:
-        def upload_screenshot(d):
-            def inner():
-                d.screenshot("tmp.jpg")
-                # use requests.post upload tmp.jpg
-            return inner
+#     Example:
+#         def upload_screenshot(d):
+#             def inner():
+#                 d.screenshot("tmp.jpg")
+#                 # use requests.post upload tmp.jpg
+#             return inner
 
-        plugin_register("upload_screenshot", save_screenshot)
+#         plugin_register("upload_screenshot", save_screenshot)
 
-        d = u2.connect()
-        d.ext_upload_screenshot()
-    """
-    Device.plugins()[name] = (plugin, args, kwargs)
+#         d = u2.connect()
+#         d.ext_upload_screenshot()
+#     """
+#     Device.plugins()[name] = (plugin, args, kwargs)
 
 
-def plugin_clear():
-    Device.plugins().clear()
+# def plugin_clear():
+#     Device.plugins().clear()
 
 
 ShellResponse = namedtuple("ShellResponse", ("output", "exit_code"))
 
 _production = (os.environ.get("TMQ") == "true")
 
+class _Service(object):
+    def __init__(self, name, u2obj: "Device"):
+        self.name = name
+        # FIXME(ssx): support other service: minicap, minitouch
+        assert name == 'uiautomator'
+        self.u2obj = u2obj
+        self.service_url = self.u2obj.path2url("/services/" + name)
+
+    def _raise_for_status(self, res: requests.Response):
+        if res.status_code != 200:
+            if res.headers['content-type'].startswith(
+                    "application/json"):
+                raise RuntimeError(res.json()["description"])
+            warnings.warn(res.text)
+            res.raise_for_status()
+
+    def start(self):
+        """
+        Manually run with the following command:
+            adb shell am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub \
+                com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner
+        """
+        # kill uiautomator
+        res = self.u2obj.http.post(self.service_url)
+        self._raise_for_status(res)
+
+    def stop(self):
+        """
+        1. stop command which launched with uiautomator 1.0
+            Eg: adb shell uiautomator runtest androidUiAutomator.jar
+        """
+        res = self.u2obj.http.delete(self.service_url)
+        self._raise_for_status(res)
+
+    def running(self) -> bool:
+        res = self.u2obj.http.get(self.service_url)
+        self._raise_for_status(res)
+        return res.json().get("running")
+
+
 class _AgentRequestSession(TimeoutRequestsSession):
     def __init__(self, clnt: "_BaseClient"):
         super().__init__()
         self.__client = clnt
-        self.debug = True
-    
+        # self.debug = True
+
     def request(self, method, url, **kwargs):
-        url = self.__client.url_rel2abs(url)
+        url = self.__client.path2url(url)
         retry = kwargs.pop("retry", True)
         try:
             return super().request(method, url, **kwargs)
@@ -301,7 +247,7 @@ class _BaseClient(object):
     """
     提供最基础的控制类，这个类暂时先不公开吧
     """
-    def __init__(self, serial_or_url):
+    def __init__(self, serial_or_url: Optional[str] = None):
         """
         Args:
             serial_or_url: device serialno or atx-agent base url
@@ -309,6 +255,10 @@ class _BaseClient(object):
         Example:
             08a3d291, http://10.0.0.1:7912
         """
+        if not serial_or_url:
+            # should only one usb device connected
+            serial_or_url = adbutils.adb.device().serial
+
         if re.match(r"^https?://", serial_or_url):
             self._serial = None
             self._atx_agent_url = serial_or_url
@@ -316,22 +266,22 @@ class _BaseClient(object):
             self._serial = serial_or_url
             self._atx_agent_url = None
 
-    def get_atx_agent_url(self) -> str:
+    def _get_atx_agent_url(self) -> str:
         """ get url for python client to connect """
         if not self._serial:
             return self._atx_agent_url
-        
+
         lport = self._adb_device.forward_port(7912)
         return f"http://localhost:{lport}"
 
-    def get_atx_agent_path(self) -> str:
+    def _get_atx_agent_path(self) -> str:
         return "/data/local/tmp/atx-agent"
 
-    def url_rel2abs(self, path: str):
+    def path2url(self, path: str) -> str:
         """ relative url path to full url path """
         if re.match(r"^(ws|http)s?://", path):
             return path
-        return urlparse.urljoin(self.get_atx_agent_url(), path)
+        return urlparse.urljoin(self._get_atx_agent_url(), path)
 
     @property
     def _adb_device(self):
@@ -345,59 +295,54 @@ class _BaseClient(object):
         """
         assert self._serial, "Device serialno is required"
         timeout = 70.0 if _production else 0.0
-        _d = self.__wait_for_device(self._serial, timeout=timeout)
+        _d = self._wait_for_device(self._serial, timeout=timeout)
         if not _d:
             raise RuntimeError("USB device %s is offline" % self._serial)
-        
+
         # launch atx-agent is not launched
         try:
-            version = self.http.get("/version", retry=False).text # retry to prevent dead loop
+            version = self.http.get(
+                "/version", retry=False).text  # retry to prevent dead loop
             if version != __atx_agent_version__:
                 raise EnvironmentError("atx-agent need upgrade")
         except (requests.RequestException, EnvironmentError):
             self._setup_atx_agent()
 
-        return self.get_atx_agent_url()
-    
-    # def _get_binary(self):
-    #     abi = self._adb_shell(['getprop', 'ro.product.cpu.abi'])
-    #     version = "0.9.4"
-    #     url = f"https://github.com/openatx/atx-agent/releases/download/{version}/atx-agent_{version}_linux_armv6.tar.gz"
+        return self._get_atx_agent_url()
 
-    #     from uiautomator2 import init
-    #     return init.cache_download(url)
-    
     def _setup_atx_agent(self):
         # check running
         from uiautomator2 import init
         _initer = init.Initer(self._adb_device)
         if not _initer.check_install():
             _initer.install()
-        self._adb_shell([self.get_atx_agent_path(), "server", "-d"], timeout=10)
+        self._adb_shell([self._get_atx_agent_path(), "server", "-d"],
+                        timeout=10)
         _initer.check_atx_agent_version()
         # self.logger.info("Install atx-agent %s", __atx_agent_version__)
         # self.push_url(self.atx_agent_url, tgz=True, extract_name="atx-agent")
         # args = [self.atx_agent_path, "server", "--nouia", "-d"]
         # self._adb_shell([self.atx_agent_path, "server", "--stop"])
         # self._adb_shell(args)
-    
+
     def _adb_shell(self, cmdargs: Union[list, Tuple[str]], timeout=None):
         """ run command through adb command """
         return self._adb_device.shell(cmdargs, timeout=timeout)
-    
+
     def _setup_uiautomator(self):
-        self.app_uninstall("com.github.uiautomator")
-        self.app_uninstall("com.github.uiautomator.test")
-        
+        self.shell(["pm", "uninstall", "com.github.uiautomator"])
+        self.shell(["pm", "uninstall", "com.github.uiautomator.test"])
+
         from uiautomator2 import init
         for (name, url) in init.app_uiautomator_apk_urls():
             apk_path = init.cache_download(url)
             target_path = os.path.join("/data/local/tmp",
                                        os.path.basename(apk_path))
             self.push(apk_path, target_path)
+            logger.debug("pm install %s", target_path)
             self.shell(['pm', 'install', '-r', '-t', target_path])
-    
-    def __wait_for_device(self, serial: str, timeout: float = 70.0):
+
+    def _wait_for_device(self, serial: str, timeout: float = 70.0):
         """
         wait for device came online
         """
@@ -415,21 +360,17 @@ class _BaseClient(object):
 
             first = False
             logger.info("wait for device(%s), left(%.1fs)", serial,
-                    deadline - time.time())
+                        deadline - time.time())
 
             if time.time() < deadline:
                 break
             time.sleep(2.0)
-        
+
         if not first and device:
             logger.info("device(%s) came online", serial)
 
         return device
 
-    def app_uninstall(self, package_name: str):
-        """ Uninstall package """
-        return self.shell(["pm", "uninstall", package_name])
-    
     def shell(self, cmdargs: Union[str, List[str]], stream=False, timeout=60):
         """
         Run adb shell command with arguments and return its output. Require atx-agent >=0.3.3
@@ -457,7 +398,10 @@ class _BaseClient(object):
             raise TypeError("cmdargs type invalid", type(cmdargs))
 
         if stream:
-            return self.http.get("/shell/stream", params={"command": cmdline}, timeout=None, stream=True)
+            return self.http.get("/shell/stream",
+                                 params={"command": cmdline},
+                                 timeout=None,
+                                 stream=True)
             # return self._request("get", "/shell/stream", params={"command": cmdline}, timeout=None, stream=True) # yapf: disable
         data = dict(command=cmdline, timeout=str(timeout))
         ret = self.http.post("/shell", data=data, timeout=timeout+10)
@@ -469,7 +413,7 @@ class _BaseClient(object):
         exit_code = 1 if resp.get('error') else 0
         exit_code = resp.get('exitCode', exit_code)
         return ShellResponse(resp.get('output'), exit_code)
-    
+
     @cached_property
     def http(self):
         return _AgentRequestSession(self)
@@ -477,15 +421,15 @@ class _BaseClient(object):
     @property
     def info(self):
         return self.jsonrpc.deviceInfo()
-    
+
     #
     # app-uiautomator.apk jsonrpc methods
     #
 
     @property
-    def jsonrpc_url(self):
-        return self.get_atx_agent_url() + "/jsonrpc/0"
-    
+    def _jsonrpc_url(self):
+        return self._get_atx_agent_url() + "/jsonrpc/0"
+
     @property
     def jsonrpc(self):
         class JSONRpcWrapper():
@@ -507,7 +451,7 @@ class _BaseClient(object):
 
     def _jsonrpc_retry_call(self, *args, **kwargs):
         try:
-            return self.jsonrpc_call(*args, **kwargs)
+            return self._jsonrpc_call(*args, **kwargs)
         except (requests.ReadTimeout,
                 ServerError,
                 UiAutomationNotConnectedError) as e:
@@ -516,9 +460,9 @@ class _BaseClient(object):
                 NullPointerExceptionError,
                 StaleObjectExceptionError) as e:
             logger.warning("jsonrpc call got: %s", str(e))
-        return self.jsonrpc_call(*args, **kwargs)
+        return self._jsonrpc_call(*args, **kwargs)
 
-    def jsonrpc_call(self, method, params=[], http_timeout=60):
+    def _jsonrpc_call(self, method, params=[], http_timeout=60):
         """ jsonrpc2 call
         Refs:
             - http://www.jsonrpc.org/specification
@@ -536,9 +480,9 @@ class _BaseClient(object):
             "params": params,
         }
         data = json.dumps(data)
-        res = self.http.post("/jsonrpc/0", 
-            headers={"Content-Type": "application/json"}, 
-            data=data, 
+        res = self.http.post("/jsonrpc/0",
+            headers={"Content-Type": "application/json"},
+            data=data,
             timeout=http_timeout)
 
         if res.status_code == 502:
@@ -585,7 +529,34 @@ class _BaseClient(object):
         m = hashlib.md5()
         m.update(("%s at %f" % (method, time.time())).encode("utf-8"))
         return m.hexdigest()
+
+    @property
+    def uiautomator(self) -> _Service:
+        return _Service("uiautomator", self)
+
+    def _is_agent_alive(self):
+        try:
+            r = self.http.get("/version", timeout=2, retry=False)
+            if r.status_code == 200:
+                return True
+        except (requests.HTTPError, requests.ConnectionError) as e:
+            return False
     
+    def _is_alive(self):
+        try:
+            r = self.http.post("/jsonrpc/0", timeout=2, retry=False, data=json.dumps({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "deviceInfo",
+            }))
+            if r.status_code != 200:
+                return False
+            if r.json().get("error"):
+                return False
+            return True
+        except (requests.ReadTimeout, EnvironmentError):
+            return False
+
     def reset_uiautomator(self, reason="unknown", depth=0):
         """
         Reset uiautomator
@@ -608,9 +579,8 @@ class _BaseClient(object):
             )
 
         logger.debug("restart-uiautomator since \"%s\"", reason)
-        
-        
-        if self.alive:
+
+        if self._is_alive():
             return
         ok = self._force_reset_uiautomator_v2(
             launch_test_app=depth > 0)  # uiautomator 2.0
@@ -620,220 +590,186 @@ class _BaseClient(object):
 
         output = self._test_run_instrument()
         if "does not have a signature matching the target" in output:
-            self.app_uninstall("com.github.uiautomator")
-            self.app_uninstall("com.github.uiautomator.test")
+            self.shell(["pm", "uninstall", "com.github.uiautomator"])
+            self.shell(["pm", "uninstall", "com.github.uiautomator.test"])
             self._reinstall_uiautomator_apks()
             reason = "signature not match, reinstall uiautomator apks"
         return self.reset_uiautomator(reason=reason,
                                       depth=depth + 1)
 
-class Device(object):
-    __isfrozen = False
-    __plugins = {}
+    def _force_reset_uiautomator_v2(self, launch_test_app=False):
+        brand = self.shell("getprop ro.product.brand").output.strip()
+        # logger.debug("Device: %s, %s", brand, self.serial)
+        package_name = "com.github.uiautomator"
 
-    def __init__(self, host="127.0.0.1", port=7912):
+        self.uiautomator.stop()
+
+        #self.shell(["am", "force-stop", package_name])
+        #logger.debug("stop app: %s", package_name)
+
+        # stop command which launched with uiautomator 1.0
+        # eg: adb shell uiautomator runtest androidUiAutomator.jar
+        logger.debug("kill process(ps): uiautomator")
+        self._kill_process_by_name("uiautomator")
+
+        from uiautomator2 import init
+
+        _init = init.Initer(self._adb_device)
+        if _init.is_apk_outdated():
+            self._setup_uiautomator()
+
+        if launch_test_app:
+            self._grant_app_permissions()
+            self.shell(['am', 'start', '-a', 'android.intent.action.MAIN', '-c',
+                'android.intent.category.LAUNCHER', '-n', package_name + "/" + ".ToastActivity"])
+            # self.app_start(package_name,
+            #                ".ToastActivity")  # -e showFloatWindow true
+        self.uiautomator.start()
+
+        # wait until uiautomator2 service is working
+        time.sleep(.5)
+        deadline = time.time() + 40.0  # in vivo-Y67, launch timeout 24s
+        while time.time() < deadline:
+            logger.debug("uiautomator-v2 is starting ... left: %.1fs",
+                         deadline - time.time())
+
+            if not self.uiautomator.running():
+                break
+
+            if self._is_alive():
+                return True
+            time.sleep(1.0)
+
+        self.uiautomator.stop()
+        return False
+
+    def _grant_app_permissions(self):
+        logger.debug("grant permissions")
+        for permission in [
+                "android.permission.SYSTEM_ALERT_WINDOW",
+                "android.permission.ACCESS_FINE_LOCATION",
+                "android.permission.READ_PHONE_STATE",
+        ]:
+            self.shell(['pm', 'grant', "com.github.uiautomator", permission])
+
+    def _test_run_instrument(self):
+        shret = self.shell(
+            "am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner",
+            timeout=3)
+        return shret.output
+
+    def _reinstall_uiautomator_apks(self):
+        from uiautomator2 import init
+        for (name, url) in init.app_uiautomator_apk_urls():
+            apk_path = init.cache_download(url)
+            target_path = os.path.join("/data/local/tmp",
+                                       os.path.basename(apk_path))
+            # print("Push to", target_path)
+            self.push(apk_path, target_path)
+            # print("Install")
+            self.shell(['pm', 'install', '-r', '-t', target_path])
+
+    def _kill_process_by_name(self, name):
+        for p in self._iter_process():
+            if p.name == name and p.user == "shell":
+                logger.debug("kill uiautomator")
+                self.shell(["kill", "-9", str(p.pid)])
+
+    def _iter_process(self):
         """
+        List processes by cmd:ps
+
+        Returns:
+            list of Process(pid, name)
+        """
+        headers, pids = [], {}
+        Header = None
+        Process = namedtuple("Process", ["user", "pid", "name"])
+        for line in self.shell("ps; ps -A").output.splitlines():
+            # USER PID ..... NAME
+            fields = line.strip().split()
+            if len(fields) < 3:
+                continue
+            if fields[0] == "USER":
+                continue
+            if not fields[1].isdigit():
+                continue
+            user, pid, name = fields[0], int(fields[1]), fields[-1]
+            if pid in pids:
+                continue
+            pids[pid] = True
+            yield Process(user, pid, name)
+
+    def push(self, src, dst: str, mode=0o644):
+        """
+        Push file into device
+
         Args:
-            host (str): host address
-            port (int): port number
+            src (path or fileobj): source file
+            dst (str): destination can be folder or file path
+
+        Returns:
+            dict object, for example:
+
+                {"mode": "0660", "size": 63, "target": "/sdcard/ABOUT.rst"}
+
+            Since chmod may fail in android, the result "mode" may not same with input args(mode)
 
         Raises:
-            EnvironmentError
+            IOError(if push got something wrong)
         """
-        self._host = host
-        self._port = port
-        self._adb_device = None  # adbutils.Device
-        self._serial = None
-        self._connect_method = None
-        self._reqsess = TimeoutRequestsSession(
-        )  # use Session to enable HTTP Keep-Alive
-        self._default_session = Session(self, None)
-        self._cached_plugins = {}
-        self._hooks = {}
-        self._atx_agent_path = "/data/local/tmp/atx-agent"
-
-        self.__devinfo = None
-        self.__uiautomator_failed = False
-        self.__uiautomator_lock = threading.Lock()
-
-        self.platform = None  # hot fix for weditor
-
-        self.ash = AdbShell(self.shell)  # the powerful adb shell
-        self._freeze()  # prevent creating new attrs
-
-    def _freeze(self):
-        self.__isfrozen = True
-
-    def request_agent(self, relative_url: str, method="get", timeout=60.0):
-        """ send http-request to atx-agent """
-        return self._reqsess.request(method, relative_url, timeout=timeout)
-
-    def _init_atx_agent(self, start_uiautomator=False):
-        """
-        Install atx-agent and app-uiautomator apks, only usb connected device is ok
-        """
-        if self._connect_method != "usb":
-            raise ConnectError("http connection is down")
-
-        assert self._connect_method == "usb"
-        assert self._serial
-
-        self._adb_device = self.__wait_for_device(self._serial)
-        if not self._adb_device:
-            raise RuntimeError("USB device %s is offline" % self._serial)
-
-        ad = self._adb_device
-        lport = ad.forward_port(7912)
-        self._port = lport
-
-        if self.agent_alive and self.alive:
-            return
-
-        initer = Initer(ad)
-        if not initer.check_install():
-            initer.install()  # same as run cli: uiautomator2 init
-
-        if not self.agent_alive:
-            self.__start_atx_agent()
-
-        if start_uiautomator:
-            if not self.alive:
-                self.reset_uiautomator("atx-agent restarted")
-
-    def __wait_for_device(self, serial: str, timeout=70.0):
-        """
-        wait for device came online
-        """
-        deadline = time.time() + timeout
-        first = True
-
-        while time.time() < deadline:
-            device = None
-            for d in adbutils.adb.device_list():
-                if d.serial == serial:
-                    device = d
-                    break
-
-            if device:
-                if not first:
-                    logger.info("device(%s) came online", serial)
-                return device
-
-            if first:
-                first = False
-            else:
-                logger.info("wait for device(%s), left(%.1fs)", serial,
-                            deadline - time.time())
-
-            time.sleep(2.0)
-        return None
-
-    def __start_atx_agent(self):
-        warnings.warn("start atx-agent ...", RuntimeWarning)
-        # TODO: /data/local/tmp might not be execuable and atx-agent can be somewhere else
-        ad = self._adb_device
-        ad.shell([self._atx_agent_path, "server", "--stop"])
-        ad.shell([self._atx_agent_path, "server", "--nouia", "-d"])
-        deadline = time.time() + 3
-        while time.time() < deadline:
-            if self.agent_alive:
-                return
-        raise RuntimeError("atx-agent recover failed")
-
-    @property
-    def _server_url(self):
-        return 'http://{}:{}'.format(self._host, self._port)
-
-    @property
-    def jsonrpc_url(self):
-        return self._server_url + "/jsonrpc/0"
-
-    def _request(self, method: str, url: str, reconnect=True, **kwargs):
-        """ make http request with reconnect
-        Args:
-            method (str): get, put, delete or post
-            url: request url
-            reconnect (bool): default True
-        """
+        modestr = oct(mode).replace('o', '')
+        pathname = '/upload/' + dst.lstrip('/')
+        if isinstance(src, six.string_types):
+            fileobj = open(src, 'rb')
+        else:
+            assert hasattr(src, "read")
+            fileobj = src
         try:
-            return self._reqsess.request(method, self.path2url(url), **kwargs)
-        except requests.ConnectionError:
-            if not reconnect:
-                raise
-            self._init_atx_agent()
-            return self._reqsess.request(method, self.path2url(url), **kwargs)
+            r = self.http.post(pathname,
+                          data={'mode': modestr},
+                          files={'file': fileobj})
+            if r.status_code == 200:
+                return r.json()
+            raise IOError("push", "%s -> %s" % (src, dst), r.text)
+        finally:
+            fileobj.close()
 
-    # for compatible with old version
-    @property
-    def wait_timeout(self):  # wait element timeout
-        return self.settings['wait_timeout']
 
-    @wait_timeout.setter
-    def wait_timeout(self, v: Union[int, float]):
-        self.settings['wait_timeout'] = v
-
-    @property
-    def click_post_delay(self):
-        return self.settings['post_delay']
-
-    @click_post_delay.setter
-    def click_post_delay(self, v: Union[int, float]):
-        self.settings['post_delay'] = v
-
-    # end of compatible code
+class _Device(_BaseClient):
+    __orientation = (  # device orientation
+        (0, "natural", "n", 0), (1, "left", "l", 90),
+        (2, "upsidedown", "u", 180), (3, "right", "r", 270))
 
     @property
-    def debug(self):
-        return hasattr(self._reqsess, 'debug') and self._reqsess.debug
+    def debug(self) -> bool:
+        return hasattr(self.http, 'debug') and self.http.debug
 
     @debug.setter
-    def debug(self, value):
-        self._reqsess.debug = bool(value)
+    def debug(self, value: bool):
+        self.http.debug = bool(value)
 
-    @staticmethod
-    def plugins():
-        return Device.__plugins
-
-    def __setattr__(self, key, value):
-        """ Prevent creating new attributes outside __init__ """
-        if self.__isfrozen and not hasattr(self, key):
-            raise TypeError("Key %s does not exist in class %r" % (key, self))
-        object.__setattr__(self, key, value)
-
-    def __str__(self):
-        return 'uiautomator2 object for %s:%d' % (self._host, self._port)
-
-    def __repr__(self):
-        return str(self)
-
-    @property
-    def serial(self):
-        if not self._serial:
-            self._serial = self.shell('getprop ro.serialno').output.strip()
-        return self._serial
-
-    @property
-    def address(self):
-        return f"http://{self._host}:{self._port}"
-
-    @property
-    def jsonrpc(self):
+    def set_new_command_timeout(self, timeout: int):
+        """ default 3 minutes
+        Args:
+            timeout (int): seconds
         """
-        Make jsonrpc call easier
-        For example:
-            self.jsonrpc.pressKey("home")
-        """
-        return self.setup_jsonrpc()
+        r = self.post("/newCommandTimeout", data=str(int(timeout)))
+        data = r.json()
+        assert data['success'], data['description']
+        logger.info("%s", data['description'])
 
-    def path2url(self, path: str, scheme: str = "http"):
-        if re.match(r"^(ws|http)s?://", path):
-            return path
-        server_url = self._server_url.replace("http://", scheme + "://")
-        return urlparse.urljoin(server_url, path)
+    @cached_property
+    def device_info(self):
+        return self.http.get("/info").json()
+
+    @property
+    def wlan_ip(self):
+        return self.http.get("/wlan/ip").text.strip()
 
     def window_size(self):
         """ return (width, height) """
-        info = self._request("get", '/info').json()
+        info = self.http.get('/info').json()
         w, h = info['display']['width'], info['display']['height']
         rotation = self._get_orientation()
         if (w > h) != (rotation % 2 == 1):
@@ -863,604 +799,318 @@ class Device(object):
             return o
         return self.info["displayRotation"]
 
-    def hooks_register(self, func):
+    @retry((IOError, SyntaxError), delay=.5, tries=5, jitter=0.1,
+           max_delay=1, logger=logging)  # delay .5, .6, .7, .8 ...
+    def screenshot(self, filename: Optional[str] = None, format="pillow"):
         """
+        Take screenshot of device
+
+        Returns:
+            PIL.Image.Image, np.ndarray (OpenCV format) or None
+        
         Args:
-            func: should accept 3 args. func_name:string, args:tuple, kwargs:dict
-        """
-        self._hooks[func] = True
-
-    def hooks_apply(self, stage, func_name, args=(), kwargs={}, ret=None):
-        """
-        Args:
-            stage(str): one of "before" or "after"
-        """
-        for fn in self._hooks.keys():
-            fn(stage, func_name, args, kwargs, ret)
-
-    def setup_jsonrpc(self, jsonrpc_url=None):
-        """
-        Wrap jsonrpc call into object
-        Usage example:
-            self.setup_jsonrpc().pressKey("home")
-        """
-        class JSONRpcWrapper():
-            def __init__(self, server):
-                self.server = server
-                self.method = None
-
-            def __getattr__(self, method):
-                self.method = method  # jsonrpc function name
-                return self
-
-            def __call__(self, *args, **kwargs):
-                http_timeout = kwargs.pop('http_timeout', HTTP_TIMEOUT)
-                params = args if args else kwargs
-                return self.server.jsonrpc_retry_call(self.method, params,
-                                                      http_timeout)
-
-        return JSONRpcWrapper(self)
-
-    def jsonrpc_retry_call(self, *args, **kwargs):
-        try:
-            return self.jsonrpc_call(*args, **kwargs)
-        except (GatewayError, ):
-            warnings.warn(
-                "uiautomator2 is not reponding, restart uiautomator2 automatically",
-                RuntimeWarning,
-                stacklevel=1)
-            self.reset_uiautomator("UiAutomator stopped")
-        except requests.ReadTimeout as e:
-            self.reset_uiautomator("Http read-timeout: " + str(e))
-        except UiAutomationNotConnectedError:
-            self.reset_uiautomator("UiAutomation not connected")
-        except (NullObjectExceptionError, NullPointerExceptionError,
-                StaleObjectExceptionError) as e:
-            if args[1] != 'dumpWindowHierarchy':  # args[1] method
-                warnings.warn(
-                    "uiautomator2 raise exception %s, and run code again" % e,
-                    RuntimeWarning,
-                    stacklevel=1)
-            time.sleep(1)
-        except requests.ConnectionError:
-            logger.info(
-                "Device connection is not stable, rerun init-atx-agent ...")
-            if self._connect_method == "usb":
-                self._init_atx_agent()
-            else:
-                raise
-
-        return self.jsonrpc_call(*args, **kwargs)
-
-    def jsonrpc_call(self, method, params=[], http_timeout=60):
-        """ jsonrpc2 call
-        Refs:
-            - http://www.jsonrpc.org/specification
-        """
-        jsonrpc_url = self.jsonrpc_url
-        request_start = time.time()
-        data = {
-            "jsonrpc": "2.0",
-            "id": self._jsonrpc_id(method),
-            "method": method,
-            "params": params,
-        }
-        data = json.dumps(data)
-        res = self._request(
-            "post",
-            jsonrpc_url,  # +"?m="+method, #?method is for debug
-            headers={"Content-Type": "application/json"},
-            timeout=http_timeout,
-            data=data)
-        if DEBUG:
-            print("Shell$ curl -X POST -d '{}' {}".format(data, jsonrpc_url))
-            print("Output> " + res.text)
-        if res.status_code == 502:
-            raise GatewayError(
-                res, "gateway error, time used %.1fs" %
-                (time.time() - request_start))
-        if res.status_code == 410:  # http status gone: session broken
-            raise SessionBrokenError("app quit or crash", jsonrpc_url,
-                                     res.text)
-        if res.status_code != 200:
-            raise BaseError(jsonrpc_url, data, res.status_code, res.text,
-                            "HTTP Return code is not 200", res.text)
-        jsondata = res.json()
-        error = jsondata.get('error')
-        if not error:
-            return jsondata.get('result')
-
-        # error happends
-        err = JSONRPCError(error, method)
-
-        def is_exception(err, exception_name):
-            return err.exception_name == exception_name or exception_name in err.message
-
-        if isinstance(
-                err.data,
-                six.string_types) and 'UiAutomation not connected' in err.data:
-            err.__class__ = UiAutomationNotConnectedError
-        elif err.message:
-            if is_exception(err, 'uiautomator.UiObjectNotFoundException'):
-                err.__class__ = UiObjectNotFoundError
-            elif is_exception(
-                    err,
-                    'android.support.test.uiautomator.StaleObjectException'):
-                # StaleObjectException
-                # https://developer.android.com/reference/android/support/test/uiautomator/StaleObjectException.html
-                # A StaleObjectException exception is thrown when a UiObject2 is used after the underlying View has been destroyed.
-                # In this case, it is necessary to call findObject(BySelector) to obtain a new UiObject2 instance.
-                err.__class__ = StaleObjectExceptionError
-            elif is_exception(err, 'java.lang.NullObjectException'):
-                err.__class__ = NullObjectExceptionError
-            elif is_exception(err, 'java.lang.NullPointerException'):
-                err.__class__ = NullPointerExceptionError
-        raise err
-
-    def _jsonrpc_id(self, method):
-        m = hashlib.md5()
-        m.update(("%s at %f" % (method, time.time())).encode("utf-8"))
-        return m.hexdigest()
-
-    @property
-    def agent_alive(self):
-        try:
-            r = self._request("get", '/version', timeout=2, reconnect=False)
-            if r.status_code == 200:
-                return True
-        except (requests.HTTPError, requests.ConnectionError) as e:
-            return False
-
-    @property
-    def alive(self):
-        try:
-            r = self._request("post",
-                              '/jsonrpc/0',
-                              data=json.dumps({
-                                  "jsonrpc": "2.0",
-                                  "id": 1,
-                                  "method": "deviceInfo"
-                              }),
-                              timeout=2,
-                              reconnect=False)
-            if r.status_code != 200:
-                return False
-            if r.json().get('error'):
-                # logger.debug("alive error:", r.json().get('error'))
-                return False
-            return True
-        except requests.exceptions.ReadTimeout:
-            return False
-        except EnvironmentError:
-            return False
-
-    def _kill_process_by_name(self, name):
-        for p in self._iter_process():
-            if p.name == name and p.user == "shell":
-                logger.debug("kill uiautomator")
-                self.shell(["kill", "-9", str(p.pid)])
-
-    def service(self, name):
-        """ Manage service start or stop
-
-        Example:
-            d.service("uiautomator").start()
-            d.service("uiautomator").stop()
-        """
-        u2obj = self
-
-        class _Service(object):
-            def __init__(self, name):
-                self.name = name
-                # FIXME(ssx): support other service: minicap, minitouch
-                assert name == 'uiautomator'
-                self.service_url = u2obj.path2url("/services/" + name)
-
-            def raise_for_status(self, res):
-                if res.status_code != 200:
-                    if res.headers['content-type'].startswith(
-                            "application/json"):
-                        raise RuntimeError(res.json()["description"])
-                    warnings.warn(res.text)
-                    res.raise_for_status()
-
-            def start(self):
-                """
-                Manually run with the following command:
-                    adb shell am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub \
-                        com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner
-                """
-                # kill uiautomator
-                res = u2obj._reqsess.post(self.service_url)
-                self.raise_for_status(res)
-
-            def stop(self):
-                """
-                1. stop command which launched with uiautomator 1.0
-                    Eg: adb shell uiautomator runtest androidUiAutomator.jar
-                """
-                res = u2obj._reqsess.delete(self.service_url)
-                self.raise_for_status(res)
-
-            def running(self) -> bool:
-                res = u2obj._reqsess.get(self.service_url)
-                self.raise_for_status(res)
-                return res.json().get("running")
-
-        return _Service(name)
-
-    @property
-    def uiautomator(self):
-        return self.service("uiautomator")
-
-    def set_new_command_timeout(self, timeout: int):
-        """ default 3 minutes
-        Args:
-            timeout (int): seconds
-        """
-        r = self._request("post", "/newCommandTimeout", data=str(int(timeout)))
-        data = r.json()
-        assert data['success'], data['description']
-        logger.info("%s", data['description'])
-
-    def reset_uiautomator(self, reason="unknown", depth=0):
-        """
-        Reset uiautomator
+            filename (str): saved filename, if filename is set then return None
+            format (str): used when filename is empty. one of ["pillow", "opencv", "raw"]
 
         Raises:
-            RuntimeError
-
-        Orders:
-            - stop uiautomator keeper
-            - am force-stop com.github.uiautomator
-            - start uiautomator keeper(am instrument -w ...)
-            - wait until uiautomator service is ready
+            IOError, SyntaxError
+        
+        Examples:
+            screenshot("saved.jpg")
+            screenshot().save("saved.png")
+            cv2.imwrite('saved.jpg', screenshot(format='opencv'))
         """
-        if depth >= 2:
-            raise EnvironmentError(
-                "Uiautomator started failed.",
-                reason,
-                "https://github.com/openatx/uiautomator2/wiki/Common-issues",
-                "adb shell am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner",
-            )
+        r = self.http.get("/screenshot/0", timeout=10)
+        if filename:
+            with open(filename, 'wb') as f:
+                f.write(r.content)
+            return filename
+        elif format == 'pillow':
+            buff = io.BytesIO(r.content)
+            try:
+                return Image.open(buff).convert("RGB")
+            except Exception as ex:
+                raise IOError("PIL.Image.open IOError", ex)
+        elif format == 'opencv':
+            import cv2
+            import numpy as np
+            nparr = np.fromstring(r.content, np.uint8)
+            return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        elif format == 'raw':
+            return r.content
+        else:
+            raise RuntimeError("Invalid format " + format)
 
-        logger.debug("restart-uiautomator since \"%s\"", reason)
-        with self.__uiautomator_lock:
-            if self.alive:
-                return
-            ok = self._force_reset_uiautomator_v2(
-                launch_test_app=depth > 0)  # uiautomator 2.0
-            if ok:
-                logger.info("uiautomator back to normal")
-                return
-
-            output = self._test_run_instrument()
-            if "does not have a signature matching the target" in output:
-                self.app_uninstall("com.github.uiautomator")
-                self.app_uninstall("com.github.uiautomator.test")
-                self._reinstall_uiautomator_apks()
-                reason = "signature not match, reinstall uiautomator apks"
-        return self.reset_uiautomator(reason=reason,
-                                      depth=depth + 1)
-
-    def _test_run_instrument(self):
-        shret = self.shell(
-            "am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner",
-            timeout=3)
-        return shret.output
-
-    def _reinstall_uiautomator_apks(self):
-        from uiautomator2 import init
-        for (name, url) in init.app_uiautomator_apk_urls():
-            apk_path = init.cache_download(url)
-            target_path = os.path.join("/data/local/tmp",
-                                       os.path.basename(apk_path))
-            # print("Push to", target_path)
-            self.push(apk_path, target_path)
-            # print("Install")
-            self.shell(['pm', 'install', '-r', '-t', target_path])
-
-    def _force_reset_uiautomator_v1(self):
-        """ uiautomator v1 only need bundle.jar and uiautomator-stub.jar
-
-        Refs:
-            https://github.com/openatx/android-uiautomator-jsonrpcserver
+    @retry(RetryError, delay=1.0, tries=2)
+    def dump_hierarchy(self, compressed=False, pretty=False) -> str:
         """
-        self.uiautomator.start()
-        deadline = time.time() + 20.0
-        while time.time() < deadline:
-            logger.debug("uiautomator(1.0) is starting ...")
-            if self.alive:
-                return True
-            time.sleep(1)
-        return False
+        Args:
+            shell (bool): use "adb shell uiautomator dump" to get hierarchy
+            pretty (bool): format xml
 
-    def _grant_app_permissions(self):
-        logger.debug("grant permissions")
-        for permission in [
-                "android.permission.SYSTEM_ALERT_WINDOW",
-                "android.permission.ACCESS_FINE_LOCATION",
-                "android.permission.READ_PHONE_STATE",
-        ]:
-            self.shell(['pm', 'grant', "com.github.uiautomator", permission])
+        Same as
+            content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
+        But through GET /dump/hierarchy will be more robust
+        when dumpHierarchy fails, the atx-agent will restart uiautomator again, then retry
+
+        v-1.3.4 change back to jsonrpc.dumpWindowHierarchy
+        """
+        content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
+        if content == "":
+            raise RetryError("dump hierarchy is empty")
+
+        if pretty and "\n " not in content:
+            xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))
+            content = xml_text.decode('utf-8').toprettyxml(indent='  ')
+        return content
+
+    def implicitly_wait(self, seconds: float = None) -> float:
+        """set default wait timeout
+        Args:
+            seconds(float): to wait element show up
+
+        Returns:
+            Current implicitly wait seconds
+
+        Deprecated:
+            recommend use: d.settings['wait_timeout'] = 10
+        """
+        if seconds:
+            self.settings["wait_timeout"] = seconds
+        return self.settings['wait_timeout']
+    
+    @property
+    def pos_rel2abs(self):
+        """
+        returns a function which can convert percent size to pixel size
+        """
+        size = []
+
+        def _convert(x, y):
+            assert x >= 0
+            assert y >= 0
+
+            if (x < 1 or y < 1) and not size:
+                size.extend(
+                    self.window_size())  # size will be [width, height]
+
+            if x < 1:
+                x = int(size[0] * x)
+            if y < 1:
+                y = int(size[1] * y)
+            return x, y
+
+        return _convert
+
+    @property
+    def touch(self):
+        """
+        ACTION_DOWN: 0 ACTION_MOVE: 2
+        touch.down(x, y)
+        touch.move(x, y)
+        touch.up()
+        """
+        ACTION_DOWN = 0
+        ACTION_MOVE = 2
+        ACTION_UP = 1
+
+        obj = self
+
+        class _Touch(object):
+            def down(self, x, y):
+                x, y = obj.pos_rel2abs(x, y)
+                obj.jsonrpc.injectInputEvent(ACTION_DOWN, x, y, 0)
+                return self
+
+            def move(self, x, y):
+                x, y = obj.pos_rel2abs(x, y)
+                obj.jsonrpc.injectInputEvent(ACTION_MOVE, x, y, 0)
+                return self
+
+            def up(self, x, y):
+                """ ACTION_UP x, y """
+                x, y = obj.pos_rel2abs(x, y)
+                obj.jsonrpc.injectInputEvent(ACTION_UP, x, y, 0)
+                return self
+            
+            def sleep(self, seconds: float):
+                time.sleep(seconds)
+                return self
+
+        return _Touch()
+
+    def click(self, x: Union[float, int], y: Union[float, int]):
+        x, y = self.pos_rel2abs(x, y)
+        self.jsonrpc.click(x, y)
+
+    def swipe(self, fx, fy, tx, ty, duration=0.1, steps=None):
+        """
+        Args:
+            fx, fy: from position
+            tx, ty: to position
+            duration (float): duration
+            steps: 1 steps is about 5ms, if set, duration will be ignore
+
+        Documents:
+            uiautomator use steps instead of duration
+            As the document say: Each step execution is throttled to 5ms per step.
+
+        Links:
+            https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe%28int,%20int,%20int,%20int,%20int%29
+        """
+        rel2abs = self.pos_rel2abs
+        fx, fy = rel2abs(fx, fy)
+        tx, ty = rel2abs(tx, ty)
+        if not steps:
+            steps = int(duration * 200)
+        return self.jsonrpc.swipe(fx, fy, tx, ty, steps)
+
+    def swipe_points(self, points, duration=0.5):
+        """
+        Args:
+            points: is point array containg at least one point object. eg [[200, 300], [210, 320]]
+            duration: duration to inject between two points
+
+        Links:
+            https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe(android.graphics.Point[], int)
+        """
+        ppoints = []
+        rel2abs = self.pos_rel2abs
+        for p in points:
+            x, y = rel2abs(p[0], p[1])
+            ppoints.append(x)
+            ppoints.append(y)
+        return self.jsonrpc.swipePoints(ppoints, int(duration * 200))
+
+    def drag(self, sx, sy, ex, ey, duration=0.5):
+        '''Swipe from one point to another point.'''
+        rel2abs = self.pos_rel2abs
+        sx, sy = rel2abs(sx, sy)
+        ex, ey = rel2abs(ex, ey)
+        return self.jsonrpc.drag(sx, sy, ex, ey, int(duration * 200))
+
+    def press(self, key: Union[int, str], meta=None):
+        """
+        press key via name or key code. Supported key name includes:
+            home, back, left, right, up, down, center, menu, search, enter,
+            delete(or del), recent(recent apps), volume_up, volume_down,
+            volume_mute, camera, power.
+        """
+        if isinstance(key, int):
+            return self.jsonrpc.pressKeyCode(
+                key, meta) if meta else self.server.jsonrpc.pressKeyCode(key)
+        else:
+            return self.jsonrpc.pressKey(key)
+
+    def long_click(self, x, y, duration: float=.5):
+        '''long click at arbitrary coordinates.
+        Args:
+            duration (float): seconds of pressed
+        '''
+        x, y = self.pos_rel2abs(x, y)
+        return self.touch.down(x, y).sleep(duration).up(x, y)
+    
+    def drag(self, sx, sy, ex, ey, duration=0.5):
+        '''Swipe from one point to another point.'''
+        rel2abs = self.pos_rel2abs
+        sx, sy = rel2abs(sx, sy)
+        ex, ey = rel2abs(ex, ey)
+        return self.jsonrpc.drag(sx, sy, ex, ey, int(duration * 200))
+
+    def screen_on(self):
+        self.jsonrpc.wakeUp()
+
+    def screen_off(self):
+        self.jsonrpc.sleep()
+    
+    @property
+    def orientation(self):
+        '''
+        orienting the devie to left/right or natural.
+        left/l:       rotation=90 , displayRotation=1
+        right/r:      rotation=270, displayRotation=3
+        natural/n:    rotation=0  , displayRotation=0
+        upsidedown/u: rotation=180, displayRotation=2
+        '''
+        return self.__orientation[self.info["displayRotation"]][1]
+
+    def set_orientation(self, value):
+        '''setter of orientation property.'''
+        for values in self.__orientation:
+            if value in values:
+                # can not set upside-down until api level 18.
+                self.jsonrpc.setOrientation(values[1])
+                break
+        else:
+            raise ValueError("Invalid orientation.")
+
+    @property
+    def last_traversed_text(self):
+        '''get last traversed text. used in webview for highlighted text.'''
+        return self.jsonrpc.getLastTraversedText()
+
+    def clear_traversed_text(self):
+        '''clear the last traversed text.'''
+        self.jsonrpc.clearLastTraversedText()
+
+    def open_notification(self):
+        return self.jsonrpc.openNotification()
+
+    def open_quick_settings(self):
+        return self.jsonrpc.openQuickSettings()
+
+    def exists(self, **kwargs):
+        return self(**kwargs).exists
+
+    @property
+    def clipboard(self):
+        return self.jsonrpc.getClipboard()
+
+    @clipboard.setter
+    def clipboard(self, text: str):
+        self.set_clipboard(text)
+
+    def set_clipboard(self, text, label=None):
+        '''
+        Args:
+            text: The actual text in the clip.
+            label: User-visible label for the clip data.
+        '''
+        self.jsonrpc.setClipboard(label, text)
+    
+    def keyevent(self, v):
+        """
+        Args:
+            v: eg home wakeup back
+        """
+        v = v.upper()
+        self.shell("input keyevent " + v)
+
+    def __call__(self, **kwargs):
+        return UiObject(self, Selector(**kwargs))
+    
+    @cached_property
+    def serial(self):
+        return self.shell(['getprop', 'ro.serialno']).output.strip()
 
     def _show_float_window(self, show=True):
         """ 显示悬浮窗，提高uiautomator运行的稳定性 """
-        arg = "true" if show else "false"
+        arg = str(show).lower()
         self.shell([
             "am", "start", "-n", "com.github.uiautomator/.ToastActivity", "-e",
             "showFloatWindow", arg
         ])
 
-    def _force_reset_uiautomator_v2(self, launch_test_app=False):
-        brand = self.shell("getprop ro.product.brand").output.strip()
-        logger.debug("Device: %s, %s", brand, self.serial)
-        package_name = "com.github.uiautomator"
 
-        self.uiautomator.stop()
-
-        #self.shell(["am", "force-stop", package_name])
-        #logger.debug("stop app: %s", package_name)
-
-        # stop command which launched with uiautomator 1.0
-        # eg: adb shell uiautomator runtest androidUiAutomator.jar
-        logger.debug("kill process(ps): uiautomator")
-        self._kill_process_by_name("uiautomator")
-
-        if launch_test_app:
-            self._grant_app_permissions()
-            self.app_start(package_name,
-                           ".ToastActivity")  # -e showFloatWindow true
-        self.uiautomator.start()
-
-        # wait until uiautomator2 service is working
-        time.sleep(.5)
-        deadline = time.time() + 40.0  # in vivo-Y67, launch timeout 24s
-        while time.time() < deadline:
-            logger.debug("uiautomator-v2 is starting ... left: %.1fs",
-                         deadline - time.time())
-
-            if not self.uiautomator.running():
-                break
-
-            if self.alive:
-                return True
-            time.sleep(1.0)
-
-        self.uiautomator.stop()
-        return False
-
-    def healthcheck(self):
+class _AppMixIn:
+    def _pidof_app(self, package_name):
         """
-        Reset device into health state
-
-        Raises:
-            RuntimeError
+        Return pid of package name
         """
-        sh = self.ash
-        if not sh.is_screen_on():
-            print(time.strftime("[%Y-%m-%d %H:%M:%S]"), "wakeup screen")
-            sh.keyevent("WAKEUP")
-            sh.keyevent("HOME")
-            sh.swipe(0.1, 0.9, 0.9, 0.1)  # swipe to unlock
+        text = self.http.get('/pidof/' + package_name).text
+        if text.isdigit():
+            return int(text)
 
-        sh.keyevent("HOME")
-        sh.keyevent("BACK")
-        self.reset_uiautomator("healthcheck")
-
-    def app_install(self, url, installing_callback=None, server=None):
-        """
-        {u'message': u'downloading', "progress": {u'totalSize': 407992690, u'copiedSize': 49152}}
-
-        Returns:
-            packageName
-
-        Raises:
-            RuntimeError
-        """
-        r = self._request("post", '/install', data={'url': url})
-        if r.status_code != 200:
-            raise RuntimeError("app install error:", r.text)
-        id = r.text.strip()
-        print(time.strftime('%H:%M:%S'), "id:", id)
-        return self._wait_install_finished(id, installing_callback)
-
-    def _wait_install_finished(self, id, installing_callback):
-        bar = None
-        downloaded = True
-
-        while True:
-            resp = self._request("get", '/install/' + id)
-            resp.raise_for_status()
-            jdata = resp.json()
-            message = jdata['message']
-            pg = jdata.get('progress')
-
-            def notty_print_progress(pg):
-                written = pg['copiedSize']
-                total = pg['totalSize']
-                print(
-                    time.strftime('%H:%M:%S'), 'downloading %.1f%% [%s/%s]' %
-                    (100.0 * written / total if total != 0 else 0,
-                     humanize.naturalsize(written, gnu=True),
-                     humanize.naturalsize(total, gnu=True)))
-
-            if message == 'downloading':
-                downloaded = False
-                if pg:  # if there is a progress
-                    if hasattr(sys.stdout, 'isatty'):
-                        if sys.stdout.isatty():
-                            if not bar:
-                                bar = _ProgressBar(time.strftime('%H:%M:%S') +
-                                                   ' downloading',
-                                                   max=pg['totalSize'])
-                            written = pg['copiedSize']
-                            bar.next(written - bar.index)
-                        else:
-                            notty_print_progress(pg)
-                    else:
-                        pass
-                else:
-                    print(time.strftime('%H:%M:%S'), "download initialing")
-            else:
-                if not downloaded:
-                    downloaded = True
-                    if bar:  # bar only set in atty
-                        bar.next(pg['copiedSize'] - bar.index) if pg else None
-                        bar.finish()
-                    else:
-                        print(time.strftime('%H:%M:%S'), "download 100%")
-                print(time.strftime('%H:%M:%S'), message)
-            if message == 'installing':
-                if callable(installing_callback):
-                    installing_callback(self)
-            if message == 'success installed':
-                return jdata.get('packageName')
-
-            if jdata.get('error'):
-                raise RuntimeError("error", jdata.get('error'))
-
-            try:
-                time.sleep(1)
-            except KeyboardInterrupt:
-                bar.finish() if bar else None
-                print("keyboard interrupt catched, cancel install id", id)
-                self._request("delete", '/install/' + id)
-                raise
-
-    def shell(self, cmdargs, stream=False, timeout=60):
-        """
-        Run adb shell command with arguments and return its output. Require atx-agent >=0.3.3
-
-        Args:
-            cmdargs: str or list, example: "ls -l" or ["ls", "-l"]
-            timeout: seconds of command run, works on when stream is False
-            stream: bool used for long running process.
-
-        Returns:
-            (output, exit_code) when stream is False
-            requests.Response when stream is True, you have to close it after using
-
-        Raises:
-            RuntimeError
-
-        For atx-agent is not support return exit code now.
-        When command got something wrong, exit_code is always 1, otherwise exit_code is always 0
-        """
-        cmdline = list2cmdline(cmdargs) if isinstance(cmdargs, (list, tuple)) else cmdargs  # yapf: disable
-        if stream:
-            return self._request("get",
-                                 "/shell/stream",
-                                 params={"command": cmdline},
-                                 timeout=None,
-                                 stream=True)
-        ret = self._request("post",
-                            '/shell',
-                            data={
-                                'command': cmdline,
-                                'timeout': str(timeout)
-                            },
-                            timeout=timeout + 10)
-        if ret.status_code != 200:
-            raise RuntimeError(
-                "device agent responds with an error code %d" %
-                ret.status_code, ret.text)
-        resp = ret.json()
-        exit_code = 1 if resp.get('error') else 0
-        exit_code = resp.get('exitCode', exit_code)
-        ShellResponse = namedtuple("ShellResponse", ("output", "exit_code"))
-        return ShellResponse(resp.get('output'), exit_code)
-
-    def adb_shell(self, *args):
-        """
-        Example:
-            adb_shell('pwd')
-            adb_shell('ls', '-l')
-            adb_shell('ls -l')
-
-        Returns:
-            string for stdout merged with stderr, after the entire shell command is completed.
-        """
-        # print(
-        #     "DeprecatedWarning: adb_shell is deprecated, use: output, exit_code = shell(['ls', '-l']) instead"
-        # )
-        cmdline = args[0] if len(args) == 1 else list2cmdline(args)
-        return self.shell(cmdline)[0]
-
-    def app_start(self,
-                  package_name,
-                  activity=None,
-                  extras={},
-                  wait=False,
-                  stop=False,
-                  unlock=False,
-                  launch_timeout=None,
-                  use_monkey=False):
-        """ Launch application
-        Args:
-            package_name (str): package name
-            activity (str): app activity
-            stop (bool): Stop app before starting the activity. (require activity)
-            use_monkey (bool): use monkey command to start app when activity is not given
-            wait (bool): wait until app started. default False
-
-        Raises:
-            SessionBrokenError
-        """
-        if unlock:
-            self.unlock()
-
-        if stop:
-            self.app_stop(package_name)
-
-        if use_monkey:
-            self.shell([
-                'monkey', '-p', package_name, '-c',
-                'android.intent.category.LAUNCHER', '1'
-            ])
-            if wait:
-                self.app_wait(package_name)
-            return
-
-        if not activity:
-            info = self.app_info(package_name)
-            activity = info['mainActivity']
-            if activity.find(".") == -1:
-                activity = "." + activity
-
-        # -D: enable debugging
-        # -W: wait for launch to complete
-        # -S: force stop the target app before starting the activity
-        # --user <USER_ID> | current: Specify which user to run as; if not
-        #    specified then run as the current user.
-        # -e <EXTRA_KEY> <EXTRA_STRING_VALUE>
-        # --ei <EXTRA_KEY> <EXTRA_INT_VALUE>
-        # --ez <EXTRA_KEY> <EXTRA_BOOLEAN_VALUE>
-        args = [
-            'am', 'start', '-a', 'android.intent.action.MAIN', '-c',
-            'android.intent.category.LAUNCHER'
-        ]
-        args += ['-n', '{}/{}'.format(package_name, activity)]
-        # -e --ez
-        extra_args = []
-        for k, v in extras.items():
-            if isinstance(v, bool):
-                extra_args.extend(['--ez', k, 'true' if v else 'false'])
-            elif isinstance(v, int):
-                extra_args.extend(['--ei', k, str(v)])
-            else:
-                extra_args.extend(['-e', k, v])
-        args += extra_args
-        self.shell(args)
-
-        if wait:
-            self.app_wait(package_name)
-
-    @deprecated(version="2.0.0", reason="You should use app_current instead")
-    def current_app(self):
-        return self.app_current()
-
-    @retry(EnvironmentError, delay=.5, tries=3, jitter=.1)
     def app_current(self):
         """
         Returns:
@@ -1503,6 +1153,20 @@ class Device(object):
             return ret
         raise EnvironmentError("Couldn't get focused app")
 
+    def app_install(self, data):
+        """
+        Args:
+            data: can be file path or url or file object
+
+        Raises:
+            RuntimeError
+        """
+        target = "/data/local/tmp/_tmp.apk"
+        self.push(data, target)
+        ret = self.shell(['pm', 'install', "-r", "-t", target])
+        if not ret.exit_code:
+            raise RuntimeError(ret.output)
+
     def wait_activity(self, activity, timeout=10):
         """ wait activity
         Args:
@@ -1519,6 +1183,48 @@ class Device(object):
                 return True
             time.sleep(.5)
         return False
+
+    def app_start(self, package_name: str, activity: Optional[str]=None, wait: bool = False, stop: bool=False, use_monkey: bool=False):
+        """ Launch application
+        Args:
+            package_name (str): package name
+            activity (str): app activity
+            stop (bool): Stop app before starting the activity. (require activity)
+            use_monkey (bool): use monkey command to start app when activity is not given
+            wait (bool): wait until app started. default False
+        """
+        if use_monkey:
+            self.shell([
+                'monkey', '-p', package_name, '-c',
+                'android.intent.category.LAUNCHER', '1'
+            ])
+            if wait:
+                self.app_wait(package_name)
+            return
+        
+        if not activity:
+            info = self.app_info(package_name)
+            activity = info['mainActivity']
+            if activity.find(".") == -1:
+                activity = "." + activity
+
+        # -D: enable debugging
+        # -W: wait for launch to complete
+        # -S: force stop the target app before starting the activity
+        # --user <USER_ID> | current: Specify which user to run as; if not
+        #    specified then run as the current user.
+        # -e <EXTRA_KEY> <EXTRA_STRING_VALUE>
+        # --ei <EXTRA_KEY> <EXTRA_INT_VALUE>
+        # --ez <EXTRA_KEY> <EXTRA_BOOLEAN_VALUE>
+        args = [
+            'am', 'start', '-a', 'android.intent.action.MAIN', '-c',
+            'android.intent.category.LAUNCHER',
+            '-n', f'{package_name}/{activity}'
+        ]
+        self.shell(args)
+
+        if wait:
+            self.app_wait(package_name)
 
     def app_wait(self,
                  package_name: str,
@@ -1570,34 +1276,9 @@ class Device(object):
                                    self.shell('ps; ps -A').output, re.M)
         return list(set(packages).intersection(process_names))
 
-    def _iter_process(self):
-        """
-        List processes by cmd:ps
-
-        Returns:
-            list of Process(pid, name)
-        """
-        headers, pids = [], {}
-        Header = None
-        Process = namedtuple("Process", ["user", "pid", "name"])
-        for line in self.shell("ps; ps -A").output.splitlines():
-            # USER PID ..... NAME
-            fields = line.strip().split()
-            if len(fields) < 3:
-                continue
-            if fields[0] == "USER":
-                continue
-            if not fields[1].isdigit():
-                continue
-            user, pid, name = fields[0], int(fields[1]), fields[-1]
-            if pid in pids:
-                continue
-            pids[pid] = True
-            yield Process(user, pid, name)
-
-    def app_stop(self, pkg_name):
+    def app_stop(self, package_name):
         """ Stop one application: am force-stop"""
-        self.shell(['am', 'force-stop', pkg_name])
+        self.shell(['am', 'force-stop', package_name])
 
     def app_stop_all(self, excludes=[]):
         """ Stop all third party applications
@@ -1614,17 +1295,17 @@ class Device(object):
             self.app_stop(pkg_name)
         return list(kill_pkgs)
 
-    def app_clear(self, pkg_name):
+    def app_clear(self, package_name: str):
         """ Stop and clear app data: pm clear """
-        self.shell(['pm', 'clear', pkg_name])
+        self.shell(['pm', 'clear', package_name])
 
-    def app_uninstall(self, pkg_name) -> bool:
+    def app_uninstall(self, package_name: str) -> bool:
         """ Uninstall an app 
 
         Returns:
             bool: success
         """
-        ret = self.shell(["pm", "uninstall", pkg_name])
+        ret = self.shell(["pm", "uninstall", package_name])
         return ret.exit_code == 0
 
     def app_uninstall_all(self, excludes=[], verbose=False):
@@ -1643,161 +1324,12 @@ class Device(object):
 
         return pkgs
 
-    def unlock(self):
-        """ unlock screen """
-        if not self.info['screenOn']:
-            self.press("power")
-            self.swipe(0.1, 0.9, 0.9, 0.1)
-
-        # self.open_identify()
-        # self._default_session.press("home")
-
-    def open_identify(self, theme='black'):
-        """
-        Args:
-            theme (str): black or red
-        """
-        self.shell([
-            'am', 'start', '-W', '-n',
-            'com.github.uiautomator/.IdentifyActivity', '-e', 'theme', theme
-        ])
-
-    def _pidof_app(self, pkg_name):
-        """
-        Return pid of package name
-        """
-        text = self._request("get", '/pidof/' + pkg_name).text
-        if text.isdigit():
-            return int(text)
-
-    def push_url(self, url, dst, mode=0o644):
-        """
-        Args:
-            url (str): http url address
-            dst (str): destination
-            mode (str): file mode
-
-        Raises:
-            FileNotFoundError(py3) OSError(py2)
-        """
-        modestr = oct(mode).replace('o', '')
-        r = self._request("post",
-                          '/download',
-                          data={
-                              'url': url,
-                              'filepath': dst,
-                              'mode': modestr
-                          })
-        if r.status_code != 200:
-            raise IOError("push-url", "%s -> %s" % (url, dst), r.text)
-        key = r.text.strip()
-        while 1:
-            r = self._request("get", '/download/' + key)
-            jdata = r.json()
-            message = jdata.get('message')
-            if message == 'downloaded':
-                log_print("downloaded")
-                break
-            elif message == 'downloading':
-                progress = jdata.get('progress')
-                if progress:
-                    copied_size = progress.get('copiedSize')
-                    total_size = progress.get('totalSize')
-                    log_print("{} {} / {}".format(
-                        message, humanize.naturalsize(copied_size),
-                        humanize.naturalsize(total_size)))
-                else:
-                    log_print("downloading")
-            else:
-                log_print("unknown json:" + str(jdata))
-                raise IOError(message)
-            time.sleep(1)
-
-    def push(self, src, dst, mode=0o644):
-        """
-        Args:
-            src (path or fileobj): source file
-            dst (str): destination can be folder or file path
-
-        Returns:
-            dict object, for example:
-
-                {"mode": "0660", "size": 63, "target": "/sdcard/ABOUT.rst"}
-
-            Since chmod may fail in android, the result "mode" may not same with input args(mode)
-
-        Raises:
-            IOError(if push got something wrong)
-        """
-        modestr = oct(mode).replace('o', '')
-        pathname = '/upload/' + dst.lstrip('/')
-        if isinstance(src, six.string_types):
-            src = open(src, 'rb')
-        r = self._request("post",
-                          pathname,
-                          data={'mode': modestr},
-                          files={'file': src})
-        if r.status_code == 200:
-            return r.json()
-        raise IOError("push", "%s -> %s" % (src, dst), r.text)
-
-    def pull(self, src: str, dst: str):
-        """
-        Pull file from device to local
-
-        Raises:
-            FileNotFoundError(py3) OSError(py2)
-
-        Require atx-agent >= 0.0.9
-        """
-        pathname = "/raw/" + src.lstrip("/")
-        r = self._request("get", pathname, stream=True)
-        if r.status_code != 200:
-            raise FileNotFoundError("pull", src, r.text)
-        with open(dst, 'wb') as f:
-            shutil.copyfileobj(r.raw, f)
-            if os.name == 'nt':  # hotfix windows file size zero bug
-                f.close()
-
-    def pull_content(self, src: str) -> bytes:
-        """
-        Read remote file content
-
-        Raises:
-            FileNotFoundError
-        """
-        pathname = "/raw/" + src.lstrip("/")
-        r = self._request("get", pathname)
-        if r.status_code != 200:
-            raise FileNotFoundError("pull", src, r.text)
-        return r.content
-
-    @property
-    def screenshot_uri(self):
-        return 'http://%s:%d/screenshot/0' % (self._host, self._port)
-
-    def screenshot(self, *args, **kwargs):
-        """
-        Take screenshot of device
-
-        Returns:
-            PIL.Image
-        """
-        return self.session().screenshot(*args, **kwargs)
-
-    @property
-    def device_info(self):
-        if self.__devinfo:
-            return self.__devinfo
-        self.__devinfo = self._request("get", '/info').json()
-        return self.__devinfo
-
-    def app_info(self, pkg_name):
+    def app_info(self, package_name: str):
         """
         Get app info
 
         Args:
-            pkg_name (str): package name
+            package_name (str): package name
 
         Return example:
             {
@@ -1811,7 +1343,7 @@ class Device(object):
         Raises:
             UiaError
         """
-        resp = self._request("get", f"/packages/{pkg_name}/info")
+        resp = self.http.get(f"/packages/{package_name}/info")
         resp.raise_for_status()
         resp = resp.json()
         if not resp.get('success'):
@@ -1826,101 +1358,70 @@ class Device(object):
         Raises:
             UiaError
         """
-        from PIL import Image
         url = f'/packages/{package_name}/icon'
-        resp = self._request("get", url)
+        resp = self.http.get(url)
         resp.raise_for_status()
         return Image.open(io.BytesIO(resp.content))
 
+
+class _DeprecatedMixIn:
+    @deprecated(version="2.0.0", reason="You should use app_current instead")
+    def current_app(self):
+        return self.app_current()
+    
     @property
-    def wlan_ip(self):
-        return self._request("get", "/wlan/ip").text.strip()
-
-    def disable_popups(self, enable=True):
-        """
-        Automatic click all popups
-        TODO: need fix
-        """
-        raise NotImplementedError()
-        # self.watcher
-
-        # if enable:
-        #     self.jsonrpc.setAccessibilityPatterns({
-        #         "com.android.packageinstaller":
-        #         [u"确定", u"安装", u"下一步", u"好", u"允许", u"我知道"],
-        #         "com.miui.securitycenter": [u"继续安装"],  # xiaomi
-        #         "com.lbe.security.miui": [u"允许"],  # xiaomi
-        #         "android": [u"好", u"安装"],  # vivo
-        #         "com.huawei.systemmanager": [u"立即删除"],  # huawei
-        #         "com.android.systemui": [u"同意"],  # 锤子
-        #     })
-        # else:
-        #     self.jsonrpc.setAccessibilityPatterns({})
-
-    def session(self,
-                pkg_name=None,
-                attach=False,
-                launch_timeout=None,
-                strict=False):
-        """
-        Create a new session
-
-        Args:
-            pkg_name (str): android package name
-            attach (bool): attach to already running app
-            launch_timeout (int): launch timeout
-            strict (bool): used along with attach, 
-                when attach and strict both true, SessionBrokenError will raise if app not running
-
-        Raises:
-            requests.HTTPError, SessionBrokenError
-        """
-        if pkg_name is None:
-            return self._default_session
-
-        if not attach:
-            request_data = {"flags": "-S"}
-            if launch_timeout:
-                request_data["timeout"] = str(launch_timeout)
-            resp = self._request("post",
-                                 "/session/" + pkg_name,
-                                 data=request_data)
-            if resp.status_code == 410:  # Gone
-                raise SessionBrokenError(pkg_name, resp.text)
-            resp.raise_for_status()
-            jsondata = resp.json()
-            if not jsondata["success"]:
-                raise SessionBrokenError("app launch failed",
-                                         jsondata["error"], jsondata["output"])
-
-            time.sleep(2.5)  # wait launch finished, maybe no need
-        pid = self._pidof_app(pkg_name)
-        if not pid:
-            if strict:
-                raise SessionBrokenError(pkg_name)
-            return self.session(pkg_name,
-                                attach=False,
-                                launch_timeout=launch_timeout)
-
-        return Session(self, pkg_name, pid)
-
+    def wait_timeout(self):  # wait element timeout
+        return self.settings['wait_timeout']
+    
+    @wait_timeout.setter
+    @deprecated(version="2.0.0", reason="You should use implicitly_wait instead")
+    def wait_timeout(self, v: Union[int, float]):
+        self.settings['wait_timeout'] = v
+    
     @property
-    @cache_return
-    def xpath(self) -> xpath.XPath:
-        return xpath.XPath(self)
-
+    @deprecated(version="2.0.0", reason="This method will deprecated soon")
+    def agent_alive(self):
+        return self._is_agent_alive()
+    
     @property
-    @cache_return
+    @deprecated(version="2.0.0")
+    def alive(self):
+        return self._is_alive()
+
+    @deprecated(version="2.0.0", reason="method: healthcheck is useless now")
+    def healthcheck(self):
+        self.reset_uiautomator("healthcheck")
+    
+    @deprecated(version="2.0.0", reason="method: session is useless now")
+    def session(self, *args, **kwargs):
+        return self
+    
+    @property
+    def click_post_delay(self):
+        """ Deprecated or not deprecated, this is a question """
+        return self.settings['post_delay']
+
+    @click_post_delay.setter
+    def click_post_delay(self, v: Union[int, float]):
+        self.settings['post_delay'] = v
+
+
+class _PluginMixIn:
+    # __plugins = {}
+
+    @cached_property
     def settings(self) -> Settings:
         return Settings(self)
 
-    @property
-    @cache_return
+    @cached_property
     def watcher(self) -> Watcher:
         return Watcher(self)
+    
+    @cached_property
+    def xpath(self) -> xpath.XPath:
+        return xpath.XPath(self)
 
-    @property
-    @cache_return
+    @cached_property
     def taobao(self):
         try:
             import uiautomator2_taobao as tb
@@ -1929,8 +1430,7 @@ class Device(object):
                 "This method can only use inside alibaba network")
         return tb.Taobao(self)
 
-    @property
-    @cache_return
+    @cached_property
     def alibaba(self):
         try:
             import uiautomator2_taobao as tb
@@ -1939,89 +1439,144 @@ class Device(object):
                 "This method can only use inside alibaba network")
         return tb.Alibaba(self)
 
-    @property
-    @cache_return
+    @cached_property
     def image(self):
         from uiautomator2 import image as _image
         return _image.ImageX(self)
 
-    @property
-    @cache_return
+    @cached_property
     def screenrecord(self):
         from uiautomator2 import screenrecord as _sr
         return _sr.Screenrecord(self)
 
-    def __getattr__(self, attr):
-        if attr in self._cached_plugins:
-            return self._cached_plugins[attr]
-        if attr.startswith('ext_'):
-            plugin_name = attr[4:]
-            if plugin_name not in self.__plugins:
-                if plugin_name == 'xpath':
-                    import uiautomator2.xpath as xpath
-                    xpath.init()
-                else:
-                    raise ValueError("plugin \"%s\" not registed" %
-                                     plugin_name)
-            func, args, kwargs = self.__plugins[plugin_name]
-            obj = functools.partial(func, self)(*args, **kwargs)
-            self._cached_plugins[attr] = obj
-            return obj
-        try:
-            return getattr(self._default_session, attr)
-        except AttributeError:
-            raise AttributeError(
-                "'Session or Device' object has no attribute '%s'" % attr)
-
-    def __call__(self, **kwargs) -> Session:
-        return self._default_session(**kwargs)
+    # def __getattr__(self, attr):
+    #     if attr in self._cached_plugins:
+    #         return self._cached_plugins[attr]
+    #     if attr.startswith('ext_'):
+    #         plugin_name = attr[4:]
+    #         if plugin_name not in self.__plugins:
+    #             raise ValueError("plugin \"%s\" not registed" %
+    #                                  plugin_name)
+    #         func, args, kwargs = self.__plugins[plugin_name]
+    #         obj = functools.partial(func, self)(*args, **kwargs)
+    #         self._cached_plugins[attr] = obj
+    #         return obj
+    #     try:
+    #         return getattr(self._default_session, attr)
+    #     except AttributeError:
+    #         raise AttributeError(
+    #             "'Session or Device' object has no attribute '%s'" % attr)
 
 
-class AdbShell(object):
-    def __init__(self, shellfn):
-        """
-        Args:
-            shellfn: Shell function
-        """
-        self.shell = shellfn
-
-    def wmsize(self):
-        """ get window size
-        Returns:
-            (width, height)
-        """
-        output, _ = self.shell("wm size")
-        m = re.match(r"Physical size: (\d+)x(\d+)", output)
-        if m:
-            return map(int, m.groups())
-        raise RuntimeError("Can't parse wm size: " + output)
-
-    def is_screen_on(self):
-        output, _ = self.shell("dumpsys power")
-        return 'mHoldingDisplaySuspendBlocker=true' in output
-
-    def keyevent(self, v):
-        """
-        Args:
-            v: eg home wakeup back
-        """
-        v = v.upper()
-        self.shell("input keyevent " + v)
-
-    def _adjust_pos(self, x, y, w=None, h=None):
-        if x < 1:
-            x = x * w
-        if y < 1:
-            y = y * h
-        return (x, y)
-
-    def swipe(self, x0, y0, x1, y1):
-        w, h = None, None
-        if x0 < 1 or y0 < 1 or x1 < 1 or y1 < 1:
-            w, h = self.wmsize()
-        x0, y0 = self._adjust_pos(x0, y0, w, h)
-        x1, y1 = self._adjust_pos(x1, y1, w, h)
-        self.shell("input swipe %d %d %d %d" % (x0, y0, x1, y1))
+class Device(_Device, _AppMixIn, _DeprecatedMixIn, _PluginMixIn):
+    """ Device object """
 
 
-UIAutomatorServer = Device  # Deprecated UIAutomatorServer
+def connect(addr=None) -> Device:
+    """
+    Args:
+        addr (str): uiautomator server address or serial number. default from env-var ANDROID_DEVICE_IP
+
+    Returns:
+        Device
+
+    Raises:
+        ConnectError
+
+    Example:
+        connect("10.0.0.1:7912")
+        connect("10.0.0.1") # use default 7912 port
+        connect("http://10.0.0.1")
+        connect("http://10.0.0.1:7912")
+        connect("cff1123ea")  # adb device serial number
+    """
+    if not addr or addr == '+':
+        addr = os.getenv('ANDROID_DEVICE_IP') or os.getenv("ANDROID_SERIAL")
+    wifi_addr = fix_wifi_addr(addr)
+    if wifi_addr:
+        return connect_wifi(addr)
+    return connect_usb(addr)
+
+
+
+def connect_adb_wifi(addr) -> Device:
+    """
+    Run adb connect, and then call connect_usb(..)
+
+    Args:
+        addr: ip+port which can be used for "adb connect" argument
+
+    Raises:
+        ConnectError
+    """
+    assert isinstance(addr, six.string_types)
+
+    subprocess.call([adbutils.adb_path(), "connect", addr])
+    try:
+        subprocess.call([adbutils.adb_path(), "-s", addr, "wait-for-device"],
+                        timeout=2)
+    except subprocess.TimeoutExpired:
+        raise ConnectError("Fail execute", "adb connect " + addr)
+    return connect_usb(addr)
+
+
+def connect_usb(serial: Optional[str] = None) -> Device:
+    """
+    Args:
+        serial (str): android device serial
+
+    Returns:
+        Device
+
+    Raises:
+        ConnectError
+    """
+
+    adb = adbutils.AdbClient()
+    if not serial:
+        device = adb.device()
+        serial = device.serial
+    return Device(serial)
+    # d = Device()
+    # d._connect_method = "usb"
+    # d._serial = serial
+    # d._init_atx_agent()
+
+    # if healthcheck:
+    #     warnings.warn("healthcheck param is deprecated", DeprecationWarning)
+    # if init:
+    #     warnings.warn("init param is deprecated", DeprecationWarning)
+    # return d
+
+
+def connect_wifi(addr: str) -> Device:
+    """
+    Args:
+        addr (str) uiautomator server address.
+
+    Returns:
+        Device
+
+    Raises:
+        ConnectError
+
+    Examples:
+        connect_wifi("10.0.0.1")
+    """
+    if re.match(r"^https?://", addr):
+        return Device(addr)
+    
+    if not re.match(r":\d+$"):
+        addr += ":7912"
+        
+    return Device(f"http://{addr}")
+    
+    # fixed_addr = fix_wifi_addr(addr)
+    # if fixed_addr is None:
+    # raise ConnectError("addr is invalid or atx-agent is not running", addr)
+    # u = urlparse.urlparse(addr)
+    # host = u.hostname
+    # port = u.port or 7912
+    # d = Device(host, port)
+    # d._connect_method = "wifi"
+    # return d

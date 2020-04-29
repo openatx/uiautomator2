@@ -482,8 +482,8 @@ class Session(object):
             IOError, SyntaxError
 
         Examples:
+            screenshot().save("saved.png") # 推荐
             screenshot("saved.jpg")
-            screenshot().save("saved.png")
             cv2.imwrite('saved.jpg', screenshot(format='opencv'))
         """
         # Another way to take screenshot is use jsonrpc
