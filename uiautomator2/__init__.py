@@ -34,6 +34,7 @@ from typing import List, Optional, Tuple, Union
 import xml.dom.minidom
 
 import adbutils
+import contextlib
 import humanize
 import progress.bar
 import requests
@@ -68,6 +69,7 @@ HTTP_TIMEOUT = 60
 # logger = logging.getLogger("uiautomator2")
 
 logger = setup_logger("uiautomator2", level=logging.DEBUG)
+_mswindows = (os.name == "nt")
 
 class _ProgressBar(progress.bar.Bar):
     message = "progress"
@@ -712,6 +714,23 @@ class _BaseClient(object):
         finally:
             fileobj.close()
 
+    def pull(self, src: str, dst: str):
+        """
+        Pull file from device to local
+
+        Raises:
+            FileNotFoundError(py3) OSError(py2)
+
+        Require atx-agent >= 0.0.9
+        """
+        pathname = "/raw/" + src.lstrip("/")
+        r = self.http.get(pathname, stream=True)
+        if r.status_code != 200:
+            raise FileNotFoundError("pull", src, r.text)
+        with open(dst, 'wb') as f:
+            shutil.copyfileobj(r.raw, f)
+            if _mswindows:  # hotfix windows file size zero bug
+                f.close()
 
 class _Device(_BaseClient):
     __orientation = (  # device orientation
@@ -879,6 +898,19 @@ class _Device(_BaseClient):
 
         return _convert
 
+
+    @contextlib.contextmanager
+    def _slow_operation(self, operation_name: str = None):
+        _before = self.settings['click_before_delay']
+        if _before:
+            time.sleep(_before)
+            logger.debug(f"{operation_name} pre-sleep {_before}s")
+        yield
+        _after = self.settings['click_after_delay']
+        if _after:
+            time.sleep(_after)
+            logger.debug(f"{operation_name} post-sleep {_after}s")
+
     @property
     def touch(self):
         """
@@ -918,7 +950,8 @@ class _Device(_BaseClient):
 
     def click(self, x: Union[float, int], y: Union[float, int]):
         x, y = self.pos_rel2abs(x, y)
-        self.jsonrpc.click(x, y)
+        with self._slow_operation("click"):
+            self.jsonrpc.click(x, y)
 
     def swipe(self, fx, fy, tx, ty, duration=0.1, steps=None):
         """
@@ -973,11 +1006,12 @@ class _Device(_BaseClient):
             delete(or del), recent(recent apps), volume_up, volume_down,
             volume_mute, camera, power.
         """
-        if isinstance(key, int):
-            return self.jsonrpc.pressKeyCode(
-                key, meta) if meta else self.server.jsonrpc.pressKeyCode(key)
-        else:
-            return self.jsonrpc.pressKey(key)
+        with self._slow_operation("press"):
+            if isinstance(key, int):
+                return self.jsonrpc.pressKeyCode(
+                    key, meta) if meta else self.server.jsonrpc.pressKeyCode(key)
+            else:
+                return self.jsonrpc.pressKey(key)
 
     def long_click(self, x, y, duration: float=.5):
         '''long click at arbitrary coordinates.
@@ -1629,7 +1663,7 @@ class _PluginMixIn:
     def widget(self):
         from uiautomator2.widget import Widget
         return Widget(self)
-        
+
     # def __getattr__(self, attr):
     #     if attr in self._cached_plugins:
     #         return self._cached_plugins[attr]
