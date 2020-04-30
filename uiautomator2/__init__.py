@@ -85,29 +85,6 @@ class _ProgressBar(progress.bar.Bar):
 #           " " + s)
 
 
-def fix_wifi_addr(addr: str) -> Optional[str]:
-    if not addr:
-        return None
-    if re.match(r"^https?://", addr):  # eg: http://example.org
-        return addr
-
-    # make a request
-    # eg: 10.0.0.1, 10.0.0.1:7912
-    if ':' not in addr:
-        addr += ":7912"  # make default port 7912
-    try:
-        r = requests.get("http://" + addr + "/version", timeout=2)
-        r.raise_for_status()
-        return "http://" + addr
-    except:
-        return None
-
-
-
-
-
-
-
 class TimeoutRequestsSession(requests.Session):
     def __init__(self):
         super(TimeoutRequestsSession, self).__init__()
@@ -1101,6 +1078,51 @@ class _Device(_BaseClient):
             "showFloatWindow", arg
         ])
 
+    @property
+    def toast(self):
+        obj = self
+
+        class Toast(object):
+            def get_message(self,
+                            wait_timeout=10,
+                            cache_timeout=10,
+                            default=None):
+                """
+                Args:
+                    wait_timeout: seconds of max wait time if toast now show right now
+                    cache_timeout: return immediately if toast showed in recent $cache_timeout
+                    default: default messsage to return when no toast show up
+
+                Returns:
+                    None or toast message
+                """
+                deadline = time.time() + wait_timeout
+                while 1:
+                    message = obj.jsonrpc.getLastToast(cache_timeout * 1000)
+                    if message:
+                        return message
+                    if time.time() > deadline:
+                        return default
+                    time.sleep(.5)
+
+            def reset(self):
+                return obj.jsonrpc.clearLastToast()
+
+            def show(self, text, duration=1.0):
+                return obj.jsonrpc.makeToast(text, duration * 1000)
+
+        return Toast()
+
+    def open_identify(self, theme='black'):
+        """
+        Args:
+            theme (str): black or red
+        """
+        self.shell([
+            'am', 'start', '-W', '-n',
+            'com.github.uiautomator/.IdentifyActivity', '-e', 'theme', theme
+        ])
+
 
 class _AppMixIn:
     def _pidof_app(self, package_name):
@@ -1393,7 +1415,32 @@ class _DeprecatedMixIn:
         self.reset_uiautomator("healthcheck")
     
     @deprecated(version="2.0.0", reason="method: session is useless now")
-    def session(self, *args, **kwargs):
+    def session(self, package_name=None, attach=False, launch_timeout=None, strict=False):
+        if package_name is None:
+            return self
+
+        if not attach:
+            request_data = {"flags": "-S"}
+            if launch_timeout:
+                request_data["timeout"] = str(launch_timeout)
+            resp = self.http.post("/session/" + package_name,
+                                 data=request_data)
+            if resp.status_code == 410:  # Gone
+                raise SessionBrokenError(package_name, resp.text)
+            resp.raise_for_status()
+            jsondata = resp.json()
+            if not jsondata["success"]:
+                raise SessionBrokenError("app launch failed",
+                                         jsondata["error"], jsondata["output"])
+
+            time.sleep(2.5)  # wait launch finished, maybe no need
+        pid = self._pidof_app(package_name)
+        if not pid:
+            if strict:
+                raise SessionBrokenError(package_name)
+            return self.session(package_name,
+                                attach=False,
+                                launch_timeout=launch_timeout)
         return self
     
     @property
@@ -1404,6 +1451,135 @@ class _DeprecatedMixIn:
     @click_post_delay.setter
     def click_post_delay(self, v: Union[int, float]):
         self.settings['post_delay'] = v
+
+    @deprecated(version="2.0.0", reason="use d.toast.show(text, duration) instead")
+    def make_toast(self, text, duration=1.0):
+        """ Show toast
+        Args:
+            text (str): text to show
+            duration (float): seconds of display
+        """
+        return self.jsonrpc.makeToast(text, duration * 1000)
+
+    def unlock(self):
+        """ unlock screen """
+        if not self.info['screenOn']:
+            self.press("power")
+            self.swipe(0.1, 0.9, 0.9, 0.1)
+
+
+class _InputMethodMixIn:
+    def set_fastinput_ime(self, enable: bool = True):
+        """ Enable of Disable FastInputIME """
+        fast_ime = 'com.github.uiautomator/.FastInputIME'
+        if enable:
+            self.shell(['ime', 'enable', fast_ime])
+            self.shell(['ime', 'set', fast_ime])
+        else:
+            self.shell(['ime', 'disable', fast_ime])
+
+    def send_keys(self, text: str, clear: bool = False):
+        """
+        Args:
+            text (str): text to set
+            clear (bool): clear before set text
+
+        Raises:
+            EnvironmentError
+        """
+        try:
+            self.wait_fastinput_ime()
+            btext = text.encode('utf-8')
+            base64text = base64.b64encode(btext).decode()
+            cmd = "ADB_SET_TEXT" if clear else "ADB_INPUT_TEXT"
+            self.shell(
+                ['am', 'broadcast', '-a', cmd, '--es', 'text', base64text])
+            return True
+        except EnvironmentError:
+            warnings.warn(
+                "set FastInputIME failed. use \"d(focused=True).set_text instead\"",
+                Warning)
+            return self(focused=True).set_text(text)
+            # warnings.warn("set FastInputIME failed. use \"adb shell input text\" instead", Warning)
+            # self.shell(["input", "text", text.replace(" ", "%s")])
+
+    def send_action(self, code):
+        """
+        Simulate input method edito code
+        
+        Args:
+            code (str or int): input method editor code
+        
+        Examples:
+            send_action("search"), send_action(3)
+        
+        Refs:
+            https://developer.android.com/reference/android/view/inputmethod/EditorInfo
+        """
+        self.wait_fastinput_ime()
+        __alias = {
+            "go": 2,
+            "search": 3,
+            "send": 4,
+            "next": 5,
+            "done": 6,
+            "previous": 7,
+        }
+        if isinstance(code, six.string_types):
+            code = __alias.get(code, code)
+        self.shell([
+            'am', 'broadcast', '-a', 'ADB_EDITOR_CODE', '--ei', 'code',
+            str(code)
+        ])
+
+    def clear_text(self):
+        """ clear text
+        Raises:
+            EnvironmentError
+        """
+        try:
+            self.wait_fastinput_ime()
+            self.shell(['am', 'broadcast', '-a', 'ADB_CLEAR_TEXT'])
+        except EnvironmentError:
+            # for Android simulator
+            self(focused=True).clear_text()
+
+    def wait_fastinput_ime(self, timeout=5.0):
+        """ wait FastInputIME is ready
+        Args:
+            timeout(float): maxium wait time
+        
+        Raises:
+            EnvironmentError
+        """
+        if not self.serial:  # maybe simulator eg: genymotion, 海马玩模拟器
+            raise EnvironmentError("Android simulator is not supported.")
+
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            ime_id, shown = self.current_ime()
+            if ime_id != "com.github.uiautomator/.FastInputIME":
+                self.set_fastinput_ime(True)
+                time.sleep(0.5)
+                continue
+            if shown:
+                return True
+            time.sleep(0.2)
+        raise EnvironmentError("FastInputIME started failed")
+
+    def current_ime(self):
+        """ Current input method
+        Returns:
+            (method_id(str), shown(bool)
+
+        Example output:
+            ("com.github.uiautomator/.FastInputIME", True)
+        """
+        dim, _ = self.shell(['dumpsys', 'input_method'])
+        m = _INPUT_METHOD_RE.search(dim)
+        method_id = None if not m else m.group(1)
+        shown = "mInputShown=true" in dim
+        return (method_id, shown)
 
 
 class _PluginMixIn:
@@ -1449,6 +1625,11 @@ class _PluginMixIn:
         from uiautomator2 import screenrecord as _sr
         return _sr.Screenrecord(self)
 
+    @cached_property
+    def widget(self):
+        from uiautomator2.widget import Widget
+        return Widget(self)
+        
     # def __getattr__(self, attr):
     #     if attr in self._cached_plugins:
     #         return self._cached_plugins[attr]
@@ -1468,8 +1649,26 @@ class _PluginMixIn:
     #             "'Session or Device' object has no attribute '%s'" % attr)
 
 
-class Device(_Device, _AppMixIn, _DeprecatedMixIn, _PluginMixIn):
+class Device(_Device, _AppMixIn, _PluginMixIn, _InputMethodMixIn, _DeprecatedMixIn):
     """ Device object """
+
+
+def _fix_wifi_addr(addr: str) -> Optional[str]:
+    if not addr:
+        return None
+    if re.match(r"^https?://", addr):  # eg: http://example.org
+        return addr
+
+    # make a request
+    # eg: 10.0.0.1, 10.0.0.1:7912
+    if ':' not in addr:
+        addr += ":7912"  # make default port 7912
+    try:
+        r = requests.get("http://" + addr + "/version", timeout=2)
+        r.raise_for_status()
+        return "http://" + addr
+    except:
+        return None
 
 
 def connect(addr=None) -> Device:
@@ -1492,11 +1691,10 @@ def connect(addr=None) -> Device:
     """
     if not addr or addr == '+':
         addr = os.getenv('ANDROID_DEVICE_IP') or os.getenv("ANDROID_SERIAL")
-    wifi_addr = fix_wifi_addr(addr)
+    wifi_addr = _fix_wifi_addr(addr)
     if wifi_addr:
         return connect_wifi(addr)
     return connect_usb(addr)
-
 
 
 def connect_adb_wifi(addr) -> Device:
@@ -1563,15 +1761,20 @@ def connect_wifi(addr: str) -> Device:
     Examples:
         connect_wifi("10.0.0.1")
     """
-    if re.match(r"^https?://", addr):
-        return Device(addr)
+    _addr = __(addr)
+    del addr
+    if _addr is None:
+        raise ConnectError("addr is invalid or atx-agent is not running", addr)
+    return Device(_addr)
+    # if re.match(r"^https?://", addr):
+    #     return Device(addr)
     
-    if not re.match(r":\d+$"):
-        addr += ":7912"
+    # if not re.match(r":\d+$"):
+    #     addr += ":7912"
         
-    return Device(f"http://{addr}")
+    # return Device(f"http://{addr}")
     
-    # fixed_addr = fix_wifi_addr(addr)
+    # fixed_addr = _(addr)
     # if fixed_addr is None:
     # raise ConnectError("addr is invalid or atx-agent is not running", addr)
     # u = urlparse.urlparse(addr)

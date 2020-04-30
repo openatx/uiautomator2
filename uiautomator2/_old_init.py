@@ -1275,23 +1275,19 @@ class Device(object):
 
         return Session(self, pkg_name, pid)
 
-    @property
-    @cache_return
+    @cached_property
     def xpath(self) -> xpath.XPath:
         return xpath.XPath(self)
 
-    @property
-    @cache_return
+    @cached_property
     def settings(self) -> Settings:
         return Settings(self)
 
-    @property
-    @cache_return
+    @cached_property
     def watcher(self) -> Watcher:
         return Watcher(self)
 
-    @property
-    @cache_return
+    @cached_property
     def taobao(self):
         try:
             import uiautomator2_taobao as tb
@@ -1300,8 +1296,7 @@ class Device(object):
                 "This method can only use inside alibaba network")
         return tb.Taobao(self)
 
-    @property
-    @cache_return
+    @cached_property
     def alibaba(self):
         try:
             import uiautomator2_taobao as tb
@@ -1310,14 +1305,12 @@ class Device(object):
                 "This method can only use inside alibaba network")
         return tb.Alibaba(self)
 
-    @property
-    @cache_return
+    @cached_property
     def image(self):
         from uiautomator2 import image as _image
         return _image.ImageX(self)
 
-    @property
-    @cache_return
+    @cached_property
     def screenrecord(self):
         from uiautomator2 import screenrecord as _sr
         return _sr.Screenrecord(self)
