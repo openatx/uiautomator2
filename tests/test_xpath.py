@@ -57,6 +57,7 @@ def test_watcher(sess: u2.Session, request):
     assert event.wait(5.0), "xpath not trigger callback"
 
 
+@pytest.mark.skip("Deprecated")
 def test_watcher_from_yaml(sess: u2.Session, request):
     yaml_content = """---
 - when: App

@@ -111,3 +111,5 @@ node_modules/
 vendor/
 
 docs/*.rst
+
+.DS_Store

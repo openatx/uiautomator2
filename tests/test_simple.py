@@ -76,10 +76,10 @@ class SimpleTestCase(unittest.TestCase):
         d(text="App").click()
         self.assertTrue(d(text="Status Bar").exists(timeout=5))
 
+        d.watcher.remove("N")
         d.press("back")
         d.press("back")
 
-        d.watcher.remove("N")
         d(text="App").click()
         self.assertFalse(d(text="Status Bar").wait(timeout=5))
 

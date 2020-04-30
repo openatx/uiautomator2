@@ -8,30 +8,33 @@ import json
 
 
 class BaseError(Exception):
-    pass
+    """ 所有错误的基类 """
+
+
+class ConnectError(BaseError):
+    """ adb connect 异常 """
 
 
 class RetryError(BaseError):
     """ retry when meet this error """
 
 
-class SessionBrokenError(BaseError):
+class ServerError(BaseError):
+    """ app 服务端错误, 没有安装，或者启动错误 """
+
+
+## Error base on ServerError
+
+class SessionBrokenError(ServerError):
     """ only happens when app quit or crash """
 
 
-class UiautomatorQuitError(BaseError):
-    pass
+class UiautomatorQuitError(ServerError):
+    """ uiautomator 没有运行错误 """
 
 
-class ConnectError(BaseError):
-    pass
-
-
-class XPathElementNotFoundError(BaseError):
-    pass
-
-
-class GatewayError(BaseError):
+class GatewayError(ServerError):
+    """ 网关错误，通常代表 app-uiautomator.apk没有安装 """
     def __init__(self, response, description):
         self.response = response
         self.description = description
@@ -40,7 +43,17 @@ class GatewayError(BaseError):
         return "uiautomator2.GatewayError(" + self.description + ")"
 
 
-class JsonRpcError(BaseError):
+## errors which no need to restart uiautomator
+
+class RequestError(BaseError):
+    """ jsonrpc call error """
+
+
+class XPathElementNotFoundError(RequestError):
+    pass
+
+
+class JSONRPCError(RequestError):
     @staticmethod
     def format_errcode(errcode):
         m = {
@@ -77,30 +90,30 @@ class JsonRpcError(BaseError):
         return repr(str(self))
 
 
-class UiObjectNotFoundError(JsonRpcError):
+class UiObjectNotFoundError(JSONRPCError):
     """ 控件没找到 """
 
 
-class UiAutomationNotConnectedError(JsonRpcError):
+class UiAutomationNotConnectedError(JSONRPCError):
     """ 与手机上运行的UiAutomator服务连接断开 """
 
 
-class NullObjectExceptionError(JsonRpcError):
+class NullObjectExceptionError(JSONRPCError):
     """ 空对象错误 """
 
 
-class NullPointerExceptionError(JsonRpcError):
+class NullPointerExceptionError(JSONRPCError):
     """ 空指针错误 """
 
 
-class StaleObjectExceptionError(JsonRpcError):
+class StaleObjectExceptionError(JSONRPCError):
     """ 一种，打算要操作的对象突然消失的错误 """
 
 
-class InjectPermissionError(JsonRpcError):
+class InjectPermissionError(JSONRPCError):
     """ 开发者选项中: 模拟点击没有打开 """
 
 
 # 保证兼容性
 UiaError = BaseError
-
+JsonRpcError = JSONRPCError

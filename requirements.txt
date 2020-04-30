@@ -12,3 +12,4 @@ Deprecated~=1.2.6
 # Not supported in QPython
 Pillow
 lxml>=4.3
+cached-property>=1.5.1,<2.0

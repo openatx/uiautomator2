@@ -20,3 +20,12 @@ pip3 install -e .
 cd docs
 make publish
 ```
+
+## ViewConfiguration
+一些默认的配置，从 `/android/view/ViewConfiguration.java`中可以查到
+
+> 单位: 毫秒
+
+- TAP_TIMEOUT: 100
+- LONG_PRESS_TIMEOUT: 500
+- DOUBLE_TAP_TIMEOUT: 300
