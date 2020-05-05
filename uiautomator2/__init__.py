@@ -54,6 +54,7 @@ from .exceptions import (BaseError, ConnectError, GatewayError, JSONRPCError,
                          UiAutomationNotConnectedError, UiObjectNotFoundError)
 from .init import Initer
 from .session import Session, set_fail_prompt  # noqa: F401
+from .swipe import SwipeExt
 from .settings import Settings
 from .utils import cache_return, list2cmdline
 from .version import __atx_agent_version__
@@ -1420,6 +1421,11 @@ class _AppMixIn:
 
 
 class _DeprecatedMixIn:
+    @property
+    # @deprecated(version="2.0.0", reason="You should use app_current instead")
+    def address(self):
+        return self._get_atx_agent_url()
+        
     @deprecated(version="2.0.0", reason="You should use app_current instead")
     def current_app(self):
         return self.app_current()
@@ -1662,6 +1668,13 @@ class _PluginMixIn:
     def widget(self):
         from uiautomator2.widget import Widget
         return Widget(self)
+        
+    @cached_property
+    def swipe_ext(self) -> SwipeExt:
+        return SwipeExt(self)
+        
+    #def _find_element(self, xpath: str, _class=None, pos=None, activity=None, package=None):
+    #    raise NotImplementedError()
 
     # def __getattr__(self, attr):
     #     if attr in self._cached_plugins:
