@@ -35,7 +35,6 @@ import xml.dom.minidom
 
 import adbutils
 import contextlib
-import humanize
 import progress.bar
 import requests
 import six
@@ -71,14 +70,14 @@ HTTP_TIMEOUT = 60
 logger = setup_logger("uiautomator2", level=logging.DEBUG)
 _mswindows = (os.name == "nt")
 
-class _ProgressBar(progress.bar.Bar):
-    message = "progress"
-    suffix = '%(percent)d%% [%(eta_td)s, %(speed)s]'
+# class _ProgressBar(progress.bar.Bar):
+#     message = "progress"
+#     suffix = '%(percent)d%% [%(eta_td)s, %(speed)s]'
 
-    @property
-    def speed(self):
-        return humanize.naturalsize(self.elapsed and self.index / self.elapsed,
-                                    gnu=True) + '/s'
+#     @property
+#     def speed(self):
+#         return humanize.naturalsize(self.elapsed and self.index / self.elapsed,
+#                                     gnu=True) + '/s'
 
 
 # def log_print(s):

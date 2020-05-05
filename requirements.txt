@@ -1,6 +1,5 @@
 six
 requests
-humanize
 whichcraft 
 
 logzero~=1.5
