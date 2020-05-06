@@ -15,6 +15,8 @@ Refs:
 
 from __future__ import absolute_import, print_function
 
+import base64
+import contextlib
 import functools
 import hashlib
 import io
@@ -28,38 +30,38 @@ import sys
 import threading
 import time
 import warnings
+import xml.dom.minidom
 from collections import namedtuple
 from datetime import datetime
 from typing import List, Optional, Tuple, Union
-import xml.dom.minidom
 
+# import progress.bar
 import adbutils
-import contextlib
-import progress.bar
+import packaging
 import requests
 import six
 import six.moves.urllib.parse as urlparse
 from cached_property import cached_property
 from deprecated import deprecated
 from logzero import setup_logger
+from PIL import Image
 from retry import retry
 from urllib3.util.retry import Retry
-from PIL import Image
 
 from . import xpath
+from ._selector import Selector, UiObject
 from .exceptions import (BaseError, ConnectError, GatewayError, JSONRPCError,
                          NullObjectExceptionError, NullPointerExceptionError,
-                         ServerError, SessionBrokenError,
-                         StaleObjectExceptionError, UiaError, RetryError,
+                         RetryError, ServerError, SessionBrokenError,
+                         StaleObjectExceptionError,
                          UiAutomationNotConnectedError, UiObjectNotFoundError)
 from .init import Initer
-from .session import Session, set_fail_prompt  # noqa: F401
-from .swipe import SwipeExt
+# from .session import Session  # noqa: F401
 from .settings import Settings
-from .utils import cache_return, list2cmdline
-from .version import __atx_agent_version__
+from .swipe import SwipeExt
+from .utils import list2cmdline
+from .version import __atx_agent_version__, __apk_version__
 from .watcher import Watcher
-from ._selector import Selector, UiObject
 
 if six.PY2:
     FileNotFoundError = OSError
@@ -79,7 +81,6 @@ _mswindows = (os.name == "nt")
 #     def speed(self):
 #         return humanize.naturalsize(self.elapsed and self.index / self.elapsed,
 #                                     gnu=True) + '/s'
-
 
 # def log_print(s):
 #     thread_name = threading.current_thread().getName()
@@ -155,14 +156,12 @@ class TimeoutRequestsSession(requests.Session):
 #     """
 #     Device.plugins()[name] = (plugin, args, kwargs)
 
-
 # def plugin_clear():
 #     Device.plugins().clear()
 
-
 ShellResponse = namedtuple("ShellResponse", ("output", "exit_code"))
-
 _production = (os.environ.get("TMQ") == "true")
+
 
 class _Service(object):
     def __init__(self, name, u2obj: "Device"):
@@ -174,8 +173,7 @@ class _Service(object):
 
     def _raise_for_status(self, res: requests.Response):
         if res.status_code != 200:
-            if res.headers['content-type'].startswith(
-                    "application/json"):
+            if res.headers['content-type'].startswith("application/json"):
                 raise RuntimeError(res.json()["description"])
             warnings.warn(res.text)
             res.raise_for_status()
@@ -520,7 +518,7 @@ class _BaseClient(object):
                 return True
         except (requests.HTTPError, requests.ConnectionError) as e:
             return False
-    
+
     def _is_alive(self):
         try:
             r = self.http.post("/jsonrpc/0", timeout=2, retry=False, data=json.dumps({
@@ -557,7 +555,8 @@ class _BaseClient(object):
                 "adb shell am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner",
             )
 
-        logger.debug("restart-uiautomator since \"%s\"", reason)
+        if depth > 0:
+            logger.info("restart-uiautomator since \"%s\"", reason)
 
         if self._is_alive():
             return
@@ -569,9 +568,7 @@ class _BaseClient(object):
 
         output = self._test_run_instrument()
         if "does not have a signature matching the target" in output:
-            self.shell(["pm", "uninstall", "com.github.uiautomator"])
-            self.shell(["pm", "uninstall", "com.github.uiautomator.test"])
-            self._reinstall_uiautomator_apks()
+            self._setup_uiautomator()
             reason = "signature not match, reinstall uiautomator apks"
         return self.reset_uiautomator(reason=reason,
                                       depth=depth + 1)
@@ -583,18 +580,10 @@ class _BaseClient(object):
 
         self.uiautomator.stop()
 
-        #self.shell(["am", "force-stop", package_name])
-        #logger.debug("stop app: %s", package_name)
-
-        # stop command which launched with uiautomator 1.0
-        # eg: adb shell uiautomator runtest androidUiAutomator.jar
         logger.debug("kill process(ps): uiautomator")
         self._kill_process_by_name("uiautomator")
 
-        from uiautomator2 import init
-
-        _init = init.Initer(self._adb_device)
-        if _init.is_apk_outdated():
+        if self._is_apk_outdated():
             self._setup_uiautomator()
 
         if launch_test_app:
@@ -622,6 +611,28 @@ class _BaseClient(object):
         self.uiautomator.stop()
         return False
 
+    def _is_apk_outdated(self):
+        # 检查被测应用是否存在
+        apk_version = self._package_version("com.github.uiautomator")
+        if apk_version is None:
+            return True
+
+        # 检查版本是否过期
+        if apk_version < packaging.version.parse(__apk_version__):
+            return True
+
+        # 检查测试apk是否存在
+        if self._package_version("com.github.uiautomator.test") is None:
+            return True
+        return False
+
+    def _package_version(self, package_name: str) -> Optional[packaging.version.Version]:
+        if self.shell(['pm', 'path', package_name]).exit_code != 0:
+            return None
+        dump_output = self.shell(['dumpsys', 'package', package_name]).output
+        m = re.compile(r'versionName=(?P<name>[\d.]+)').search(dump_output)
+        return packaging.version.parse(m.group('name') if m else "")
+
     def _grant_app_permissions(self):
         logger.debug("grant permissions")
         for permission in [
@@ -636,17 +647,6 @@ class _BaseClient(object):
             "am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner",
             timeout=3)
         return shret.output
-
-    def _reinstall_uiautomator_apks(self):
-        from uiautomator2 import init
-        for (name, url) in init.app_uiautomator_apk_urls():
-            apk_path = init.cache_download(url)
-            target_path = os.path.join("/data/local/tmp",
-                                       os.path.basename(apk_path))
-            # print("Push to", target_path)
-            self.push(apk_path, target_path)
-            # print("Install")
-            self.shell(['pm', 'install', '-r', '-t', target_path])
 
     def _kill_process_by_name(self, name):
         for p in self._iter_process():
@@ -874,7 +874,7 @@ class _Device(_BaseClient):
         if seconds:
             self.settings["wait_timeout"] = seconds
         return self.settings['wait_timeout']
-    
+
     @property
     def pos_rel2abs(self):
         """
@@ -941,7 +941,7 @@ class _Device(_BaseClient):
                 x, y = obj.pos_rel2abs(x, y)
                 obj.jsonrpc.injectInputEvent(ACTION_UP, x, y, 0)
                 return self
-            
+
             def sleep(self, seconds: float):
                 time.sleep(seconds)
                 return self
@@ -1020,7 +1020,7 @@ class _Device(_BaseClient):
         '''
         x, y = self.pos_rel2abs(x, y)
         return self.touch.down(x, y).sleep(duration).up(x, y)
-    
+
     def drag(self, sx, sy, ex, ey, duration=0.5):
         '''Swipe from one point to another point.'''
         rel2abs = self.pos_rel2abs
@@ -1033,7 +1033,7 @@ class _Device(_BaseClient):
 
     def screen_off(self):
         self.jsonrpc.sleep()
-    
+
     @property
     def orientation(self):
         '''
@@ -1088,7 +1088,7 @@ class _Device(_BaseClient):
             label: User-visible label for the clip data.
         '''
         self.jsonrpc.setClipboard(label, text)
-    
+
     def keyevent(self, v):
         """
         Args:
@@ -1099,7 +1099,7 @@ class _Device(_BaseClient):
 
     def __call__(self, **kwargs):
         return UiObject(self, Selector(**kwargs))
-    
+
     @cached_property
     def serial(self):
         return self.shell(['getprop', 'ro.serialno']).output.strip()
@@ -1257,7 +1257,7 @@ class _AppMixIn:
             if wait:
                 self.app_wait(package_name)
             return
-        
+
         if not activity:
             info = self.app_info(package_name)
             activity = info['mainActivity']
@@ -1425,25 +1425,25 @@ class _DeprecatedMixIn:
     # @deprecated(version="2.0.0", reason="You should use app_current instead")
     def address(self):
         return self._get_atx_agent_url()
-        
+
     @deprecated(version="2.0.0", reason="You should use app_current instead")
     def current_app(self):
         return self.app_current()
-    
+
     @property
     def wait_timeout(self):  # wait element timeout
         return self.settings['wait_timeout']
-    
+
     @wait_timeout.setter
     @deprecated(version="2.0.0", reason="You should use implicitly_wait instead")
     def wait_timeout(self, v: Union[int, float]):
         self.settings['wait_timeout'] = v
-    
+
     @property
     @deprecated(version="2.0.0", reason="This method will deprecated soon")
     def agent_alive(self):
         return self._is_agent_alive()
-    
+
     @property
     @deprecated(version="2.0.0")
     def alive(self):
@@ -1452,7 +1452,7 @@ class _DeprecatedMixIn:
     @deprecated(version="2.0.0", reason="method: healthcheck is useless now")
     def healthcheck(self):
         self.reset_uiautomator("healthcheck")
-    
+
     @deprecated(version="2.0.0", reason="method: session is useless now")
     def session(self, package_name=None, attach=False, launch_timeout=None, strict=False):
         if package_name is None:
@@ -1481,7 +1481,7 @@ class _DeprecatedMixIn:
                                 attach=False,
                                 launch_timeout=launch_timeout)
         return self
-    
+
     @property
     def click_post_delay(self):
         """ Deprecated or not deprecated, this is a question """
@@ -1614,6 +1614,7 @@ class _InputMethodMixIn:
         Example output:
             ("com.github.uiautomator/.FastInputIME", True)
         """
+        _INPUT_METHOD_RE = re.compile(r'mCurMethodId=([-_./\w]+)')
         dim, _ = self.shell(['dumpsys', 'input_method'])
         m = _INPUT_METHOD_RE.search(dim)
         method_id = None if not m else m.group(1)
@@ -1631,7 +1632,7 @@ class _PluginMixIn:
     @cached_property
     def watcher(self) -> Watcher:
         return Watcher(self)
-    
+
     @cached_property
     def xpath(self) -> xpath.XPath:
         return xpath.XPath(self)
@@ -1668,11 +1669,11 @@ class _PluginMixIn:
     def widget(self):
         from uiautomator2.widget import Widget
         return Widget(self)
-        
+
     @cached_property
     def swipe_ext(self) -> SwipeExt:
         return SwipeExt(self)
-        
+
     #def _find_element(self, xpath: str, _class=None, pos=None, activity=None, package=None):
     #    raise NotImplementedError()
 
@@ -1781,16 +1782,6 @@ def connect_usb(serial: Optional[str] = None) -> Device:
         device = adb.device()
         serial = device.serial
     return Device(serial)
-    # d = Device()
-    # d._connect_method = "usb"
-    # d._serial = serial
-    # d._init_atx_agent()
-
-    # if healthcheck:
-    #     warnings.warn("healthcheck param is deprecated", DeprecationWarning)
-    # if init:
-    #     warnings.warn("init param is deprecated", DeprecationWarning)
-    # return d
 
 
 def connect_wifi(addr: str) -> Device:
@@ -1807,25 +1798,8 @@ def connect_wifi(addr: str) -> Device:
     Examples:
         connect_wifi("10.0.0.1")
     """
-    _addr = __(addr)
-    del addr
+    _addr = _fix_wifi_addr(addr)
     if _addr is None:
         raise ConnectError("addr is invalid or atx-agent is not running", addr)
+    del addr
     return Device(_addr)
-    # if re.match(r"^https?://", addr):
-    #     return Device(addr)
-    
-    # if not re.match(r":\d+$"):
-    #     addr += ":7912"
-        
-    # return Device(f"http://{addr}")
-    
-    # fixed_addr = _(addr)
-    # if fixed_addr is None:
-    # raise ConnectError("addr is invalid or atx-agent is not running", addr)
-    # u = urlparse.urlparse(addr)
-    # host = u.hostname
-    # port = u.port or 7912
-    # d = Device(host, port)
-    # d._connect_method = "wifi"
-    # return d
