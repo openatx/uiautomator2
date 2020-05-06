@@ -952,6 +952,15 @@ class _Device(_BaseClient):
         x, y = self.pos_rel2abs(x, y)
         with self._slow_operation("click"):
             self.jsonrpc.click(x, y)
+    
+    def double_click(self, x, y, duration=0.1):
+        """
+        double click position
+        """
+        x, y = self.pos_rel2abs(x, y)
+        self.touch.down(x, y).up(x, y)
+        time.sleep(duration)
+        self.click(x, y)  # use click last is for htmlreport
 
     def swipe(self, fx, fy, tx, ty, duration=0.1, steps=None):
         """
