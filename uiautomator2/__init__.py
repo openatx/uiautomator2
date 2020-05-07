@@ -1110,7 +1110,20 @@ class _Device(_BaseClient):
         return UiObject(self, Selector(**kwargs))
 
     @cached_property
-    def serial(self):
+    def serial(self) -> str:
+        """
+        If connected with USB, here should return self._serial
+        When this situation happends
+
+            d = u2.connect_usb("10.0.0.1:5555")
+            d.serial # should be "10.0.0.1:5555"
+            d.shell(['getprop', 'ro.serialno']).output.strip() # should uniq str like ffee123ca
+
+        This logic should not change, because it used in tmq-service
+        and if you break it, some people will not happy
+        """
+        if self._serial:
+            return self._serial
         return self.shell(['getprop', 'ro.serialno']).output.strip()
 
     def _show_float_window(self, show=True):
@@ -1707,6 +1720,10 @@ class _PluginMixIn:
 
 class Device(_Device, _AppMixIn, _PluginMixIn, _InputMethodMixIn, _DeprecatedMixIn):
     """ Device object """
+
+
+# for compatible with old code
+Session = Device
 
 
 def _fix_wifi_addr(addr: str) -> Optional[str]:

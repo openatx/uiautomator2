@@ -135,6 +135,7 @@ class SimpleTestCase(unittest.TestCase):
             words,
             ['Morse Code', 'Rotation Vector', 'Sensors', 'SMS Messaging'])
 
+    @pytest.mark.skip("Deprecated")
     def test_plugin(self):
         def _my_plugin(d, k):
             def _inner():
@@ -145,6 +146,14 @@ class SimpleTestCase(unittest.TestCase):
         u2.plugin_clear()
         u2.plugin_register('my', _my_plugin, 'pp')
         self.assertEqual(self.d.ext_my(), 'pp')
+
+    def test_send_keys(self):
+        d = self.d
+        d.xpath("App").click()
+        d.xpath("Search").click()
+        d.xpath('//*[@text="Invoke Search"]').click()
+        d.send_keys("hello", clear=True)
+        assert d.xpath('io.appium.android.apis:id/txt_query_prefill').info['text'] == 'hello'
 
 
 if __name__ == '__main__':

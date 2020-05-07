@@ -492,7 +492,7 @@ class XPathSelector(object):
 
     def set_text(self, text: str = ""):
         el = self.get()
-        self._parent.send_text()  # switch ime
+        self._d.set_fastinput_ime() # switch ime
         el.click()  # focus input-area
         self._parent.send_text(text)
 

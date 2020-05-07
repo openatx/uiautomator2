@@ -6,7 +6,10 @@ import pytest
 
 @pytest.fixture(scope="module")
 def d():
-    return u2.connect()
+    _d = u2.connect()
+    _d.settings['click_before_delay'] = .2
+    _d.settings['click_after_delay'] = .2
+    return _d
 
 
 @pytest.fixture(scope="function")
