@@ -139,3 +139,9 @@ def inject_call(fn, *args, **kwargs):
     return fn(*ba.args, **ba.kwargs)
 
 
+class ProgressReader:
+    def __init__(self, rd):
+        pass
+        
+    def read(self, size=-1):
+        pass

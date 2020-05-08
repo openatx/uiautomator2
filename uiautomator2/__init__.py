@@ -397,7 +397,7 @@ class _BaseClient(object):
 
     @property
     def info(self):
-        return self.jsonrpc.deviceInfo()
+        return self.jsonrpc.deviceInfo(http_timeout=10)
 
     #
     # app-uiautomator.apk jsonrpc methods
@@ -679,7 +679,7 @@ class _BaseClient(object):
             pids[pid] = True
             yield Process(user, pid, name)
 
-    def push(self, src, dst: str, mode=0o644):
+    def push(self, src, dst: str, mode=0o644, show_progress=False):
         """
         Push file into device
 
@@ -699,8 +699,19 @@ class _BaseClient(object):
         """
         modestr = oct(mode).replace('o', '')
         pathname = '/upload/' + dst.lstrip('/')
+        filesize = 0
         if isinstance(src, six.string_types):
-            fileobj = open(src, 'rb')
+            if re.match(r"^https?://", src):
+                r = requests.get(src, stream=True)
+                if r.status_code != 200:
+                    raise IOError("Request URL {!r} status_code {}".format(src, r.status_code))
+                filesize = int(r.headers.get("Content-Length", "0"))
+                fileobj = r.raw
+            elif os.path.isfile(src):
+                fielsize = os.stat(src).st_size
+                fileobj = open(src, 'rb')
+            else:
+                raise IOError("file {!r} not found".format(src))
         else:
             assert hasattr(src, "read")
             fileobj = src
@@ -809,7 +820,7 @@ class _Device(_BaseClient):
             format (str): used when filename is empty. one of ["pillow", "opencv", "raw"]
 
         Raises:
-            IOError, SyntaxError
+            IOError, SyntaxError, ValueError
         
         Examples:
             screenshot("saved.jpg")
@@ -835,7 +846,7 @@ class _Device(_BaseClient):
         elif format == 'raw':
             return r.content
         else:
-            raise RuntimeError("Invalid format " + format)
+            raise ValueError("Invalid format {}".format(format))
 
     @retry(RetryError, delay=1.0, tries=2)
     def dump_hierarchy(self, compressed=False, pretty=False) -> str:
@@ -1240,10 +1251,11 @@ class _AppMixIn:
             RuntimeError
         """
         target = "/data/local/tmp/_tmp.apk"
-        self.push(data, target)
+        self.push(data, target, show_progress=True)
+        logger.debug("pm install -rt %s", target)
         ret = self.shell(['pm', 'install', "-r", "-t", target])
-        if not ret.exit_code:
-            raise RuntimeError(ret.output)
+        if ret.exit_code != 0:
+            raise RuntimeError(ret.output, ret.exit_code)
 
     def wait_activity(self, activity, timeout=10):
         """ wait activity
