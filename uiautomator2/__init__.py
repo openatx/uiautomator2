@@ -784,7 +784,7 @@ class _Device(_BaseClient):
         Args:
             timeout (int): seconds
         """
-        r = self.post("/newCommandTimeout", data=str(int(timeout)))
+        r = self.http.post("/newCommandTimeout", data=str(int(timeout)))
         data = r.json()
         assert data['success'], data['description']
         logger.info("%s", data['description'])
