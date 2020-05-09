@@ -708,13 +708,14 @@ class _BaseClient(object):
                 filesize = int(r.headers.get("Content-Length", "0"))
                 fileobj = r.raw
             elif os.path.isfile(src):
-                fielsize = os.stat(src).st_size
+                filesize = os.path.getsize(src)
                 fileobj = open(src, 'rb')
             else:
                 raise IOError("file {!r} not found".format(src))
         else:
             assert hasattr(src, "read")
             fileobj = src
+
         try:
             r = self.http.post(pathname,
                           data={'mode': modestr},
@@ -1283,6 +1284,9 @@ class _AppMixIn:
             use_monkey (bool): use monkey command to start app when activity is not given
             wait (bool): wait until app started. default False
         """
+        if stop:
+            self.app_stop(package_name)
+            
         if use_monkey:
             self.shell([
                 'monkey', '-p', package_name, '-c',
