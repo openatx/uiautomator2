@@ -415,7 +415,7 @@ class _BaseClient(object):
 
     @property
     def wlan_ip(self):
-        ip = self.http.get("/wlan/ip", retry=False).text.strip()
+        ip = self.http.get("/wlan/ip").text.strip()
         if not re.match(r"\d+\.\d+\.\d+\.\d+", ip):
             return None
         return ip
