@@ -230,7 +230,9 @@ class _BaseClient(object):
             serial_or_url: device serialno or atx-agent base url
         
         Example:
-            08a3d291, http://10.0.0.1:7912
+            serial_or_url support param like
+            - 08a3d291
+            - http://10.0.0.1:7912
         """
         if not serial_or_url:
             # should only one usb device connected
@@ -243,13 +245,25 @@ class _BaseClient(object):
             self._serial = serial_or_url
             self._atx_agent_url = None
 
+            # fallback to wifi if USB disconnected
+            wlan_ip = self.wlan_ip
+            if wlan_ip:
+                self._atx_agent_url = f"http://{self.wlan_ip}:7912"
+
     def _get_atx_agent_url(self) -> str:
         """ get url for python client to connect """
         if not self._serial:
             return self._atx_agent_url
 
-        lport = self._adb_device.forward_port(7912)
-        return f"http://localhost:{lport}"
+        try:
+            lport = self._adb_device.forward_port(7912) # this method is so fast, only take 0.2ms
+            return f"http://localhost:{lport}"
+        except adbutils.AdbError as e:
+            if self._atx_agent_url:
+                # when device offline, use atx-agent-url
+                logger.info("USB disconnected, fallback to WiFi, ATX_AGENT_URL=%s", self._atx_agent_url)
+                return self._atx_agent_url
+            raise
 
     def _get_atx_agent_path(self) -> str:
         return "/data/local/tmp/atx-agent"
@@ -399,6 +413,13 @@ class _BaseClient(object):
     def info(self):
         return self.jsonrpc.deviceInfo(http_timeout=10)
 
+    @property
+    def wlan_ip(self):
+        ip = self.http.get("/wlan/ip", retry=False).text.strip()
+        if not re.match(r"\d+\.\d+\.\d+\.\d+", ip):
+            return None
+        return ip
+    
     #
     # app-uiautomator.apk jsonrpc methods
     #
@@ -744,6 +765,7 @@ class _BaseClient(object):
             if _mswindows:  # hotfix windows file size zero bug
                 f.close()
 
+
 class _Device(_BaseClient):
     __orientation = (  # device orientation
         (0, "natural", "n", 0), (1, "left", "l", 90),
@@ -770,10 +792,6 @@ class _Device(_BaseClient):
     @cached_property
     def device_info(self):
         return self.http.get("/info").json()
-
-    @property
-    def wlan_ip(self):
-        return self.http.get("/wlan/ip").text.strip()
 
     def window_size(self):
         """ return (width, height) """
@@ -1286,7 +1304,7 @@ class _AppMixIn:
         """
         if stop:
             self.app_stop(package_name)
-            
+
         if use_monkey:
             self.shell([
                 'monkey', '-p', package_name, '-c',
@@ -1463,8 +1481,13 @@ class _DeprecatedMixIn:
     # @deprecated(version="2.0.0", reason="You should use app_current instead")
     def address(self):
         return self._get_atx_agent_url()
+    
+    @deprecated(version="3.0.0", reason="You should use d.uiautomator.start() instead")
+    def service(self, name):
+        # just do not care about the name
+        return self.uiautomator
 
-    @deprecated(version="2.0.0", reason="You should use app_current instead")
+    @deprecated(version="3.0.0", reason="You should use app_current instead")
     def current_app(self):
         return self.app_current()
 
@@ -1473,25 +1496,25 @@ class _DeprecatedMixIn:
         return self.settings['wait_timeout']
 
     @wait_timeout.setter
-    @deprecated(version="2.0.0", reason="You should use implicitly_wait instead")
+    @deprecated(version="3.0.0", reason="You should use implicitly_wait instead")
     def wait_timeout(self, v: Union[int, float]):
         self.settings['wait_timeout'] = v
 
     @property
-    @deprecated(version="2.0.0", reason="This method will deprecated soon")
+    @deprecated(version="3.0.0", reason="This method will deprecated soon")
     def agent_alive(self):
         return self._is_agent_alive()
 
     @property
-    @deprecated(version="2.0.0")
+    @deprecated(version="3.0.0")
     def alive(self):
         return self._is_alive()
 
-    @deprecated(version="2.0.0", reason="method: healthcheck is useless now")
+    @deprecated(version="3.0.0", reason="method: healthcheck is useless now")
     def healthcheck(self):
         self.reset_uiautomator("healthcheck")
 
-    @deprecated(version="2.0.0", reason="method: session is useless now")
+    @deprecated(version="3.0.0", reason="method: session is useless now")
     def session(self, package_name=None, attach=False, launch_timeout=None, strict=False):
         if package_name is None:
             return self
