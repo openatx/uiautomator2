@@ -1036,7 +1036,14 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
     x, y = d(text="Settings").center()
     # x, y = d(text="Settings").center(offset=(0, 0)) # left-top x, y
     ```
-    
+
+* Take screenshot of widget
+
+    ```python
+    im = d(text="Settings").screenshot()
+    im.save("settings.jpg")
+    ```
+
 #### Perform the click action on the selected UI object
 * Perform click on the specific   object
 

@@ -1,9 +1,10 @@
+import logging
 import time
 import warnings
-import six
-import logging
 
 import requests
+import six
+from PIL import Image
 from retry import retry
 
 from .exceptions import UiObjectNotFoundError
@@ -126,6 +127,10 @@ class UiObject(object):
     def info(self):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
+    
+    def screenshot(self) -> Image.Image:
+        im = self.session.screenshot()
+        return im.crop(self.bounds())
 
     def click(self, timeout=None, offset=None):
         """
