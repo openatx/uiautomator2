@@ -1816,7 +1816,7 @@ def connect_adb_wifi(addr) -> Device:
     return connect_usb(addr)
 
 
-def connect_usb(serial: Optional[str] = None) -> Device:
+def connect_usb(serial: Optional[str] = None, init: bool=False) -> Device:
     """
     Args:
         serial (str): android device serial
@@ -1827,10 +1827,11 @@ def connect_usb(serial: Optional[str] = None) -> Device:
     Raises:
         ConnectError
     """
+    if init:
+        logger.warning("connect_usb, args init=True is deprecated since 2.8.0")
 
-    adb = adbutils.AdbClient()
     if not serial:
-        device = adb.device()
+        device = adbutils.adb.device()
         serial = device.serial
     return Device(serial)
 
