@@ -653,8 +653,8 @@ class Device(object):
                 print(
                     time.strftime('%H:%M:%S'), 'downloading %.1f%% [%s/%s]' %
                     (100.0 * written / total if total != 0 else 0,
-                     humanize.naturalsize(written, gnu=True),
-                     humanize.naturalsize(total, gnu=True)))
+                     natualsize(written),
+                     natualsize(total)))
 
             if message == 'downloading':
                 downloaded = False

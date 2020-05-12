@@ -73,20 +73,6 @@ HTTP_TIMEOUT = 60
 logger = setup_logger("uiautomator2", level=logging.DEBUG)
 _mswindows = (os.name == "nt")
 
-# class _ProgressBar(progress.bar.Bar):
-#     message = "progress"
-#     suffix = '%(percent)d%% [%(eta_td)s, %(speed)s]'
-
-#     @property
-#     def speed(self):
-#         return humanize.naturalsize(self.elapsed and self.index / self.elapsed,
-#                                     gnu=True) + '/s'
-
-# def log_print(s):
-#     thread_name = threading.current_thread().getName()
-#     print(thread_name + ": " + datetime.now().strftime('%H:%M:%S,%f')[:-3] +
-#           " " + s)
-
 
 class TimeoutRequestsSession(requests.Session):
     def __init__(self):

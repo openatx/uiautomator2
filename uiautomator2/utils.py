@@ -145,3 +145,21 @@ class ProgressReader:
         
     def read(self, size=-1):
         pass
+
+
+def natualsize(size: int):
+    _KB = 1 << 10
+    _MB = 1 << 20
+    _GB = 1 << 30
+
+    if size >= _GB:
+        return '{:.1f} GB'.format(size/_GB)
+    elif size >= _MB:
+        return '{:.1f} MB'.format(size/_MB)
+    else:
+        return '{:.1f} KB'.format(size/_KB)
+
+
+if __name__ == "__main__":
+    for n in (1, 10000, 10000000, 10000000000):
+        print(n, natualsize(n))

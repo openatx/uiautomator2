@@ -10,7 +10,6 @@ import logging
 import os
 import re
 
-import humanize
 import progress.bar
 import requests
 from logzero import logger

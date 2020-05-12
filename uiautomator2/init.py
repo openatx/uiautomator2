@@ -9,7 +9,6 @@ import shutil
 import tarfile
 
 import adbutils
-import humanize
 import progress.bar
 import requests
 from logzero import logger, setup_logger
@@ -17,6 +16,7 @@ from retry import retry
 
 from uiautomator2.version import (__apk_version__, __atx_agent_version__,
                                   __jar_version__, __version__)
+from uiautomator2.utils import natualsize
 
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
 
@@ -30,11 +30,11 @@ class DownloadBar(progress.bar.PixelBar):
 
     @property
     def total_size(self):
-        return humanize.naturalsize(self.max, gnu=True)
+        return natualsize(self.max)
 
     @property
     def current_size(self):
-        return humanize.naturalsize(self.index, gnu=True)
+        return natualsize(self.index)
 
 
 def gen_cachepath(url: str) -> str:

@@ -296,7 +296,7 @@ class Perf(object):
         import matplotlib.ticker as ticker
         import datetime
         import os
-        import humanize
+        from uiautomator2.utils import natualsize
 
         src = src or self.csv_output
         if not os.path.exists(target_dir):
@@ -307,8 +307,8 @@ class Perf(object):
 
         timestr = time.strftime("%Y-%m-%d %H:%M")
         # network
-        rx_str = humanize.naturalsize(data['rxBytes'].sum(), gnu=True)
-        tx_str = humanize.naturalsize(data['txBytes'].sum(), gnu=True)
+        rx_str = natualsize(data['rxBytes'].sum())
+        tx_str = natualsize(data['txBytes'].sum())
         plt.subplot(2, 1, 1)
         plt.plot(data['time'], data['rxBytes'] / 1024, label='all')
         plt.plot(data['time'], data['rxTcpBytes'] / 1024, 'r--', label='tcp')
