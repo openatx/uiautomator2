@@ -1228,12 +1228,26 @@ d.watcher.reset()
 另外文档还是有很多没有写，推荐直接去看源码[watcher.py](uiautomator2/watcher.py)
 
 ### Global settings
-```python
-# set delay 1.5s after each UI click and click
-d.click_post_delay = 1.5 # default no delay
+目前已全部集中到 `d.settings` 中，根据后期的需求配置可能会有增减。
 
-# set default element wait timeout (seconds)
-d.wait_timeout = 30.0 # default 20.0
+
+
+```python
+print(d.settings)
+{'operation_delay': (0, 0),
+ 'operation_delay_methods': ['click', 'swipe'],
+ 'wait_timeout': 20.0,
+ 'xpath_debug': False}
+
+# 配置点击前延时0.5s，点击后延时1s
+d.settings['operation_delay'] = (.5, 1)
+```
+
+对于随着版本升级，设置过期的配置时，会提示Deprecated，但是不会抛异常。
+
+```bash
+>>> d.settings['click_before_delay'] = 1  
+[W 200514 14:55:59 settings:72] d.settings[click_before_delay] deprecated: Use operation_delay instead
 ```
 
 **uiautomator恢复方式设置**
@@ -1242,9 +1256,9 @@ d.wait_timeout = 30.0 # default 20.0
 不可见的应用实际上是一个测试包，包含有所有的测试代码，核心的测试服务也是通过其启动的。
 但是运行的时候，系统却需要那个小黄车一直在运行（在后台运行也可以）。一旦小黄车应用被杀，后台运行的测试服务也很快的会被杀掉。就算什么也不做，应用应用在后台，也会很快被系统回收掉。（这里希望高手指点一下，如何才能不依赖小黄车应用，感觉理论上是可以的，但是目前我还不会）。
 
-让小黄车在后台运行有两种方式，一种启动应用后，放到后台（默认）。另外通过`am startservice`启动一个后台服务也行。
+~~让小黄车在后台运行有两种方式，一种启动应用后，放到后台（默认）。另外通过`am startservice`启动一个后台服务也行。~~
 
-通过 `d.settings["uiautomator_runtest_app_background"] = True` 可以调整该行为。True代表启动应用，False代表启动服务。
+~~通过 `d.settings["uiautomator_runtest_app_background"] = True` 可以调整该行为。True代表启动应用，False代表启动服务。~~
 
 UiAutomator中的超时设置(隐藏方法)
 

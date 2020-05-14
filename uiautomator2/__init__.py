@@ -916,16 +916,19 @@ class _Device(_BaseClient):
 
 
     @contextlib.contextmanager
-    def _slow_operation(self, operation_name: str = None):
-        _before = self.settings['click_before_delay']
-        if _before:
-            time.sleep(_before)
-            logger.debug(f"{operation_name} pre-sleep {_before}s")
+    def _operation_delay(self, operation_name: str = None):
+        before, after = self.settings['operation_delay']
+        # 排除不要求延迟的方法
+        if operation_name not in self.settings['operation_delay_methods']:
+            before, after = 0, 0
+
+        if before:
+            logger.debug(f"operation [{operation_name}] pre-delay {before}s")
+            time.sleep(before)
         yield
-        _after = self.settings['click_after_delay']
-        if _after:
-            time.sleep(_after)
-            logger.debug(f"{operation_name} post-sleep {_after}s")
+        if after:
+            logger.debug(f"operation [{operation_name}] post-delay {after}s")
+            time.sleep(after)
 
     @property
     def touch(self):
@@ -966,7 +969,7 @@ class _Device(_BaseClient):
 
     def click(self, x: Union[float, int], y: Union[float, int]):
         x, y = self.pos_rel2abs(x, y)
-        with self._slow_operation("click"):
+        with self._operation_delay("click"):
             self.jsonrpc.click(x, y)
     
     def double_click(self, x, y, duration=0.1):
@@ -977,6 +980,15 @@ class _Device(_BaseClient):
         self.touch.down(x, y).up(x, y)
         time.sleep(duration)
         self.click(x, y)  # use click last is for htmlreport
+
+    def long_click(self, x, y, duration: float=.5):
+        '''long click at arbitrary coordinates.
+        Args:
+            duration (float): seconds of pressed
+        '''
+        x, y = self.pos_rel2abs(x, y)
+        with self._operation_delay("click"):
+            return self.touch.down(x, y).sleep(duration).up(x, y)
 
     def swipe(self, fx, fy, tx, ty, duration=0.1, steps=None):
         """
@@ -998,7 +1010,8 @@ class _Device(_BaseClient):
         tx, ty = rel2abs(tx, ty)
         if not steps:
             steps = int(duration * 200)
-        return self.jsonrpc.swipe(fx, fy, tx, ty, steps)
+        with self._operation_delay("swipe"):
+            return self.jsonrpc.swipe(fx, fy, tx, ty, steps)
 
     def swipe_points(self, points, duration=0.5):
         """
@@ -1022,7 +1035,8 @@ class _Device(_BaseClient):
         rel2abs = self.pos_rel2abs
         sx, sy = rel2abs(sx, sy)
         ex, ey = rel2abs(ex, ey)
-        return self.jsonrpc.drag(sx, sy, ex, ey, int(duration * 200))
+        with self._operation_delay("drag"):
+            return self.jsonrpc.drag(sx, sy, ex, ey, int(duration * 200))
 
     def press(self, key: Union[int, str], meta=None):
         """
@@ -1031,27 +1045,12 @@ class _Device(_BaseClient):
             delete(or del), recent(recent apps), volume_up, volume_down,
             volume_mute, camera, power.
         """
-        with self._slow_operation("press"):
+        with self._operation_delay("press"):
             if isinstance(key, int):
                 return self.jsonrpc.pressKeyCode(
                     key, meta) if meta else self.server.jsonrpc.pressKeyCode(key)
             else:
                 return self.jsonrpc.pressKey(key)
-
-    def long_click(self, x, y, duration: float=.5):
-        '''long click at arbitrary coordinates.
-        Args:
-            duration (float): seconds of pressed
-        '''
-        x, y = self.pos_rel2abs(x, y)
-        return self.touch.down(x, y).sleep(duration).up(x, y)
-
-    def drag(self, sx, sy, ex, ey, duration=0.5):
-        '''Swipe from one point to another point.'''
-        rel2abs = self.pos_rel2abs
-        sx, sy = rel2abs(sx, sy)
-        ex, ey = rel2abs(ex, ey)
-        return self.jsonrpc.drag(sx, sy, ex, ey, int(duration * 200))
 
     def screen_on(self):
         self.jsonrpc.wakeUp()
