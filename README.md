@@ -1241,6 +1241,10 @@ print(d.settings)
 
 # 配置点击前延时0.5s，点击后延时1s
 d.settings['operation_delay'] = (.5, 1)
+
+# 修改延迟生效的方法
+# 其中 double_click, long_click 都对应click
+d.settings['operation_delay_methods'] = ['click', 'swipe', 'drag', 'press']
 ```
 
 对于随着版本升级，设置过期的配置时，会提示Deprecated，但是不会抛异常。
