@@ -51,7 +51,7 @@ class Watcher():
         self._watching = True
         th = threading.Thread(name="watcher",
                               target=self._watch_forever,
-                              args=(interval, ))
+                              args=(interval,))
         th.daemon = True
         th.start()
         return th
@@ -72,13 +72,13 @@ class Watcher():
         self._watching = False
         self._watch_stopped.clear()
         self._watch_stop_event.clear()
-    
+
     def reset(self):
         """ stop watching and remove all watchers """
         if self._watching:
             self.stop()
         self.remove()
-    
+
     def running(self) -> bool:
         return self._watching
 
@@ -100,7 +100,7 @@ class Watcher():
         Args:
             source: hierarchy content
         """
-        if self.triggering: # avoid to run watcher when run watcher
+        if self.triggering:  # avoid to run watcher when run watcher
             return False
         return self._run_watchers(source=source)
 
@@ -112,6 +112,8 @@ class Watcher():
         source = source or self._dump_hierarchy()
 
         for h in self._watchers:
+            if h['_triggering'] >= h['times']:
+                continue
             last_selector = None
             for xpath in h['xpaths']:
                 last_selector = self._xpath(xpath, source)
@@ -120,8 +122,10 @@ class Watcher():
                     break
 
             if last_selector:
-                self.logger.info("XPath(hook:%s): %s", h['name'], h['xpaths'])
                 self._triggering = True
+                h['_triggering'] += 1
+                self.logger.info("XPath(hook:%s): %s, total %d, time %d", h['name'], h['xpaths'],h['times'],h['_triggering'] )
+
                 cb = h['callback']
                 defaults = {
                     "selector": last_selector,
@@ -130,13 +134,12 @@ class Watcher():
                 }
                 st = inspect.signature(cb)
                 kwargs = {
-                    key: defaults[key]
-                    for key in st.parameters.keys() if key in defaults
+                    key: defaults[key] for key in st.parameters.keys() if key in defaults
                 }
                 ba = st.bind(**kwargs)
                 ba.apply_defaults()
                 try:
-                    cb(*ba.args, **ba.kwargs)
+                    cb(*(ba.args + h['args']) , **dict(ba.kwargs, **h['kwargs']))
                 except Exception as e:
                     self.logger.warning("watchers exception: %s", e)
                 finally:
@@ -144,9 +147,9 @@ class Watcher():
                 return True
         return False
 
-    def __call__(self, name: str) -> "XPathWatcher":
-        return XPathWatcher(self, None, name)
-    
+    def __call__(self, name: str, times: int = 5) -> "XPathWatcher":
+        return XPathWatcher(self, None, name, times=times)
+
     def remove(self, name=None):
         """ remove watcher """
         if name is None:
@@ -159,27 +162,33 @@ class Watcher():
 
 
 class XPathWatcher():
-    def __init__(self, parent: Watcher, xpath: str, name: str = ''):
+    def __init__(self, parent: Watcher, xpath: str, name: str = '', times=5):
         self._name = name
         self._parent = parent
         self._xpath_list = [xpath] if xpath else []
+        self.times = times
 
     def when(self, xpath=None):
         self._xpath_list.append(xpath)
         return self
 
-    def call(self, func):
+    def call(self, func, *args, **kwargs):
         self._parent._watchers.append({
             "name": self._name,
             "xpaths": self._xpath_list,
             "callback": func,
+            "times" : self.times, # 记录一共可以触发多少次
+            "_triggering" : 0,  # 记录当前已经触发的次数
+            "args": args,
+            "kwargs":kwargs,
         })
 
     def click(self):
         def _inner_click(selector):
             selector.get_last_match().click()
+
         self.call(_inner_click)
-    
+
     def press(self, key):
         """
         key (str): on of
@@ -187,6 +196,8 @@ class XPathWatcher():
             "search", "enter", "delete", "del", "recent", "volume_up",
             "menu", "volume_down", "volume_mute", "camera", "power")
         """
+
         def _inner_press(d: "uiautomator2.Device"):
             d.press(key)
+
         self.call(_inner_press)

@@ -1200,6 +1200,20 @@ def click_callback(d: u2.Device):
     d.xpath("确定").click() # 在回调中调用不会再次触发watcher
 
 d.xpath("继续").click() # 使用d.xpath检查元素的时候，会触发watcher（目前最多触发5次）
+
+
+def permission_call_func(*args, **kwargs ):
+    d = args[0]
+    for item in args[1:]:
+        if d(**{item[0]:item[1]}).exists:
+            d(**{item[0]:item[1]}).click()
+    return True
+
+
+# 注册名为allowin的监控，当出现button1和允许的时候，text为不再提示和允许出现最多点击5次
+d.watcher('allowin', 5).when("//*[@resource-id='android:id/button1']").when("允许").call(
+                permission_call_func, d, ('text', '不再提示'), ('text', '允许'))
+
 ```
 
 监控操作
