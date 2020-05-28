@@ -1121,9 +1121,6 @@ class _Device(_BaseClient):
         v = v.upper()
         self.shell("input keyevent " + v)
 
-    def __call__(self, **kwargs):
-        return UiObject(self, Selector(**kwargs))
-
     @cached_property
     def serial(self) -> str:
         """
@@ -1194,7 +1191,10 @@ class _Device(_BaseClient):
             'com.github.uiautomator/.IdentifyActivity', '-e', 'theme', theme
         ])
 
+    def __call__(self, **kwargs):
+        return UiObject(self, Selector(**kwargs))
 
+        
 class _AppMixIn:
     def _pidof_app(self, package_name):
         """

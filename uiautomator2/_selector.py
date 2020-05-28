@@ -210,7 +210,7 @@ class UiObject(object):
         except UiObjectNotFoundError:
             return False
 
-    def long_click(self, duration=None, timeout=None):
+    def long_click(self, duration: float = 0.5, timeout=None):
         """
         Args:
             duration (float): seconds of pressed
