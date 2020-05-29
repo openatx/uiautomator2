@@ -77,16 +77,22 @@ _mswindows = (os.name == "nt")
 class TimeoutRequestsSession(requests.Session):
     def __init__(self):
         super(TimeoutRequestsSession, self).__init__()
-        retries = Retry(total=3, connect=3, backoff_factor=0.5)
         # refs: https://stackoverflow.com/questions/33895739/python-requests-cant-load-any-url-remote-end-closed-connection-without-respo
         # refs: https://stackoverflow.com/questions/15431044/can-i-set-max-retries-for-requests-request
-        adapter = requests.adapters.HTTPAdapter(max_retries=retries)
-        self.mount("http://", adapter)
-        self.mount("https://", adapter)
+        
+        # Is retry necessary, maybe not, so I closed it at 2020/05/29
+        # retries = Retry(total=3, connect=3, backoff_factor=0.5)
+        # adapter = requests.adapters.HTTPAdapter(max_retries=retries)
+        # self.mount("http://", adapter)
+        # self.mount("https://", adapter)
 
     def request(self, method, url, **kwargs):
+        # Init timeout and set connect-timeout to 3s
         if 'timeout' not in kwargs:
-            kwargs['timeout'] = HTTP_TIMEOUT
+            kwargs['timeout'] = (3, HTTP_TIMEOUT)
+        if isinstance(kwargs['timeout'], (int, float)):
+            kwargs['timeout'] = (3, kwargs['timeout'])
+
         verbose = hasattr(self, 'debug') and self.debug
         if verbose:
             data = kwargs.get('data') or '""'
@@ -146,7 +152,7 @@ class TimeoutRequestsSession(requests.Session):
 #     Device.plugins().clear()
 
 ShellResponse = namedtuple("ShellResponse", ("output", "exit_code"))
-_production = (os.environ.get("TMQ") == "true")
+_tmq_production = (os.environ.get("TMQ") == "true")
 
 
 class _Service(object):
@@ -195,14 +201,15 @@ class _AgentRequestSession(TimeoutRequestsSession):
         # self.debug = True
 
     def request(self, method, url, **kwargs):
-        url = self.__client.path2url(url)
         retry = kwargs.pop("retry", True)
         try:
+            url = self.__client.path2url(url) # may raise adbutils.AdbError
             return super().request(method, url, **kwargs)
-        except requests.ConnectionError:
+        except (requests.ConnectionError, adbutils.AdbError):
             if not retry:
                 raise
             self.__client._prepare_atx_agent()
+            url = self.__client.path2url(url)
             return super().request(method, url, **kwargs)
 
 
@@ -245,7 +252,7 @@ class _BaseClient(object):
             lport = self._adb_device.forward_port(7912) # this method is so fast, only take 0.2ms
             return f"http://localhost:{lport}"
         except adbutils.AdbError as e:
-            if self._atx_agent_url:
+            if not _tmq_production and self._atx_agent_url:
                 # when device offline, use atx-agent-url
                 logger.info("USB disconnected, fallback to WiFi, ATX_AGENT_URL=%s", self._atx_agent_url)
                 return self._atx_agent_url
@@ -271,7 +278,7 @@ class _BaseClient(object):
         check running -> push binary -> launch
         """
         assert self._serial, "Device serialno is required"
-        timeout = 70.0 if _production else 0.0
+        timeout = 70.0 if _tmq_production else 0.0
         _d = self._wait_for_device(self._serial, timeout=timeout)
         if not _d:
             raise RuntimeError("USB device %s is offline" % self._serial)
@@ -296,11 +303,28 @@ class _BaseClient(object):
         self._adb_shell([self._get_atx_agent_path(), "server", "-d"],
                         timeout=10)
         _initer.check_atx_agent_version()
-        # self.logger.info("Install atx-agent %s", __atx_agent_version__)
-        # self.push_url(self.atx_agent_url, tgz=True, extract_name="atx-agent")
-        # args = [self.atx_agent_path, "server", "--nouia", "-d"]
-        # self._adb_shell([self.atx_agent_path, "server", "--stop"])
-        # self._adb_shell(args)
+
+    def _wait_for_device(self, serial: str, timeout: float = 70.0) -> adbutils.AdbDevice:
+        """
+        wait for device came online
+
+        Returns:
+            adbutils.AdbDevice or None
+        """
+        for d in adbutils.adb.device_list():
+            if d.serial == serial:
+                return d
+
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            logger.info("wait for device(%s), left(%.1fs)", serial,
+                        deadline - time.time())
+            for d in adbutils.adb.device_list():
+                if d.serial == serial:
+                    logger.info("device(%s) came online", serial)
+                    return d
+            time.sleep(2.0)
+        return None
 
     def _adb_shell(self, cmdargs: Union[list, Tuple[str]], timeout=None):
         """ run command through adb command """
@@ -318,35 +342,6 @@ class _BaseClient(object):
             self.push(apk_path, target_path)
             logger.debug("pm install %s", target_path)
             self.shell(['pm', 'install', '-r', '-t', target_path])
-
-    def _wait_for_device(self, serial: str, timeout: float = 70.0):
-        """
-        wait for device came online
-        """
-        deadline = time.time() + timeout
-        first = True
-
-        device = None
-        while True:
-            for d in adbutils.adb.device_list():
-                if d.serial == serial:
-                    device = d
-                    break
-            if device:
-                break
-
-            first = False
-            logger.info("wait for device(%s), left(%.1fs)", serial,
-                        deadline - time.time())
-
-            if time.time() < deadline:
-                break
-            time.sleep(2.0)
-
-        if not first and device:
-            logger.info("device(%s) came online", serial)
-
-        return device
 
     def shell(self, cmdargs: Union[str, List[str]], stream=False, timeout=60):
         """
