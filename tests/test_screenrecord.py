@@ -6,7 +6,8 @@ import uiautomator2 as u2
 import pytest
 import imageio
 
-@pytest.mark.skip("Too long")
+
+# @pytest.mark.skip("Too long")
 def test_screenrecord(d: u2.Device):
     with pytest.raises(RuntimeError):
         d.screenrecord.stop()
@@ -17,7 +18,7 @@ def test_screenrecord(d: u2.Device):
     with pytest.raises(RuntimeError):
         d.screenrecord("output2.mp4")
 
-    time.sleep(5.0)
+    time.sleep(3.0)
     d.screenrecord.stop()
     print("Time used:", time.time() - start)
 
