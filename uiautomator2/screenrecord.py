@@ -1,6 +1,7 @@
 # coding: utf-8
 #
 
+import re
 import time
 import threading
 
@@ -32,14 +33,16 @@ class Screenrecord:
         self._stop_event = threading.Event()
         self._done_event = threading.Event()
         self._filename = None
-        self._fps = 20 # initial value
+        self._fps = 20  # initial value
 
     def __call__(self, *args, **kwargs):
         self._start(*args, **kwargs)
         return self
 
     def _iter_minicap(self):
-        ws = create_connection(self._d.path2url("/minicap", scheme="ws"))
+        http_url = self._d.path2url("/minicap")
+        ws_url = re.sub("^http", "ws", http_url)
+        ws = create_connection(ws_url)
         try:
             while not self._stop_event.is_set():
                 msg = ws.recv()
@@ -90,7 +93,7 @@ class Screenrecord:
         for raw in raw_iter:
             elapsed = time.time() - fstart
             fcount = int(elapsed * self._fps)
-            for _ in range(fcount-findex):
+            for _ in range(fcount - findex):
                 yield raw
             findex = fcount
 
@@ -112,7 +115,7 @@ class Screenrecord:
         assert isinstance(fps, int)
         self._filename = filename
         self._fps = fps
-        
+
         self._running = True
         th = threading.Thread(name="image2video", target=self._run)
         th.daemon = True
