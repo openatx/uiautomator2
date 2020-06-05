@@ -190,6 +190,9 @@ class _AgentRequestSession(TimeoutRequestsSession):
                 self.__client._is_agent_alive(): 
                 raise
 
+        if not self.__client._serial:
+            raise EnvironmentError("http-request to atx-agent error, can only recover from USB")
+
         logger.warning("atx-agent has something wrong, auto recovering")
         # ReadTimeout: sometime means atx-agent is running but not responsing
         # one reason is futex_wait_queue: https://stackoverflow.com/questions/9801256/app-hangs-on-futex-wait-queue-me-every-a-couple-of-minutes
