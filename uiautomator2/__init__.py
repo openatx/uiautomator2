@@ -81,7 +81,7 @@ class TimeoutRequestsSession(requests.Session):
         super(TimeoutRequestsSession, self).__init__()
         # refs: https://stackoverflow.com/questions/33895739/python-requests-cant-load-any-url-remote-end-closed-connection-without-respo
         # refs: https://stackoverflow.com/questions/15431044/can-i-set-max-retries-for-requests-request
-        
+
         # Is retry necessary, maybe not, so I closed it at 2020/05/29
         # retries = Retry(total=3, connect=3, backoff_factor=0.5)
         # adapter = requests.adapters.HTTPAdapter(max_retries=retries)
@@ -129,7 +129,11 @@ class TimeoutRequestsSession(requests.Session):
 
 
 ShellResponse = namedtuple("ShellResponse", ("output", "exit_code"))
-_tmq_production = (os.environ.get("TMQ") == "true")
+
+
+def _is_production():
+    # support change to production use: os.environ['TMQ'] = 'true'
+    return (os.environ.get("TMQ") == "true")
 
 
 class _Service(object):
@@ -179,24 +183,27 @@ class _AgentRequestSession(TimeoutRequestsSession):
     def request(self, method, url, **kwargs):
         retry = kwargs.pop("retry", True)
         try:
-            url = self.__client.path2url(url) # may raise adbutils.AdbError when device offline
+            url = self.__client.path2url(
+                url)  # may raise adbutils.AdbError when device offline
             return super().request(method, url, **kwargs)
-        except (requests.ConnectionError, requests.ReadTimeout, adbutils.AdbError) as e:
+        except (requests.ConnectionError, requests.ReadTimeout,
+                adbutils.AdbError) as e:
             if not retry:
                 raise
-            
+
             # if atx-agent is already running, just raise error
             if isinstance(e, requests.RequestException) and \
-                self.__client._is_agent_alive(): 
+                self.__client._is_agent_alive():
                 raise
 
         if not self.__client._serial:
-            raise EnvironmentError("http-request to atx-agent error, can only recover from USB")
+            raise EnvironmentError(
+                "http-request to atx-agent error, can only recover from USB")
 
         logger.warning("atx-agent has something wrong, auto recovering")
         # ReadTimeout: sometime means atx-agent is running but not responsing
         # one reason is futex_wait_queue: https://stackoverflow.com/questions/9801256/app-hangs-on-futex-wait-queue-me-every-a-couple-of-minutes
-        
+
         # fix atx-agent and request again
         self.__client._prepare_atx_agent()
         url = self.__client.path2url(url)
@@ -241,12 +248,15 @@ class _BaseClient(object):
             return self._atx_agent_url
 
         try:
-            lport = self._adb_device.forward_port(7912) # this method is so fast, only take 0.2ms
+            lport = self._adb_device.forward_port(
+                7912)  # this method is so fast, only take 0.2ms
             return f"http://localhost:{lport}"
         except adbutils.AdbError as e:
-            if not _tmq_production and self._atx_agent_url:
+            if not _is_production() and self._atx_agent_url:
                 # when device offline, use atx-agent-url
-                logger.info("USB disconnected, fallback to WiFi, ATX_AGENT_URL=%s", self._atx_agent_url)
+                logger.info(
+                    "USB disconnected, fallback to WiFi, ATX_AGENT_URL=%s",
+                    self._atx_agent_url)
                 return self._atx_agent_url
             raise
 
@@ -296,7 +306,7 @@ class _BaseClient(object):
             _initer.start_atx_agent()
         _initer.check_atx_agent_version()
 
-    def _wait_for_device(self, timeout = None) -> adbutils.AdbDevice:
+    def _wait_for_device(self, timeout=None) -> adbutils.AdbDevice:
         """
         wait for device came online
 
@@ -304,7 +314,7 @@ class _BaseClient(object):
             adbutils.AdbDevice or None
         """
         if not timeout:
-            timeout = WAIT_FOR_DEVICE_TIMEOUT if _tmq_production else 0.0
+            timeout = WAIT_FOR_DEVICE_TIMEOUT if _is_production() else 0.0
 
         for d in adbutils.adb.device_list():
             if d.serial == self._serial:
@@ -395,7 +405,7 @@ class _BaseClient(object):
         if not re.match(r"\d+\.\d+\.\d+\.\d+", ip):
             return None
         return ip
-    
+
     #
     # app-uiautomator.apk jsonrpc methods
     #
@@ -555,7 +565,7 @@ class _BaseClient(object):
 
         if depth > 0:
             logger.info("restart-uiautomator since \"%s\"", reason)
-        
+
         # Note:
         # atx-agent check has moved to _AgentRequestSession
         # If code goes here, it means atx-agent is fine.
@@ -974,7 +984,7 @@ class _Device(_BaseClient):
         x, y = self.pos_rel2abs(x, y)
         with self._operation_delay("click"):
             self.jsonrpc.click(x, y)
-    
+
     def double_click(self, x, y, duration=0.1):
         """
         double click position
@@ -1197,7 +1207,7 @@ class _Device(_BaseClient):
     def __call__(self, **kwargs):
         return UiObject(self, Selector(**kwargs))
 
-        
+
 class _AppMixIn:
     def _pidof_app(self, package_name):
         """
@@ -1469,7 +1479,7 @@ class _DeprecatedMixIn:
     # @deprecated(version="2.0.0", reason="You should use app_current instead")
     def address(self):
         return self._get_atx_agent_url()
-    
+
     @deprecated(version="3.0.0", reason="You should use d.uiautomator.start() instead")
     def service(self, name):
         # just do not care about the name
