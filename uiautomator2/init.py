@@ -372,11 +372,14 @@ class Initer():
         if self.is_atx_agent_outdated():
             self._install_atx_agent(server_addr)
 
-        # start atx-agent
-        self.shell(self.atx_agent_path, 'server', '--nouia', '-d')
+        self.start_atx_agent()
+
         self.logger.info("Check atx-agent version")
         self.check_atx_agent_version()
         print("Successfully init %s" % self._device)
+    
+    def start_atx_agent(self):
+        self.shell(self.atx_agent_path, 'server', '--nouia', '-d')
 
     @retry(
         (requests.ConnectionError, requests.ReadTimeout, requests.HTTPError),

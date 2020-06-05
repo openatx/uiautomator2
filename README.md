@@ -274,13 +274,6 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 
     
 # API Documents
-## Global settings (全局配置）
-This part contains some global settings
-
-```python
-d.settings['xpath_debug'] = True # 开启xpath插件的调试功能
-d.settings['wait_timeout'] = 20.0 # 默认控件等待时间（原生操作，xpath插件的等待时间）
-```
 
 ### New command timeout
 How long (in seconds) will wait for a new command from the client before assuming the client quit and ending the uiautomator service （Default 3 minutes）
@@ -1228,9 +1221,15 @@ d.watcher.reset()
 另外文档还是有很多没有写，推荐直接去看源码[watcher.py](uiautomator2/watcher.py)
 
 ### Global settings
-目前已全部集中到 `d.settings` 中，根据后期的需求配置可能会有增减。
 
+```python
+d.HTTP_TIMEOUT = 60 # 默认值60s, http默认请求超时时间
 
+# 当设备掉线时，等待设备在线时长，仅当TMQ=true时有效，支持通过环境变量 WAIT_FOR_DEVICE_TIMEOUT 设置
+d.WAIT_FOR_DEVICE_TIMEOUT = 70 
+```
+
+其他的配置，目前已大部分集中到 `d.settings` 中，根据后期的需求配置可能会有增减。
 
 ```python
 print(d.settings)
@@ -1245,6 +1244,9 @@ d.settings['operation_delay'] = (.5, 1)
 # 修改延迟生效的方法
 # 其中 double_click, long_click 都对应click
 d.settings['operation_delay_methods'] = ['click', 'swipe', 'drag', 'press']
+
+d.settings['xpath_debug'] = True # 开启xpath插件的调试日志
+d.settings['wait_timeout'] = 20.0 # 默认控件等待时间（原生操作，xpath插件的等待时间）
 ```
 
 对于随着版本升级，设置过期的配置时，会提示Deprecated，但是不会抛异常。

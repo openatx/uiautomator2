@@ -68,6 +68,8 @@ if six.PY2:
 
 DEBUG = False
 HTTP_TIMEOUT = 60
+WAIT_FOR_DEVICE_TIMEOUT = int(os.getenv("WAIT_FOR_DEVICE_TIMEOUT", 70))
+
 # logger = logging.getLogger("uiautomator2")
 
 logger = setup_logger("uiautomator2", level=logging.DEBUG)
@@ -126,31 +128,6 @@ class TimeoutRequestsSession(requests.Session):
             return resp
 
 
-# def plugin_register(name, plugin, *args, **kwargs):
-#     """
-#     Add plugin into Device
-
-#     Args:
-#         name: string
-#         plugin: class or function which take d as first parameter
-
-#     Example:
-#         def upload_screenshot(d):
-#             def inner():
-#                 d.screenshot("tmp.jpg")
-#                 # use requests.post upload tmp.jpg
-#             return inner
-
-#         plugin_register("upload_screenshot", save_screenshot)
-
-#         d = u2.connect()
-#         d.ext_upload_screenshot()
-#     """
-#     Device.plugins()[name] = (plugin, args, kwargs)
-
-# def plugin_clear():
-#     Device.plugins().clear()
-
 ShellResponse = namedtuple("ShellResponse", ("output", "exit_code"))
 _tmq_production = (os.environ.get("TMQ") == "true")
 
@@ -198,19 +175,29 @@ class _AgentRequestSession(TimeoutRequestsSession):
     def __init__(self, clnt: "_BaseClient"):
         super().__init__()
         self.__client = clnt
-        # self.debug = True
 
     def request(self, method, url, **kwargs):
         retry = kwargs.pop("retry", True)
         try:
-            url = self.__client.path2url(url) # may raise adbutils.AdbError
+            url = self.__client.path2url(url) # may raise adbutils.AdbError when device offline
             return super().request(method, url, **kwargs)
-        except (requests.ConnectionError, adbutils.AdbError):
+        except (requests.ConnectionError, requests.ReadTimeout, adbutils.AdbError) as e:
             if not retry:
                 raise
-            self.__client._prepare_atx_agent()
-            url = self.__client.path2url(url)
-            return super().request(method, url, **kwargs)
+            
+            # if atx-agent is already running, just raise error
+            if isinstance(e, requests.RequestException) and \
+                self.__client._is_agent_alive(): 
+                raise
+
+        logger.warning("atx-agent has something wrong, auto recovering")
+        # ReadTimeout: sometime means atx-agent is running but not responsing
+        # one reason is futex_wait_queue: https://stackoverflow.com/questions/9801256/app-hangs-on-futex-wait-queue-me-every-a-couple-of-minutes
+        
+        # fix atx-agent and request again
+        self.__client._prepare_atx_agent()
+        url = self.__client.path2url(url)
+        return super().request(method, url, **kwargs)
 
 
 class _BaseClient(object):
@@ -234,14 +221,16 @@ class _BaseClient(object):
         if re.match(r"^https?://", serial_or_url):
             self._serial = None
             self._atx_agent_url = serial_or_url
-        else:
-            self._serial = serial_or_url
-            self._atx_agent_url = None
+            return
 
-            # fallback to wifi if USB disconnected
-            wlan_ip = self.wlan_ip
-            if wlan_ip:
-                self._atx_agent_url = f"http://{self.wlan_ip}:7912"
+        # USB 连接
+        self._serial = serial_or_url
+        self._atx_agent_url = None
+
+        # fallback to wifi if USB disconnected
+        wlan_ip = self.wlan_ip
+        if wlan_ip:
+            self._atx_agent_url = f"http://{wlan_ip}:7912"
 
     def _get_atx_agent_url(self) -> str:
         """ get url for python client to connect """
@@ -278,50 +267,53 @@ class _BaseClient(object):
         check running -> push binary -> launch
         """
         assert self._serial, "Device serialno is required"
-        timeout = 70.0 if _tmq_production else 0.0
-        _d = self._wait_for_device(self._serial, timeout=timeout)
+        _d = self._wait_for_device()
         if not _d:
             raise RuntimeError("USB device %s is offline" % self._serial)
-
-        # launch atx-agent is not launched
+        logger.debug("device %s is online", self._serial)
+        version_url = self.path2url("/version")
         try:
-            version = self.http.get(
-                "/version", retry=False).text  # retry to prevent dead loop
+            version = requests.get(version_url, timeout=3).text
             if version != __atx_agent_version__:
                 raise EnvironmentError("atx-agent need upgrade")
         except (requests.RequestException, EnvironmentError):
             self._setup_atx_agent()
 
-        return self._get_atx_agent_url()
+        # return self._get_atx_agent_url()
 
     def _setup_atx_agent(self):
         # check running
+        self._kill_process_by_name("atx-agent", use_adb=True)
+
         from uiautomator2 import init
         _initer = init.Initer(self._adb_device)
         if not _initer.check_install():
             _initer.install()
-        self._adb_shell([self._get_atx_agent_path(), "server", "-d"],
-                        timeout=10)
+        else:
+            _initer.start_atx_agent()
         _initer.check_atx_agent_version()
 
-    def _wait_for_device(self, serial: str, timeout: float = 70.0) -> adbutils.AdbDevice:
+    def _wait_for_device(self, timeout = None) -> adbutils.AdbDevice:
         """
         wait for device came online
 
         Returns:
             adbutils.AdbDevice or None
         """
+        if not timeout:
+            timeout = WAIT_FOR_DEVICE_TIMEOUT if _tmq_production else 0.0
+
         for d in adbutils.adb.device_list():
-            if d.serial == serial:
+            if d.serial == self._serial:
                 return d
 
         deadline = time.time() + timeout
         while time.time() < deadline:
-            logger.info("wait for device(%s), left(%.1fs)", serial,
+            logger.info("wait for device(%s), left(%.1fs)", self._serial,
                         deadline - time.time())
             for d in adbutils.adb.device_list():
-                if d.serial == serial:
-                    logger.info("device(%s) came online", serial)
+                if d.serial == self._serial:
+                    logger.info("device(%s) came online", self._serial)
                     return d
             time.sleep(2.0)
         return None
@@ -515,10 +507,11 @@ class _BaseClient(object):
 
     def _is_agent_alive(self):
         try:
-            r = self.http.get("/version", timeout=2, retry=False)
+            url = self.path2url("/version")
+            r = requests.get(url, timeout=2) # should not use self.http.get here
             if r.status_code == 200:
                 return True
-        except (requests.HTTPError, requests.ConnectionError) as e:
+        except requests.RequestException as e:
             return False
 
     def _is_alive(self):
@@ -559,6 +552,10 @@ class _BaseClient(object):
 
         if depth > 0:
             logger.info("restart-uiautomator since \"%s\"", reason)
+        
+        # Note:
+        # atx-agent check has moved to _AgentRequestSession
+        # If code goes here, it means atx-agent is fine.
 
         if self._is_alive():
             return
@@ -650,13 +647,17 @@ class _BaseClient(object):
             timeout=3)
         return shret.output
 
-    def _kill_process_by_name(self, name):
-        for p in self._iter_process():
+    def _kill_process_by_name(self, name, use_adb=False):
+        for p in self._iter_process(use_adb=use_adb):
             if p.name == name and p.user == "shell":
-                logger.debug("kill uiautomator")
-                self.shell(["kill", "-9", str(p.pid)])
+                logger.debug("kill %s", name)
+                kill_cmd = ["kill", "-9", str(p.pid)]
+                if use_adb:
+                    self._adb_device.shell(kill_cmd)
+                else:
+                    self.shell(kill_cmd)
 
-    def _iter_process(self):
+    def _iter_process(self, use_adb=False):
         """
         List processes by cmd:ps
 
@@ -666,7 +667,11 @@ class _BaseClient(object):
         headers, pids = [], {}
         Header = None
         Process = namedtuple("Process", ["user", "pid", "name"])
-        for line in self.shell("ps; ps -A").output.splitlines():
+        if use_adb:
+            output = self._adb_device.shell("ps; ps -A")
+        else:
+            output = self.shell("ps; ps -A").output
+        for line in output.splitlines():
             # USER PID ..... NAME
             fields = line.strip().split()
             if len(fields) < 3:
