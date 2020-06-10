@@ -407,7 +407,7 @@ class UiObject(object):
         raise NotImplementedError()
         # return UiObject(self.session, self.jsonrpc.getParent(self.selector))
 
-    def __getitem__(self, index):
+    def __getitem__(self, instance: int):
         """
         Raises:
             IndexError
@@ -417,7 +417,14 @@ class UiObject(object):
                 "Index is not supported when UiObject returned by child_by_xxx"
             )
         selector = self.selector.clone()
-        selector.update_instance(index)
+        if instance < 0:
+            selector['instance'] = 0
+            del selector['instance']
+            count = self.jsonrpc.count(selector)
+            assert instance + count >= 0
+            instance += count
+
+        selector.update_instance(instance)
         return UiObject(self.session, selector)
 
     @property
