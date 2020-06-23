@@ -62,6 +62,7 @@ from .swipe import SwipeExt
 from .utils import list2cmdline
 from .version import __atx_agent_version__, __apk_version__
 from .watcher import Watcher
+from ._proto import SCROLL_STEPS
 
 if six.PY2:
     FileNotFoundError = OSError
@@ -1003,7 +1004,7 @@ class _Device(_BaseClient):
         with self._operation_delay("click"):
             return self.touch.down(x, y).sleep(duration).up(x, y)
 
-    def swipe(self, fx, fy, tx, ty, duration=0.1, steps=None):
+    def swipe(self, fx, fy, tx, ty, duration: Optional[float] = None, steps: Optional[int] = SCROLL_STEPS):
         """
         Args:
             fx, fy: from position

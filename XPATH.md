@@ -166,6 +166,14 @@ def main():
 
     el.swipe("right", scale=0.9) # scale 默认0.9, 滑动距离为控件宽度的80%, 滑动的中心点与控件中心点一致
     el.swipe("up", scale=0.5) # 滑动距离为控件高度的50%
+
+    el.scroll("forward") # 向下滑动
+    el.scroll("backward") # 向上滑动
+    el.scroll("forward", horizontal=True) # 水平向前
+    el.scroll("backward", horizontal=True) # 水平向后
+
+    if el.scroll("forward"):
+        print("还可以继续滚动")
 ```
 
 ## XPath规则

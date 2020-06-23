@@ -13,7 +13,7 @@ import time
 import functools
 from collections import defaultdict
 from types import ModuleType
-from typing import Union
+from typing import Union, Optional, Callable
 
 from logzero import setup_logger
 from logzero import logger
@@ -60,7 +60,8 @@ def strict_xpath(xpath: str, logger=logger) -> str:
     elif xpath.startswith('@'):
         xpath = '//*[@resource-id={!r}]'.format(xpath[1:])
     elif xpath.startswith('^'):
-        xpath = '//*[re:match(text(), {!r})]'.format(xpath)
+        xpath = '//*[re:match(@text, {0}) or re:match(@content-desc, {0}) or re:match(@resource-id, {0})]'.format(
+            string_quote(xpath))
     # elif xpath.startswith("$"):  # special for objects
     #     key = xpath[1:]
     #     return self(self.__alias_get(key), source)
@@ -77,7 +78,7 @@ def strict_xpath(xpath: str, logger=logger) -> str:
         xpath = '//*[@text={0} or @content-desc={0} or @resource-id={0}]'.format(
             string_quote(xpath))
 
-    # logger.debug("xpath %s -> %s", orig_xpath, xpath)
+    logger.debug("xpath %s -> %s", orig_xpath, xpath)
     return xpath
 
 
@@ -381,7 +382,10 @@ class XPathSelector(object):
         self._position = (x, y)
         return self
 
-    def fallback(self, func=None, *args, **kwargs):
+    def fallback(self,
+                 func: Optional[Callable[..., bool]] = None,
+                 *args,
+                 **kwargs):
         """
         callback on failure
         """
@@ -411,9 +415,10 @@ class XPathSelector(object):
         self._last_source = xml_content
 
         # run-watchers
-        if not source and not self._source:
+        hierarchy = source or self._source
+        if not hierarchy:
             trigger_count = 0
-            for _ in range(5): # trigger for most 5 times
+            for _ in range(5):  # trigger for most 5 times
                 triggered = self._parent._watcher.run(xml_content)
                 if not triggered:
                     break
@@ -422,7 +427,15 @@ class XPathSelector(object):
             if trigger_count:
                 self.logger.debug("watcher triggered %d times", trigger_count)
 
-        root = etree.fromstring(str2bytes(xml_content))
+        if hierarchy is None:
+            root = etree.fromstring(str2bytes(xml_content))
+        elif isinstance(hierarchy, (str, bytes)):
+            root = etree.fromstring(str2bytes(hierarchy))
+        elif isinstance(hierarchy, etree._Element):
+            root = hierarchy
+        else:
+            raise TypeError("Unknown type", type(hierarchy))
+
         for node in root.xpath("//node"):
             node.tag = safe_xmlstr(node.attrib.pop("class", "")) or "node"
 
@@ -442,8 +455,9 @@ class XPathSelector(object):
         # 中心点应控制在控件内
         inside_els = []
         px, py = self._position
+        wsize = self._d.window_size()
         for e in els:
-            lpx, lpy, rpx, rpy = e.percent_bounds()
+            lpx, lpy, rpx, rpy = e.percent_bounds(wsize=wsize)
             # 中心点偏移百分比不应大于控件宽高的50%
             scale = 1.5
 
@@ -492,16 +506,16 @@ class XPathSelector(object):
 
     def set_text(self, text: str = ""):
         el = self.get()
-        self._d.set_fastinput_ime() # switch ime
+        self._d.set_fastinput_ime()  # switch ime
         el.click()  # focus input-area
         self._parent.send_text(text)
 
-    def wait(self, timeout=None):
+    def wait(self, timeout=None) -> Optional["XMLElement"]:
         """
         Args:
             timeout (float): seconds
 
-        Raises:
+        Returns:
             None or XMLElement
         """
         deadline = time.time() + (timeout or self._global_timeout)
@@ -512,15 +526,15 @@ class XPathSelector(object):
             time.sleep(.2)
         return None
 
-    def match(self):
+    def match(self) -> Optional["XMLElement"]:
         """
         Returns:
-            None or matched XPathElement
+            None or matched XMLElement
         """
         if self.exists:
             return self.get_last_match()
 
-    def wait_gone(self, timeout=None):
+    def wait_gone(self, timeout=None) -> bool:
         """
         Args:
             timeout (float): seconds
@@ -550,8 +564,8 @@ class XPathSelector(object):
                 raise
             self.logger.info("element not found, run fallback")
             return inject_call(self._fallback, d=self._d)
-    
-    def click_exists(self, timeout=None):
+
+    def click_exists(self, timeout=None) -> bool:
         el = self.wait(timeout=timeout)
         if el:
             el.click()
@@ -566,7 +580,7 @@ class XPathSelector(object):
         """ take element screenshot """
         el = self.get()
         return el.screenshot()
-    
+
     def __getattr__(self, key: str):
         """
         In IPython console, attr:_ipython_canary_method_should_not_exist_ will be called
@@ -588,6 +602,42 @@ class XMLElement(object):
         self.elem = elem
         self._parent = parent
         self._d = parent._d
+
+    def __hash__(self):
+        compared_attrs = ("text", "resource-id", "package", "content-desc")
+        values = [self.attrib.get(name) for name in compared_attrs]
+        root = self.elem.getroottree()
+        fullpath = root.getpath(self.elem)
+        fullpath = re.sub(r'\[\d+\]', '', fullpath) # remove indexes
+        values.append(fullpath)
+        return hash(tuple(values))
+
+    def get_xpath(self, strip_index: bool = False):
+        root = self.elem.getroottree()
+        path = root.getpath(self.elem)
+        if strip_index:
+            path = re.sub(r'\[\d+\]', '', path) # remove indexes
+        return path
+
+    def __eq__(self, value):
+        return self.__hash__() == hash(value)
+
+    def fuzzy_equal(self, xml_element) -> bool:
+        root = self.elem.getroottree()
+        fullpath = root.getpath(self.elem)
+        fullpath = re.sub(r'\[\d+\]', '', fullpath) # remove indexes
+
+        compared_attrs = ("text", "resource-id", "package", "content-desc")
+        for name in compared_attrs:
+            if self.elem.attrib[name] != xml_element.attrib[name]:
+                return False
+        
+        def _elem2fullpath(el):
+            root = el.getroottree()
+            fullpath = root.getpath(el)
+            return re.sub(r'\[\d+\]', '', fullpath) # remove indexes
+        
+        return _elem2fullpath(self.elem) == _elem2fullpath(xml_element.elem)
 
     def center(self):
         """
@@ -637,7 +687,6 @@ class XMLElement(object):
             direction: one of ["left", "right", "up", "down"]
             scale: percent of swipe, range (0, 1.0)
         """
-
         def _swipe(_from, _to):
             self._parent.send_swipe(_from[0], _from[1], _to[0], _to[1])
 
@@ -665,6 +714,27 @@ class XMLElement(object):
         else:
             raise RuntimeError("Unknown direction:", direction)
 
+    def scroll(self, action: str, horizontal: bool = False) -> bool:
+        """
+        Args:
+            action (str): one of "forward", "backward"
+            horizontal (bool): default to false
+        
+        Returns:
+            bool: if can be scroll again
+        """
+        vertmap = dict(forward="up", backward="down")
+        horimap = dict(forward="left", backward="right")
+        direction = horimap[action] if horizontal else vertmap[action]
+        els = set(self._parent("//*").all())
+        self.swipe(direction, scale=.8)
+
+        # check if there is more element
+        new_elements = set(self._parent("//*").all()) - els
+        ppath = self.get_xpath() + "/" # limit to child nodes
+        els = [el for el in new_elements if el.get_xpath().startswith(ppath)]
+        return len(els) > 0
+
     def percent_size(self):
         """ Returns:
                 (float, float): eg, (0.5, 0.5) means 50%, 50%
@@ -683,12 +753,16 @@ class XMLElement(object):
         lx, ly, rx, ry = map(int, re.findall(r"\d+", bounds))
         return (lx, ly, rx, ry)
 
-    def percent_bounds(self):
-        """ Returns:
+    def percent_bounds(self, wsize: Optional[tuple] = None):
+        """ 
+        Args:
+            wsize (tuple(int, int)): window size
+        
+        Returns:
             list of 4 float, eg: 0.1, 0.2, 0.5, 0.8
         """
         lx, ly, rx, ry = self.bounds
-        ww, wh = self._d.window_size()
+        ww, wh = wsize or self._d.window_size()
         return (lx / ww, ly / wh, rx / ww, ry / wh)
 
     @property
@@ -727,7 +801,6 @@ class AdbUI(BasicUIMeta):
     """
     Use adb command to run ui test
     """
-
     def __init__(self, d: adbutils.AdbDevice):
         self._d = d
 

@@ -1,0 +1,1 @@
+SCROLL_STEPS = 55

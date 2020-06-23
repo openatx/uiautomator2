@@ -9,6 +9,7 @@ from retry import retry
 
 from .exceptions import UiObjectNotFoundError
 from .utils import Exists, intersect
+from ._proto import SCROLL_STEPS
 
 
 class Selector(dict):
@@ -561,7 +562,8 @@ class UiObject(object):
                     return self
                 raise ValueError("invalid prop %s" % key)
 
-            def __call__(self, steps=20, max_swipes=500, **kwargs):
+            def __call__(self, steps=SCROLL_STEPS, max_swipes=500, **kwargs):
+                # More steps slows the swipe and prevents contents from being flung too far
                 if self.action in ["forward", "backward"]:
                     method = jsonrpc.scrollForward if self.action == "forward" else jsonrpc.scrollBackward
                     return method(selector, self.vertical, steps)
