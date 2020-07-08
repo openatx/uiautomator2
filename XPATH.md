@@ -33,7 +33,7 @@ pip3 install -U uiautomator2
 ## 使用方法
 目前该插件已经内置到uiautomator2中了，所以不需要plugin注册了。
 
-**简单用法**
+### 简单用法
 
 看下面的这个简单的例子了解下如何使用
 
@@ -45,11 +45,23 @@ def main():
     d.app_start("com.netease.cloudmusic", stop=True)
 
     d.xpath('//*[@text="私人FM"]').click()
+    
+    #
+    # 高级用法(元素定位)
+    #
+
+    # @开头
+    d.xpath('@personal-fm') # 等价于 d.xpath('//*[@resource-id="personal-fm"]')
+    # 多个条件定位, 类似于AND
+    d.xpath('//android.widget.Button').xpath('//*[@text="私人FM"]')
+    
+    d.xpath('//*[@text="私人FM"]').parent() # 定位到父元素
+    d.xpath('//*[@text="私人FM"]').parent("@android:list") # 定位到符合条件的父元素
 ```
 
 >下面的代码为了方便就不写`import`和`main`了，默认存在`d`这个变量
 
-**`XPathSelector`的操作**
+### `XPathSelector`的操作
 
 ```python
 sl = d.xpath("@com.example:id/home_searchedit") # sl为XPathSelector对象
@@ -99,9 +111,10 @@ for el in d.xpath('//android.widget.EditText').all():
 d.xpath("//*").position(0.5, 0.5).click() 
 ```
 
-**`XMLElement`的操作**
+### `XMLElement`的操作
 
 ```python
+# 通过XPathSelector.get() 返回的对象叫做 XMLElement
 el = d.xpath("@com.example:id/home_searchedit").get()
 
 lx, ly, width, height = el.rect # 获取左上角坐标和宽高
@@ -126,10 +139,30 @@ el.swipe("right") # left, right, up, down
 el.swipe("right", scale=0.9) # scale默认0.9, 意思是滑动距离为控件宽度的90%, 上滑则为高度的90%
 ```
 
+### 滑动到指定位置
+> `scroll_to` 这个功能属于新增加的，可能不这么完善（比如不能检测是否滑动到底部了）
+
+先看例子
+
+```python
+from uiautomator2 import connect_usb, Direction
+
+d = connect_usb()
+
+d.scroll_to("下单")
+d.scroll_to("下单", Direction.FORWARD) # 默认就是向下滑动，除此之外还可以BACKWARD, HORIZ_FORWARD(水平), HORIZ_BACKWARD(水平反向)
+d.scroll_to("下单", Direction.HORIZ_FORWARD, max_swipes=5)
+
+# 除此之外还可以在指定在某个元素内滑动
+d.xpath('@com.taobao.taobao:id/dx_root').scroll(Direction.HORIZ_FORWARD)
+d.xpath('@com.taobao.taobao:id/dx_root').scroll_to("下单", Direction.HORIZ_FORWARD)
+```
+
 **比较完整的例子**
 
 ```python
 import uiautomator2 as u2
+from uiautomator2 import Direction
 
 def main():
     d = u2.connect()
@@ -159,18 +192,23 @@ def main():
     
     # 滑动
     el = d.xpath('@com.taobao.taobao:id/fl_banner_container').get()
-    el.swipe("right") # 从右滑到左
-    el.swipe("left")
-    el.swipe("up") # 从下滑到上
-    el.swipe("down")
+
+    # 从右滑到左
+    el.swipe(Direction.HORIZ_FORWARD) 
+    el.swipe(Direction.LEFT) # 从右滑到左
+
+    # 从下滑到上
+    el.swipe(Direction.FORWARD)
+    el.swipe(Direction.UP)
 
     el.swipe("right", scale=0.9) # scale 默认0.9, 滑动距离为控件宽度的80%, 滑动的中心点与控件中心点一致
     el.swipe("up", scale=0.5) # 滑动距离为控件高度的50%
 
-    el.scroll("forward") # 向下滑动
-    el.scroll("backward") # 向上滑动
-    el.scroll("forward", horizontal=True) # 水平向前
-    el.scroll("backward", horizontal=True) # 水平向后
+    # scroll同swipe不一样，scroll返回bool值，表示是否还有新元素出现
+    el.scroll(Direction.FORWARD) # 向下滑动
+    el.scroll(Direction.BACKWARD) # 向上滑动
+    el.scroll(Direction.HORIZ_FORWARD) # 水平向前
+    el.scroll(Direction.HORIZ_BACKWARD) # 水平向后
 
     if el.scroll("forward"):
         print("还可以继续滚动")

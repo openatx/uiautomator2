@@ -62,13 +62,12 @@ from .swipe import SwipeExt
 from .utils import list2cmdline
 from .version import __atx_agent_version__, __apk_version__
 from .watcher import Watcher
-from ._proto import SCROLL_STEPS
+from ._proto import SCROLL_STEPS, Direction, HTTP_TIMEOUT
 
 if six.PY2:
     FileNotFoundError = OSError
 
 DEBUG = False
-HTTP_TIMEOUT = 60
 WAIT_FOR_DEVICE_TIMEOUT = int(os.getenv("WAIT_FOR_DEVICE_TIMEOUT", 70))
 
 # logger = logging.getLogger("uiautomator2")

@@ -2,13 +2,14 @@
 #
 
 import functools
-import shlex
 import inspect
+import shlex
 from typing import Union
 
 import six
-import uiautomator2
-from uiautomator2.exceptions import SessionBrokenError, UiObjectNotFoundError
+
+from ._proto import Direction
+from .exceptions import SessionBrokenError, UiObjectNotFoundError
 
 
 def U(x):
@@ -20,7 +21,7 @@ def U(x):
 def E(x):
     if six.PY3:
         return x
-    return x.encode('utf-8') if type(x) is unicode else x # noqa: F821
+    return x.encode('utf-8') if type(x) is unicode else x  # noqa: F821
 
 
 def check_alive(fn):
@@ -35,6 +36,7 @@ def check_alive(fn):
 
 _cached_values = {}
 
+
 def cache_return(fn):
     @functools.wraps(fn)
     def inner(*args, **kwargs):
@@ -45,6 +47,7 @@ def cache_return(fn):
 
         _cached_values[key] = ret = fn(*args, **kwargs)
         return ret
+
     return inner
 
 
@@ -55,6 +58,7 @@ def hooks_wrap(fn):
         self.server.hooks_apply("before", name, args, kwargs, None)
         ret = fn(self, *args, **kwargs)
         self.server.hooks_apply("after", name, args, kwargs, ret)
+
     return inner
 
 
@@ -85,7 +89,6 @@ def intersect(rect1, rect2):
 
 class Exists(object):
     """Exists object with magic methods."""
-
     def __init__(self, uiobject):
         self.uiobject = uiobject
 
@@ -142,7 +145,7 @@ def inject_call(fn, *args, **kwargs):
 class ProgressReader:
     def __init__(self, rd):
         pass
-        
+
     def read(self, size=-1):
         pass
 
@@ -153,11 +156,55 @@ def natualsize(size: int):
     _GB = 1 << 30
 
     if size >= _GB:
-        return '{:.1f} GB'.format(size/_GB)
+        return '{:.1f} GB'.format(size / _GB)
     elif size >= _MB:
-        return '{:.1f} MB'.format(size/_MB)
+        return '{:.1f} MB'.format(size / _MB)
     else:
-        return '{:.1f} KB'.format(size/_KB)
+        return '{:.1f} KB'.format(size / _KB)
+
+
+def swipe_in_bounds(d: "uiautomator2.Device",
+                    bounds: list,
+                    direction: Union[Direction, str],
+                    scale: float = 0.6):
+    """
+    Args:
+        d: Device object
+        bounds: list of [lx, ly, rx, ry]
+        direction: one of ["left", "right", "up", "down"]
+        scale: percent of swipe, range (0, 1.0)
+    
+    Raises:
+        AssertionError, ValueError
+    """
+    def _swipe(_from, _to):
+        print("SWIPE", _from, _to)
+        d.swipe(_from[0], _from[1], _to[0], _to[1])
+
+    assert 0 < scale <= 1.0
+    assert len(bounds) == 4
+
+    lx, ly, rx, ry = bounds
+    width, height = rx - lx, ry - ly
+
+    h_offset = int(width * (1 - scale)) // 2
+    v_offset = int(height * (1 - scale)) // 2
+
+    left = lx + h_offset, ly + height // 2
+    up = lx + width // 2, ly + v_offset
+    right = rx - h_offset, ly + height // 2
+    bottom = lx + width // 2, ry - v_offset
+
+    if direction == Direction.LEFT:
+        _swipe(right, left)
+    elif direction == Direction.RIGHT:
+        _swipe(left, right)
+    elif direction == Direction.UP:
+        _swipe(bottom, up)
+    elif direction == Direction.DOWN:
+        _swipe(up, bottom)
+    else:
+        raise ValueError("Unknown direction:", direction)
 
 
 if __name__ == "__main__":

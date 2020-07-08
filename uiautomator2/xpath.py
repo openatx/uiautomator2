@@ -4,27 +4,28 @@
 from __future__ import absolute_import
 
 import abc
+import functools
 import io
 import json
-import re
 import logging
+import re
 import threading
 import time
-import functools
 from collections import defaultdict
 from types import ModuleType
-from typing import Union, Optional, Callable
+from typing import Callable, Optional, Union
 
-from logzero import setup_logger
-from logzero import logger
+import adbutils
+from deprecated import deprecated
+from logzero import logger, setup_logger
 from PIL import Image
 
-from deprecated import deprecated
-import adbutils
 import uiautomator2
-from uiautomator2.exceptions import XPathElementNotFoundError
-from uiautomator2.utils import U, inject_call
-from uiautomator2.abcd import BasicUIMeta
+
+from ._proto import Direction
+from .abcd import BasicUIMeta
+from .exceptions import XPathElementNotFoundError
+from .utils import U, inject_call, swipe_in_bounds
 
 try:
     from lxml import etree
@@ -327,16 +328,35 @@ class XPath(object):
         el = self._get_after_watch(xpath, timeout)
         el.click()  # 100ms
 
-    def scroll_to(self, xpath: str, direction='up', max_swipes=10):
+    def scroll_to(self,
+                  xpath: str,
+                  direction: Union[Direction, str] = Direction.FORWARD,
+                  max_swipes=10) -> Union["XMLElement", None]:
         """
         Need more tests
         scroll up the whole screen until target element founded
+
+        Returns:
+            bool (found or not)
         """
+        if direction == Direction.FORWARD:
+            direction = Direction.UP
+        elif direction == Direction.BACKWARD:
+            direction = Direction.DOWN
+        elif direction == Direction.HORIZ_FORWARD:  # Horizontal
+            direction = Direction.LEFT
+        elif direction == Direction.HBACKWORD:
+            direction = Direction.RIGHT
+
+        # FIXME(ssx): 还差一个检测是否到底的功能
         assert max_swipes > 0
+        target = self(xpath)
         for i in range(max_swipes):
-            if self(xpath).exists:
-                return
+            if target.exists:
+                self._d.swipe_ext(direction, 0.1)  # 防止元素停留在边缘
+                return target.get_last_match()
             self._d.swipe_ext(direction, 0.5)
+        return False
 
     def __alias_get(self, key, default=None):
         """
@@ -608,36 +628,42 @@ class XMLElement(object):
         values = [self.attrib.get(name) for name in compared_attrs]
         root = self.elem.getroottree()
         fullpath = root.getpath(self.elem)
-        fullpath = re.sub(r'\[\d+\]', '', fullpath) # remove indexes
+        fullpath = re.sub(r'\[\d+\]', '', fullpath)  # remove indexes
         values.append(fullpath)
         return hash(tuple(values))
-
-    def get_xpath(self, strip_index: bool = False):
-        root = self.elem.getroottree()
-        path = root.getpath(self.elem)
-        if strip_index:
-            path = re.sub(r'\[\d+\]', '', path) # remove indexes
-        return path
 
     def __eq__(self, value):
         return self.__hash__() == hash(value)
 
-    def fuzzy_equal(self, xml_element) -> bool:
-        root = self.elem.getroottree()
-        fullpath = root.getpath(self.elem)
-        fullpath = re.sub(r'\[\d+\]', '', fullpath) # remove indexes
+    def __repr__(self):
+        x, y = self.center()
+        return "<xpath.XMLElement [{tag!r} center:({x}, {y})]>".format(tag=self.elem.tag, x=x, y=y)
 
-        compared_attrs = ("text", "resource-id", "package", "content-desc")
-        for name in compared_attrs:
-            if self.elem.attrib[name] != xml_element.attrib[name]:
-                return False
-        
-        def _elem2fullpath(el):
-            root = el.getroottree()
-            fullpath = root.getpath(el)
-            return re.sub(r'\[\d+\]', '', fullpath) # remove indexes
-        
-        return _elem2fullpath(self.elem) == _elem2fullpath(xml_element.elem)
+    def get_xpath(self, strip_index: bool = False):
+        """ get element full xpath """
+        root = self.elem.getroottree()
+        path = root.getpath(self.elem)
+        if strip_index:
+            path = re.sub(r'\[\d+\]', '', path)  # remove indexes
+        return path
+
+    # 模糊对比方法，后来发现直接对比XPath似乎更好一些
+    # def fuzzy_equal(self, xml_element) -> bool:
+    #     root = self.elem.getroottree()
+    #     fullpath = root.getpath(self.elem)
+    #     fullpath = re.sub(r'\[\d+\]', '', fullpath)  # remove indexes
+
+    #     compared_attrs = ("text", "resource-id", "package", "content-desc")
+    #     for name in compared_attrs:
+    #         if self.elem.attrib[name] != xml_element.attrib[name]:
+    #             return False
+
+    #     def _elem2fullpath(el):
+    #         root = el.getroottree()
+    #         fullpath = root.getpath(el)
+    #         return re.sub(r'\[\d+\]', '', fullpath)  # remove indexes
+
+    #     return _elem2fullpath(self.elem) == _elem2fullpath(xml_element.elem)
 
     def center(self):
         """
@@ -681,59 +707,76 @@ class XMLElement(object):
         im = self._parent.take_screenshot()
         return im.crop(self.bounds)
 
-    def swipe(self, direction: str, scale: float = 0.5):
+    def swipe(self, direction: Union[Direction, str], scale: float = 0.6):
         """
         Args:
             direction: one of ["left", "right", "up", "down"]
             scale: percent of swipe, range (0, 1.0)
+        
+        Raises:
+            AssertionError, ValueError
         """
-        def _swipe(_from, _to):
-            self._parent.send_swipe(_from[0], _from[1], _to[0], _to[1])
+        return swipe_in_bounds(self._parent._d, self.bounds, direction, scale)
 
-        assert 0 < scale <= 1.0
-
-        lx, ly, rx, ry = self.bounds
-        width, height = rx - lx, ry - ly
-
-        h_offset = int(width * (1 - scale)) // 2
-        v_offset = int(height * (1 - scale)) // 2
-
-        left = lx + h_offset, ly + height // 2
-        up = lx + width // 2, ly + v_offset
-        right = rx - h_offset, ly + height // 2
-        bottom = lx + width // 2, ry - v_offset
-
-        if direction == "left":
-            _swipe(right, left)
-        elif direction == "right":
-            _swipe(left, right)
-        elif direction == "up":
-            _swipe(bottom, up)
-        elif direction == "down":
-            _swipe(up, bottom)
-        else:
-            raise RuntimeError("Unknown direction:", direction)
-
-    def scroll(self, action: str, horizontal: bool = False) -> bool:
+    def scroll(self,
+               direction: Union[Direction, str] = Direction.FORWARD) -> bool:
         """
         Args:
-            action (str): one of "forward", "backward"
-            horizontal (bool): default to false
+            direction: Direction eg: Direction.FORWARD
         
         Returns:
             bool: if can be scroll again
         """
-        vertmap = dict(forward="up", backward="down")
-        horimap = dict(forward="left", backward="right")
-        direction = horimap[action] if horizontal else vertmap[action]
+        if direction == "forward":
+            direction = Direction.FORWARD
+        elif direction == "backward":
+            direction = Direction.BACKWARD
+
         els = set(self._parent("//*").all())
-        self.swipe(direction, scale=.8)
+        self.swipe(direction, scale=.6)
 
         # check if there is more element
         new_elements = set(self._parent("//*").all()) - els
-        ppath = self.get_xpath() + "/" # limit to child nodes
+        ppath = self.get_xpath() + "/"  # limit to child nodes
         els = [el for el in new_elements if el.get_xpath().startswith(ppath)]
         return len(els) > 0
+
+    def scroll_to(self,
+                  xpath: str,
+                  direction: Direction = Direction.FORWARD,
+                  max_swipes: int = 10) -> Union["XMLElement", None]:
+        assert max_swipes > 0
+        target = self._parent(xpath)
+        for i in range(max_swipes):
+            if target.exists:
+                return target.get_last_match()
+            if not self.scroll(direction):
+                break
+        return None
+
+    def parent(self, xpath: Optional[str] = None) -> Union["XMLElement", None]:
+        """
+        Returns parent element
+        """
+        if xpath is None:
+            return XMLElement(self.elem.getparent(), self._parent)
+
+        root = self.elem.getroottree()
+        e = self.elem
+        els = []
+        while e is not None and e != root:
+            els.append(e)
+            e = e.getparent()
+            
+        xpath = strict_xpath(xpath)
+        matches = root.xpath(xpath,
+                namespaces={"re": "http://exslt.org/regular-expressions"})
+        all_paths = [root.getpath(m) for m in matches]
+        for e in reversed(els):
+            if root.getpath(e) in all_paths:
+                return XMLElement(e, self._parent)
+            # if e in matches:
+            #     return XMLElement(e, self._parent)
 
     def percent_size(self):
         """ Returns:
@@ -794,6 +837,8 @@ class XMLElement(object):
         ret["contentDescription"] = self.attrib.get("content-desc")
         ret["longClickable"] = self.attrib.get("long-clickable")
         ret["packageName"] = self.attrib.get("package")
+        ret["resourceName"] = self.attrib.get("resource-id")
+        ret["childCount"] = len(self.elem.getchildren())
         return ret
 
 
