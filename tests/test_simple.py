@@ -61,8 +61,10 @@ class SimpleTestCase(unittest.TestCase):
         d.watcher.remove()
         d.watcher.stop()
 
-        d.watcher("N").when('Notification').click()
         d(text="App").click()
+        d.xpath("Notification").wait()
+        
+        d.watcher("N").when('Notification').click()
         d.watcher.run()
 
         self.assertTrue(d(text="Status Bar").wait(timeout=3))

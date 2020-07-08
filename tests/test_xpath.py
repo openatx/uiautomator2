@@ -75,3 +75,15 @@ def test_watcher_from_yaml(sess: u2.Session, request):
     sess.xpath.watch_background(interval=1.0)
 
     assert sess.xpath("Alarm Controller").wait(timeout=10)
+
+
+def test_xpath_scroll_to(sess: u2.Session):
+    d = sess
+    d.xpath("Graphics").click()
+    d.xpath("@android:id/list").scroll_to("Pictures")
+    assert d.xpath("Pictures").exists
+
+def test_xpath_parent(sess: u2.Session):
+    d = sess
+    info = d.xpath("App").parent("@android:id/list").info
+    assert info['resourceId'] == 'android:id/list'

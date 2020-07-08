@@ -838,6 +838,7 @@ class XMLElement(object):
         ret["longClickable"] = self.attrib.get("long-clickable")
         ret["packageName"] = self.attrib.get("package")
         ret["resourceName"] = self.attrib.get("resource-id")
+        ret["resourceId"] = self.attrib.get("resource-id") # this is better than resourceName
         ret["childCount"] = len(self.elem.getchildren())
         return ret
 

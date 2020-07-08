@@ -4,6 +4,7 @@
 import inspect
 import logging
 import threading
+from typing import Optional
 
 from logzero import setup_logger
 
@@ -72,13 +73,13 @@ class Watcher():
         self._watching = False
         self._watch_stopped.clear()
         self._watch_stop_event.clear()
-    
+
     def reset(self):
         """ stop watching and remove all watchers """
         if self._watching:
             self.stop()
         self.remove()
-    
+
     def running(self) -> bool:
         return self._watching
 
@@ -95,12 +96,12 @@ class Watcher():
         finally:
             self._watch_stop_event.set()
 
-    def run(self, source=None):
+    def run(self, source: Optional[str] = None):
         """ run watchers
         Args:
             source: hierarchy content
         """
-        if self.triggering: # avoid to run watcher when run watcher
+        if self.triggering:  # avoid to run watcher when run watcher
             return False
         return self._run_watchers(source=source)
 
@@ -146,7 +147,7 @@ class Watcher():
 
     def __call__(self, name: str) -> "XPathWatcher":
         return XPathWatcher(self, None, name)
-    
+
     def remove(self, name=None):
         """ remove watcher """
         if name is None:
@@ -178,8 +179,9 @@ class XPathWatcher():
     def click(self):
         def _inner_click(selector):
             selector.get_last_match().click()
+
         self.call(_inner_click)
-    
+
     def press(self, key):
         """
         key (str): on of
@@ -189,4 +191,5 @@ class XPathWatcher():
         """
         def _inner_press(d: "uiautomator2.Device"):
             d.press(key)
+
         self.call(_inner_press)
