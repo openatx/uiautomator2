@@ -341,7 +341,7 @@ class _BaseClient(object):
 
         from uiautomator2 import init
         for (name, url) in init.app_uiautomator_apk_urls():
-            apk_path = init.cache_download(url)
+            apk_path = init.mirror_download(url)
             target_path = os.path.join("/data/local/tmp",
                                        os.path.basename(apk_path))
             self.push(apk_path, target_path)
