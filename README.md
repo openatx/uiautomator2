@@ -70,9 +70,11 @@ Thank you to all our sponsors! ✨🍰✨
 
 ### 金牌赞助商（Gold Sponsor）
 
-霍格沃兹测试学院是由测吧（北京）科技有限公司与知名软件测试社区 [TesterHome](https://testerhome.com/) 合作的高端教育品牌。由 BAT 一线**测试大咖执教**，提供**实战驱动**的接口自动化测试、移动自动化测试、性能测试、持续集成与 DevOps 等技术培训，以及测试开发优秀人才内推服务。[点击学习!](https://ke.qq.com/course/254956?flowToken=1014757)
+![Logo-霍格沃兹测试学院](https://ceshiren.com/uploads/default/original/2X/2/2529377efc39dffe8ffd96b5aed4b417cdef1a52.png)
 
-- 霍格沃兹测试学院: <https://testing-studio.com>
+[霍格沃兹测试学院](https://ceshiren.com/)是业界领先的测试开发技术高端教育品牌，隶属于测吧（北京）科技有限公司。学院课程均由 BAT 一线测试大咖执教，提供实战驱动的接口自动化测试、移动自动化测试、性能测试、持续集成与 DevOps 等技术培训，以及测试开发优秀人才内推服务。[点击学习!](http://qrcode.testing-studio.com/f?from=ATX&url=https://ke.qq.com/course/254956)
+
+[霍格沃兹测试学院](https://ceshiren.com/)是 ATX 的首家金牌赞助商。
 
 ## 相关项目
 - 设备管理平台，设备多了就会用到 [atxserver2](https://github.com/openatx/atxserver2)
