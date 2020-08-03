@@ -1217,13 +1217,14 @@ class _AppMixIn:
         if text.isdigit():
             return int(text)
 
+    @retry(OSError, delay=.3, tries=3, logger=logging)
     def app_current(self):
         """
         Returns:
             dict(package, activity, pid?)
 
         Raises:
-            EnvironementError
+            OSError
 
         For developer:
             Function reset_uiautomator need this function, so can't use jsonrpc here.
@@ -1257,7 +1258,7 @@ class _AppMixIn:
                        pid=int(m.group('pid')))
         if ret:  # get last result
             return ret
-        raise EnvironmentError("Couldn't get focused app")
+        raise OSError("Couldn't get focused app")
 
     def app_install(self, data):
         """
