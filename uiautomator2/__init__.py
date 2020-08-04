@@ -342,8 +342,7 @@ class _BaseClient(object):
         from uiautomator2 import init
         for (name, url) in init.app_uiautomator_apk_urls():
             apk_path = init.mirror_download(url)
-            target_path = os.path.join("/data/local/tmp",
-                                       os.path.basename(apk_path))
+            target_path = "/data/local/tmp/" + os.path.basename(apk_path)
             self.push(apk_path, target_path)
             logger.debug("pm install %s", target_path)
             self.shell(['pm', 'install', '-r', '-t', target_path])
