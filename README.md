@@ -1175,8 +1175,33 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
   # scroll forward vertically until specific ui object appears
   d(scrollable=True).scroll.to(text="Security")
   ```
-  
+
+### WatchContext
+目前的这个watch_context是用threading启动的，每2s检查一次
+目前还只有click这一种触发操作
+
+```python
+with d.watch_context() as ctx:
+    ctx.when("^立即(下载|更新)").when("取消").click() # 当同时出现 （立即安装 或 立即取消）和 取消 按钮的时候，点击取消
+    ctx.when("同意").click()
+    ctx.when("确定").click()
+    ctx.wait_stable() # 开启弹窗监控，并等待界面稳定（两个弹窗检查周期内没有弹窗代表稳定）
+
+# 其他操作
+```
+
+另外一种写法
+
+```python
+ctx = d.watch_context()
+ctx.when("设置").click()
+ctx.wait_stable() # 等待界面不在有弹窗了
+
+ctx.close()
+```
+
 ### Watcher
+**更推荐用WatchContext** 写法更简洁一些
 
 ~~You can register [watchers](http://developer.android.com/tools/help/uiautomator/UiWatcher.html) to perform some actions when a selector does not find a match.~~
 

@@ -31,7 +31,7 @@ import threading
 import time
 import warnings
 import xml.dom.minidom
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from datetime import datetime
 from typing import List, Optional, Tuple, Union
 
@@ -61,7 +61,7 @@ from .settings import Settings
 from .swipe import SwipeExt
 from .utils import list2cmdline
 from .version import __atx_agent_version__, __apk_version__
-from .watcher import Watcher
+from .watcher import Watcher, WatchContext
 from ._proto import SCROLL_STEPS, Direction, HTTP_TIMEOUT
 
 if six.PY2:
@@ -183,8 +183,8 @@ class _AgentRequestSession(TimeoutRequestsSession):
     def request(self, method, url, **kwargs):
         retry = kwargs.pop("retry", True)
         try:
-            url = self.__client.path2url(
-                url)  # may raise adbutils.AdbError when device offline
+            # may raise adbutils.AdbError when device offline
+            url = self.__client.path2url(url)
             return super().request(method, url, **kwargs)
         except (requests.ConnectionError, requests.ReadTimeout,
                 adbutils.AdbError) as e:
@@ -197,7 +197,7 @@ class _AgentRequestSession(TimeoutRequestsSession):
                 raise
 
         if not self.__client._serial:
-            raise EnvironmentError(
+            raise OSError(
                 "http-request to atx-agent error, can only recover from USB")
 
         logger.warning("atx-agent has something wrong, auto recovering")
@@ -346,6 +346,10 @@ class _BaseClient(object):
             self.push(apk_path, target_path)
             logger.debug("pm install %s", target_path)
             self.shell(['pm', 'install', '-r', '-t', target_path])
+
+    def sleep(self, seconds: float):
+        """ same as time.sleep """
+        time.sleep(seconds)
 
     def shell(self, cmdargs: Union[str, List[str]], stream=False, timeout=60):
         """
@@ -853,8 +857,13 @@ class _Device(_BaseClient):
             buff = io.BytesIO(r.content)
             try:
                 return Image.open(buff).convert("RGB")
-            except Exception as ex:
-                raise IOError("PIL.Image.open IOError", ex)
+            except IOError as ex:
+                # Always fail in secure page
+                # 截图失败直接返回一个粉色的图片
+                # d.settings['default_screenshot'] = 
+                if d.settings['fallback_to_blank_screenshot']:
+                    raise IOError("PIL.Image.open IOError", ex)
+                return Image.new("RGB", self.window_size(), (220, 120, 100))
         elif format == 'opencv':
             import cv2
             import numpy as np
@@ -1150,7 +1159,7 @@ class _Device(_BaseClient):
             return self._serial
         return self.shell(['getprop', 'ro.serialno']).output.strip()
 
-    def _show_float_window(self, show=True):
+    def show_float_window(self, show=True):
         """ 显示悬浮窗，提高uiautomator运行的稳定性 """
         arg = str(show).lower()
         self.shell([
@@ -1682,11 +1691,12 @@ class _InputMethodMixIn:
 
 
 class _PluginMixIn:
-    # __plugins = {}
-
     @cached_property
     def settings(self) -> Settings:
         return Settings(self)
+
+    def watch_context(self) -> WatchContext:
+        return WatchContext(self)
 
     @cached_property
     def watcher(self) -> Watcher:

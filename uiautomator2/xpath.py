@@ -380,19 +380,28 @@ class XPathSelector(object):
 
         self._parent = parent
         self._d = parent._d
-        self._xpath_list = [strict_xpath(xpath, self.logger)] if isinstance(
-            xpath, str) else xpath
+        #strict_xpath(xpath, self.logger)] if isinstance(
+        #    xpath, str) else xpath
         self._source = source
         self._last_source = None
         self._position = None
         self._fallback = None
+        self._xpath_list = []
+
+        self.xpath(xpath)
 
     def __str__(self):
         return f"XPathSelector({'|'.join(self._xpath_list)}"
 
-    def xpath(self, xpath: str):
-        xpath = strict_xpath(xpath, self.logger)
-        self._xpath_list.append(xpath)
+    def xpath(self, _xpath: Union[list, tuple, str]):
+        if isinstance(_xpath, str):
+            _xpath = strict_xpath(_xpath, self.logger)
+            self._xpath_list.append(_xpath)
+        elif isinstance(_xpath, (list, tuple)):
+            for xp in _xpath:
+                self._xpath_list.append(strict_xpath(xp, self.logger))
+        else:
+            raise TypeError("Unknown type for value {}".format(_xpath))
         return self
 
     def position(self, x: float, y: float):

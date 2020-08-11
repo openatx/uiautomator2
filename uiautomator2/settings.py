@@ -10,6 +10,7 @@ from typing import Any
 logger = logging.getLogger("uiautomator2")
 
 class Settings(object):
+    """ 赋值时会检查类型 """
     def __init__(self, d):
         self._d = d
 
@@ -18,6 +19,7 @@ class Settings(object):
             "xpath_debug": False,
             "operation_delay": (0, 0),
             "operation_delay_methods": ["click", "swipe"],
+            "fallback_to_blank_screenshot": False,
         }
 
         self._deprecated_props = {
@@ -27,13 +29,15 @@ class Settings(object):
             "uiautomator_runtest_app_background": None,
         }
 
-        self._props = {
+        # 设置变量类型
+        self._prop_types = {
             "post_delay": (float, int),
             "xpath_debug": bool,
+            "fallback_to_blank_screenshot": bool,
         }
         for k, v in self._defaults.items():
-            if k not in self._props:
-                self._props[k] = (float, int) if type(v) in (float, int) else type(v)
+            if k not in self._prop_types:
+                self._prop_types[k] = (float, int) if type(v) in (float, int) else type(v)
         
         self._set_methods = {
             "operation_delay": self.__set_operation_delay, 
@@ -77,8 +81,8 @@ class Settings(object):
             raise AttributeError("invalid attribute", key)
 
         # Type check
-        if not isinstance(val, self._props[key]):
-            raise TypeError("invalid type, only accept: %r" % self._props[key])
+        if not isinstance(val, self._prop_types[key]):
+            raise TypeError("invalid type, only accept: %r" % self._prop_types[key])
 
         self._defaults[key] = val
 

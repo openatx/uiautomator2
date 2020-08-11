@@ -1,15 +1,126 @@
 # coding: utf-8
 #
 
+import time
 import inspect
 import logging
 import threading
+import typing
 from typing import Optional
+from collections import OrderedDict
 
 from logzero import setup_logger
 
 import uiautomator2
 from uiautomator2.xpath import XPath
+
+logger = logging.getLogger("uiautomator2")
+
+
+def _callback_click(el):
+    # print("callback", threading.current_thread())
+    el.click()
+
+
+class WatchContext:
+    def __init__(self, d: "uiautomator2.Device"):
+        self._d = d
+        self._callbacks = OrderedDict()
+        self.__xpath_list = []
+        self.__lock = threading.Lock()
+        self.__trigger_time = time.time()
+
+        # 这里竟然要3个变量记录状态
+        self.__stop = threading.Event()
+        self.__stopped = threading.Event() # 结束时设置
+        self.__started = False
+
+    def wait_stable(self, timeout: float = 60.0):
+        """ 等待界面不在有弹窗
+        Raises:
+            TimeoutError
+        """
+        if not self.__started:
+            self.start()
+
+        _stable_seconds = 5.0
+        deadline = time.time() + 60.0
+        while time.time() < deadline:
+            with self.__lock:
+                if time.time() - self.__trigger_time > _stable_seconds:
+                    return True
+            time.sleep(.2)
+        raise TimeoutError("Unstable")
+
+    def when(self, xpath: str):
+        """ 当条件满足时,支持 .when(..).when(..) 的级联模式"""
+        self.__xpath_list.append(xpath)
+        return self
+
+    def call(self, func: typing.Callable):
+        xpath_list = tuple(self.__xpath_list)
+        self.__xpath_list = []
+        assert xpath_list, "when should be called before"
+
+        self._callbacks[xpath_list] = func
+
+    def click(self):
+        self.call(_callback_click)
+
+    def _run(self) -> bool:
+        logger.debug("watch check")
+        source = self._d.dump_hierarchy()
+        for xpaths, func in self._callbacks.items():
+            ok = True
+            last_match = None
+            for xpath in xpaths:
+                sel = self._d.xpath(xpath, source=source)
+                if not sel.exists:
+                    ok = False
+                    break
+                last_match = sel.get_last_match()
+                logger.debug("match: %s", xpath)
+            if ok:
+                # 全部匹配
+                logger.debug("all match xpath: %s", xpaths)
+                self._run_callback(func, last_match)
+                return True
+        return False
+
+    def _run_callback(self, func, element):
+        func(element)
+        self.__trigger_time = time.time()
+
+    def _run_forever(self, interval: float):
+        try:
+            while not self.__stop.is_set():
+                with self.__lock:
+                    self._run()
+                time.sleep(interval)
+        finally:
+            self.__stopped.set()
+
+    def start(self):
+        if self.__started:
+            raise RuntimeError("Already started")
+        self.__started = True
+        self.__stop.clear()
+        self.__stopped.clear()
+        interval = 2.0 # 检查周期
+        threading.Thread(target=self._run_forever, daemon=True,
+                         args=(interval, )).start()
+
+    def stop(self):
+        self.__stop.set()
+        self.__stopped.wait(timeout=10)
+        self.__started = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        logger.info("context closed")
+        self.stop()
 
 
 class Watcher():
