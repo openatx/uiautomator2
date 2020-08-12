@@ -1,18 +1,20 @@
 # coding: utf-8
 #
 
-import time
 import inspect
 import logging
 import threading
+import time
 import typing
-from typing import Optional
 from collections import OrderedDict
+from typing import Optional
 
 from logzero import setup_logger
 
 import uiautomator2
 from uiautomator2.xpath import XPath
+
+from .utils import inject_call
 
 logger = logging.getLogger("uiautomator2")
 
@@ -32,22 +34,25 @@ class WatchContext:
 
         # 这里竟然要3个变量记录状态
         self.__stop = threading.Event()
-        self.__stopped = threading.Event() # 结束时设置
+        self.__stopped = threading.Event()  # 结束时设置
         self.__started = False
 
-    def wait_stable(self, timeout: float = 60.0):
-        """ 等待界面不在有弹窗
+    def wait_stable(self, seconds: float = 5.0, timeout: float = 60.0):
+        """ wait until watches not triggered
+        Args:
+            seconds: stable seconds
+            timeout: raise error when wait stable timeout
+            
         Raises:
             TimeoutError
         """
         if not self.__started:
             self.start()
 
-        _stable_seconds = 5.0
         deadline = time.time() + 60.0
         while time.time() < deadline:
             with self.__lock:
-                if time.time() - self.__trigger_time > _stable_seconds:
+                if time.time() - self.__trigger_time > seconds:
                     return True
             time.sleep(.2)
         raise TimeoutError("Unstable")
@@ -88,7 +93,7 @@ class WatchContext:
         return False
 
     def _run_callback(self, func, element):
-        func(element)
+        inject_call(func, d=self._d, el=element)
         self.__trigger_time = time.time()
 
     def _run_forever(self, interval: float):
@@ -106,8 +111,9 @@ class WatchContext:
         self.__started = True
         self.__stop.clear()
         self.__stopped.clear()
-        interval = 2.0 # 检查周期
-        threading.Thread(target=self._run_forever, daemon=True,
+        interval = 2.0  # 检查周期
+        threading.Thread(target=self._run_forever,
+                         daemon=True,
                          args=(interval, )).start()
 
     def stop(self):

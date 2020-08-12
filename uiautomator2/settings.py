@@ -77,7 +77,7 @@ class Settings(object):
             return
         
         # Invalid properties
-        if key not in self._props:
+        if key not in self._prop_types:
             raise AttributeError("invalid attribute", key)
 
         # Type check
