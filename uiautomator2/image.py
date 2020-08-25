@@ -50,10 +50,22 @@ def template_ssim(image_a, image_b):
     return max_val
 
 
-def compare_ssim(image_a, image_b, full=False):
+def cv2crop(im, bounds: tuple = None):
+    if not bounds:
+        return im
+    assert len(bounds) == 4
+
+    lx, ly, rx, ry = bounds 
+    crop_img = im[ly:ry, lx:rx]
+    return crop_img
+
+
+def compare_ssim(image_a, image_b, full=False, bounds=None):
     a = color_bgr2gray(image_a)
     b = color_bgr2gray(image_b) # template (small)
-    return structural_similarity(a, b, full=full)
+    ca = cv2crop(a, bounds)
+    cb = cv2crop(b, bounds)
+    return structural_similarity(ca, cb, full=full)
 
 
 def compare_ssim_debug(image_a, image_b, color=(255, 0, 0)):

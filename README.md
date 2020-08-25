@@ -11,6 +11,9 @@
 
 **该项目正在火热的开发中** QQ群号: *499563266*
 
+**突然插入的招聘**：目前作者的组里（阿里巴巴淘宝质量部：坐标杭州西溪园区）正在进行招聘（HIRE）
+具体内容这里可以看到 https://testerhome.com/topics/23010
+
 <p align="left"><img src="docs/img/qqgroup.png" /></div>
 
 [UiAutomator](https://developer.android.com/training/testing/ui-automator.html)是Google提供的用来做安卓自动化测试的一个Java库，基于Accessibility服务。功能很强，可以对第三方App进行测试，获取屏幕上任意一个APP的任意一个控件属性，并对其进行任意操作，但有两个缺点：1. 测试脚本只能使用Java语言 2. 测试脚本要打包成jar或者apk包上传到设备上才能运行。

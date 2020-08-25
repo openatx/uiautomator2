@@ -87,7 +87,7 @@ class WatchContext:
                 logger.debug("match: %s", xpath)
             if ok:
                 # 全部匹配
-                logger.debug("all match xpath: %s", xpaths)
+                logger.debug("watchContext xpath matched: %s", xpaths)
                 self._run_callback(func, last_match)
                 return True
         return False
@@ -107,7 +107,7 @@ class WatchContext:
 
     def start(self):
         if self.__started:
-            raise RuntimeError("Already started")
+            return
         self.__started = True
         self.__stop.clear()
         self.__stopped.clear()
@@ -122,6 +122,7 @@ class WatchContext:
         self.__started = False
 
     def __enter__(self):
+        self.start()
         return self
 
     def __exit__(self, type, value, traceback):
