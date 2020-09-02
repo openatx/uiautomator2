@@ -1695,8 +1695,11 @@ class _PluginMixIn:
     def settings(self) -> Settings:
         return Settings(self)
 
-    def watch_context(self) -> WatchContext:
-        return WatchContext(self)
+    def watch_context(self, autostart: bool = True) -> WatchContext:
+        wc = WatchContext(self)
+        if autostart:
+            wc.start()
+        return wc
 
     @cached_property
     def watcher(self) -> Watcher:

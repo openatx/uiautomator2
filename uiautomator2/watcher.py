@@ -25,7 +25,7 @@ def _callback_click(el):
 
 
 class WatchContext:
-    def __init__(self, d: "uiautomator2.Device"):
+    def __init__(self, d: "uiautomator2.Device", builtin: bool = False):
         self._d = d
         self._callbacks = OrderedDict()
         self.__xpath_list = []
@@ -36,6 +36,13 @@ class WatchContext:
         self.__stop = threading.Event()
         self.__stopped = threading.Event()  # 结束时设置
         self.__started = False
+
+        if builtin:
+            self.when("继续使用").click()
+            self.when("移入管控").when("取消").click()
+            self.when("^立即(下载|更新)").when("取消").click()
+            self.when("同意").click()
+            self.when("^(好的|确定)").click()
 
     def wait_stable(self, seconds: float = 5.0, timeout: float = 60.0):
         """ wait until watches not triggered
@@ -62,12 +69,17 @@ class WatchContext:
         self.__xpath_list.append(xpath)
         return self
 
-    def call(self, func: typing.Callable):
+    def call(self, fn: typing.Callable):
+        """
+        Args:
+            fn: support args (d: Device, el: Element)
+                see _run_callback function for more details
+        """
         xpath_list = tuple(self.__xpath_list)
         self.__xpath_list = []
         assert xpath_list, "when should be called before"
 
-        self._callbacks[xpath_list] = func
+        self._callbacks[xpath_list] = fn
 
     def click(self):
         self.call(_callback_click)
@@ -122,7 +134,6 @@ class WatchContext:
         self.__started = False
 
     def __enter__(self):
-        self.start()
         return self
 
     def __exit__(self, type, value, traceback):
