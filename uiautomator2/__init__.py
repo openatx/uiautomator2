@@ -1695,8 +1695,8 @@ class _PluginMixIn:
     def settings(self) -> Settings:
         return Settings(self)
 
-    def watch_context(self, autostart: bool = True) -> WatchContext:
-        wc = WatchContext(self)
+    def watch_context(self, autostart: bool = True, builtin: bool = False) -> WatchContext:
+        wc = WatchContext(self, builtin=builtin)
         if autostart:
             wc.start()
         return wc
