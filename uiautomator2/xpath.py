@@ -67,14 +67,14 @@ def strict_xpath(xpath: str, logger=logger) -> str:
     #     key = xpath[1:]
     #     return self(self.__alias_get(key), source)
     elif xpath.startswith('%') and xpath.endswith("%"):
-        xpath = '//*[contains(@text, {})]'.format(string_quote(xpath[1:-1]))
+        xpath = '//*[contains(@text, {0}) or contains(@content-desc, {0})]'.format(string_quote(xpath[1:-1]))
     elif xpath.startswith('%'):  # ends-with
         text = xpath[1:]
-        xpath = '//*[{!r} = substring(@text, string-length(@text) - {} + 1)]'.format(
-            text, len(text))
+        xpath = '//*[{0} = substring(@text, string-length(@text) - {1} + 1) or {0} = substring(@content-desc, string-length(@text) - {1} + 1)]'.format(
+            string_quote(text), len(text))
     elif xpath.endswith('%'):  # starts-with
         text = xpath[:-1]
-        xpath = "//*[starts-with(@text, {!r})]".format(text)
+        xpath = "//*[starts-with(@text, {0}) or starts-with(@content-desc, {0})]".format(string_quote(text))
     else:
         xpath = '//*[@text={0} or @content-desc={0} or @resource-id={0}]'.format(
             string_quote(xpath))
