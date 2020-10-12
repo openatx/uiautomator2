@@ -1011,7 +1011,7 @@ class _Device(_BaseClient):
         with self._operation_delay("click"):
             return self.touch.down(x, y).sleep(duration).up(x, y)
 
-    def swipe(self, fx, fy, tx, ty, duration: Optional[float] = None, steps: Optional[int] = SCROLL_STEPS):
+    def swipe(self, fx, fy, tx, ty, duration: Optional[float] = None, steps: Optional[int] = None):
         """
         Args:
             fx, fy: from position
@@ -1029,12 +1029,15 @@ class _Device(_BaseClient):
         rel2abs = self.pos_rel2abs
         fx, fy = rel2abs(fx, fy)
         tx, ty = rel2abs(tx, ty)
+        if not duration:
+            steps = SCROLL_STEPS
         if not steps:
             steps = int(duration * 200)
+        steps = max(2, steps) # step=1 has no swipe effect
         with self._operation_delay("swipe"):
             return self.jsonrpc.swipe(fx, fy, tx, ty, steps)
 
-    def swipe_points(self, points, duration=0.5):
+    def swipe_points(self, points, duration: float = 0.5):
         """
         Args:
             points: is point array containg at least one point object. eg [[200, 300], [210, 320]]
@@ -1049,7 +1052,8 @@ class _Device(_BaseClient):
             x, y = rel2abs(p[0], p[1])
             ppoints.append(x)
             ppoints.append(y)
-        return self.jsonrpc.swipePoints(ppoints, int(duration * 200))
+        steps = int(duration * 200)
+        return self.jsonrpc.swipePoints(ppoints, steps)
 
     def drag(self, sx, sy, ex, ey, duration=0.5):
         '''Swipe from one point to another point.'''
