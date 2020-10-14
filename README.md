@@ -102,6 +102,7 @@ Thank you to all our sponsors! ✨🍰✨
   - **[Stop all running apps](#stop-all-running-apps)**
   - **[Push and pull files](#push-and-pull-files)**
   - **[Auto click permission dialogs](#auto-click-permission-dialogs)**
+  - **[Open Scheme](#open-scheme)**
 
 **[UI automation](#basic-api-usages)**
   - **[Shell commands](#shell-commands)**
@@ -442,6 +443,17 @@ If this method is not working on your device, You can make a pull request or cre
 ![hierarchy](docs/img/uiautomatorviewer-popup.png)
 
 Now you know the button text and current package name. Make a pull request by update function `disable_popups` or create an [issue](https://github.com/openatx/uiautomator2/issues) if you are not familar with git and python.
+
+### Open Scheme
+You can do it wire adb: `adb shell am start -a android.intent.action.VIEW -d "appname://appnamehost"`
+
+Also you can do it with python code
+
+```python
+d.open_url("https://www.baidu.com")
+d.open_url("taobao://taobao.com") # open Taobao app
+d.open_url("appname://appnamehost")
+```
 
 ## Basic API Usages
 This part showcases how to perform common device operations:
@@ -1042,7 +1054,7 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
     x, y = d(text="Settings").center()
     # x, y = d(text="Settings").center(offset=(0, 0)) # left-top x, y
     ```
-
+    
 * Take screenshot of widget
 
     ```python
