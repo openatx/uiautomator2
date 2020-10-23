@@ -99,7 +99,7 @@ def show_image(im: Union[np.ndarray, Image.Image]):
     pilim.show()
 
 
-def pil2cv(pil_image):
+def pil2cv(pil_image) -> np.ndarray:
     """ Convert from pillow image to opencv """
     # convert PIL to OpenCV
     pil_image = pil_image.convert('RGB')
@@ -107,6 +107,13 @@ def pil2cv(pil_image):
     # Convert RGB to BGR
     cv2_image = cv2_image[:, :, ::-1].copy()
     return cv2_image
+
+
+def pil2base64(pil_image, format="JPEG") -> str:
+    """ Convert pillow image to base64 """
+    buf = io.BytesIO()
+    pil_image.save(buf, format=format)
+    return base64.b64encode(buf.getvalue()).decode('utf-8')
 
 
 def cv2pil(cv_image):
