@@ -182,6 +182,7 @@ class Initer():
             'arm64-v8a': 'atx-agent_{v}_linux_armv7.tar.gz',
             'armeabi': 'atx-agent_{v}_linux_armv6.tar.gz',
             'x86': 'atx-agent_{v}_linux_386.tar.gz',
+            'x86_64': 'atx-agent_{v}_linux_386.tar.gz',
         }
         name = None
         for abi in self.abis:
