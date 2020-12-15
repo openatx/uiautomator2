@@ -864,7 +864,7 @@ class _Device(_BaseClient):
                 # Always fail in secure page
                 # 截图失败直接返回一个粉色的图片
                 # d.settings['default_screenshot'] =
-                if d.settings['fallback_to_blank_screenshot']:
+                if not self.settings['fallback_to_blank_screenshot']:
                     raise IOError("PIL.Image.open IOError", ex)
                 return Image.new("RGB", self.window_size(), (220, 120, 100))
         elif format == 'opencv':

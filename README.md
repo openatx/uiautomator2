@@ -751,6 +751,9 @@ You can find all key code definitions at [Android KeyEvnet](https://developer.an
     d.swipe_ext("right", scale=0.9) # 默认0.9, 滑动距离为屏幕宽度的90%
     d.swipe_ext("right", box=(0, 0, 100, 100)) # 在 (0,0) -> (100, 100) 这个区域做滑动
 
+	# 实践发现上滑或下滑的时候，从中点开始滑动成功率会高一些
+	d.swipe_ext("up", scale=0.8) # 代码会vkk
+
     # 还可以使用Direction作为参数
     from uiautomator2 import Direction
     

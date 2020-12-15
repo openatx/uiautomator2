@@ -23,6 +23,7 @@ class SwipeExt(object):
             scale (float): percent of swipe, range (0, 1.0]
             box (tuple): None or [lx, ly, rx, ry]
             kwargs: used as kwargs in d.swipe
+
         Raises:
             ValueError
         """
@@ -40,6 +41,7 @@ class SwipeExt(object):
         h_offset = int(width * (1 - scale)) // 2
         v_offset = int(height * (1 - scale)) // 2
 
+        center = width//2, height//2
         left = lx + h_offset, ly + height // 2
         up = lx + width // 2, ly + v_offset
         right = rx - h_offset, ly + height // 2
@@ -50,8 +52,8 @@ class SwipeExt(object):
         elif direction == Direction.RIGHT:
             _swipe(left, right)
         elif direction == Direction.UP:
-            _swipe(bottom, up)
+            _swipe(center, up) # from center to top
         elif direction == Direction.DOWN:
-            _swipe(up, bottom)
+            _swipe(center, bottom) # from center to bottom
         else:
             raise ValueError("Unknown direction:", direction)

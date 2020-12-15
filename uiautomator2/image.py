@@ -186,7 +186,7 @@ def draw_point(im: Image.Image, x: int, y: int) -> Image.Image:
     return im
 
 
-def imread(data):
+def imread(data) -> np.ndarray:
     """
     Args:
         data: local path or http url or data:image/base64,xxx
