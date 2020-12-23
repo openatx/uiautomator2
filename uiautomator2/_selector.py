@@ -304,7 +304,7 @@ class UiObject(object):
 
         Example:
             d(text="Clock").wait()
-            d(text="Settings").wait("gone") # wait until it's gone
+            d(text="Settings").wait(exists=False) # wait until it's gone
         """
         if timeout is None:
             timeout = self.wait_timeout

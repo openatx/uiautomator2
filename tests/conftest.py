@@ -40,11 +40,11 @@ def pytest_configure(config):
         config.devlist = read_device_list()
 
 
-def pytest_configure_node(node):
-    # the master for each node fills slaveinput dictionary
-    # which pytest-xdist will transfer to the subprocess
-    serial = node.slaveinput["serial"] = node.config.devlist.pop()
-    node.config.devlist.insert(0, serial)
+# def pytest_configure_node(node):
+#     # the master for each node fills slaveinput dictionary
+#     # which pytest-xdist will transfer to the subprocess
+#     serial = node.slaveinput["serial"] = node.config.devlist.pop()
+#     node.config.devlist.insert(0, serial)
 
 
 @pytest.fixture(scope="session")

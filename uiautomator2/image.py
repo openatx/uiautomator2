@@ -4,28 +4,31 @@
 # - https://opencv-python-tutroals.readthedocs.io/en/latest/
 
 import base64
+import io
 import logging
 import os
 import re
 import time
+import typing
 from typing import Union
 
 import cv2
-import findit
+# import findit
+import imutils
 import numpy as np
 import requests
 from logzero import setup_logger
 from PIL import Image, ImageDraw
 from skimage.metrics import structural_similarity
-import imutils
 
 import uiautomator2
 
+ImageType = typing.Union[np.ndarray, Image.Image]
 
 compare_ssim = structural_similarity
 
 
-def color_bgr2gray(image: Union[np.ndarray, Image.Image]):
+def color_bgr2gray(image: ImageType):
     """ change color image to gray
     Returns:
         opencv-image
@@ -38,7 +41,7 @@ def color_bgr2gray(image: Union[np.ndarray, Image.Image]):
     return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 
-def template_ssim(image_a, image_b):
+def template_ssim(image_a: ImageType, image_b: ImageType):
     """
     Refs:
         https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_template_matching/py_template_matching.html
@@ -50,7 +53,7 @@ def template_ssim(image_a, image_b):
     return max_val
 
 
-def cv2crop(im, bounds: tuple = None):
+def cv2crop(im: np.ndarray, bounds: tuple = None):
     if not bounds:
         return im
     assert len(bounds) == 4
@@ -60,7 +63,7 @@ def cv2crop(im, bounds: tuple = None):
     return crop_img
 
 
-def compare_ssim(image_a, image_b, full=False, bounds=None):
+def compare_ssim(image_a: ImageType, image_b: ImageType, full=False, bounds=None):
     a = color_bgr2gray(image_a)
     b = color_bgr2gray(image_b) # template (small)
     ca = cv2crop(a, bounds)
@@ -68,7 +71,7 @@ def compare_ssim(image_a, image_b, full=False, bounds=None):
     return structural_similarity(ca, cb, full=full)
 
 
-def compare_ssim_debug(image_a, image_b, color=(255, 0, 0)):
+def compare_ssim_debug(image_a: ImageType, image_b: ImageType, color=(255, 0, 0)):
     """
     Args:
         image_a, image_b: opencv image or PIL.Image
