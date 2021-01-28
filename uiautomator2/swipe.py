@@ -41,7 +41,7 @@ class SwipeExt(object):
         h_offset = int(width * (1 - scale)) // 2
         v_offset = int(height * (1 - scale)) // 2
 
-        center = width//2, height//2
+        center = lx + width//2, ly + height//2
         left = lx + h_offset, ly + height // 2
         up = lx + width // 2, ly + v_offset
         right = rx - h_offset, ly + height // 2
