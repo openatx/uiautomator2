@@ -607,8 +607,7 @@ class _BaseClient(object):
             self._grant_app_permissions()
             self.shell(['am', 'start', '-a', 'android.intent.action.MAIN', '-c',
                         'android.intent.category.LAUNCHER', '-n', package_name + "/" + ".ToastActivity"])
-            # self.app_start(package_name,
-            #                ".ToastActivity")  # -e showFloatWindow true
+            
         self.uiautomator.start()
 
         # wait until uiautomator2 service is working
@@ -622,6 +621,11 @@ class _BaseClient(object):
                 break
 
             if self._is_alive():
+                # 显示悬浮窗，增加稳定性
+                # 可能会带来悬浮窗对话框
+                # 目前先测试一下，之后需要改版一下
+                if os.getenv("TMQ"):
+                    self.show_float_window(True)
                 return True
             time.sleep(1.0)
 
