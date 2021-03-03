@@ -57,6 +57,11 @@ def main():
     
     d.xpath('//*[@text="私人FM"]').parent() # 定位到父元素
     d.xpath('//*[@text="私人FM"]').parent("@android:list") # 定位到符合条件的父元素
+
+	# 包含child的时候，不建议在使用多条件的xpath，因为容易搞混
+	d.xpath('@android:id/list').child('/android.widget.TextView').click()
+	# 等价于下面这个
+	# d.xpath('//*[@resource-id="android:id/list"]/android.widget.TextView').click()
 ```
 
 >下面的代码为了方便就不写`import`和`main`了，默认存在`d`这个变量
@@ -109,6 +114,10 @@ for el in d.xpath('//android.widget.EditText').all():
 # 尚未测试的方法
 # 点击位于控件包含坐标(50%, 50%)的方法
 d.xpath("//*").position(0.5, 0.5).click() 
+
+# child操作
+d.xpath('@android:id/list').child('/android.widget.TextView').click()
+等价于 d.xpath('//*[@resource-id="android:id/list"]/android.widget.TextView').all()
 ```
 
 ### `XMLElement`的操作

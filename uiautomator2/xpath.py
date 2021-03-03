@@ -404,6 +404,12 @@ class XPathSelector(object):
             raise TypeError("Unknown type for value {}".format(_xpath))
         return self
 
+    def child(self, _xpath: str):
+        if not _xpath.startswith("/"):
+            _xpath = "/" + _xpath
+        self._xpath_list[-1] = self._xpath_list[-1] + _xpath
+        return self
+
     def position(self, x: float, y: float):
         """ set possible position """
         assert 0 < x < 1
