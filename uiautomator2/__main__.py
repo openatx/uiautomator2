@@ -31,7 +31,7 @@ def cmd_init(args):
     else:
         for device in adbutils.adb.iter_device():
             init = Initer(device, loglevel=logging.DEBUG)
-            init.install(args.server)
+            init.install()
 
 
 def cmd_purge(args):
@@ -130,7 +130,6 @@ _commands = [
          help="install enssential resources to device",
          flags=[
              dict(args=['--serial', '-s'], type=str, help='serial number'),
-             dict(name=['server'], type=str, help='atxserver address'),
              dict(args=['serial_optional'],
                   nargs='?',
                   help='serial number, same as --serial'),

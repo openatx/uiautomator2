@@ -149,7 +149,6 @@ class Initer():
         self.arch = d.getprop('ro.arch')
         self.abis = (d.getprop('ro.product.cpu.abilist').strip()
                      or self.abi).split(",")
-        self.server_addr = None
         self.logger = setup_logger(level=loglevel)
         # self.logger.debug("Initial device %s", device)
         self.logger.info("uiautomator2 version: %s", __version__)
@@ -336,16 +335,12 @@ class Initer():
         for (name, url) in self.jar_urls:
             self.push_url(url, "/data/local/tmp/" + name, mode=0o644)
 
-    def _install_atx_agent(self, server_addr=None):
+    def _install_atx_agent(self):
         self.logger.info("Install atx-agent %s", __atx_agent_version__)
         self.push_url(self.atx_agent_url, tgz=True, extract_name="atx-agent")
-        args = [self.atx_agent_path, "server", "--nouia", "-d"]
-        if server_addr:
-            args.extend(['-t', server_addr])
         self.shell(self.atx_agent_path, "server", "--stop")
-        self.shell(*args)
 
-    def install(self, server_addr=None):
+    def install(self):
         """
         TODO: push minicap and minitouch from tgz file
         """
@@ -370,7 +365,7 @@ class Initer():
             self.logger.info("Already installed com.github.uiautomator apks")
 
         if self.is_atx_agent_outdated():
-            self._install_atx_agent(server_addr)
+            self._install_atx_agent()
 
         self.start_atx_agent()
 
@@ -379,7 +374,7 @@ class Initer():
         print("Successfully init %s" % self._device)
     
     def start_atx_agent(self):
-        self.shell(self.atx_agent_path, 'server', '--nouia', '-d')
+        self.shell(self.atx_agent_path, 'server', '--nouia', '-d', "--addr", "127.0.0.1:7912")
 
     @retry(
         (requests.ConnectionError, requests.ReadTimeout, requests.HTTPError),

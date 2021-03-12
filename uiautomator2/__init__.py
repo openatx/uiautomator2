@@ -963,7 +963,7 @@ class _Device(_BaseClient):
         ACTION_DOWN: 0 ACTION_MOVE: 2
         touch.down(x, y)
         touch.move(x, y)
-        touch.up()
+        touch.up(x, y)
         """
         ACTION_DOWN = 0
         ACTION_MOVE = 2
