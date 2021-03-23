@@ -9,8 +9,9 @@ except pkg_resources.DistributionNotFound:
 
 # See ChangeLog for details
 
-__apk_version__ = '2.3.1' # TODO: require atx-agent>=0.10.0
-# 2.3.2 merge pull requests
+__apk_version__ = '2.3.3'
+# 2.3.3 make float windows smaller
+# 2.3.2 merge pull requests # require atx-agent>=0.10.0
 # 2.3.1 support minicapagent, rotationagent, minitouchagent
 # 2.2.1 fix click bottom(infinitly display) not working bug
 # 2.2.0 add MinitouchAgent instead of /data/local/tmp/minitouch
@@ -41,7 +42,8 @@ __apk_version__ = '2.3.1' # TODO: require atx-agent>=0.10.0
 __jar_version__ = 'v0.1.6'  # no useless for now.
 # v0.1.6 first release version
 
-__atx_agent_version__ = '0.9.6'
+__atx_agent_version__ = '0.10.0'
+# 0.10.0 remove tunnel code, use androidx.test.runner
 # 0.9.6 fix security reason for remote control device
 # 0.9.5 log support rotate, prevent log too large
 # 0.9.4 test travis push to qiniu-cdn
