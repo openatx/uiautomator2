@@ -273,8 +273,7 @@ class Initer():
         Returns:
             bool
         """
-        agent_version = self._device.shell(self.atx_agent_path +
-                                           " version").strip()
+        agent_version = self._device.shell([self.atx_agent_path, "version"]).strip()
         if agent_version == "dev":
             self.logger.info("skip version check for atx-agent dev")
             return False

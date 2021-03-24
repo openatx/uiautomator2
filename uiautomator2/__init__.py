@@ -190,11 +190,11 @@ class _AgentRequestSession(TimeoutRequestsSession):
                 adbutils.AdbError) as e:
             if not retry:
                 raise
-
             # if atx-agent is already running, just raise error
             if isinstance(e, requests.RequestException) and \
-                    self.__client._is_agent_alive():
+                    self.__client._is_agent_ok():
                 raise
+
 
         if not self.__client._serial:
             raise OSError(
@@ -522,13 +522,16 @@ class _BaseClient(object):
     def uiautomator(self) -> _Service:
         return _Service("uiautomator", self)
 
-    def _is_agent_alive(self):
+    def _is_agent_ok(self):
         try:
             url = self.path2url("/version")
             # should not use self.http.get here
             r = requests.get(url, timeout=2)
-            if r.status_code == 200:
-                return True
+            if r.status_code != 200:
+                return False
+            if r.text.strip() != __atx_agent_version__:
+                return False
+            return True
         except requests.RequestException as e:
             return False
 
@@ -577,6 +580,11 @@ class _BaseClient(object):
 
         if self._is_alive():
             return
+
+        # atx-agent might be outdated, check atx-agent version here
+        if not self._is_agent_ok():
+            self._prepare_atx_agent()
+
         ok = self._force_reset_uiautomator_v2(
             launch_test_app=depth > 0)  # uiautomator 2.0
         if ok:
@@ -1524,7 +1532,7 @@ class _DeprecatedMixIn:
     @property
     @deprecated(version="3.0.0", reason="This method will deprecated soon")
     def agent_alive(self):
-        return self._is_agent_alive()
+        return self._is_agent_ok()
 
     @property
     @deprecated(version="3.0.0")
