@@ -46,6 +46,7 @@ def test_imread(im_ae86, path_ae86):
     assert im.shape == (193, 321, 3), "图片格式变化"
 
 
+@pytest.mark.skip("missing test images")
 def test_image_match():
     class MockDevice():
         def __init__(self):
