@@ -301,6 +301,10 @@ class XPathWatcher():
         return self
 
     def call(self, func):
+        """
+        func accept argument, key(d, el)
+        d=self._d, el=element
+        """
         self._parent._watchers.append({
             "name": self._name,
             "xpaths": self._xpath_list,
