@@ -27,7 +27,7 @@ def cmd_init(args):
     if serial:
         device = adbutils.adb.device(serial)
         init = Initer(device)
-        init.install(args.server)
+        init.install()
     else:
         for device in adbutils.adb.iter_device():
             init = Initer(device, loglevel=logging.DEBUG)
