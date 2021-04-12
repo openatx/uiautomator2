@@ -182,6 +182,10 @@ Thank you to all our sponsors! ✨🍰✨
     ```bash
     # init 所有的已经连接到电脑的设备
     python -m uiautomator2 init
+
+    # 高阶用法
+    # init and set atx-agent listen in all address
+    python -m uiautomator2 init --addr :7912
     ```
 
     有时候init也会出错，请参考[手动Init指南](https://github.com/openatx/uiautomator2/wiki/Manual-Init)

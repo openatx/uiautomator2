@@ -149,9 +149,15 @@ class Initer():
         self.arch = d.getprop('ro.arch')
         self.abis = (d.getprop('ro.product.cpu.abilist').strip()
                      or self.abi).split(",")
+        
+        self.__atx_listen_addr = "127.0.0.1:7912"
         self.logger = setup_logger(level=loglevel)
         # self.logger.debug("Initial device %s", device)
         self.logger.info("uiautomator2 version: %s", __version__)
+
+    def set_atx_agent_addr(self, addr: str):
+        assert ":" in addr
+        self.__atx_listen_addr = addr
 
     @property
     def atx_agent_path(self):
@@ -337,7 +343,6 @@ class Initer():
     def _install_atx_agent(self):
         self.logger.info("Install atx-agent %s", __atx_agent_version__)
         self.push_url(self.atx_agent_url, tgz=True, extract_name="atx-agent")
-        self.shell(self.atx_agent_path, "server", "--stop")
 
     def install(self):
         """
@@ -363,6 +368,9 @@ class Initer():
         else:
             self.logger.info("Already installed com.github.uiautomator apks")
 
+        # stop atx-agent first
+        self.shell(self.atx_agent_path, "server", "--stop")
+
         if self.is_atx_agent_outdated():
             self._install_atx_agent()
 
@@ -373,7 +381,7 @@ class Initer():
         print("Successfully init %s" % self._device)
     
     def start_atx_agent(self):
-        self.shell(self.atx_agent_path, 'server', '--nouia', '-d', "--addr", "127.0.0.1:7912")
+        self.shell(self.atx_agent_path, 'server', '--nouia', '-d', "--addr", self.__atx_listen_addr)
 
     @retry(
         (requests.ConnectionError, requests.ReadTimeout, requests.HTTPError),
