@@ -1096,7 +1096,7 @@ class _Device(_BaseClient):
         with self._operation_delay("press"):
             if isinstance(key, int):
                 return self.jsonrpc.pressKeyCode(
-                    key, meta) if meta else self.server.jsonrpc.pressKeyCode(key)
+                    key, meta) if meta else self.jsonrpc.pressKeyCode(key)
             else:
                 return self.jsonrpc.pressKey(key)
 
