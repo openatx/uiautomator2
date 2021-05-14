@@ -68,7 +68,7 @@ if six.PY2:
     FileNotFoundError = OSError
 
 DEBUG = False
-WAIT_FOR_DEVICE_TIMEOUT = int(os.getenv("WAIT_FOR_DEVICE_TIMEOUT", 70))
+WAIT_FOR_DEVICE_TIMEOUT = int(os.getenv("WAIT_FOR_DEVICE_TIMEOUT", 20))
 
 # logger = logging.getLogger("uiautomator2")
 
@@ -309,27 +309,40 @@ class _BaseClient(object):
 
     def _wait_for_device(self, timeout=None) -> adbutils.AdbDevice:
         """
-        wait for device came online
+        wait for device came online, if device is remote, reconnect every 1s
 
         Returns:
             adbutils.AdbDevice or None
         """
         if not timeout:
-            timeout = WAIT_FOR_DEVICE_TIMEOUT if _is_production() else 0.0
+            timeout = WAIT_FOR_DEVICE_TIMEOUT if _is_production() else 3.0
 
         for d in adbutils.adb.device_list():
             if d.serial == self._serial:
                 return d
 
+        _RE_remote_adb = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+$")
+        _is_remote = _RE_remote_adb.match(self._serial) is not None
+
+        adb = adbutils.adb
         deadline = time.time() + timeout
         while time.time() < deadline:
-            logger.info("wait for device(%s), left(%.1fs)", self._serial,
-                        deadline - time.time())
-            for d in adbutils.adb.device_list():
-                if d.serial == self._serial:
-                    logger.info("device(%s) came online", self._serial)
-                    return d
-            time.sleep(2.0)
+            title = "device reconnecting" if _is_remote else "wait-for-device"
+            logger.info("%s, time left(%.1fs)", title, deadline - time.time())
+            if _is_remote:
+                try:
+                    adb.disconnect(self._serial)
+                    adb.connect(self._serial, timeout=1)
+                except (adbutils.AdbError, adbutils.AdbTimeout) as e:
+                    logger.debug("adb reconnect error: %s", str(e))
+                    time.sleep(1.0)
+                    continue
+            try:
+                adb.wait_for(self._serial, timeout=1)
+            except adbutils.AdbTimeout:
+                continue
+            
+            return adb.device(self._serial)
         return None
 
     def _adb_shell(self, cmdargs: Union[list, Tuple[str]], timeout=None):
