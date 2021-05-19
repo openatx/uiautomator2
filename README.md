@@ -282,6 +282,20 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 - install: 安装apk，apk通过URL给出 (暂时不能用)
 - healthcheck: 健康检查 (暂不能用)
 
+- doctor: 检查uiautomator2无法使用的原因
+
+    ```bash
+    $ uiautomator2 doctor
+    I 210519 16:48:45 init:156] uiautomator2 version: 2.14.2.dev1
+    [D 210519 16:48:45 __main__:105] sdk:29 abi:arm64-v8a
+    CHECK atx-agent
+            GOOD: atx-agent version 0.10.0
+    CHECK uiautomator-apks
+            GOOD: com.github.uiautomator 2.3.3
+    CHECK jsonrpc
+            GOOD: d.info success
+    ==> GOOD <==
+    ```
     
 # API Documents
 

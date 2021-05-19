@@ -98,6 +98,44 @@ def cmd_current(args):
     print(json.dumps(d.app_current(), indent=4))
 
 
+def cmd_doctor(args):
+    d = adbutils.adb.device(args.serial)
+    from .init import Initer
+    init = Initer(d)
+    logger.debug("sdk:%s abi:%s", init.sdk, init.abi)
+
+    ok = True
+    print("CHECK atx-agent")
+    if init.is_atx_agent_outdated():
+        print("\tFAIL")
+        ok = False
+        # logger.warning("atx-agent is invalid")
+    else:
+        version = init.check_atx_agent_version()
+        print("\tGOOD: atx-agent version", version)
+
+    print("CHECK uiautomator-apks")
+    if init.is_apk_outdated():
+        print("\tFAIL")
+        logger.warning("apk is invalid")
+        ok = False
+    else:
+        apk_debug = init._device.package_info("com.github.uiautomator")
+        version = apk_debug['version_name']
+        print("\tGOOD: com.github.uiautomator", version)
+    
+    if ok:
+        print("CHECK jsonrpc")
+        d = u2.connect(args.serial)
+        # print(d.info)
+        if d.alive:
+            print("\tGOOD: d.info success")
+        else:
+            ok = False
+    
+    print("==> %s <==" % ("GOOD" if ok else "FAIL"))
+    
+
 def cmd_version(args):
     print("uiautomator2 version: %s" % __version__)
 
@@ -195,6 +233,9 @@ _commands = [
     dict(action=cmd_current,
          command="current",
          help="show current application"),
+    dict(action=cmd_doctor,
+         command='doctor',
+         help='detect connect problem'),
     dict(action=cmd_console,
          command="console",
          help="launch interactive python console"),
