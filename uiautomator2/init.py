@@ -393,6 +393,9 @@ class Initer():
         version = requests.get("http://127.0.0.1:%d/version" %
                                port).text.strip()
         self.logger.debug("atx-agent version %s", version)
+
+        wlan_ip = requests.get("http://127.0.0.1:%d/wlan/ip" % port).text.strip()
+        self.logger.debug("device wlan ip: %s", wlan_ip)
         return version
 
     def uninstall(self):
