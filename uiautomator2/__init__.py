@@ -181,6 +181,10 @@ class _AgentRequestSession(TimeoutRequestsSession):
         self.__client = clnt
 
     def request(self, method, url, **kwargs):
+        """
+        Raises:
+            RuntimeError
+        """
         retry = kwargs.pop("retry", True)
         try:
             # may raise adbutils.AdbError when device offline
