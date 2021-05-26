@@ -44,7 +44,9 @@ class WatchContext:
             self.when("同意").click()
             self.when("^(好的|确定)").click()
             self.when("继续安装").click()
-            # self.when("安装")
+            self.when("安装").click()
+            self.when("Agree").click()
+            self.when("ALLOW").click()
 
     def wait_stable(self, seconds: float = 5.0, timeout: float = 60.0):
         """ wait until watches not triggered
