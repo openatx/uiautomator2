@@ -1326,8 +1326,8 @@ class _AppMixIn:
         """
         target = "/data/local/tmp/_tmp.apk"
         self.push(data, target, show_progress=True)
-        logger.debug("pm install -rt %s", target)
-        ret = self.shell(['pm', 'install', "-r", "-t", target])
+        logger.debug("pm install -r -t %s", target)
+        ret = self.shell(['pm', 'install', "-r", "-t", target],timeout=300)
         if ret.exit_code != 0:
             raise RuntimeError(ret.output, ret.exit_code)
 
