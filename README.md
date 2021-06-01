@@ -1536,10 +1536,10 @@ https://github.com/openatx/uiautomator2/wiki/Common-issues
 方法2:
 
 ```python
-d.service("uiautomator").stop()
+d.uiautomator.stop()
 
-# d.service("uiautomator").start() # 启动
-# d.service("uiautomator").running() # 是否在运行
+# d.uiautomator.start() # 启动
+# d.uiautomator.running() # 是否在运行
 ```
 
 [ATX与Maxim共存AccessibilityService的方法](https://testerhome.com/topics/17179)
