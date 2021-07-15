@@ -30,14 +30,14 @@ def sess(d, package_name) -> u2.Device:
 # run parallel
 # py.test --tx "3*popen" --dist=load test_device.py -q --tb=line
 
-def read_device_list() -> list:
-    return [v.serial for v in adbutils.adb.device_list()]
+#def read_device_list() -> list:
+#    return [v.serial for v in adbutils.adb.device_list()]
 
 
-def pytest_configure(config):
-     # read device list if we are on the master
-     if not hasattr(config, "slaveinput"):
-        config.devlist = read_device_list()
+#def pytest_configure(config):
+#     # read device list if we are on the master
+#     if not hasattr(config, "slaveinput"):
+#        config.devlist = read_device_list()
 
 
 # def pytest_configure_node(node):
