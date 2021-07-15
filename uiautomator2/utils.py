@@ -4,6 +4,8 @@
 import functools
 import inspect
 import shlex
+import threading
+import typing
 from typing import Union
 
 import six
@@ -206,6 +208,17 @@ def swipe_in_bounds(d: "uiautomator2.Device",
     else:
         raise ValueError("Unknown direction:", direction)
 
+
+def method_threadsafe(fn: typing.Callable):
+    @functools.wraps(fn)
+    def inner(self, *args, **kwargs):
+        if not hasattr(self, "_lock"):
+            self._lock = threading.Lock()
+
+        with self._lock:
+            return fn(self, *args, **kwargs)
+    
+    return inner
 
 if __name__ == "__main__":
     for n in (1, 10000, 10000000, 10000000000):

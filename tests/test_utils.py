@@ -1,6 +1,8 @@
 # coding: utf-8
 #
 
+import time
+import threading
 import pytest
 from uiautomator2 import utils
 
@@ -24,3 +26,27 @@ def test_inject_call():
 
     with pytest.raises(TypeError):
         utils.inject_call(foo, 2)
+
+
+def test_method_threadsafe():
+    class A:
+        n = 0
+
+        @utils.method_threadsafe
+        def call(self):
+            v = self.n
+            time.sleep(.5)
+            self.n = v + 1
+    
+    a = A()
+    th1 = threading.Thread(name="th1", target=a.call)
+    th2 = threading.Thread(name="th2", target=a.call)
+    th1.start()
+    th2.start()
+    th1.join()
+    th2.join()
+    
+    assert 2 == a.n
+
+
+        
