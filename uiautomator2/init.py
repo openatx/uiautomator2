@@ -140,7 +140,7 @@ def parse_apk(path: str):
     }
 
 class Initer():
-    def __init__(self, device: adbutils.AdbDevice, loglevel=logging.INFO):
+    def __init__(self, device: adbutils.AdbDevice, loglevel=logging.DEBUG):
         d = self._device = device
 
         self.sdk = d.getprop('ro.build.version.sdk')
@@ -321,6 +321,10 @@ class Initer():
 
     def _install_uiautomator_apks(self):
         """ use uiautomator 2.0 to run uiautomator test """
+        if os.getenv("TMQ"):
+            self.logger.info("detect TMQ platform, skip reinstall uiautomator apks")
+            return
+
         self.shell("pm", "uninstall", "com.github.uiautomator")
         self.shell("pm", "uninstall", "com.github.uiautomator.test")
         for filename, url in app_uiautomator_apk_urls():

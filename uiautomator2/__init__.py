@@ -637,7 +637,11 @@ class _BaseClient(object):
         self._kill_process_by_name("uiautomator")
 
         if self._is_apk_outdated():
-            self._setup_uiautomator()
+            # skip reinstall apk when run in tmq platform
+            if os.getenv("TMQ"):
+                logger.info("skip reinstall uiautomator apks in tmq platform")
+            else:
+                self._setup_uiautomator()
 
         if launch_test_app:
             self._grant_app_permissions()
