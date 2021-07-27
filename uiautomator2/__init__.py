@@ -576,7 +576,7 @@ class _BaseClient(object):
         except (requests.ReadTimeout, EnvironmentError):
             return False
 
-    @process_safe_wrapper
+    # @process_safe_wrapper
     def reset_uiautomator(self, reason="unknown", depth=0):
         """
         Reset uiautomator
