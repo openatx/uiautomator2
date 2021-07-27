@@ -28,11 +28,11 @@ def test_inject_call():
         utils.inject_call(foo, 2)
 
 
-def test_method_threadsafe():
+def test_threadsafe_wrapper():
     class A:
         n = 0
 
-        @utils.method_threadsafe
+        @utils.thread_safe_wrapper
         def call(self):
             v = self.n
             time.sleep(.5)

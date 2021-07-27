@@ -60,7 +60,7 @@ from .init import Initer
 # from .session import Session  # noqa: F401
 from .settings import Settings
 from .swipe import SwipeExt
-from .utils import list2cmdline, method_threadsafe
+from .utils import list2cmdline, process_safe_wrapper, thread_safe_wrapper
 from .version import __apk_version__, __atx_agent_version__
 from .watcher import WatchContext, Watcher
 
@@ -576,7 +576,7 @@ class _BaseClient(object):
         except (requests.ReadTimeout, EnvironmentError):
             return False
 
-    # @method_threadsafe
+    @process_safe_wrapper
     def reset_uiautomator(self, reason="unknown", depth=0):
         """
         Reset uiautomator

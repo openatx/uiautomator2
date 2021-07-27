@@ -3,11 +3,13 @@
 
 import functools
 import inspect
+import os
 import shlex
 import threading
 import typing
 from typing import Union
 
+import filelock
 import six
 
 from ._proto import Direction
@@ -209,7 +211,7 @@ def swipe_in_bounds(d: "uiautomator2.Device",
         raise ValueError("Unknown direction:", direction)
 
 
-def method_threadsafe(fn: typing.Callable):
+def thread_safe_wrapper(fn: typing.Callable):
     @functools.wraps(fn)
     def inner(self, *args, **kwargs):
         if not hasattr(self, "_lock"):
@@ -219,6 +221,25 @@ def method_threadsafe(fn: typing.Callable):
             return fn(self, *args, **kwargs)
     
     return inner
+
+
+def process_safe_wrapper(fn: typing.Callable[..., typing.Any]) -> typing.Callable[..., typing.Any]:
+    """
+    threadsafe for process calls
+    """
+    lockfile_path = os.path.expanduser("~/.uiautomator2/" + fn.__name__ + ".lock")
+    flock = filelock.FileLock(lockfile_path, timeout=120) # default timeout
+
+    @functools.wraps(fn)
+    def inner(self, *args, **kwargs):
+        if not hasattr(self, "_plock"):
+            self._plock = flock
+
+        with self._plock:
+            return fn(self, *args, **kwargs)
+    
+    return inner
+
 
 if __name__ == "__main__":
     for n in (1, 10000, 10000000, 10000000000):

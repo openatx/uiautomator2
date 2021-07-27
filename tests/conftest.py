@@ -49,10 +49,11 @@ def sess(d, package_name) -> u2.Device:
 
 @pytest.fixture(scope="session")
 def device(request):
-    slaveinput = getattr(request.config, "slaveinput", None)
-    if slaveinput is None: # single-process execution
-        serial = read_device_list()[0]
-    else: # running in a subprocess here
-        serial = slaveinput["serial"]
-    print("SERIAL:", serial)
-    return u2.connect(serial)
+    return u2.connect()
+    # slaveinput = getattr(request.config, "slaveinput", None)
+    # if slaveinput is None: # single-process execution
+    #     serial = read_device_list()[0]
+    # else: # running in a subprocess here
+    #     serial = slaveinput["serial"]
+    # print("SERIAL:", serial)
+    # return u2.connect(serial)
