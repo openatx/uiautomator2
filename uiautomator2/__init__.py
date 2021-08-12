@@ -36,6 +36,7 @@ from typing import List, Optional, Tuple, Union
 
 # import progress.bar
 import adbutils
+import filelock
 import logzero
 import packaging
 import requests
@@ -247,6 +248,10 @@ class _BaseClient(object):
         wlan_ip = self.wlan_ip
         if wlan_ip:
             self._atx_agent_url = f"http://{wlan_ip}:7912"
+        
+        filelock_path = os.path.expanduser("~/.uiautomator2/filelocks/") + self._serial.replace(":", "_") + ".lock"
+        os.makedirs(os.path.dirname(filelock_path), exist_ok=True)
+        self._filelock = filelock.FileLock(filelock_path, timeout=200)
 
     def _get_atx_agent_url(self) -> str:
         """ get url for python client to connect """
@@ -576,7 +581,6 @@ class _BaseClient(object):
         except (requests.ReadTimeout, EnvironmentError):
             return False
 
-    # @process_safe_wrapper
     def reset_uiautomator(self, reason="unknown", depth=0):
         """
         Reset uiautomator
@@ -590,41 +594,43 @@ class _BaseClient(object):
             - start uiautomator keeper(am instrument -w ...)
             - wait until uiautomator service is ready
         """
-        if depth >= 2:
-            raise EnvironmentError(
-                "Uiautomator started failed.",
-                reason,
-                "https://github.com/openatx/uiautomator2/wiki/Common-issues",
-                "adb shell am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner",
-            )
+        with self._filelock:
+            if depth >= 2:
+                raise EnvironmentError(
+                    "Uiautomator started failed.",
+                    reason,
+                    "https://github.com/openatx/uiautomator2/wiki/Common-issues",
+                    "adb shell am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/android.support.test.runner.AndroidJUnitRunner",
+                )
 
-        if depth > 0:
-            logger.info("restart-uiautomator since \"%s\"", reason)
+            if depth > 0:
+                logger.info("restart-uiautomator since \"%s\"", reason)
 
-        # Note:
-        # atx-agent check has moved to _AgentRequestSession
-        # If code goes here, it means atx-agent is fine.
+            # Note:
+            # atx-agent check has moved to _AgentRequestSession
+            # If code goes here, it means atx-agent is fine.
 
-        if self._is_alive():
-            return
+            if self._is_alive():
+                return
 
-        # atx-agent might be outdated, check atx-agent version here
-        if self._is_agent_outdated():
-            if self._serial: # update atx-agent will not work on WiFi
-                self._prepare_atx_agent()
+            # atx-agent might be outdated, check atx-agent version here
+            if self._is_agent_outdated():
+                if self._serial: # update atx-agent will not work on WiFi
+                    self._prepare_atx_agent()
 
-        ok = self._force_reset_uiautomator_v2(
-            launch_test_app=depth > 0)  # uiautomator 2.0
-        if ok:
-            logger.info("uiautomator back to normal")
-            return
+            ok = self._force_reset_uiautomator_v2(
+                launch_test_app=depth > 0)  # uiautomator 2.0
+            if ok:
+                logger.info("uiautomator back to normal")
+                return
 
-        output = self._test_run_instrument()
-        if "does not have a signature matching the target" in output:
-            self._setup_uiautomator()
-            reason = "signature not match, reinstall uiautomator apks"
+            output = self._test_run_instrument()
+            if "does not have a signature matching the target" in output:
+                self._setup_uiautomator()
+                reason = "signature not match, reinstall uiautomator apks"
+
         return self.reset_uiautomator(reason=reason,
-                                      depth=depth + 1)
+                                    depth=depth + 1)
 
     def _force_reset_uiautomator_v2(self, launch_test_app=False):
         brand = self.shell("getprop ro.product.brand").output.strip()
