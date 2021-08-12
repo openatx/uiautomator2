@@ -789,7 +789,7 @@ class _BaseClient(object):
         try:
             r = self.http.post(pathname,
                                data={'mode': modestr},
-                               files={'file': fileobj})
+                               files={'file': fileobj}, timeout=300.0)
             if r.status_code == 200:
                 return r.json()
             raise IOError("push", "%s -> %s" % (src, dst), r.text)
