@@ -3,29 +3,35 @@ name: Python application
 on: [push]
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
-
+  build-and-publish:
+    name: Build and publish Python 🐍 distributions 📦 to PyPI
+    runs-on: ubuntu-18.04
     steps:
-    - uses: actions/checkout@v1
-    - name: Set up Python 3.7
+    - uses: actions/checkout@master
+      with:
+        fetch-depth: 10
+    - name: Set up Python 3.7 
       uses: actions/setup-python@v1
       with:
-        python-version: 3.7
+        python-version: 3.7 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-    #- name: Lint with flake8
-    #  run: |
-    #    pip install flake8
-    #    # stop the build if there are Python syntax errors or undefined names
-    #    flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-    #    # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-    #    flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
         pip install pytest
         pip install -e ".[image]"
         pytest tests/test_utils.py
+    - name: Install pypa/build
+      run: >-
+        python3 -m pip install wheel
+    - name: Build targz and wheel
+      run: >-
+        python3 setup.py sdist bdist_wheel
+    - name: Publish distribution 📦 to PyPI
+      if: startsWith(github.ref, 'refs/tags')
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        skip_existing: true
+        password: ${{ secrets.PYPI_API_TOKEN }}

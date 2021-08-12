@@ -1,11 +1,11 @@
-# uiautomator2 [![Build Status](https://travis-ci.org/openatx/uiautomator2.svg?branch=master)](https://travis-ci.org/openatx/uiautomator2) [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2) ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg) [![Windows Build](https://ci.appveyor.com/api/projects/status/github/openatx/uiautomator2)](https://ci.appveyor.com/project/openatx/uiautomator2)
+# uiautomator2 [![Python application](https://github.com/openatx/uiautomator2/actions/workflows/pythonapp.yml/badge.svg)](https://github.com/openatx/uiautomator2/actions/workflows/pythonapp.yml) [![Build Status](https://travis-ci.org/openatx/uiautomator2.svg?branch=master)](https://travis-ci.org/openatx/uiautomator2) [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2) ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg) [![Windows Build](https://ci.appveyor.com/api/projects/status/github/openatx/uiautomator2)](https://ci.appveyor.com/project/openatx/uiautomator2)
 
 各种库的版本号
 
 - [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg?label=uiautomator2)](https://pypi.python.org/pypi/uiautomator2)
 - [![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/openatx/atx-agent.svg?label=atx-agent)](https://github.com/openatx/atx-agent)
-- ![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/openatx/android-uiautomator-server.svg?label=android-uiautomator-server)
-- ![PyPI](https://img.shields.io/pypi/v/adbutils.svg?label=adbutils)
+- [![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/openatx/android-uiautomator-server.svg?label=android-uiautomator-server)](https://github.com/openatx/android-uiautomator-server)
+- [![PyPI](https://img.shields.io/pypi/v/adbutils.svg?label=adbutils)](https://github.com/openatx/adbutils)
 - ![PyPI](https://img.shields.io/pypi/v/requests.svg?label=requests)
 - ![PyPI](https://img.shields.io/pypi/v/lxml.svg?label=lxml)
 
@@ -1536,10 +1536,10 @@ https://github.com/openatx/uiautomator2/wiki/Common-issues
 方法2:
 
 ```python
-d.service("uiautomator").stop()
+d.uiautomator.stop()
 
-# d.service("uiautomator").start() # 启动
-# d.service("uiautomator").running() # 是否在运行
+# d.uiautomator.start() # 启动
+# d.uiautomator.running() # 是否在运行
 ```
 
 [ATX与Maxim共存AccessibilityService的方法](https://testerhome.com/topics/17179)

@@ -17,7 +17,6 @@ from __future__ import absolute_import, print_function
 
 import base64
 import contextlib
-import functools
 import hashlib
 import io
 import json
@@ -31,12 +30,13 @@ import threading
 import time
 import warnings
 import xml.dom.minidom
-from collections import namedtuple, defaultdict
+from collections import defaultdict, namedtuple
 from datetime import datetime
 from typing import List, Optional, Tuple, Union
 
 # import progress.bar
 import adbutils
+import logzero
 import packaging
 import requests
 import six
@@ -49,6 +49,7 @@ from retry import retry
 from urllib3.util.retry import Retry
 
 from . import xpath
+from ._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
 from ._selector import Selector, UiObject
 from .exceptions import (BaseError, ConnectError, GatewayError, JSONRPCError,
                          NullObjectExceptionError, NullPointerExceptionError,
@@ -59,10 +60,9 @@ from .init import Initer
 # from .session import Session  # noqa: F401
 from .settings import Settings
 from .swipe import SwipeExt
-from .utils import list2cmdline
-from .version import __atx_agent_version__, __apk_version__
-from .watcher import Watcher, WatchContext
-from ._proto import SCROLL_STEPS, Direction, HTTP_TIMEOUT
+from .utils import list2cmdline, process_safe_wrapper, thread_safe_wrapper
+from .version import __apk_version__, __atx_agent_version__
+from .watcher import WatchContext, Watcher
 
 if six.PY2:
     FileNotFoundError = OSError
@@ -70,9 +70,10 @@ if six.PY2:
 DEBUG = False
 WAIT_FOR_DEVICE_TIMEOUT = int(os.getenv("WAIT_FOR_DEVICE_TIMEOUT", 20))
 
-# logger = logging.getLogger("uiautomator2")
 
-logger = setup_logger("uiautomator2", level=logging.DEBUG)
+log_format = '%(color)s[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d]%(end_color)s [pid:%(process)d] %(message)s'
+formatter = logzero.LogFormatter(fmt=log_format)
+logger = setup_logger("uiautomator2", level=logging.DEBUG, formatter=formatter)
 _mswindows = (os.name == "nt")
 
 
@@ -575,6 +576,7 @@ class _BaseClient(object):
         except (requests.ReadTimeout, EnvironmentError):
             return False
 
+    # @process_safe_wrapper
     def reset_uiautomator(self, reason="unknown", depth=0):
         """
         Reset uiautomator
@@ -635,7 +637,11 @@ class _BaseClient(object):
         self._kill_process_by_name("uiautomator")
 
         if self._is_apk_outdated():
-            self._setup_uiautomator()
+            # skip reinstall apk when run in tmq platform
+            if os.getenv("TMQ"):
+                logger.info("skip reinstall uiautomator apks in tmq platform")
+            else:
+                self._setup_uiautomator()
 
         if launch_test_app:
             self._grant_app_permissions()

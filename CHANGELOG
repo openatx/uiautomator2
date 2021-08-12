@@ -1,6 +1,354 @@
 CHANGES
 =======
 
+2.16.3
+------
+
+* use github actions to publish lib instead of trivis
+
+2.16.2
+------
+
+* fix tests
+* Update init.py (#618)
+
+2.16.1
+------
+
+* hotfix for multiprocess call reset\_uiautomator
+* update ISSUE\_TEMPLATE for REQUIRED logs
+* update doc
+
+2.16.0
+------
+
+* add cli:doctor
+* add doc
+
+2.15.2
+------
+
+* add support reconnect when device disconnect
+* update requirements
+* Update \_\_init\_\_.py (#679)
+
+2.15.1
+------
+
+* try to fix when wifi connect device still try to upgrade atx-agent bug
+* add multi thread example
+
+2.15.0
+------
+
+* add init --addr support
+* update func doc
+
+2.14.1
+------
+
+* fix init error
+
+2.14.0
+------
+
+* mark useless tests
+* add atx-agent version check when something when wrong
+* update apk and atx-agent version
+* skip flake8 check
+
+2.13.2
+------
+
+* update atx-agent to fix security error, ref openatx/atx-agent#82
+
+2.13.1
+------
+
+* update minicap download address to devicefarmer group, which support sdk:30
+
+2.13.0
+------
+
+* add d.xpath(..).child support
+
+2.12.3
+------
+
+* show float window in tmq platform
+
+2.12.2
+------
+
+* fix bug #650
+* add typing for image, commented findit
+
+2.12.1
+------
+
+* fix d.settings to self.settings
+* change localhost to 127.0.0.1
+
+2.12.0
+------
+
+* add open\_url method
+
+2.11.5
+------
+
+* fix swipe set duration no effect, close #591
+
+2.11.4
+------
+
+* xpath: %xxx% support content-desc
+
+2.11.3
+------
+
+* add missing builtin arg
+* add builtin and autostart to watch\_context
+* add hire doc
+
+2.11.2
+------
+
+* update requirements
+
+2.11.1
+------
+
+* fix settings props check
+
+2.11.0
+------
+
+* add watch\_context which may replace watcher
+* fix reset-uiautomator on windows error
+
+2.10.2
+------
+
+* add retry for app\_current, fix #572
+* update sponsor link
+
+2.10.1
+------
+
+* update tests, prevent atx-agent log too large
+
+2.10.0
+------
+
+* add more tests
+* add Direction, support scroll\_to, update some doc
+* d.xpath add scroll support
+
+2.9.6
+-----
+
+* fix support for d(resourceId='android:id/text1')[-1].get\_text()
+
+2.9.5
+-----
+
+* support change to production use os.environ['TMQ'] = true
+* raise EnvironmentError directly when connected with wifi, but atx-agent is down
+
+2.9.4
+-----
+
+* fix recover logic when atx-agent is not responsing
+
+2.9.3
+-----
+
+* enable screenrecord test
+* fix screenrecord
+
+2.9.2
+-----
+
+* fix wait\_for\_device not finished error
+
+2.9.1
+-----
+
+* fix selector long\_click bug
+* update doc
+
+2.9.0
+-----
+
+* add operation\_delay support
+
+2.8.6
+-----
+
+* add init into connect\_usb for compability
+
+2.8.5
+-----
+
+* remove humanize
+* add support d(description=我的淘宝).screenshot()
+
+2.8.4
+-----
+
+* hotfix for set\_new\_command\_timeout error
+
+2.8.3
+-----
+
+* hot fix for connect error when atx-agent not installed
+
+2.8.2
+-----
+
+* support fallback to WiFi when usb disconnected, add deprecated method :service
+
+2.8.1
+-----
+
+* fix app\_start missing stop=True error
+* support push url
+
+2.8.0
+-----
+
+* change property serial back
+* add double\_click, set click\_pre and post delay to 0
+* fix bugs reported in qq
+* remove useless code
+* add missing swipe\_ext and @address(teditor)
+* finally version
+* add missing toast
+* add more method
+* rewrite uiautomator2, too complex
+
+2.7.3
+-----
+
+* add timeout(60s) in init.py to prevent hang on apk install page
+
+2.7.2
+-----
+
+* update adbutils which buildin adb.exe for windows
+* rewrite part of init code
+
+2.7.1
+-----
+
+* upgrade adbutils: support download adb.exe when missing on windows
+
+2.7.0
+-----
+
+* add click\_exists to xpath
+
+2.6.2
+-----
+
+* fix with reinstall apks when meet signature not matched error
+* add image.click doc and tests
+
+2.6.1
+-----
+
+* screenrecord support horizontal and vertical, support limit fps
+* add screenrecord usage
+
+2.6.0
+-----
+
+* add screenrecord code
+* add screenrecord sample
+
+2.5.9
+-----
+
+* upgrade atx-agent to 0.9.4 to fix go panic on go12
+
+2.5.8
+-----
+
+* update minicap sync method
+* update atx-agent version and apk version
+* call watcher when d.xpath calls
+* let d.touch.down support percent position, remove stop-app when reset-uiautomator
+* update doc
+* support Android Q minicap, show debug log when image search
+
+2.5.7
+-----
+
+* fix click on infinitly display not working bug
+* add recommended article
+* support generate all docs by sphinx
+* fix docs generate with sphinx, not very well
+* add missing file
+* fix retry when take screenshot, update readthedocs
+* add readthedocs for test
+
+2.5.6
+-----
+
+* add match and scroll\_to to xpath object, update atx-agent version
+
+2.5.5
+-----
+
+* change connect\_usb not start uiautomator automatically
+
+2.5.4
+-----
+
+* update atx-agent and apk version to use minitouchagent
+
+2.5.3
+-----
+
+
+2.5.2
+-----
+
+* fix pull error
+* add readTimeout handle
+
+2.5.1
+-----
+
+* fix \_request func recursive error
+
+2.5.0
+-----
+
+* add d.alibaba support
+* update scale and wait-for-device timeout to 70s
+* fix when device replugin, d.shell fails
+
+2.4.6
+-----
+
+* fix wait am instrument too short, change timeout from 20 to 40
+* fix adbutils shell decode error
+* add retry in push\_url
+
+2.4.5
+-----
+
+* fix usb cable replug raise ConnectionError bug
+
+2.4.4
+-----
+
+* update apk version, and atx-agent version
+* update atx-agent to 0.8.1, do lot of code format
+* fix Android Q screenshot error
+* fix init may raise FileNotFoundError bug
 * add uiautomator2 version in command line
 * add session test
 
