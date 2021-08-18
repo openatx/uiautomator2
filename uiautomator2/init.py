@@ -320,25 +320,15 @@ class Initer():
         return True
 
     def _install_uiautomator_apks(self):
-        """ use uiautomator 2.0 to run uiautomator test """
-        if os.getenv("TMQ"):
-            self.logger.info("detect TMQ platform, skip reinstall uiautomator apks")
-            return
-
+        """ use uiautomator 2.0 to run uiautomator test
+        通常在连接USB数据线的情况下调用
+        """
         self.shell("pm", "uninstall", "com.github.uiautomator")
         self.shell("pm", "uninstall", "com.github.uiautomator.test")
         for filename, url in app_uiautomator_apk_urls():
             path = self.push_url(url, mode=0o644)
-            package_name = "com.github.uiautomator.test" if "test.apk" in url else "com.github.uiautomator"
-            if os.getenv("TMQ"):
-                # used inside TMQ platform
-                self.shell("CLASSPATH=/sdcard/tmq.jar", "exec", "app_process",
-                           "/system/bin",
-                           "com.android.commands.monkey.other.InstallCommand",
-                           "-r", "-v", "-p", package_name, path)
-            else:
-                self.shell("pm", "install", "-r", "-t", path)
-                self.logger.info("- %s installed", filename)
+            self.shell("pm", "install", "-r", "-t", path)
+            self.logger.info("- %s installed", filename)
 
     def _install_jars(self):
         """ use uiautomator 1.0 to run uiautomator test """

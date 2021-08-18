@@ -29,6 +29,10 @@ class SessionBrokenError(ServerError):
     """ only happens when app quit or crash """
 
 
+class UiAutomationNotConnectedError(ServerError):
+    """ 与手机上运行的UiAutomator服务连接断开 """
+
+
 class UiautomatorQuitError(ServerError):
     """ uiautomator 没有运行错误 """
 
@@ -92,10 +96,6 @@ class JSONRPCError(RequestError):
 
 class UiObjectNotFoundError(JSONRPCError):
     """ 控件没找到 """
-
-
-class UiAutomationNotConnectedError(JSONRPCError):
-    """ 与手机上运行的UiAutomator服务连接断开 """
 
 
 class NullObjectExceptionError(JSONRPCError):

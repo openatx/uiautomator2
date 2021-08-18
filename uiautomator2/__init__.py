@@ -15,6 +15,7 @@ Refs:
 
 from __future__ import absolute_import, print_function
 
+import abc
 import base64
 import contextlib
 import hashlib
@@ -78,6 +79,13 @@ logger = setup_logger("uiautomator2", level=logging.DEBUG, formatter=formatter)
 _mswindows = (os.name == "nt")
 
 
+class AppInstaller(abc.ABC):
+    """ 解决手机安装apk弹窗问题 """
+    @abc.abstractmethod
+    def install(self, url: str):
+        """ install app to device """
+
+
 class TimeoutRequestsSession(requests.Session):
     def __init__(self):
         super(TimeoutRequestsSession, self).__init__()
@@ -133,7 +141,7 @@ class TimeoutRequestsSession(requests.Session):
 ShellResponse = namedtuple("ShellResponse", ("output", "exit_code"))
 
 
-def _is_production():
+def _is_tmq_production():
     # support change to production use: os.environ['TMQ'] = 'true'
     return (os.environ.get("TMQ") == "true")
 
@@ -253,6 +261,13 @@ class _BaseClient(object):
         os.makedirs(os.path.dirname(filelock_path), exist_ok=True)
         self._filelock = filelock.FileLock(filelock_path, timeout=200)
 
+        self._app_installer: AppInstaller = None
+
+    def set_app_installer(self, app_installer: AppInstaller):
+        """ set uiautomator.apk installer """
+        assert isinstance(app_installer, AppInstaller)
+        self._app_installer = app_installer
+
     def _get_atx_agent_url(self) -> str:
         """ get url for python client to connect """
         if not self._serial:
@@ -263,7 +278,7 @@ class _BaseClient(object):
                 7912)  # this method is so fast, only take 0.2ms
             return f"http://127.0.0.1:{lport}"
         except adbutils.AdbError as e:
-            if not _is_production() and self._atx_agent_url:
+            if not _is_tmq_production() and self._atx_agent_url:
                 # when device offline, use atx-agent-url
                 logger.info(
                     "USB disconnected, fallback to WiFi, ATX_AGENT_URL=%s",
@@ -325,7 +340,7 @@ class _BaseClient(object):
             adbutils.AdbDevice or None
         """
         if not timeout:
-            timeout = WAIT_FOR_DEVICE_TIMEOUT if _is_production() else 3.0
+            timeout = WAIT_FOR_DEVICE_TIMEOUT if _is_tmq_production() else 3.0
 
         for d in adbutils.adb.device_list():
             if d.serial == self._serial:
@@ -365,11 +380,18 @@ class _BaseClient(object):
 
         from uiautomator2 import init
         for (name, url) in init.app_uiautomator_apk_urls():
-            apk_path = init.mirror_download(url)
-            target_path = "/data/local/tmp/" + os.path.basename(apk_path)
-            self.push(apk_path, target_path)
-            logger.debug("pm install %s", target_path)
-            self.shell(['pm', 'install', '-r', '-t', target_path])
+            # 安装应用
+            if self._app_installer is None:
+                # 传统的安装方法
+                apk_path = init.mirror_download(url)
+                target_path = "/data/local/tmp/" + os.path.basename(apk_path)
+                self.push(apk_path, target_path)
+                logger.debug("pm install %s", target_path)
+                self.shell(['pm', 'install', '-r', '-t', target_path])
+            else:
+                # 自己实现的安装方法
+                self._app_installer.install(url)
+            
 
     def sleep(self, seconds: float):
         """ same as time.sleep """
@@ -463,9 +485,7 @@ class _BaseClient(object):
     def _jsonrpc_retry_call(self, *args, **kwargs):
         try:
             return self._jsonrpc_call(*args, **kwargs)
-        except (requests.ReadTimeout,
-                ServerError,
-                UiAutomationNotConnectedError) as e:
+        except (requests.ReadTimeout, ServerError) as e:
             self.reset_uiautomator(str(e))  # uiautomator可能出问题了，强制重启一下
         except (NullObjectExceptionError,
                 NullPointerExceptionError,
@@ -479,9 +499,8 @@ class _BaseClient(object):
             - http://www.jsonrpc.org/specification
 
         Raises:
-            出现的错误一般有2大类:
-                - JSONRPC服务端异常 ServerError
-                - 远程方法返回的错误 RequestError
+            出现的错误一般有2大类: 正常的请求错误 和 服务端异常
+            这里的代码主要是将这两大类错误正常归类
         """
         request_start = time.time()
         data = {
@@ -643,11 +662,7 @@ class _BaseClient(object):
         self._kill_process_by_name("uiautomator")
 
         if self._is_apk_outdated():
-            # skip reinstall apk when run in tmq platform
-            if os.getenv("TMQ"):
-                logger.info("skip reinstall uiautomator apks in tmq platform")
-            else:
-                self._setup_uiautomator()
+            self._setup_uiautomator()
 
         if launch_test_app:
             self._grant_app_permissions()
@@ -669,9 +684,8 @@ class _BaseClient(object):
             if self._is_alive():
                 # 显示悬浮窗，增加稳定性
                 # 可能会带来悬浮窗对话框
-                # 目前先测试一下，之后需要改版一下
-                if os.getenv("TMQ"):
-                    self.show_float_window(True)
+                # 利大于弊，先加了
+                self.show_float_window(True)
                 return True
             time.sleep(1.0)
 
