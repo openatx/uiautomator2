@@ -13,7 +13,7 @@ import typing
 from typing import Union
 
 import cv2
-# import findit
+import findit
 import imutils
 import numpy as np
 import requests
