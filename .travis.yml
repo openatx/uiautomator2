@@ -7,7 +7,7 @@ language: python
 #     # - tools
 #     - platform-tools
 
-#     # The BuildTools version used by your project
+#     # The BuildTools version used by your project1
 #     - build-tools-26.0.2
 
 #     # The SDK version used to compile your project
