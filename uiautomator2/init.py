@@ -45,7 +45,8 @@ def gen_cachepath(url: str) -> str:
         hashlib.sha224(url.encode()).hexdigest()[:10], filename)
     return storepath
 
-def cache_download(url, filename=None, timeout=None, storepath=None, logger=logger):
+
+def cache_download(url, filename=None, timeout=None, storepath=None, logger=logger, proxy=None):
     """ return downloaded filepath """
     # check cache
     if not filename:
@@ -68,8 +69,9 @@ def cache_download(url, filename=None, timeout=None, storepath=None, logger=logg
         'Connection': 'keep-alive',
         'Origin': 'https://github.com',
         'User-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'
-    } # yapf: disable
-    r = requests.get(url, stream=True, headers=headers, timeout=None)
+    }  # yapf: disable
+
+    r = requests.get(url, stream=True, headers=headers, timeout=None, proxies=proxy)
     r.raise_for_status()
 
     file_size = int(r.headers.get("Content-Length"))
@@ -89,7 +91,8 @@ def cache_download(url, filename=None, timeout=None, storepath=None, logger=logg
     shutil.move(storepath + '.part', storepath)
     return storepath
 
-def mirror_download(url: str, filename=None, logger: logging.Logger = logger):
+
+def mirror_download(url: str, filename=None, logger: logging.Logger = logger, proxy=None):
     """
     Download from mirror, then fallback to origin url
     """
@@ -110,7 +113,7 @@ def mirror_download(url: str, filename=None, logger: logging.Logger = logger):
                 AssertionError) as e:
             logger.debug("download error from mirror(%s), use origin source", e)
 
-    return cache_download(url, filename, storepath=storepath, logger=logger)
+    return cache_download(url, filename, storepath=storepath, logger=logger, proxy=proxy)
 
 
 def app_uiautomator_apk_urls():
@@ -139,8 +142,9 @@ def parse_apk(path: str):
         "main_activity": main_activity,
     }
 
+
 class Initer():
-    def __init__(self, device: adbutils.AdbDevice, loglevel=logging.DEBUG):
+    def __init__(self, device: adbutils.AdbDevice, loglevel=logging.DEBUG, proxy=None, mirror=None):
         d = self._device = device
 
         self.sdk = d.getprop('ro.build.version.sdk')
@@ -149,7 +153,10 @@ class Initer():
         self.arch = d.getprop('ro.arch')
         self.abis = (d.getprop('ro.product.cpu.abilist').strip()
                      or self.abi).split(",")
-        
+
+        self.proxy = proxy
+        # update global variable
+        GITHUB_BASEURL = GITHUB_BASEURL if self.mirror_url is None else mirror
         self.__atx_listen_addr = "127.0.0.1:7912"
         self.logger = setup_logger(level=loglevel)
         # self.logger.debug("Initial device %s", device)
@@ -208,7 +215,7 @@ class Initer():
         only got abi: armeabi-v7a and arm64-v8a
         """
         base_url = GITHUB_BASEURL + \
-            "/stf-binaries/raw/0.3.0/node_modules/@devicefarmer/minicap-prebuilt/prebuilt/"
+                   "/stf-binaries/raw/0.3.0/node_modules/@devicefarmer/minicap-prebuilt/prebuilt/"
         sdk = self.sdk
         yield base_url + self.abi + "/lib/android-" + sdk + "/minicap.so"
         yield base_url + self.abi + "/bin/minicap"
@@ -225,7 +232,8 @@ class Initer():
     def push_url(self, url, dest=None, mode=0o755, tgz=False, extract_name=None):  # yapf: disable
         path = mirror_download(url,
                                filename=os.path.basename(url),
-                               logger=self.logger)
+                               logger=self.logger,
+                               proxy=self.proxy)
         if tgz:
             tar = tarfile.open(path, 'r:gz')
             path = os.path.join(os.path.dirname(path), extract_name)
@@ -320,15 +328,25 @@ class Initer():
         return True
 
     def _install_uiautomator_apks(self):
-        """ use uiautomator 2.0 to run uiautomator test
-        通常在连接USB数据线的情况下调用
-        """
+        """ use uiautomator 2.0 to run uiautomator test """
+        if os.getenv("TMQ"):
+            self.logger.info("detect TMQ platform, skip reinstall uiautomator apks")
+            return
+
         self.shell("pm", "uninstall", "com.github.uiautomator")
         self.shell("pm", "uninstall", "com.github.uiautomator.test")
         for filename, url in app_uiautomator_apk_urls():
             path = self.push_url(url, mode=0o644)
-            self.shell("pm", "install", "-r", "-t", path)
-            self.logger.info("- %s installed", filename)
+            package_name = "com.github.uiautomator.test" if "test.apk" in url else "com.github.uiautomator"
+            if os.getenv("TMQ"):
+                # used inside TMQ platform
+                self.shell("CLASSPATH=/sdcard/tmq.jar", "exec", "app_process",
+                           "/system/bin",
+                           "com.android.commands.monkey.other.InstallCommand",
+                           "-r", "-v", "-p", package_name, path)
+            else:
+                self.shell("pm", "install", "-r", "-t", path)
+                self.logger.info("- %s installed", filename)
 
     def _install_jars(self):
         """ use uiautomator 1.0 to run uiautomator test """
@@ -374,7 +392,7 @@ class Initer():
         self.logger.info("Check atx-agent version")
         self.check_atx_agent_version()
         print("Successfully init %s" % self._device)
-    
+
     def start_atx_agent(self):
         self.shell(self.atx_agent_path, 'server', '--nouia', '-d', "--addr", self.__atx_listen_addr)
 
@@ -410,6 +428,6 @@ if __name__ == "__main__":
     import adbutils
 
     serial = None
-    device = adbutils.adb.device(serial)
-    init = Initer(device, loglevel=logging.DEBUG)
-    print(init.check_install())
+    # device = adbutils.adb.device(serial)
+    # init = Initer(device, loglevel=logging.DEBUG)
+    # print(init.check_install())
