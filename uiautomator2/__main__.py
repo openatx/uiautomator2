@@ -24,13 +24,19 @@ from .version import __version__
 
 def cmd_init(args):
     serial = args.serial or args.serial_optional
+    proxy = None
+    if args.proxy or args.https_proxy:
+        proxy = {
+            'http': args.proxy if args.proxy is not None else args.https_proxy,
+            'https': args.https_proxy if args.https_proxy is not None else args.proxy
+        }
     if serial:
         device = adbutils.adb.device(serial)
-        init = Initer(device)
+        init = Initer(device, proxy=args.proxy, mirror=args.mirror)
         init.install()
     else:
         for device in adbutils.adb.iter_device():
-            init = Initer(device, loglevel=logging.DEBUG)
+            init = Initer(device, loglevel=logging.DEBUG, proxy=args.proxy, mirror=args.mirror)
             if args.addr:
                 init.set_atx_agent_addr(args.addr)
             init.install()
@@ -123,7 +129,7 @@ def cmd_doctor(args):
         apk_debug = init._device.package_info("com.github.uiautomator")
         version = apk_debug['version_name']
         print("\tGOOD: com.github.uiautomator", version)
-    
+
     if ok:
         print("CHECK jsonrpc")
         d = u2.connect(args.serial)
@@ -132,9 +138,9 @@ def cmd_doctor(args):
             print("\tGOOD: d.info success")
         else:
             ok = False
-    
+
     print("==> %s <==" % ("GOOD" if ok else "FAIL"))
-    
+
 
 def cmd_version(args):
     print("uiautomator2 version: %s" % __version__)
@@ -158,7 +164,7 @@ def cmd_console(args):
         _vars.update(locals())
         shell = code.InteractiveConsole(_vars)
         shell.interact(banner="Python: %s\nDevice: %s(%s)" %
-                       (platform.python_version(), model, serial))
+                              (platform.python_version(), model, serial))
 
 
 _commands = [
@@ -174,6 +180,15 @@ _commands = [
              dict(args=['serial_optional'],
                   nargs='?',
                   help='serial number, same as --serial'),
+             dict(args=['--proxy'],
+                  type=str,
+                  help='the download http proxy,if https_proxy is empty,it will be use to  https proxy.'),
+             dict(args=['--https_proxy'],
+                  type=str,
+                  help='the download https proxy'),
+             dict(args=['--mirror'],
+                  type=str,
+                  help='the mirror of download prefix. default is https://github.com/openatx'),
          ]),
     dict(action=cmd_screenshot,
          command="screenshot",
@@ -240,8 +255,8 @@ _commands = [
          command="console",
          help="launch interactive python console"),
     dict(action=cmd_purge,
-        command="purge",
-        help="remove minitouch, minicap, atx app etc, from device"),
+         command="purge",
+         help="remove minitouch, minicap, atx app etc, from device"),
 ]
 
 
@@ -265,7 +280,7 @@ def main():
         for f in c.get('flags', []):
             args = f.get('args')
             if not args:
-                args = ['-'*min(2, len(n)) + n for n in f['name']]
+                args = ['-' * min(2, len(n)) + n for n in f['name']]
             kwargs = f.copy()
             kwargs.pop('name', None)
             kwargs.pop('args', None)
