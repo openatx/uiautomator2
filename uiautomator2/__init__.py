@@ -674,6 +674,7 @@ class _BaseClient(object):
         # wait until uiautomator2 service is working
         time.sleep(.5)
         deadline = time.time() + 40.0  # in vivo-Y67, launch timeout 24s
+        flow_window_showed = False
         while time.time() < deadline:
             logger.debug("uiautomator-v2 is starting ... left: %.1fs",
                          deadline - time.time())
@@ -685,7 +686,13 @@ class _BaseClient(object):
                 # 显示悬浮窗，增加稳定性
                 # 可能会带来悬浮窗对话框
                 # 利大于弊，先加了
-                self.show_float_window(True)
+                # show Float window 在华为手机上，还需要再次等待
+                if not flow_window_showed:
+                    flow_window_showed = True
+                    self.show_float_window(True)
+                    logger.debug("show float window")
+                    time.sleep(1.0)
+                    continue
                 return True
             time.sleep(1.0)
 
@@ -941,7 +948,7 @@ class _Device(_BaseClient):
         else:
             raise ValueError("Invalid format {}".format(format))
 
-    @retry(RetryError, delay=1.0, tries=2)
+    @retry(RetryError, delay=1.0, jitter=.5, tries=2)
     def dump_hierarchy(self, compressed=False, pretty=False) -> str:
         """
         Args:
