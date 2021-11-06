@@ -661,8 +661,9 @@ class _BaseClient(object):
         logger.debug("kill process(ps): uiautomator")
         self._kill_process_by_name("uiautomator")
 
-        if self._is_apk_outdated():
-            self._setup_uiautomator()
+        ## Note: Here do not reinstall apks, since vivo and oppo reinstall need password
+        # if self._is_apk_outdated():
+        #     self._setup_uiautomator()
 
         if launch_test_app:
             self._grant_app_permissions()
