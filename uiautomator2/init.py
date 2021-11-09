@@ -339,6 +339,32 @@ class Initer():
         self.logger.info("Install atx-agent %s", __atx_agent_version__)
         self.push_url(self.atx_agent_url, tgz=True, extract_name="atx-agent")
 
+    def setup_atx_agent(self):
+        # stop atx-agent first
+        self.shell(self.atx_agent_path, "server", "--stop")
+        if self.is_atx_agent_outdated():
+            self.logger.info("Install atx-agent %s", __atx_agent_version__)
+            self.push_url(self.atx_agent_url, tgz=True, extract_name="atx-agent")
+        
+        self.shell(self.atx_agent_path, 'server', '--nouia', '-d', "--addr", self.__atx_listen_addr)
+        self.logger.info("Check atx-agent version")
+        self.check_atx_agent_version()
+
+    @retry(
+        (requests.ConnectionError, requests.ReadTimeout, requests.HTTPError),
+        delay=.5,
+        tries=10)
+    def check_atx_agent_version(self):
+        port = self._device.forward_port(7912)
+        self.logger.debug("Forward: local:tcp:%d -> remote:tcp:%d", port, 7912)
+        version = requests.get("http://127.0.0.1:%d/version" %
+                               port).text.strip()
+        self.logger.debug("atx-agent version %s", version)
+
+        wlan_ip = requests.get("http://127.0.0.1:%d/wlan/ip" % port).text.strip()
+        self.logger.debug("device wlan ip: %s", wlan_ip)
+        return version
+
     def install(self):
         """
         TODO: push minicap and minitouch from tgz file
@@ -363,35 +389,8 @@ class Initer():
         else:
             self.logger.info("Already installed com.github.uiautomator apks")
 
-        # stop atx-agent first
-        self.shell(self.atx_agent_path, "server", "--stop")
-
-        if self.is_atx_agent_outdated():
-            self._install_atx_agent()
-
-        self.start_atx_agent()
-
-        self.logger.info("Check atx-agent version")
-        self.check_atx_agent_version()
+        self.setup_atx_agent()
         print("Successfully init %s" % self._device)
-    
-    def start_atx_agent(self):
-        self.shell(self.atx_agent_path, 'server', '--nouia', '-d', "--addr", self.__atx_listen_addr)
-
-    @retry(
-        (requests.ConnectionError, requests.ReadTimeout, requests.HTTPError),
-        delay=.5,
-        tries=10)
-    def check_atx_agent_version(self):
-        port = self._device.forward_port(7912)
-        self.logger.debug("Forward: local:tcp:%d -> remote:tcp:%d", port, 7912)
-        version = requests.get("http://127.0.0.1:%d/version" %
-                               port).text.strip()
-        self.logger.debug("atx-agent version %s", version)
-
-        wlan_ip = requests.get("http://127.0.0.1:%d/wlan/ip" % port).text.strip()
-        self.logger.debug("device wlan ip: %s", wlan_ip)
-        return version
 
     def uninstall(self):
         self._device.shell([self.atx_agent_path, "server", "--stop"])

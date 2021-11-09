@@ -326,11 +326,7 @@ class _BaseClient(object):
 
         from uiautomator2 import init
         _initer = init.Initer(self._adb_device)
-        if not _initer.check_install():
-            _initer.install()
-        else:
-            _initer.start_atx_agent()
-        _initer.check_atx_agent_version()
+        _initer.setup_atx_agent()
 
     def _wait_for_device(self, timeout=None) -> adbutils.AdbDevice:
         """
