@@ -844,7 +844,7 @@ class XMLElement(object):
     def info(self):
         ret = {}
         for key in ("text", "focusable", "enabled", "focused", "scrollable",
-                    "selected"):
+                    "selected", "clickable"):
             ret[key] = self.attrib.get(key)
         ret["className"] = self.elem.tag
         lx, ly, rx, ry = self.bounds
