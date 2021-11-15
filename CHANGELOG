@@ -1,6 +1,44 @@
 CHANGES
 =======
 
+2.16.10
+-------
+
+* try not to reinstall apk when atx-agent is not installed
+
+2.16.9
+------
+
+* little fix for vivo and oppo, do not reinstall uiautomator apk
+
+2.16.8
+------
+
+* fix dump\_hierarchy error when recovered in a minute
+* update logic for tmq
+* fixed: 增加app\_install的超时时间 (#736)
+
+2.16.7
+------
+
+* use filelock to prevent multi process reset\_uiautomator
+
+2.16.6
+------
+
+* remove process\_safe\_wrapper since not allow multi device operation
+
+2.16.5
+------
+
+* use filelock to make process call process safe
+
+2.16.4
+------
+
+* skip uninstall uiautomator apk for tmq platform
+* add link
+
 2.16.3
 ------
 

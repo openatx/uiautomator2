@@ -16,6 +16,7 @@ jobs:
         python-version: 3.7 
     - name: Install dependencies
       run: |
+        ./assets/sync.sh
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     - name: Test with pytest

@@ -33,6 +33,7 @@ import warnings
 import xml.dom.minidom
 from collections import defaultdict, namedtuple
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 # import progress.bar
@@ -374,19 +375,27 @@ class _BaseClient(object):
         self.shell(["pm", "uninstall", "com.github.uiautomator"])
         self.shell(["pm", "uninstall", "com.github.uiautomator.test"])
 
-        from uiautomator2 import init
-        for (name, url) in init.app_uiautomator_apk_urls():
-            # 安装应用
-            if self._app_installer is None:
-                # 传统的安装方法
-                apk_path = init.mirror_download(url)
-                target_path = "/data/local/tmp/" + os.path.basename(apk_path)
-                self.push(apk_path, target_path)
-                logger.debug("pm install %s", target_path)
-                self.shell(['pm', 'install', '-r', '-t', target_path])
-            else:
-                # 自己实现的安装方法
-                self._app_installer.install(url)
+        assets_dir = Path(__file__).absolute().parent.joinpath("assets")
+        
+        for name in ("app-uiautomator.apk", "app-uiautomator-test.apk"):
+            apk_path = assets_dir.joinpath(name).as_posix()
+            target_path = "/data/local/tmp/" + name
+            logger.debug("Install %s", name)
+            self.push(apk_path, target_path)
+            self.shell(['pm', 'install', '-r', '-t', target_path])
+
+        # for (name, url) in init.app_uiautomator_apk_urls():
+        #     # 安装应用
+        #     if self._app_installer is None:
+        #         # 传统的安装方法
+        #         apk_path = init.mirror_download(url)
+        #         target_path = "/data/local/tmp/" + os.path.basename(apk_path)
+        #         self.push(apk_path, target_path)
+        #         logger.debug("pm install %s", target_path)
+        #         self.shell(['pm', 'install', '-r', '-t', target_path])
+        #     else:
+        #         # 自己实现的安装方法
+        #         self._app_installer.install(url)
             
 
     def sleep(self, seconds: float):
@@ -660,6 +669,8 @@ class _BaseClient(object):
         ## Note: Here do not reinstall apks, since vivo and oppo reinstall need password
         # if self._is_apk_outdated():
         #     self._setup_uiautomator()
+        if self._is_apk_required():
+            self._setup_uiautomator()
 
         if launch_test_app:
             self._grant_app_permissions()
@@ -694,6 +705,16 @@ class _BaseClient(object):
             time.sleep(1.0)
 
         self.uiautomator.stop()
+        return False
+
+    def _is_apk_required(self) -> bool:
+        apk_version = self._package_version("com.github.uiautomator")
+        if apk_version is None:
+            return True
+
+        # 检查测试apk是否存在
+        if self._package_version("com.github.uiautomator.test") is None:
+            return True
         return False
 
     def _is_apk_outdated(self):
