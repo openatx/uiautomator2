@@ -215,7 +215,7 @@ class _AgentRequestSession(TimeoutRequestsSession):
             raise OSError(
                 "http-request to atx-agent error, can only recover from USB")
 
-        logger.warning("atx-agent has something wrong, auto recovering")
+        self.logger.warning("atx-agent has something wrong, auto recovering")
         # ReadTimeout: sometime means atx-agent is running but not responsing
         # one reason is futex_wait_queue: https://stackoverflow.com/questions/9801256/app-hangs-on-futex-wait-queue-me-every-a-couple-of-minutes
 
@@ -264,6 +264,14 @@ class _BaseClient(object):
 
         self._app_installer: AppInstaller = None
 
+        log_format = f'%(color)s[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d]%(end_color)s [pid:%(process)d] [{self._serial}] %(message)s'
+        formatter = logzero.LogFormatter(fmt=log_format)
+        self._logger = setup_logger(name="uiautomator2.baseclient", level=logging.DEBUG, formatter=formatter)
+
+    @property
+    def logger(self) -> logging.Logger:
+        return self._logger
+
     def set_app_installer(self, app_installer: AppInstaller):
         """ set uiautomator.apk installer """
         assert isinstance(app_installer, AppInstaller)
@@ -281,7 +289,7 @@ class _BaseClient(object):
         except adbutils.AdbError as e:
             if not _is_tmq_production() and self._atx_agent_url:
                 # when device offline, use atx-agent-url
-                logger.info(
+                self.logger.info(
                     "USB disconnected, fallback to WiFi, ATX_AGENT_URL=%s",
                     self._atx_agent_url)
                 return self._atx_agent_url
@@ -310,7 +318,7 @@ class _BaseClient(object):
         _d = self._wait_for_device()
         if not _d:
             raise RuntimeError("USB device %s is offline" % self._serial)
-        logger.debug("device %s is online", self._serial)
+        self.logger.debug("device %s is online", self._serial)
         version_url = self.path2url("/version")
         try:
             version = requests.get(version_url, timeout=3).text
@@ -350,13 +358,13 @@ class _BaseClient(object):
         deadline = time.time() + timeout
         while time.time() < deadline:
             title = "device reconnecting" if _is_remote else "wait-for-device"
-            logger.info("%s, time left(%.1fs)", title, deadline - time.time())
+            self.logger.info("%s, time left(%.1fs)", title, deadline - time.time())
             if _is_remote:
                 try:
                     adb.disconnect(self._serial)
                     adb.connect(self._serial, timeout=1)
                 except (adbutils.AdbError, adbutils.AdbTimeout) as e:
-                    logger.debug("adb reconnect error: %s", str(e))
+                    self.logger.debug("adb reconnect error: %s", str(e))
                     time.sleep(1.0)
                     continue
             try:
@@ -380,23 +388,9 @@ class _BaseClient(object):
         for name in ("app-uiautomator.apk", "app-uiautomator-test.apk"):
             apk_path = assets_dir.joinpath(name).as_posix()
             target_path = "/data/local/tmp/" + name
-            logger.debug("Install %s", name)
+            self.logger.debug("Install %s", name)
             self.push(apk_path, target_path)
             self.shell(['pm', 'install', '-r', '-t', target_path])
-
-        # for (name, url) in init.app_uiautomator_apk_urls():
-        #     # 安装应用
-        #     if self._app_installer is None:
-        #         # 传统的安装方法
-        #         apk_path = init.mirror_download(url)
-        #         target_path = "/data/local/tmp/" + os.path.basename(apk_path)
-        #         self.push(apk_path, target_path)
-        #         logger.debug("pm install %s", target_path)
-        #         self.shell(['pm', 'install', '-r', '-t', target_path])
-        #     else:
-        #         # 自己实现的安装方法
-        #         self._app_installer.install(url)
-            
 
     def sleep(self, seconds: float):
         """ same as time.sleep """
@@ -495,7 +489,7 @@ class _BaseClient(object):
         except (NullObjectExceptionError,
                 NullPointerExceptionError,
                 StaleObjectExceptionError) as e:
-            logger.warning("jsonrpc call got: %s", str(e))
+            self.logger.warning("jsonrpc call got: %s", str(e))
         return self._jsonrpc_call(*args, **kwargs)
 
     def _jsonrpc_call(self, method, params=[], http_timeout=60):
@@ -628,7 +622,7 @@ class _BaseClient(object):
                 )
 
             if depth > 0:
-                logger.info("restart-uiautomator since \"%s\"", reason)
+                self.logger.info("restart-uiautomator since \"%s\"", reason)
 
             # Note:
             # atx-agent check has moved to _AgentRequestSession
@@ -645,7 +639,7 @@ class _BaseClient(object):
             ok = self._force_reset_uiautomator_v2(
                 launch_test_app=depth > 0)  # uiautomator 2.0
             if ok:
-                logger.info("uiautomator back to normal")
+                self.logger.info("uiautomator back to normal")
                 return
 
             output = self._test_run_instrument()
@@ -658,12 +652,12 @@ class _BaseClient(object):
 
     def _force_reset_uiautomator_v2(self, launch_test_app=False):
         brand = self.shell("getprop ro.product.brand").output.strip()
-        # logger.debug("Device: %s, %s", brand, self.serial)
+        # self.logger.debug("Device: %s, %s", brand, self.serial)
         package_name = "com.github.uiautomator"
 
         self.uiautomator.stop()
 
-        logger.debug("kill process(ps): uiautomator")
+        self.logger.debug("kill process(ps): uiautomator")
         self._kill_process_by_name("uiautomator")
 
         ## Note: Here do not reinstall apks, since vivo and oppo reinstall need password
@@ -684,7 +678,7 @@ class _BaseClient(object):
         deadline = time.time() + 40.0  # in vivo-Y67, launch timeout 24s
         flow_window_showed = False
         while time.time() < deadline:
-            logger.debug("uiautomator-v2 is starting ... left: %.1fs",
+            self.logger.debug("uiautomator-v2 is starting ... left: %.1fs",
                          deadline - time.time())
 
             if not self.uiautomator.running():
@@ -698,7 +692,7 @@ class _BaseClient(object):
                 if not flow_window_showed:
                     flow_window_showed = True
                     self.show_float_window(True)
-                    logger.debug("show float window")
+                    self.logger.debug("show float window")
                     time.sleep(1.0)
                     continue
                 return True
@@ -740,7 +734,7 @@ class _BaseClient(object):
         return packaging.version.parse(m.group('name') if m else "")
 
     def _grant_app_permissions(self):
-        logger.debug("grant permissions")
+        self.logger.debug("grant permissions")
         for permission in [
                 "android.permission.SYSTEM_ALERT_WINDOW",
                 "android.permission.ACCESS_FINE_LOCATION",
@@ -757,7 +751,7 @@ class _BaseClient(object):
     def _kill_process_by_name(self, name, use_adb=False):
         for p in self._iter_process(use_adb=use_adb):
             if p.name == name and p.user == "shell":
-                logger.debug("kill %s", name)
+                self.logger.debug("kill %s", name)
                 kill_cmd = ["kill", "-9", str(p.pid)]
                 if use_adb:
                     self._adb_device.shell(kill_cmd)
@@ -881,7 +875,7 @@ class _Device(_BaseClient):
         r = self.http.post("/newCommandTimeout", data=str(int(timeout)))
         data = r.json()
         assert data['success'], data['description']
-        logger.info("%s", data['description'])
+        self.logger.info("%s", data['description'])
 
     @cached_property
     def device_info(self):
@@ -1035,11 +1029,11 @@ class _Device(_BaseClient):
             before, after = 0, 0
 
         if before:
-            logger.debug(f"operation [{operation_name}] pre-delay {before}s")
+            self.logger.debug(f"operation [{operation_name}] pre-delay {before}s")
             time.sleep(before)
         yield
         if after:
-            logger.debug(f"operation [{operation_name}] post-delay {after}s")
+            self.logger.debug(f"operation [{operation_name}] post-delay {after}s")
             time.sleep(after)
 
     @property
