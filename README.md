@@ -9,10 +9,7 @@
 - ![PyPI](https://img.shields.io/pypi/v/requests.svg?label=requests)
 - ![PyPI](https://img.shields.io/pypi/v/lxml.svg?label=lxml)
 
-**该项目正在火热的开发中** QQ群号: *499563266*
-
-**突然插入的招聘**：目前作者的组里（阿里巴巴淘宝质量部：坐标杭州西溪园区）正在进行招聘（HIRE）
-具体内容这里可以看到 https://testerhome.com/topics/23010
+**该项目正在冷静的开发中** QQ群号: *499563266*
 
 <p align="left"><img src="docs/img/qqgroup.png" /></div>
 
@@ -72,12 +69,11 @@ screenOn': True, 'sdkInt': 27, 'naturalOrientation': True}
 Thank you to all our sponsors! ✨🍰✨
 
 ### 金牌赞助商（Gold Sponsor）
+![logo 霍格沃兹测试学院](https://ceshiren.com/uploads/default/original/3X/7/0/70299922296e93e2dcab223153a928c4bfb27df9.jpeg)
 
-![Logo-霍格沃兹测试学院](https://ceshiren.com/uploads/default/original/2X/2/2529377efc39dffe8ffd96b5aed4b417cdef1a52.png)
+[霍格沃兹测试开发学社](http://qrcode.testing-studio.com/f?from=atx&url=https://ceshiren.com)是业界领先的测试开发技术高端教育品牌，隶属于[测吧（北京）科技有限公司](http://qrcode.testing-studio.com/f?from=atx&url=https://www.testing-studio.com) 。学院课程由一线大厂测试经理与资深测试开发专家参与研发，实战驱动。课程涵盖web/app自动化测试、接口测试、性能测试、安全测试、持续集成/持续交付/DevOps，测试左移&右移、精准测试、测试平台开发、测试管理等内容，帮助测试工程师实现测试开发技术转型。通过优秀的学社制度（奖学金、内推返学费、行业竞赛等多种方式）来实现学员、学社及用人企业的三方共赢。
 
-[霍格沃兹测试学院](https://ceshiren.com/)是业界领先的测试开发技术高端教育品牌，隶属于测吧（北京）科技有限公司。学院课程均由 BAT 一线测试大咖执教，提供实战驱动的接口自动化测试、移动自动化测试、性能测试、持续集成与 DevOps 等技术培训，以及测试开发优秀人才内推服务。[点击学习!](http://qrcode.testing-studio.com/f?from=ATX&url=https://ke.qq.com/course/254956)
-
-[霍格沃兹测试学院](https://ceshiren.com/)是 ATX 的首家金牌赞助商。
+[进入测试开发技术能力测评!](http://qrcode.testing-studio.com/f?from=atx&url=https://ceshiren.com/t/topic/14941)
 
 ## 相关项目
 - 设备管理平台，设备多了就会用到 [atxserver2](https://github.com/openatx/atxserver2)
