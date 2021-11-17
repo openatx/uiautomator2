@@ -256,7 +256,7 @@ class _BaseClient(object):
         # setup logger
         log_format = f'%(color)s[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d]%(end_color)s [pid:%(process)d] [{self._serial}] %(message)s'
         formatter = logzero.LogFormatter(fmt=log_format)
-        self._logger = setup_logger(name="uiautomator2.baseclient", level=logging.DEBUG, formatter=formatter)
+        self._logger = setup_logger(name="uiautomator2.client", level=logging.DEBUG, formatter=formatter)
 
         # fallback to wifi if USB disconnected
         wlan_ip = self.wlan_ip
