@@ -215,7 +215,7 @@ class _AgentRequestSession(TimeoutRequestsSession):
             raise OSError(
                 "http-request to atx-agent error, can only recover from USB")
 
-        self.logger.warning("atx-agent has something wrong, auto recovering")
+        logger.warning("atx-agent has something wrong, auto recovering")
         # ReadTimeout: sometime means atx-agent is running but not responsing
         # one reason is futex_wait_queue: https://stackoverflow.com/questions/9801256/app-hangs-on-futex-wait-queue-me-every-a-couple-of-minutes
 
@@ -248,10 +248,15 @@ class _BaseClient(object):
             self._serial = None
             self._atx_agent_url = serial_or_url
             return
-
+        
         # USB 连接
         self._serial = serial_or_url
         self._atx_agent_url = None
+
+        # setup logger
+        log_format = f'%(color)s[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d]%(end_color)s [pid:%(process)d] [{self._serial}] %(message)s'
+        formatter = logzero.LogFormatter(fmt=log_format)
+        self._logger = setup_logger(name="uiautomator2.baseclient", level=logging.DEBUG, formatter=formatter)
 
         # fallback to wifi if USB disconnected
         wlan_ip = self.wlan_ip
@@ -263,10 +268,6 @@ class _BaseClient(object):
         self._filelock = filelock.FileLock(filelock_path, timeout=200)
 
         self._app_installer: AppInstaller = None
-
-        log_format = f'%(color)s[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d]%(end_color)s [pid:%(process)d] [{self._serial}] %(message)s'
-        formatter = logzero.LogFormatter(fmt=log_format)
-        self._logger = setup_logger(name="uiautomator2.baseclient", level=logging.DEBUG, formatter=formatter)
 
     @property
     def logger(self) -> logging.Logger:
