@@ -1340,12 +1340,21 @@ class _AppMixIn:
         #   r'mFocusedApp=.*ActivityRecord{\w+ \w+ (?P<package>.*)/(?P<activity>.*) .*'
         #   r'mCurrentFocus=Window{\w+ \w+ (?P<package>.*)/(?P<activity>.*)\}')
         _focusedRE = re.compile(
-            r'mCurrentFocus=Window{.*\s+(?P<package>[^\s]+)/(?P<activity>[^\s]+)\}'
+            r'mCurrentFocus=Window{.*?\s+(?P<package>[^\s]+)/(?P<activity>[^\s]+)\}'
         )
         m = _focusedRE.search(self.shell(['dumpsys', 'window', 'windows'])[0])
         if m:
             return dict(package=m.group('package'),
                         activity=m.group('activity'))
+
+        # search mResumedActivity
+        # https://stackoverflow.com/questions/13193592/adb-android-getting-the-name-of-the-current-activity
+        package = None
+        output, _ = self.shell(['dumpsys', 'activity', 'activities'])
+        _recordRE = re.compile(r'mResumedActivity: ActivityRecord\{.*?\s+(?P<package>[^\s]+)/(?P<activity>[^\s]+)\s.*?\}')
+        m = _recordRE.search(output)
+        if m:
+            package = m.group("package")
 
         # try: adb shell dumpsys activity top
         _activityRE = re.compile(
@@ -1358,6 +1367,9 @@ class _AppMixIn:
             ret = dict(package=m.group('package'),
                        activity=m.group('activity'),
                        pid=int(m.group('pid')))
+            if ret['package'] == package:
+                return ret
+                
         if ret:  # get last result
             return ret
         raise OSError("Couldn't get focused app")
