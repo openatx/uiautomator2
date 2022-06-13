@@ -245,25 +245,20 @@ class _BaseClient(object):
             serial_or_url = adbutils.adb.device().serial
 
         if re.match(r"^https?://", serial_or_url):
-            self._serial = None
+            # WIFI 连接
+            self._serial = serial_or_url
             self._atx_agent_url = serial_or_url
-            return
-        
-        # USB 连接
-        self._serial = serial_or_url
-        self._atx_agent_url = None
+        else:
+            # USB 连接
+            self._serial = serial_or_url
+            self._atx_agent_url = None
 
         # setup logger
         log_format = f'%(color)s[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d]%(end_color)s [pid:%(process)d] [{self._serial}] %(message)s'
         formatter = logzero.LogFormatter(fmt=log_format)
         self._logger = setup_logger(name="uiautomator2.client", level=logging.DEBUG, formatter=formatter)
-
-        # fallback to wifi if USB disconnected
-        wlan_ip = self.wlan_ip
-        if wlan_ip:
-            self._atx_agent_url = f"http://{wlan_ip}:7912"
         
-        filelock_path = os.path.expanduser("~/.uiautomator2/filelocks/") + self._serial.replace(":", "_") + ".lock"
+        filelock_path = os.path.expanduser("~/.uiautomator2/filelocks/") + base64.urlsafe_b64encode(self._serial.encode('utf-8')).decode('utf-8') + ".lock"
         os.makedirs(os.path.dirname(filelock_path), exist_ok=True)
         self._filelock = filelock.FileLock(filelock_path, timeout=200)
 
@@ -280,7 +275,7 @@ class _BaseClient(object):
 
     def _get_atx_agent_url(self) -> str:
         """ get url for python client to connect """
-        if not self._serial:
+        if re.match(r"^https?://", self._serial):
             return self._atx_agent_url
 
         try:
