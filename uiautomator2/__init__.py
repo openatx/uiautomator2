@@ -1185,6 +1185,9 @@ class _Device(_BaseClient):
         else:
             raise ValueError("Invalid orientation.")
 
+    def freeze_rotation(self, freezed: bool = True):
+        self.jsonrpc.freezeRotation(freezed)
+
     @property
     def last_traversed_text(self):
         '''get last traversed text. used in webview for highlighted text.'''
