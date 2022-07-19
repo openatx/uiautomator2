@@ -281,7 +281,7 @@ class _BaseClient(object):
         try:
             lport = self._adb_device.forward_port(
                 7912)  # this method is so fast, only take 0.2ms
-            return f"http://127.0.0.1:{lport}"
+            return f"http://{self._adb_device._client.host}:{lport}"
         except adbutils.AdbError as e:
             if not _is_tmq_production() and self._atx_agent_url:
                 # when device offline, use atx-agent-url
