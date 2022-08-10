@@ -1,5 +1,5 @@
 six
-requests
+requests>=2
 whichcraft 
 
 logzero~=1.5
