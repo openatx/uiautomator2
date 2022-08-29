@@ -6,7 +6,7 @@ from collections import namedtuple
 
 def test_session(sess):
     sess.wlan_ip
-    sess.widget
+    # sess.widget
     sess.watcher
     sess.image
     sess.jsonrpc

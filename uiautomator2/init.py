@@ -357,11 +357,12 @@ class Initer():
     def check_atx_agent_version(self):
         port = self._device.forward_port(7912)
         self.logger.debug("Forward: local:tcp:%d -> remote:tcp:%d", port, 7912)
-        version = requests.get("http://127.0.0.1:%d/version" %
-                               port).text.strip()
+        version = requests.get("http://%s:%d/version" %
+                               (self._device._client.host, port)).text.strip()
         self.logger.debug("atx-agent version %s", version)
 
-        wlan_ip = requests.get("http://127.0.0.1:%d/wlan/ip" % port).text.strip()
+        wlan_ip = requests.get("http://%s:%d/wlan/ip" %
+                               (self._device._client.host, port)).text.strip()
         self.logger.debug("device wlan ip: %s", wlan_ip)
         return version
 
