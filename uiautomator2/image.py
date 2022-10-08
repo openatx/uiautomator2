@@ -13,7 +13,7 @@ import typing
 from typing import Union
 
 import cv2
-# import findit
+import findit
 import imutils
 import numpy as np
 import requests
@@ -238,7 +238,7 @@ class ImageX(object):
         Returns:
             (r, g, b)
         """
-        screenshot = self.screenshot()
+        screenshot = self._d.screenshot()
         return screenshot.convert("RGB").getpixel((x, y))
 
     def match(self, imdata: Union[np.ndarray, str, Image.Image]):
@@ -287,12 +287,12 @@ class ImageX(object):
         m = self.__wait(imdata, timeout=timeout, threshold=threshold)
         return m
 
-    def click(self, imdata, timeout=30.0):
+    def click(self, imdata, timeout=30.0, threshold=0.9):
         """
         Args:
             imdata: file, url, pillow or opencv image object
         """
-        res = self.wait(imdata, timeout=timeout)
+        res = self.wait(imdata, timeout=timeout, threshold=threshold)
         if res is None:
             raise RuntimeError("image object not found")
         x, y = res['point']
@@ -316,7 +316,6 @@ def _main():
     assert pim.size == (321, 193)
 
     taobao = imread("screenshot.jpg")
-    import findit
 
     fi = findit.FindIt(engine=['template'],
                        engine_template_scale=(1, 1, 1),
