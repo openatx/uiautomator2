@@ -184,7 +184,7 @@ class Initer():
     def atx_agent_url(self):
         files = {
             'armeabi-v7a': 'atx-agent_{v}_linux_armv7.tar.gz',
-            'arm64-v8a': 'atx-agent_{v}_linux_armv7.tar.gz',
+            'arm64-v8a': 'atx-agent_{v}_linux_arm64.tar.gz',
             'armeabi': 'atx-agent_{v}_linux_armv6.tar.gz',
             'x86': 'atx-agent_{v}_linux_386.tar.gz',
             'x86_64': 'atx-agent_{v}_linux_386.tar.gz',
