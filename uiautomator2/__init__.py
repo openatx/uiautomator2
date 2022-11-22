@@ -380,9 +380,13 @@ class _BaseClient(object):
         self.shell(["pm", "uninstall", "com.github.uiautomator.test"])
 
         assets_dir = Path(__file__).absolute().parent.joinpath("assets")
-        
+        cwd_assets_dir = Path(os.getcwd()).absolute().joinpath("assets")
+
         for name in ("app-uiautomator.apk", "app-uiautomator-test.apk"):
             apk_path = assets_dir.joinpath(name).as_posix()
+            cwd_apk_path = cwd_assets_dir.joinpath(name).as_posix()
+            if not os.path.exists(apk_path) and os.path.exists(cwd_apk_path):
+                apk_path = cwd_apk_path
             target_path = "/data/local/tmp/" + name
             self.logger.debug("Install %s", name)
             self.push(apk_path, target_path)
