@@ -604,7 +604,7 @@ class _BaseClient(object):
         Reset uiautomator
 
         Raises:
-            RuntimeError
+            GatewayError
 
         Orders:
             - stop uiautomator keeper
@@ -614,7 +614,7 @@ class _BaseClient(object):
         """
         with self._filelock:
             if depth >= 2:
-                raise EnvironmentError(
+                raise GatewayError(
                     "Uiautomator started failed.",
                     reason,
                     "https://github.com/openatx/uiautomator2/wiki/Common-issues",
