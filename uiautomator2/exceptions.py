@@ -39,13 +39,6 @@ class UiautomatorQuitError(ServerError):
 
 class GatewayError(ServerError):
     """ 网关错误，通常代表 app-uiautomator.apk没有安装 """
-    def __init__(self, response, description):
-        self.response = response
-        self.description = description
-
-    def __str__(self):
-        return "uiautomator2.GatewayError(" + self.description + ")"
-
 
 ## errors which no need to restart uiautomator
 
