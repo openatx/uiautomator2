@@ -311,14 +311,9 @@ class _BaseClient(object):
         check running -> push binary -> launch
         """
         assert self._serial, "Device serialno is required"
-        for i in range(2):
-            _d = self._wait_for_device()
-            if not _d:
-                is_ipv4 = re.match(r"^\d+\.\d+\.\d+\.\d+$", self._serial)
-                if i == 0 and is_ipv4:
-                    os.system("adb connect %s" % self._serial)
-                else:
-                    raise RuntimeError("USB device %s is offline" % self._serial)
+        _d = self._wait_for_device()
+        if not _d:
+            raise RuntimeError("USB device %s is offline" % self._serial)
         self.logger.debug("device %s is online", self._serial)
         version_url = self.path2url("/version")
         try:
