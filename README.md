@@ -69,11 +69,9 @@ screenOn': True, 'sdkInt': 27, 'naturalOrientation': True}
 Thank you to all our sponsors! ✨🍰✨
 
 ### 金牌赞助商（Gold Sponsor）
-![logo 霍格沃兹测试学院](https://ceshiren.com/uploads/default/original/3X/7/0/70299922296e93e2dcab223153a928c4bfb27df9.jpeg)
+[![霍格沃兹测试开发学社](https://testing-studio.com/img/icon.png)](https://qrcode.testing-studio.com/f?from=tidevice&url=https://testing-studio.com/)
 
-[霍格沃兹测试开发学社](http://qrcode.testing-studio.com/f?from=atx&url=https://ceshiren.com)是业界领先的测试开发技术高端教育品牌，隶属于[测吧（北京）科技有限公司](http://qrcode.testing-studio.com/f?from=atx&url=https://www.testing-studio.com) 。学院课程由一线大厂测试经理与资深测试开发专家参与研发，实战驱动。课程涵盖web/app自动化测试、接口测试、性能测试、安全测试、持续集成/持续交付/DevOps，测试左移&右移、精准测试、测试平台开发、测试管理等内容，帮助测试工程师实现测试开发技术转型。通过优秀的学社制度（奖学金、内推返学费、行业竞赛等多种方式）来实现学员、学社及用人企业的三方共赢。
-
-[进入测试开发技术能力测评!](http://qrcode.testing-studio.com/f?from=atx&url=https://ceshiren.com/t/topic/14941)
+霍格沃兹测试开发学社：中国软件测试开发高端教育品牌，产品由国内顶尖软件测试开发技术专家携手打造。为企业与个人提供专业的技能培训与咨询、测试工具与测试平台、测试外包与测试众包服务。领域涵盖App/Web自动化测试、接口自动化测试、性能测试、安全测试、持续交付/DevOps、测试左移、测试右移、精准测试、测试平台开发、测试管理等方向，[**联系我们**](https://qrcode.testing-studio.com/f?from=tidevice&url=https://ceshiren.com/t/topic/23806)
 
 ## 相关项目
 - 设备管理平台，设备多了就会用到 [atxserver2](https://github.com/openatx/atxserver2)
