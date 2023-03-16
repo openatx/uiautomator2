@@ -490,6 +490,7 @@ class _BaseClient(object):
                 NullPointerExceptionError,
                 StaleObjectExceptionError) as e:
             self.logger.warning("jsonrpc call got: %s", str(e))
+            self.reset_uiautomator(str(e))  # added to fix strange fatal jsonrpc NullPointerException
         return self._jsonrpc_call(*args, **kwargs)
 
     def _jsonrpc_call(self, method, params=[], http_timeout=60):
