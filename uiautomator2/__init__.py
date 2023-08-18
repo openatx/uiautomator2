@@ -40,7 +40,7 @@ from typing import List, Optional, Tuple, Union
 import adbutils
 import filelock
 import logzero
-import packaging
+from packaging import version as packaging_version
 import requests
 import six
 import six.moves.urllib.parse as urlparse
@@ -719,7 +719,7 @@ class _BaseClient(object):
             return True
 
         # 检查版本是否过期
-        if apk_version < packaging.version.parse(__apk_version__):
+        if apk_version < packaging_version.parse(__apk_version__):
             return True
 
         # 检查测试apk是否存在
@@ -727,12 +727,12 @@ class _BaseClient(object):
             return True
         return False
 
-    def _package_version(self, package_name: str) -> Optional[packaging.version.Version]:
+    def _package_version(self, package_name: str) -> Optional[packaging_version.Version]:
         if self.shell(['pm', 'path', package_name]).exit_code != 0:
             return None
         dump_output = self.shell(['dumpsys', 'package', package_name]).output
         m = re.compile(r'versionName=(?P<name>[\d.]+)').search(dump_output)
-        return packaging.version.parse(m.group('name') if m else "")
+        return packaging_version.parse(m.group('name') if m else "")
 
     def _grant_app_permissions(self):
         self.logger.debug("grant permissions")

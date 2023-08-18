@@ -12,7 +12,7 @@ Deprecated~=1.2.6
 Pillow
 lxml>=4.3
 cached-property>=1.5.1,<2.0
-packaging~=20.3
+packaging
 
 #websocket-client
 
