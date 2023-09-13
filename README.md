@@ -1,4 +1,4 @@
-# uiautomator2 [![Python application](https://github.com/openatx/uiautomator2/actions/workflows/pythonapp.yml/badge.svg)](https://github.com/openatx/uiautomator2/actions/workflows/pythonapp.yml) [![Build Status](https://travis-ci.org/openatx/uiautomator2.svg?branch=master)](https://travis-ci.org/openatx/uiautomator2) [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2) ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg) [![Windows Build](https://ci.appveyor.com/api/projects/status/github/openatx/uiautomator2)](https://ci.appveyor.com/project/openatx/uiautomator2)
+# uiautomator2 [![Python application](https://github.com/openatx/uiautomator2/actions/workflows/pythonapp.yml/badge.svg)](https://github.com/openatx/uiautomator2/actions/workflows/pythonapp.yml) [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2) ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg) [![Windows Build](https://ci.appveyor.com/api/projects/status/github/openatx/uiautomator2)](https://ci.appveyor.com/project/openatx/uiautomator2)
 
 各种库的版本号
 
@@ -9,9 +9,7 @@
 - ![PyPI](https://img.shields.io/pypi/v/requests.svg?label=requests)
 - ![PyPI](https://img.shields.io/pypi/v/lxml.svg?label=lxml)
 
-**该项目正在冷静的开发中** QQ群号: *499563266*
-
-<p align="left"><img src="docs/img/qqgroup.png" /></div>
+**该项目处于低活跃度的开发中** 
 
 [UiAutomator](https://developer.android.com/training/testing/ui-automator.html)是Google提供的用来做安卓自动化测试的一个Java库，基于Accessibility服务。功能很强，可以对第三方App进行测试，获取屏幕上任意一个APP的任意一个控件属性，并对其进行任意操作，但有两个缺点：1. 测试脚本只能使用Java语言 2. 测试脚本要打包成jar或者apk包上传到设备上才能运行。
 
