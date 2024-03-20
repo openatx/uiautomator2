@@ -1,0 +1,55 @@
+name: Python application
+
+on: [push]
+
+jobs:
+  build-and-publish:
+    name: ${{ matrix.os }} / ${{ matrix.python-version }}
+    runs-on: ${{ matrix.image }}
+    strategy:
+      matrix:
+        os: [Ubuntu, macOS, Windows]
+        python-version: ["3.8", "3.11"]
+        include:
+          - os: Ubuntu
+            image: ubuntu-latest
+          - os: Windows
+            image: windows-2022
+          - os: macOS
+            image: macos-12
+      fail-fast: false
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Get full Python version
+      id: full-python-version
+      run: echo version=$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))") >> $GITHUB_OUTPUT
+
+    - name: Update PATH
+      if: ${{ matrix.os != 'Windows' }}
+      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Update Path for Windows
+      if: ${{ matrix.os == 'Windows' }}
+      run: echo "$APPDATA\Python\Scripts" >> $GITHUB_PATH
+
+    - name: Enable long paths for git on Windows
+      if: ${{ matrix.os == 'Windows' }}
+      # Enable handling long path names (+260 char) on the Windows platform
+      # https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file#maximum-path-length-limitation
+      run: git config --system core.longpaths true
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+        poetry install
+
+    - name: Run tests with coverage
+      run: |
+        make cov

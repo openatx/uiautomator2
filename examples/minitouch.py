@@ -2,8 +2,10 @@
 #
 # 半成品
 import json
-from . import Device
+
 from websocket import create_connection
+
+from . import Device
 
 
 class Minitouch:

@@ -1,10 +1,13 @@
 # coding: utf-8
 #
 
-import time
 import threading
+import time
+
 import pytest
+
 from uiautomator2 import utils
+
 
 def test_list2cmdline():
     testdata = [

@@ -10,22 +10,9 @@ import typing
 from typing import Union
 
 import filelock
-import six
 
 from ._proto import Direction
 from .exceptions import SessionBrokenError, UiObjectNotFoundError
-
-
-def U(x):
-    if six.PY3:
-        return x
-    return x.decode('utf-8') if type(x) is str else x
-
-
-def E(x):
-    if six.PY3:
-        return x
-    return x.encode('utf-8') if type(x) is unicode else x  # noqa: F821
 
 
 def check_alive(fn):
@@ -74,7 +61,7 @@ def wrap_wait_exists(fn):
         if not self.wait(timeout=timeout):
             raise UiObjectNotFoundError({
                 'code': -32002,
-                'message': E(self.selector.__str__())
+                'message': self.selector.__str__()
             })
         return fn(self, *args, **kwargs)
 

@@ -1,11 +1,8 @@
 # coding: utf-8
 #
 
-import pkg_resources
-try:
-    __version__ = pkg_resources.get_distribution("uiautomator2").version
-except pkg_resources.DistributionNotFound:
-    __version__ = "unknown"
+# version managed by poetry
+__version__ = "0.0.0"
 
 # See ChangeLog for details
 

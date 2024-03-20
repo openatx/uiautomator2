@@ -2,16 +2,16 @@
 # coding: utf-8
 #
 
-import re
-import os
-import time
 import argparse
+import os
+import re
+import time
 
-import yaml
 import bunch
-import uiautomator2 as u2
+import yaml
 from logzero import logger
 
+import uiautomator2 as u2
 
 CLICK = "click"
 # swipe

@@ -10,12 +10,12 @@ import logging
 import os
 import re
 
+import adbutils
 import progress.bar
 import requests
 from logzero import logger
 from retry import retry
 
-import adbutils
 import uiautomator2 as u2
 
 from .init import Initer

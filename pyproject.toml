@@ -1,0 +1,42 @@
+[tool.poetry]
+name = "uiautomator2"
+version = "0.0.0"
+description = "automator for anroid device"
+homepage = "https://github.com/openatx/uiautomator2"
+authors = ["codeskyblue <codeskyblue@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "*"
+lxml = "*"
+adbutils = ">=2.2"
+retry = ">=0,<1"
+packaging = ">=20.3"
+
+# TODO: remove later
+Deprecated = "*"
+logzero = "*"
+filelock = ">=3,<4"
+progress = "^1.6"
+pillow = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.1.1"
+isort = "^5.13.2"
+pytest-cov = "^4.1.0"
+
+[tool.poetry.scripts]
+uiautomator2 = "uiautomator2.__main__:main"
+
+[tool.poetry-dynamic-versioning] # 根据tag来动态配置版本号
+enable = true
+pattern = "^((?P<epoch>\\d+)!)?(?P<base>\\d+(\\.\\d+)*)"
+
+[tool.poetry-dynamic-versioning.substitution]
+files = ["uiautomator2/version.py"]
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"

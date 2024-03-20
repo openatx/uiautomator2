@@ -1,17 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import six
+import http.server as SimpleHTTPServer
 import socket
-from contextlib import closing
+import socketserver as SocketServer
 import webbrowser
-
-if six.PY2:
-    import SimpleHTTPServer
-    import SocketServer
-else:
-    import http.server as SimpleHTTPServer
-    import socketserver as SocketServer
+from contextlib import closing
 
 
 def is_port_avaiable(port):

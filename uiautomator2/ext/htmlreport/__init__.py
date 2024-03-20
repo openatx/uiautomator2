@@ -11,8 +11,10 @@ import shutil
 import sys
 import time
 import types
-import uiautomator2
+
 from PIL import ImageDraw
+
+import uiautomator2
 
 
 def mark_point(im, x, y):

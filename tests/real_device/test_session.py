@@ -1,20 +1,15 @@
 # coding: utf-8
 #
 
-from collections import namedtuple
-
 
 def test_session(sess):
     sess.wlan_ip
-    # sess.widget
     sess.watcher
-    sess.image
     sess.jsonrpc
     sess.open_identify
     sess.shell
     sess.set_new_command_timeout
     sess.settings
-    sess.taobao
     sess.xpath
 
 

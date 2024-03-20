@@ -1,14 +1,14 @@
 # coding: utf-8
 
 import adbutils
-import uiautomator2 as u2
 import pytest
+
+import uiautomator2 as u2
 
 
 @pytest.fixture(scope="module")
 def d(device):
     _d = device
-    #_d = u2.connect()
     _d.settings['operation_delay'] = (0.2, 0.2)
     _d.settings['operation_delay_methods'] = ['click', 'swipe']
     return _d
@@ -20,7 +20,7 @@ def package_name():
 
 
 @pytest.fixture(scope="function")
-def sess(d, package_name) -> u2.Device:
+def sess(d, package_name) -> u2.Device: # type: ignore
     d.watcher.reset()
     
     d.app_start(package_name, stop=True)

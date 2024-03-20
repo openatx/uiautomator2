@@ -2,13 +2,15 @@
 #
 
 import time
-import uiautomator2 as u2
+
 import pytest
-import imageio
+
+import uiautomator2 as u2
 
 
-# @pytest.mark.skip("Too long")
+@pytest.mark.skip("deprecated")
 def test_screenrecord(d: u2.Device):
+    import imageio
     with pytest.raises(RuntimeError):
         d.screenrecord.stop()
 

@@ -14,9 +14,8 @@ import requests
 from logzero import logger, setup_logger
 from retry import retry
 
-from uiautomator2.version import (__apk_version__, __atx_agent_version__,
-                                  __jar_version__, __version__)
 from uiautomator2.utils import natualsize
+from uiautomator2.version import __apk_version__, __atx_agent_version__, __jar_version__, __version__
 
 appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
 

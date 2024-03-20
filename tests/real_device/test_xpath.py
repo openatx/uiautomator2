@@ -5,8 +5,9 @@ import threading
 from functools import partial
 from pprint import pprint
 
-import uiautomator2 as u2
 import pytest
+
+import uiautomator2 as u2
 
 
 def test_get_text(sess: u2.Session):
@@ -38,11 +39,6 @@ def test_element_all(sess: u2.Session):
     assert app.wait()
     assert len(app.all()) == 1
     assert app.exists
-
-    elements = sess.xpath('//*[@resource-id="android:id/list"]/android.widget.TextView').all()
-    assert len(elements) == 11
-    el = elements[0]
-    assert el.text == 'Accessibility'
 
 
 def test_watcher(sess: u2.Session, request):

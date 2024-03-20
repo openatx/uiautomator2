@@ -114,3 +114,4 @@ docs/*.rst
 
 .DS_Store
 apk_version.txt
+*.lock

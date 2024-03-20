@@ -1,8 +1,9 @@
 # coding: utf-8
 #
 
-import os
 import io
+import os
+
 import uiautomator2 as u2
 
 

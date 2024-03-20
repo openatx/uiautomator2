@@ -1,9 +1,6 @@
 # coding: utf-8
 #
 
-# class ATXError(Exception):
-#     pass
-
 import json
 
 

@@ -6,7 +6,6 @@ import logging
 import pprint
 from typing import Any
 
-
 logger = logging.getLogger("uiautomator2")
 
 class Settings(object):

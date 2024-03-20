@@ -6,9 +6,10 @@
 @description: 使用百度OCR实现截屏选取元素
 """
 
+from aip import AipOcr
+
 from uiautomator2.ext.ocr import OCR as u2OCR
 from uiautomator2.ext.ocr import OCRSelector as u2OCRSelector
-from aip import AipOcr
 
 
 class OCR(u2OCR):
