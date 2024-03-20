@@ -1900,6 +1900,9 @@ def _fix_wifi_addr(addr: str) -> Optional[str]:
         return None
     if re.match(r"^https?://", addr):  # eg: http://example.org
         return addr
+    # eg: emulator-5554, 127.0.0.1:5555
+    if addr.startswith('emulator-') or addr.startswith('127.0.0.1:'):
+        return None
 
     # make a request
     # eg: 10.0.0.1, 10.0.0.1:7912
