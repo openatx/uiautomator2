@@ -365,7 +365,7 @@ class _BaseClient(object):
                     continue
             try:
                 adb.wait_for(self._serial, timeout=1)
-            except adbutils.AdbTimeout:
+            except (adbutils.AdbError, adbutils.AdbTimeout):
                 continue
             
             return adb.device(self._serial)
