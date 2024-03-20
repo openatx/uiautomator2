@@ -3,13 +3,12 @@ import time
 import warnings
 
 import requests
-import six
 from PIL import Image
 from retry import retry
 
+from ._proto import SCROLL_STEPS
 from .exceptions import UiObjectNotFoundError
 from .utils import Exists, intersect
-from ._proto import SCROLL_STEPS
 
 
 class Selector(dict):
@@ -413,7 +412,7 @@ class UiObject(object):
         Raises:
             IndexError
         """
-        if isinstance(self.selector, six.string_types):
+        if isinstance(self.selector, str):
             raise IndexError(
                 "Index is not supported when UiObject returned by child_by_xxx"
             )

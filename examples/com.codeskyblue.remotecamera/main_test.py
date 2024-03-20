@@ -2,7 +2,6 @@
 
 import uiautomator2 as u2
 
-
 pkg_name = 'com.codeskyblue.remotecamera'
 d = u2.connect()
 

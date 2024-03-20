@@ -26,9 +26,8 @@ import os
 import re
 import shutil
 import subprocess
-import sys
-import threading
 import time
+import urllib.parse as urlparse
 import warnings
 import xml.dom.minidom
 from collections import defaultdict, namedtuple
@@ -40,13 +39,11 @@ from typing import List, Optional, Tuple, Union
 import adbutils
 import filelock
 import logzero
-from packaging import version as packaging_version
 import requests
-import six
-import six.moves.urllib.parse as urlparse
 from cached_property import cached_property
 from deprecated import deprecated
 from logzero import setup_logger
+from packaging import version as packaging_version
 from PIL import Image
 from retry import retry
 from urllib3.util.retry import Retry
@@ -54,11 +51,9 @@ from urllib3.util.retry import Retry
 from . import xpath
 from ._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
 from ._selector import Selector, UiObject
-from .exceptions import (BaseError, ConnectError, GatewayError, JSONRPCError,
-                         NullObjectExceptionError, NullPointerExceptionError,
-                         RetryError, ServerError, SessionBrokenError,
-                         StaleObjectExceptionError,
-                         UiAutomationNotConnectedError, UiObjectNotFoundError)
+from .exceptions import BaseError, ConnectError, GatewayError, JSONRPCError, NullObjectExceptionError, \
+    NullPointerExceptionError, RetryError, ServerError, SessionBrokenError, StaleObjectExceptionError, \
+    UiAutomationNotConnectedError, UiObjectNotFoundError
 from .init import Initer
 # from .session import Session  # noqa: F401
 from .settings import Settings
@@ -66,9 +61,6 @@ from .swipe import SwipeExt
 from .utils import list2cmdline, process_safe_wrapper, thread_safe_wrapper
 from .version import __apk_version__, __atx_agent_version__
 from .watcher import WatchContext, Watcher
-
-if six.PY2:
-    FileNotFoundError = OSError
 
 DEBUG = False
 WAIT_FOR_DEVICE_TIMEOUT = int(os.getenv("WAIT_FOR_DEVICE_TIMEOUT", 20))
@@ -534,9 +526,7 @@ class _BaseClient(object):
         def is_exception(err, exception_name):
             return err.exception_name == exception_name or exception_name in err.message
 
-        if isinstance(
-                err.data,
-                six.string_types) and 'UiAutomation not connected' in err.data:
+        if isinstance(err.data, str) and 'UiAutomation not connected' in err.data:
             err.__class__ = UiAutomationNotConnectedError
         elif err.message:
             if is_exception(err, 'uiautomator.UiObjectNotFoundException'):
@@ -734,7 +724,7 @@ class _BaseClient(object):
     def _package_exists(self, package_name: str) -> bool:
         return self.shell(['pm', 'path', package_name]).exit_code == 0
 
-    def _package_version(self, package_name: str) -> Optional[packaging.version.Version]:
+    def _package_version(self, package_name: str) -> Optional[packaging_version.Version]:
         dump_output = self.shell(['dumpsys', 'package', package_name]).output
         m = re.compile(r'versionName=(?P<name>[\d.]+)').search(dump_output)
         if m is None:
@@ -819,7 +809,7 @@ class _BaseClient(object):
         modestr = oct(mode).replace('o', '')
         pathname = '/upload/' + dst.lstrip('/')
         filesize = 0
-        if isinstance(src, six.string_types):
+        if isinstance(src, str):
             if re.match(r"^https?://", src):
                 r = requests.get(src, stream=True)
                 if r.status_code != 200:
@@ -1751,7 +1741,7 @@ class _InputMethodMixIn:
             "done": 6,
             "previous": 7,
         }
-        if isinstance(code, six.string_types):
+        if isinstance(code, str):
             code = __alias.get(code, code)
         self.shell([
             'am', 'broadcast', '-a', 'ADB_EDITOR_CODE', '--ei', 'code',
@@ -1949,7 +1939,7 @@ def connect_adb_wifi(addr) -> Device:
     Raises:
         ConnectError
     """
-    assert isinstance(addr, six.string_types)
+    assert isinstance(addr, str)
 
     subprocess.call([adbutils.adb_path(), "connect", addr])
     try:

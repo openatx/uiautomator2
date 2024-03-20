@@ -16,7 +16,6 @@
 
 import uiautomator2
 
-
 # -- Project information -----------------------------------------------------
 
 master_doc = 'index'

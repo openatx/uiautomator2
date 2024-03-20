@@ -1,10 +1,12 @@
 # coding: utf-8
 #
 
-import uiautomator2 as u2
-import pytest
 import logging
 import time
+
+import pytest
+
+import uiautomator2 as u2
 
 
 def test_set_xpath_debug(sess):

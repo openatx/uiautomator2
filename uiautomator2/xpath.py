@@ -25,7 +25,7 @@ import uiautomator2
 from ._proto import Direction
 from .abcd import BasicUIMeta
 from .exceptions import XPathElementNotFoundError
-from .utils import U, inject_call, swipe_in_bounds
+from .utils import inject_call, swipe_in_bounds
 
 try:
     from lxml import etree

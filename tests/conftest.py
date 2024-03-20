@@ -1,8 +1,9 @@
 # coding: utf-8
 
 import adbutils
-import uiautomator2 as u2
 import pytest
+
+import uiautomator2 as u2
 
 
 @pytest.fixture(scope="module")
@@ -20,7 +21,7 @@ def package_name():
 
 
 @pytest.fixture(scope="function")
-def sess(d, package_name) -> u2.Device:
+def sess(d, package_name) -> u2.Device: # type: ignore
     d.watcher.reset()
     
     d.app_start(package_name, stop=True)

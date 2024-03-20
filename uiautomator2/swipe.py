@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from typing import Union
+
 from ._proto import Direction
 
 

@@ -10,8 +10,9 @@ d = u2.connect()
 d.ext_ocr("对战模式").click()
 """
 
-import requests
 import time
+
+import requests
 
 API = ""
 
@@ -95,8 +96,8 @@ class OCRSelector(object):
 
 
 if __name__ == '__main__':
-    import uiautomator2.ext.ocr as ocr
     import uiautomator2 as u2
+    import uiautomator2.ext.ocr as ocr
 
     d = u2.connect()
     print(ocr.OCR(d)("王者峡谷").click())

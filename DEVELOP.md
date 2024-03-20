@@ -2,10 +2,13 @@
 
 ```
 git clone https://github.com/openatx/uiautomator2
-pip3 install -e uiautomator2
+cd uiautomator2
+
+pip install poetry
+poetry install
 ```
 
-`-e`这个选项可以将该目录以软连接的形式添加到Python `site-packages`
+项目使用poetry做包管理还打包发布功能
 
 ## 生成CHANGELOG
 See changelog from git history
@@ -14,12 +17,6 @@ See changelog from git history
 git log --graph --date-order -C -M --pretty=format:"<%h> %ad [%an] %Cgreen%d%Creset %s" --all --date=short
 ```
 
-## 使用Sphinx生成文档
-```bash
-pip3 install -e .
-cd docs
-make publish
-```
 
 ## ViewConfiguration
 一些默认的配置，从 `/android/view/ViewConfiguration.java`中可以查到

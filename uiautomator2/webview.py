@@ -11,7 +11,6 @@ from pprint import pprint
 import adbutils
 import pychrome
 import requests
-
 from logzero import logger
 
 
@@ -134,8 +133,10 @@ class BrowserTab():
         raise NotImplementedError()
 
 
-from selenium import webdriver
 from contextlib import contextmanager
+
+from selenium import webdriver
+
 
 @contextmanager
 def driver(package_name):

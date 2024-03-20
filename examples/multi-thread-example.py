@@ -4,10 +4,12 @@
 # But is seems fine, because these operation have so many socket IO
 # So  it seems no need to use multiprocess
 #
-import uiautomator2 as u2
-import adbutils
 import threading
+
+import adbutils
 from logzero import logger
+
+import uiautomator2 as u2
 
 
 def worker(d: u2.Device):

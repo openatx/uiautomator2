@@ -2,6 +2,7 @@
 #
 
 import unittest
+
 from logzero import logger
 
 import uiautomator2 as u2

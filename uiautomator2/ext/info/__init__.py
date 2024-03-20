@@ -1,7 +1,7 @@
+import atexit
+import datetime
 import json
 import os
-import datetime
-import atexit
 
 from uiautomator2 import UIAutomatorServer
 from uiautomator2.ext.info import conf

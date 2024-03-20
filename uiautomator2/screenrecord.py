@@ -2,8 +2,8 @@
 #
 
 import re
-import time
 import threading
+import time
 
 import cv2
 import imageio

@@ -5,8 +5,9 @@ import threading
 from functools import partial
 from pprint import pprint
 
-import uiautomator2 as u2
 import pytest
+
+import uiautomator2 as u2
 
 
 def test_get_text(sess: u2.Session):

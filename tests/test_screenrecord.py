@@ -2,9 +2,11 @@
 #
 
 import time
-import uiautomator2 as u2
-import pytest
+
 import imageio
+import pytest
+
+import uiautomator2 as u2
 
 
 # @pytest.mark.skip("Too long")

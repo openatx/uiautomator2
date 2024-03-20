@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import cv2
-import numpy as np
+import threading
 import time
 
+import cv2
+import numpy as np
 import requests
 import websocket
-import threading
 
 __version__ = "0.0.1"
 

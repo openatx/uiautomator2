@@ -3,14 +3,14 @@
 
 from __future__ import absolute_import, print_function
 
-import threading
-import re
-import time
-import datetime
-import csv
-import sys
-import os
 import atexit
+import csv
+import datetime
+import os
+import re
+import sys
+import threading
+import time
 from collections import namedtuple
 
 _MEM_PATTERN = re.compile(r'TOTAL[:\s]+(\d+)')
@@ -291,11 +291,13 @@ class Perf(object):
             src: csv file, default to perf record csv path
             target_dir: images store dir
         """
-        import pandas as pd
-        import matplotlib.pyplot as plt
-        import matplotlib.ticker as ticker
         import datetime
         import os
+
+        import matplotlib.pyplot as plt
+        import matplotlib.ticker as ticker
+        import pandas as pd
+
         from uiautomator2.utils import natualsize
 
         src = src or self.csv_output
