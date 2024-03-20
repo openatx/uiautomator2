@@ -52,4 +52,4 @@ jobs:
 
     - name: Run tests with coverage
       run: |
-        poetry run pytest --cov=. --cov-report xml --cov-report term
+        make cov
