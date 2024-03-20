@@ -613,6 +613,11 @@ class _BaseClient(object):
             - start uiautomator keeper(am instrument -w ...)
             - wait until uiautomator service is ready
         """
+        # https://developer.android.google.cn/training/monitoring-device-state/doze-standby
+        # 让uiautomator进程不进入doze模式
+        # help: dumpsys deviceidle help
+        self.shell("dumpsys deviceidle whitelist +com.github.uiautomator; dumpsys deviceidle whitelist +com.github.uiautomator.test")
+        
         with self._filelock:
             if depth >= 2:
                 raise GatewayError(
@@ -671,7 +676,6 @@ class _BaseClient(object):
             self._grant_app_permissions()
             self.shell(['am', 'start', '-a', 'android.intent.action.MAIN', '-c',
                         'android.intent.category.LAUNCHER', '-n', package_name + "/" + ".ToastActivity"])
-            
         self.uiautomator.start()
 
         # wait until uiautomator2 service is working
@@ -708,7 +712,7 @@ class _BaseClient(object):
             return True
 
         # 检查测试apk是否存在
-        if self._package_version("com.github.uiautomator.test") is None:
+        if not self._package_exists("com.github.uiautomator.test"):
             return True
         return False
 
@@ -727,12 +731,18 @@ class _BaseClient(object):
             return True
         return False
 
+    def _package_exists(self, package_name: str) -> bool:
+        return self.shell(['pm', 'path', package_name]).exit_code == 0
+
     def _package_version(self, package_name: str) -> Optional[packaging.version.Version]:
-        if self.shell(['pm', 'path', package_name]).exit_code != 0:
-            return None
         dump_output = self.shell(['dumpsys', 'package', package_name]).output
         m = re.compile(r'versionName=(?P<name>[\d.]+)').search(dump_output)
-        return packaging.version.parse(m.group('name') if m else "")
+        if m is None:
+            return None
+        try:
+            return packaging.version.parse(m.group('name'))
+        except packaging.version.InvalidVersion:
+            return None
 
     def _grant_app_permissions(self):
         self.logger.debug("grant permissions")
