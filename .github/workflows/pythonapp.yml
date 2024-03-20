@@ -5,7 +5,7 @@ on: [push]
 jobs:
   build-and-publish:
     name: Build and publish Python 🐍 distributions 📦 to PyPI
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
       with:

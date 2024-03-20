@@ -2,7 +2,7 @@ six
 requests>=2
 whichcraft 
 
-logzero~=1.5
+logzero
 progress~=1.3
 retry~=0.9
 adbutils>=1.2.3
