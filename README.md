@@ -1,17 +1,13 @@
-# uiautomator2 [![Python application](https://github.com/openatx/uiautomator2/actions/workflows/pythonapp.yml/badge.svg)](https://github.com/openatx/uiautomator2/actions/workflows/pythonapp.yml) [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2) ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg) [![Windows Build](https://ci.appveyor.com/api/projects/status/github/openatx/uiautomator2)](https://ci.appveyor.com/project/openatx/uiautomator2)
+# uiautomator2 [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2) ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg)
 
 QQ交流群: 815453846
 
 各种库的版本号
 
 - [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg?label=uiautomator2)](https://pypi.python.org/pypi/uiautomator2)
+- [![PyPI](https://img.shields.io/pypi/v/adbutils.svg?label=adbutils)](https://github.com/openatx/adbutils)
 - [![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/openatx/atx-agent.svg?label=atx-agent)](https://github.com/openatx/atx-agent)
 - [![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/openatx/android-uiautomator-server.svg?label=android-uiautomator-server)](https://github.com/openatx/android-uiautomator-server)
-- [![PyPI](https://img.shields.io/pypi/v/adbutils.svg?label=adbutils)](https://github.com/openatx/adbutils)
-- ![PyPI](https://img.shields.io/pypi/v/requests.svg?label=requests)
-- ![PyPI](https://img.shields.io/pypi/v/lxml.svg?label=lxml)
-
-**该项目处于低活跃度的开发中** 
 
 [UiAutomator](https://developer.android.com/training/testing/ui-automator.html)是Google提供的用来做安卓自动化测试的一个Java库，基于Accessibility服务。功能很强，可以对第三方App进行测试，获取屏幕上任意一个APP的任意一个控件属性，并对其进行任意操作，但有两个缺点：1. 测试脚本只能使用Java语言 2. 测试脚本要打包成jar或者apk包上传到设备上才能运行。
 
@@ -71,11 +67,18 @@ Thank you to all our sponsors! ✨🍰✨
 
 霍格沃兹测试开发学社：中国软件测试开发高端教育品牌，产品由国内顶尖软件测试开发技术专家携手打造。为企业与个人提供专业的技能培训与咨询、测试工具与测试平台、测试外包与测试众包服务。领域涵盖App/Web自动化测试、接口自动化测试、性能测试、安全测试、持续交付/DevOps、测试左移、测试右移、精准测试、测试平台开发、测试管理等方向，[**联系我们**](https://qrcode.testing-studio.com/f?from=ATX&url=https://ceshiren.com/t/topic/23806)
 
+# Article Recommended
+优秀文章推荐 (欢迎QQ群里at我反馈）
+
+- [py-uiautomator2通过悬浮窗让服务长时间可用](https://zhuanlan.zhihu.com/p/688009468) 这个**强烈推荐**看一下
+- [termux里如何部署uiautomator2简介](https://www.cnblogs.com/ze-yan/p/12242383.html) by `成都-测试只会一点点`
+
 ## 相关项目
-- 设备管理平台，设备多了就会用到 [atxserver2](https://github.com/openatx/atxserver2)
+- 类似于uiautomatorviewer，用于查看UI层级结构 https://appinspector.devsleep.com
 - 专门与adb进行交互的库 [adbutils](https://github.com/openatx/adbutils)
+- 设备管理平台，设备多了就会用到 [atxserver2](https://github.com/openatx/atxserver2) （寻找项目维护人员）
 - [atx-agent](https://github.com/openatx/atx-agent) 运行在设备上的驻守程序，go开发，用于保活设备上相关的服务
-- [weditor](https://github.com/openatx/weditor) 类似于uiautomatorviewer，专门为本项目开发的辅助编辑器
+- ~~[weditor](https://github.com/openatx/weditor) 类似于uiautomatorviewer，专门为本项目开发的辅助编辑器(这个暂不维护了~~
 
 **[Installation](#installation)**
 
@@ -111,8 +114,6 @@ Thank you to all our sponsors! ✨🍰✨
   - **[XPath](#xpath)**
   - **[Screenrecord](#screenrecord)**
   - **[Image match](#image-match)**
-
-**[相关文章推荐](#article-recommended)**
 
 **常见问题**
   - **[停止UiAutomator守护服务，释放AccessibilityService](#stop-uiautomator)**
@@ -1535,11 +1536,6 @@ d.uiautomator.stop()
 ```
 
 [ATX与Maxim共存AccessibilityService的方法](https://testerhome.com/topics/17179)
-
-# Article Recommended
-优秀文章推荐 (欢迎QQ群里at我反馈）
-
-- [termux里如何部署uiautomator2简介](https://www.cnblogs.com/ze-yan/p/12242383.html) by `成都-测试只会一点点`
 
 # 项目历史
 * 项目重构自 <https://github.com/xiaocong/uiautomator>
