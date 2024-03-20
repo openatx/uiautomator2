@@ -1,6 +1,14 @@
 name: Python application
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
+    tags-ignore:
+      - '*'
+  pull_request:
+    branches:
+      - master
 
 jobs:
   build-and-publish:
