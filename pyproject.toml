@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "uiautomator2"
+version = "0.0.0"
+description = "automator for anroid device"
+authors = ["codeskyblue <codeskyblue@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "^2.31.0"
+whichcraft = "^0.6.1"
+logzero = "^1.7.0"
+adbutils = "^2.2.1"
+Deprecated = "^1.2.14"
+lxml = "^5.1.0"
+cached-property = "^1.5.2"
+packaging = "^24.0"
+filelock = "^3.13.1"
+retry = "^0.9.2"
+progress = "^1.6"
+six = "^1.16.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.1.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
