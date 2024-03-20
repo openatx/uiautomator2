@@ -40,7 +40,7 @@ from typing import List, Optional, Tuple, Union
 import adbutils
 import filelock
 import logzero
-import packaging
+from packaging import version as packaging_version
 import requests
 import six
 import six.moves.urllib.parse as urlparse
@@ -723,7 +723,7 @@ class _BaseClient(object):
             return True
 
         # 检查版本是否过期
-        if apk_version < packaging.version.parse(__apk_version__):
+        if apk_version < packaging_version.parse(__apk_version__):
             return True
 
         # 检查测试apk是否存在
@@ -740,8 +740,8 @@ class _BaseClient(object):
         if m is None:
             return None
         try:
-            return packaging.version.parse(m.group('name'))
-        except packaging.version.InvalidVersion:
+            return packaging_version.parse(m.group('name'))
+        except packaging_version.InvalidVersion:
             return None
 
     def _grant_app_permissions(self):
