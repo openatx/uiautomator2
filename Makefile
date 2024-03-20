@@ -12,3 +12,9 @@ cov:
 build:
 	rm -fr dist
 	poetry build
+
+init:
+	if [ ! -f "ApiDemos-debug.apk" ]; then \
+		wget https://github.com/appium/appium/raw/master/packages/appium/sample-code/apps/ApiDemos-debug.apk; \
+	fi
+	poetry run python -m adbutils -i ./ApiDemos-debug.apk

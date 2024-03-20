@@ -9,7 +9,6 @@ import uiautomator2 as u2
 @pytest.fixture(scope="module")
 def d(device):
     _d = device
-    #_d = u2.connect()
     _d.settings['operation_delay'] = (0.2, 0.2)
     _d.settings['operation_delay_methods'] = ['click', 'swipe']
     return _d

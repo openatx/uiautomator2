@@ -40,11 +40,6 @@ def test_element_all(sess: u2.Session):
     assert len(app.all()) == 1
     assert app.exists
 
-    elements = sess.xpath('//*[@resource-id="android:id/list"]/android.widget.TextView').all()
-    assert len(elements) == 11
-    el = elements[0]
-    assert el.text == 'Accessibility'
-
 
 def test_watcher(sess: u2.Session, request):
     sess.xpath.when("App").click()

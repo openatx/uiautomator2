@@ -87,7 +87,7 @@ def test_get_text(sess):
     d = sess
     text = d(resourceId="android:id/list").child(
         className="android.widget.TextView", instance=2).get_text()
-    assert text == "App"
+    assert text == "Animation"
 
 
 def test_xpath(sess):
@@ -96,7 +96,7 @@ def test_xpath(sess):
     assert len(d.xpath("//*[@text='Media']").all()) == 1
     assert len(d.xpath("//*[@text='MediaNotExists']").all()) == 0
     d.xpath("//*[@text='Media']").click()
-    assert d.xpath('//*[contains(@text, "Audio")]').wait(5)
+    assert d.xpath('//*[contains(@text, "VideoView")]').wait(5)
 
 
 @pytest.mark.skip("Need fix")
@@ -141,6 +141,7 @@ def test_send_keys(sess):
     d.xpath("App").click()
     d.xpath("Search").click()
     d.xpath('//*[@text="Invoke Search"]').click()
+    d.xpath('@io.appium.android.apis:id/txt_query_prefill').click()
     d.send_keys("hello", clear=True)
     assert d.xpath('io.appium.android.apis:id/txt_query_prefill').info['text'] == 'hello'
 
