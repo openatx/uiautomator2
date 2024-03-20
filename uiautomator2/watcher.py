@@ -53,7 +53,7 @@ class WatchContext:
         Args:
             seconds: stable seconds
             timeout: raise error when wait stable timeout
-            
+
         Raises:
             TimeoutError
         """
@@ -236,7 +236,11 @@ class Watcher():
         """
         if self.triggering:  # avoid to run watcher when run watcher
             return False
-        return self._run_watchers(source=source)
+        try:
+            return self._run_watchers(source=source)
+        except Exception as e:
+            self.logger.warning("_run_watchers exception: %s", e)
+            return False
 
     def _run_watchers(self, source=None) -> bool:
         """
