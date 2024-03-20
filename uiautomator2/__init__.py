@@ -30,8 +30,9 @@ import time
 import urllib.parse as urlparse
 import warnings
 import xml.dom.minidom
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 from datetime import datetime
+from functools import cached_property
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
@@ -40,7 +41,6 @@ import adbutils
 import filelock
 import logzero
 import requests
-from cached_property import cached_property
 from deprecated import deprecated
 from logzero import setup_logger
 from packaging import version as packaging_version

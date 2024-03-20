@@ -10,16 +10,17 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.8"
 requests = "*"
-whichcraft = "*"
-logzero = "*"
 lxml = "*"
-Deprecated = "*"
 adbutils = ">=2.2"
 retry = ">=0,<1"
 packaging = ">=20.3"
-progress = "^1.6"
-cached-property = ">=1,<2"
+
+# TODO: remove later
+Deprecated = "*"
+logzero = "*"
 filelock = ">=3,<4"
+progress = "^1.6"
+pillow = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"

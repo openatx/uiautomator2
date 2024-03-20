@@ -8,18 +8,11 @@ pip install poetry
 poetry install
 ```
 
-项目使用poetry做包管理还打包发布功能
-
-## 生成CHANGELOG
-See changelog from git history
-
-```
-git log --graph --date-order -C -M --pretty=format:"<%h> %ad [%an] %Cgreen%d%Creset %s" --all --date=short
-```
+项目使用poetry做包管理和打包发布功能
 
 
 ## ViewConfiguration
-一些默认的配置，从 `/android/view/ViewConfiguration.java`中可以查到
+一些默认的配置，从 [/android/view/ViewConfiguration.java](https://android.googlesource.com/platform/frameworks/base/+/master/core/java/android/view/ViewConfiguration.java)中可以查到
 
 > 单位: 毫秒
 
