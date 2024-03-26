@@ -11,8 +11,9 @@ cov:
 
 build:
 	poetry self add "poetry-dynamic-versioning[plugin]"
+	cd uiautomator2/assets; ./sync.sh; cd -
 	rm -fr dist
-	poetry build
+	poetry build -vvv
 
 init:
 	if [ ! -f "ApiDemos-debug.apk" ]; then \
