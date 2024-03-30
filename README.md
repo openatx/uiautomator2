@@ -159,7 +159,7 @@ Thank you to all our sponsors! ✨🍰✨
 
     **appinspector介绍**
 
-    [appinspector](https://github.com/codeskyblue/appinspector) 是一个独立与uiautomator2之外的一个项目，用于查看图层结构的。属于旧版项目[weditor的重构版本](https://github.com/openatx/weditor)，后续也许会收费，来支持当前这个项目继续维护下去。感兴趣的可以加群讨论(也包含提需求) QQ群 536481989
+    [appinspector](https://github.com/codeskyblue/appinspector) 是一个独立与uiautomator2之外的一个项目，用于查看图层结构的。属于旧版项目[weditor的重构版本](https://github.com/openatx/weditor)，后续也许会收费（价格肯定物超所值），来支持当前这个项目继续维护下去。感兴趣的可以加群讨论(也包含提需求) QQ群 536481989
 
 # Connect to a device
 There are two ways to connect to the device. 

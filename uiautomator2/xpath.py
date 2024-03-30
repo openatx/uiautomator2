@@ -36,10 +36,18 @@ def string_quote(s):
     return "{!r}".format(s)
 
 
-def str2bytes(v) -> bytes:
+def str2bytes(v: Union[str, bytes]) -> bytes:
     if isinstance(v, bytes):
         return v
     return v.encode("utf-8")
+
+
+def is_xpath_syntax_ok(xpath_expression) -> bool:
+    try:
+        etree.XPath(xpath_expression)
+        return True  # No error means the XPath syntax is likely okay
+    except etree.XPathSyntaxError:
+        return False  # Indicates a syntax error in the XPath expression
 
 
 def strict_xpath(xpath: str, logger=logger) -> str:
@@ -78,6 +86,8 @@ def strict_xpath(xpath: str, logger=logger) -> str:
             string_quote(xpath)
         )
 
+    if not is_xpath_syntax_ok(xpath):
+        raise XPathError("Invalid xpath", orig_xpath)
     logger.debug("xpath %s -> %s", orig_xpath, xpath)
     return xpath
 
