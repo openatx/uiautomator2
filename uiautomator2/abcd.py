@@ -5,7 +5,7 @@
 import abc
 
 
-class BasicUIMeta(metaclass=abc.ABCMeta):
+class DeviceInterface(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def click(self, x: int, y: int):
         pass

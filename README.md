@@ -1,8 +1,12 @@
 # uiautomator2 [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2) ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg)
 
-QQ交流群: 815453846
+QQ交流群: **815453846**
 
-各种库的版本号
+> 有段时间没有维护这个项目了（可能有两年了），但是最近工作需要又重新研究一下Android原生自动化，当然又调研了Appium，对比下来一看，发现uiautomator2这个项目的运行速度是真的好快，从检测元素到点击，都是毫秒级的，代码也比较好理解。真是没想到以前竟然写出了这么神奇的项目，这么好的项目怎么能让它落灰呢，得好好整一整，一些垃圾代码清理清理。所以项目版本从2.x.x升级到了3.x.x
+
+还在用2.x.x版本的用户，可以先看一下[2to3](docs/2to3.md) 再决定是否要升级3.x.x （我个人还是非常建议升级的）
+
+各种依赖库的版本号
 
 - [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg?label=uiautomator2)](https://pypi.python.org/pypi/uiautomator2)
 - [![PyPI](https://img.shields.io/pypi/v/adbutils.svg?label=adbutils)](https://github.com/openatx/adbutils)
@@ -17,11 +21,11 @@ QQ交流群: 815453846
 除了对原有的库的bug进行了修复，还增加了很多新的Feature。主要有以下部分：
 
 * 设备和开发机可以脱离数据线，通过WiFi互联（基于[atx-agent](https://github.com/openatx/atx-agent)）
-* 集成了[openstf/minicap](https://github.com/openstf/minicap)达到实时屏幕投频，以及实时截图
-* 集成了[openstf/minitouch](https://github.com/openstf/minitouch)达到精确实时控制设备
+* ~~集成了[openstf/minicap](https://github.com/openstf/minicap)达到实时屏幕投频，以及实时截图~~
+* ~~集成了[openstf/minitouch](https://github.com/openstf/minitouch)达到精确实时控制设备~~
 * 修复了[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)经常性退出的问题
 * 代码进行了重构和精简，方便维护
-* 实现了一个设备管理平台(也支持iOS) [atxserver2](https://github.com/openatx/atxserver2)
+* 实现了一个设备管理平台(也支持iOS) [atxserver2](https://github.com/openatx/atxserver2) （注：目前不怎么维护了）
 * 扩充了toast获取和展示的功能
 
 >这里要先说明下，因为经常有很多人问 openatx/uiautomator2 并不支持iOS测试，需要iOS自动化测试，可以转到这个库 [openatx/facebook-wda](https://github.com/openatx/facebook-wda)。
@@ -38,8 +42,6 @@ QQ交流群: 815453846
 先准备一台（不要两台）开启了`开发者选项`的安卓手机，连接上电脑，确保执行`adb devices`可以看到连接上的设备。
 
 运行`pip3 install -U uiautomator2` 安装uiautomator2
-
-运行`python3 -m uiautomator2 init`安装包含httprpc服务的apk到手机+`atx-agent, minicap, minitouch` （在过去的版本中，这一步是必须执行的，但是从1.3.0之后的版本，当运行python代码`u2.connect()`时就会自动推送这些文件了）
 
 命令行运行`python`打开python交互窗口。然后将下面的命令输入到窗口中。
 
@@ -74,10 +76,10 @@ Thank you to all our sponsors! ✨🍰✨
 - [termux里如何部署uiautomator2简介](https://www.cnblogs.com/ze-yan/p/12242383.html) by `成都-测试只会一点点`
 
 ## 相关项目
-- 类似于uiautomatorviewer，用于查看UI层级结构 https://appinspector.devsleep.com
-- 专门与adb进行交互的库 [adbutils](https://github.com/openatx/adbutils)
+- 基于adb协议与Android进行交互的库 [adbutils](https://github.com/openatx/adbutils)
 - 设备管理平台，设备多了就会用到 [atxserver2](https://github.com/openatx/atxserver2) （寻找项目维护人员）
 - [atx-agent](https://github.com/openatx/atx-agent) 运行在设备上的驻守程序，go开发，用于保活设备上相关的服务
+- 类似于uiautomatorviewer，用于查看UI层级结构 https://appinspector.devsleep.com
 - ~~[weditor](https://github.com/openatx/weditor) 类似于uiautomatorviewer，专门为本项目开发的辅助编辑器(这个暂不维护了~~
 
 **[Installation](#installation)**
@@ -140,59 +142,25 @@ Thank you to all our sponsors! ✨🍰✨
 1. Install uiautomator2
 
     ```bash
-    # Since uiautomator2 is still under development, you have to add --pre to install the development version
-    pip install --upgrade --pre uiautomator2
-
-    # Or you can install directly from github source
-    git clone https://github.com/openatx/uiautomator2
-    pip install -e uiautomator2
+    pip install -U uiautomator2
     ```
     
     测试是否安装成功 `uiautomator2 --help`
     
-2. Install weditor (UI Inspector)
-
-    因为uiautomator是独占资源，所以当atx运行的时候uiautomatorviewer是不能用的，为了减少atx频繁的启停，我们开发了基于浏览器技术的weditor UI查看器。<https://github.com/openatx/weditor>
-
-    安装方法(备注: 目前最新的稳定版为 0.1.0)
+2. UI Inspector
 
     ```bash
-    pip install -U weditor
-    ```
-    
-    安装好之后，就可以在命令行运行`weditor --help` 确认是否安装成功了。
-
-    > Windows系统可以使用命令在桌面创建一个快捷方式 `weditor --shortcut`
-
-    命令行直接输入 `weditor` 会自动打开浏览器，输入设备的ip或者序列号，点击Connect即可。
-
-    具体参考文章：[浅谈自动化测试工具python-uiautomator2](https://testerhome.com/topics/11357)
-    
-3. Install daemons to a device (Optional)
-
-    电脑连接上一个手机或多个手机, 确保adb已经添加到环境变量中，执行下面的命令会自动安装本库所需要的设备端程序：[uiautomator-server](https://github.com/openatx/android-uiautomator-server/releases) 、[atx-agent](https://github.com/openatx/atx-agent)、[openstf/minicap](https://github.com/openstf/minicap)、[openstf/minitouch](https://github.com/openstf/minitouch)
-
-    ```bash
-    # init 所有的已经连接到电脑的设备
-    python -m uiautomator2 init
-
-    # 高阶用法
-    # init and set atx-agent listen in all address
-    python -m uiautomator2 init --addr :7912
+    pip install appinspector
+    # 启动
+    appinspector
     ```
 
-    有时候init也会出错，请参考[手动Init指南](https://github.com/openatx/uiautomator2/wiki/Manual-Init)
+    浏览器打开 https://appinspector.devsleep.com 查看当前设备的界面结构。
 
-    安装提示`success`即可
+    **appinspector介绍**
 
-4. 【可选】AppetizerIO 所见即所得脚本编辑器
+    [appinspector](https://github.com/codeskyblue/appinspector) 是一个独立与uiautomator2之外的一个项目，用于查看图层结构的。属于旧版项目[weditor的重构版本](https://github.com/openatx/weditor)，后续也许会收费（价格肯定物超所值），来支持当前这个项目继续维护下去。感兴趣的可以加群讨论(也包含提需求) QQ群 536481989
 
-    [AppetizerIO](https://www.appetizer.io) 提供了对uiautomator2的深度集成，可以图形化管理ATX设备，还有所见即所得脚本编辑器
-    * 到网站下载直接打开，首次使用需要注册账号
-    * `设备管理` 界面里可以检查设备是否正常init，起停atx-agent，抓取atx-agent.log文件
-    * `测试脚本`调出脚本助手，实时界面同步，点击界面直接插入各种代码，同时支持uiautomator和Appium
-    * **[视频教程 请戳这里](https://github.com/openatx/uiautomator2/wiki/Appetizer%E6%89%80%E8%A7%81%E5%8D%B3%E6%89%80%E5%BE%97u2%E8%84%9A%E6%9C%AC%E7%BC%96%E8%BE%91%E5%99%A8)**  [其他文档在此](http://doc.appetizer.io)
-    
 # Connect to a device
 There are two ways to connect to the device. 
 
@@ -236,7 +204,7 @@ If this environment variable is empty, uiautomator will fall back to `connect_us
 # Command line
 其中的`$device_ip`代表设备的ip地址
 
-如需指定设备需要传入`--serial` 如 `python3 -m uiautomator2 --serial bff1234 <SubCommand>`, SubCommand为子命令（init,或者screenshot等）
+如需指定设备需要传入`--serial` 如 `python3 -m uiautomator2 --serial bff1234 <SubCommand>`, SubCommand为子命令（screenshot, current 等）
 
 > 1.0.3 Added: `python3 -m uiautomator2`可以简写为`uiautomator2`
 
@@ -302,7 +270,7 @@ d.set_new_command_timeout(300) # change to 5 minutes, unit seconds
 ```
 
 ### Debug HTTP requests
-Trace HTTP requests and response to find out how it works.
+打印出代码背后的HTTP请求信息
 
 ```python
 >>> d.debug = True
@@ -315,8 +283,6 @@ Trace HTTP requests and response to find out how it works.
 ```
 
 ### Implicit wait
-Set default element wait time, unit seconds
-
 设置元素查找等待时间（默认20s）
 
 ```python
@@ -446,25 +412,13 @@ d.disable_popups(False) # disable automatic skip popups
 
 ![popup](docs/img/popup.png)
 
-If this method is not working on your device, You can make a pull request or create an issue to enhance this function. I'll show you how to do it.
-
-1. Open `uiautomatorviewer.bat`
-2. Get popup hierarchy
-
-![hierarchy](docs/img/uiautomatorviewer-popup.png)
-
-Now you know the button text and current package name. Make a pull request by update function `disable_popups` or create an [issue](https://github.com/openatx/uiautomator2/issues) if you are not familar with git and python.
-
 ### Open Scheme
-You can do it wire adb: `adb shell am start -a android.intent.action.VIEW -d "appname://appnamehost"`
-
-Also you can do it with python code
 
 ```python
-d.open_url("https://www.baidu.com")
-d.open_url("taobao://taobao.com") # open Taobao app
 d.open_url("appname://appnamehost")
 ```
+
+等价于 `adb shell am start -a android.intent.action.VIEW -d "appname://appnamehost"`
 
 ## Basic API Usages
 This part showcases how to perform common device operations:
@@ -661,6 +615,7 @@ Below is a possible output:
  'presenceChangedAt': '0001-01-01T00:00:00Z',
  'usingBeganAt': '0001-01-01T00:00:00Z'}
 ```
+
 ### Clipboard
 Get of set clipboard content
 
@@ -1211,7 +1166,8 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
 
 ```python
 with d.watch_context() as ctx:
-    ctx.when("^立即(下载|更新)").when("取消").click() # 当同时出现 （立即安装 或 立即取消）和 取消 按钮的时候，点击取消
+    # 当同时出现 （立即下载 或 立即更新）和 取消 按钮的时候，点击取消
+    ctx.when("^立即(下载|更新)").when("取消").click() 
     ctx.when("同意").click()
     ctx.when("确定").click()
     # 上面三行代码是立即执行完的，不会有什么等待
@@ -1255,7 +1211,8 @@ ctx.close()
 
 ~~You can register [watchers](http://developer.android.com/tools/help/uiautomator/UiWatcher.html) to perform some actions when a selector does not find a match.~~
 
-2.0.0之前使用的是 uiautomator-jar库中提供的[Watcher]((http://developer.android.com/tools/help/uiautomator/UiWatcher.html)方法，但在实践中发现一旦uiautomator所有的watcher配置都是丢失，这肯定是无法接受的。
+2.0.0之前使用的是 uiautomator-jar库中提供的[Watcher]((http://developer.android.com/tools/help/uiautomator/UiWatcher.html)方法，但在实践中发现一旦uiautomator连接失败重启了，所有的watcher配置都是丢失，这肯定是无法接受的。
+
 所以目前采用了后台运行了一个线程的方法(依赖threading库），然后每隔一段时间dump一次hierarchy，匹配到元素之后执行相应的操作。
 
 用法举例
@@ -1278,11 +1235,14 @@ def click_callback(d: u2.Device):
     d.xpath("确定").click() # 在回调中调用不会再次触发watcher
 
 d.xpath("继续").click() # 使用d.xpath检查元素的时候，会触发watcher（目前最多触发5次）
+
+# 开始后台监控
+d.watcher.start()
 ```
 
 监控操作
 
-```
+```python
 # 移除ANR的监控
 d.watcher.remove("ANR")
 
@@ -1468,7 +1428,7 @@ for elem in d.xpath("//android.widget.TextView").all():
 点击查看[其他XPath常见用法](XPATH.md)
 
 ### Screenrecord (Deprecated)
-视频录制(废弃)
+视频录制(废弃)，使用[scrcpy](https://github.com/Genymobile/scrcpy)来代替吧
 
 这里没有使用手机中自带的screenrecord命令，是通过获取手机图片合成视频的方法，所以需要安装一些其他的依赖，如imageio, imageio-ffmpeg, numpy等
 因为有些依赖比较大，推荐使用镜像安装。直接运行下面的命令即可。
@@ -1491,6 +1451,8 @@ d.screenrecord.stop() # 停止录制后，output.mp4文件才能打开
 录制的时候也可以指定fps（当前是20），这个值是率低于minicap输出图片的速度，感觉已经很好了，不建议你修改。
 
 ### Image match (3.x开始移除该功能)
+3.x开始废弃
+
 图像匹配，在使用这个功能之前你需要先把依赖安装上
 
 ```bash
