@@ -19,26 +19,16 @@ import adbutils
 from deprecated import deprecated
 from logzero import logger, setup_logger
 from PIL import Image
+from lxml import etree
 
-import uiautomator2
-
-from ._proto import Direction
-from .abcd import BasicUIMeta
-from .exceptions import XPathElementNotFoundError
-from .utils import inject_call, swipe_in_bounds
-
-try:
-    from lxml import etree
-except ImportError:
-    logger.warning("lxml was not installed, xpath will not supported")
+from uiautomator2._proto import Direction
+from uiautomator2.abcd import DeviceInterface
+from uiautomator2.exceptions import XPathElementNotFoundError
+from uiautomator2.utils import inject_call, swipe_in_bounds
 
 
 def safe_xmlstr(s):
     return s.replace("$", "-")
-
-
-def init():
-    uiautomator2.plugin_register("xpath", XPath)
 
 
 def string_quote(s):
@@ -99,42 +89,15 @@ class TimeoutException(Exception):
 class XPathError(Exception):
     """basic error for xpath plugin"""
 
-
-class UIMeta(metaclass=abc.ABCMeta):
-    @abc.abstractmethod
-    def click(self, x: int, y: int):
-        pass
-
-    @abc.abstractmethod
-    def swipe(self, fx: int, fy: int, tx: int, ty: int, duration: float):
-        """duration is float type, indicate seconds"""
-
-    @abc.abstractmethod
-    def window_size(self) -> tuple:
-        """return (width, height)"""
-
-    @abc.abstractmethod
-    def dump_hierarchy(self) -> str:
-        """return xml content"""
-
-    @abc.abstractmethod
-    def screenshot(self):
-        """return PIL.Image.Image"""
-
-
 class XPath(object):
-    def __init__(self, d: "uiautomator2.Device"):
+    def __init__(self, d: DeviceInterface):
         """
         Args:
             d (uiautomator2 instance)
         """
         self._d = d
-        assert hasattr(d, "click")
-        assert hasattr(d, "swipe")
-        assert hasattr(d, "window_size")
-        assert hasattr(d, "dump_hierarchy")
-        assert hasattr(d, "screenshot")
         assert hasattr(d, "wait_timeout")
+        # TODO: remove wait_timeout
 
         self._click_before_delay = 0.0  # pre delay
         self._click_after_delay = None  # post delay
@@ -567,7 +530,7 @@ class XPathSelector(object):
         el.click()  # focus input-area
         self._parent.send_text(text)
 
-    def wait(self, timeout=None) -> Optional["XMLElement"]:
+    def wait(self, timeout=None) -> bool:
         """
         Args:
             timeout (float): seconds
@@ -579,9 +542,9 @@ class XPathSelector(object):
         while time.time() < deadline:
             # self.logger.debug("wait %s left %.1fs", self, deadline-time.time())
             if self.exists:
-                return self.get_last_match()
+                return True
             time.sleep(0.2)
-        return None
+        return False
 
     def match(self) -> Optional["XMLElement"]:
         """
@@ -623,11 +586,13 @@ class XPathSelector(object):
             return inject_call(self._fallback, d=self._d)
 
     def click_exists(self, timeout=None) -> bool:
-        el = self.wait(timeout=timeout)
-        if el:
+        """return if clicked"""
+        try:
+            el = self.get(timeout=timeout)
             el.click()
             return True
-        return False
+        except XPathElementNotFoundError:
+            return False
 
     def long_click(self):
         """find element and perform long click"""
@@ -890,7 +855,7 @@ class XMLElement(object):
         return ret
 
 
-class AdbUI(BasicUIMeta):
+class AdbUI(DeviceInterface):
     """
     Use adb command to run ui test
     """
