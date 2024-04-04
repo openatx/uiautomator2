@@ -17,7 +17,6 @@ import findit
 import imutils
 import numpy as np
 import requests
-from logzero import setup_logger
 from PIL import Image, ImageDraw
 from skimage.metrics import structural_similarity
 
@@ -26,6 +25,7 @@ import uiautomator2
 ImageType = typing.Union[np.ndarray, Image.Image]
 
 compare_ssim = structural_similarity
+logger = logging.getLogger(__name__)
 
 
 def color_bgr2gray(image: ImageType):
@@ -223,12 +223,9 @@ class ImageX(object):
         Args:
             d (uiautomator2 instance)
         """
-        self.logger = setup_logger()
         self._d = d
         assert hasattr(d, 'click')
         assert hasattr(d, 'screenshot')
-
-        self.logger.setLevel(logging.DEBUG)
 
     def send_click(self, x, y):
         return self._d.click(x, y)
@@ -274,13 +271,13 @@ class ImageX(object):
         while time.time() < deadline:
             m = self.match(imdata)
             sim = m['similarity']
-            self.logger.debug("similarity %.2f [~%.2f], left time: %.1fs", sim,
+            logger.debug("similarity %.2f [~%.2f], left time: %.1fs", sim,
                               threshold, deadline - time.time())
             if sim < threshold:
                 continue
             time.sleep(.1)
             return m
-        self.logger.debug("image not found")
+        logger.debug("image not found")
 
     def wait(self, imdata, timeout=30.0, threshold=0.9):
         """ wait until image show up """

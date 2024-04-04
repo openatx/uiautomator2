@@ -39,14 +39,11 @@ from typing import List, Optional, Tuple, Union
 # import progress.bar
 import adbutils
 import filelock
-import logzero
 import requests
 from deprecated import deprecated
-from logzero import setup_logger
 from packaging import version as packaging_version
 from PIL import Image
 from retry import retry
-from urllib3.util.retry import Retry
 
 from . import xpath
 from ._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
@@ -54,23 +51,29 @@ from ._selector import Selector, UiObject
 from .exceptions import BaseError, ConnectError, GatewayError, JSONRPCError, NullObjectExceptionError, \
     NullPointerExceptionError, RetryError, ServerError, SessionBrokenError, StaleObjectExceptionError, \
     UiAutomationNotConnectedError, UiObjectNotFoundError
-from .init import Initer
 # from .session import Session  # noqa: F401
 from .settings import Settings
 from .swipe import SwipeExt
-from .utils import list2cmdline, process_safe_wrapper, thread_safe_wrapper
+from .utils import list2cmdline
 from .version import __apk_version__, __atx_agent_version__
 from .watcher import WatchContext, Watcher
 
 DEBUG = False
 WAIT_FOR_DEVICE_TIMEOUT = int(os.getenv("WAIT_FOR_DEVICE_TIMEOUT", 20))
 
-
-log_format = '%(color)s[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d]%(end_color)s [pid:%(process)d] %(message)s'
-formatter = logzero.LogFormatter(fmt=log_format)
-logger = setup_logger("uiautomator2", level=logging.DEBUG, formatter=formatter)
 _mswindows = (os.name == "nt")
 
+
+logger = logging.getLogger(__name__)
+
+def enable_pretty_logging(level=logging.DEBUG):
+    if not logger.handlers:
+        # Configure handler
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d pid:%(process)d] %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    logger.setLevel(level)
 
 class AppInstaller(abc.ABC):
     """ 解决手机安装apk弹窗问题 """
@@ -207,7 +210,7 @@ class _AgentRequestSession(TimeoutRequestsSession):
             raise OSError(
                 "http-request to atx-agent error, can only recover from USB")
 
-        logger.warning("atx-agent has something wrong, auto recovering")
+        logger.info("atx-agent has something wrong, auto recovering")
         # ReadTimeout: sometime means atx-agent is running but not responsing
         # one reason is futex_wait_queue: https://stackoverflow.com/questions/9801256/app-hangs-on-futex-wait-queue-me-every-a-couple-of-minutes
 
@@ -244,21 +247,12 @@ class _BaseClient(object):
             # USB 连接
             self._serial = serial_or_url
             self._atx_agent_url = None
-
-        # setup logger
-        log_format = f'%(color)s[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d]%(end_color)s [pid:%(process)d] [{self._serial}] %(message)s'
-        formatter = logzero.LogFormatter(fmt=log_format)
-        self._logger = setup_logger(name="uiautomator2.client", level=logging.DEBUG, formatter=formatter)
         
         filelock_path = os.path.expanduser("~/.uiautomator2/filelocks/") + base64.urlsafe_b64encode(self._serial.encode('utf-8')).decode('utf-8') + ".lock"
         os.makedirs(os.path.dirname(filelock_path), exist_ok=True)
         self._filelock = filelock.FileLock(filelock_path, timeout=200)
 
         self._app_installer: AppInstaller = None
-
-    @property
-    def logger(self) -> logging.Logger:
-        return self._logger
 
     def set_app_installer(self, app_installer: AppInstaller):
         """ set uiautomator.apk installer """
@@ -277,7 +271,7 @@ class _BaseClient(object):
         except adbutils.AdbError as e:
             if not _is_tmq_production() and self._atx_agent_url:
                 # when device offline, use atx-agent-url
-                self.logger.info(
+                logger.info(
                     "USB disconnected, fallback to WiFi, ATX_AGENT_URL=%s",
                     self._atx_agent_url)
                 return self._atx_agent_url
@@ -306,7 +300,7 @@ class _BaseClient(object):
         _d = self._wait_for_device()
         if not _d:
             raise RuntimeError("USB device %s is offline" % self._serial)
-        self.logger.debug("device %s is online", self._serial)
+        logger.debug("device %s is online", self._serial)
         version_url = self.path2url("/version")
         try:
             version = requests.get(version_url, timeout=3).text
@@ -346,13 +340,13 @@ class _BaseClient(object):
         deadline = time.time() + timeout
         while time.time() < deadline:
             title = "device reconnecting" if _is_remote else "wait-for-device"
-            self.logger.info("%s, time left(%.1fs)", title, deadline - time.time())
+            logger.info("%s, time left(%.1fs)", title, deadline - time.time())
             if _is_remote:
                 try:
                     adb.disconnect(self._serial)
                     adb.connect(self._serial, timeout=1)
                 except (adbutils.AdbError, adbutils.AdbTimeout) as e:
-                    self.logger.debug("adb reconnect error: %s", str(e))
+                    logger.debug("adb reconnect error: %s", str(e))
                     time.sleep(1.0)
                     continue
             try:
@@ -380,7 +374,7 @@ class _BaseClient(object):
             if not os.path.exists(apk_path) and os.path.exists(cwd_apk_path):
                 apk_path = cwd_apk_path
             target_path = "/data/local/tmp/" + name
-            self.logger.debug("Install %s", name)
+            logger.debug("Install %s", name)
             self.push(apk_path, target_path)
             self.shell(['pm', 'install', '-r', '-t', target_path])
 
@@ -481,7 +475,7 @@ class _BaseClient(object):
         except (NullObjectExceptionError,
                 NullPointerExceptionError,
                 StaleObjectExceptionError) as e:
-            self.logger.warning("jsonrpc call got: %s", str(e))
+            logger.warning("jsonrpc call got: %s", str(e))
             self.reset_uiautomator(str(e))  # added to fix strange fatal jsonrpc NullPointerException
         return self._jsonrpc_call(*args, **kwargs)
 
@@ -618,7 +612,7 @@ class _BaseClient(object):
                 )
 
             if depth > 0:
-                self.logger.info("restart-uiautomator since \"%s\"", reason)
+                logger.info("restart-uiautomator since \"%s\"", reason)
 
             # Note:
             # atx-agent check has moved to _AgentRequestSession
@@ -635,7 +629,7 @@ class _BaseClient(object):
             ok = self._force_reset_uiautomator_v2(
                 launch_test_app=depth > 0)  # uiautomator 2.0
             if ok:
-                self.logger.info("uiautomator back to normal")
+                logger.info("uiautomator back to normal")
                 return
 
             output = self._test_run_instrument()
@@ -648,12 +642,11 @@ class _BaseClient(object):
 
     def _force_reset_uiautomator_v2(self, launch_test_app=False):
         brand = self.shell("getprop ro.product.brand").output.strip()
-        # self.logger.debug("Device: %s, %s", brand, self.serial)
         package_name = "com.github.uiautomator"
 
         self.uiautomator.stop()
 
-        self.logger.debug("kill process(ps): uiautomator")
+        logger.debug("kill process(ps): uiautomator")
         self._kill_process_by_name("uiautomator")
 
         ## Note: Here do not reinstall apks, since vivo and oppo reinstall need password
@@ -673,7 +666,7 @@ class _BaseClient(object):
         deadline = time.time() + 40.0  # in vivo-Y67, launch timeout 24s
         flow_window_showed = False
         while time.time() < deadline:
-            self.logger.debug("uiautomator-v2 is starting ... left: %.1fs",
+            logger.debug("uiautomator-v2 is starting ... left: %.1fs",
                          deadline - time.time())
 
             if not self.uiautomator.running():
@@ -687,7 +680,7 @@ class _BaseClient(object):
                 if not flow_window_showed:
                     flow_window_showed = True
                     self.show_float_window(True)
-                    self.logger.debug("show float window")
+                    logger.debug("show float window")
                     time.sleep(1.0)
                     continue
                 return True
@@ -735,7 +728,7 @@ class _BaseClient(object):
             return None
 
     def _grant_app_permissions(self):
-        self.logger.debug("grant permissions")
+        logger.debug("grant permissions")
         for permission in [
                 "android.permission.SYSTEM_ALERT_WINDOW",
                 "android.permission.ACCESS_FINE_LOCATION",
@@ -752,7 +745,7 @@ class _BaseClient(object):
     def _kill_process_by_name(self, name, use_adb=False):
         for p in self._iter_process(use_adb=use_adb):
             if p.name == name and p.user == "shell":
-                self.logger.debug("kill %s", name)
+                logger.debug("kill %s", name)
                 kill_cmd = ["kill", "-9", str(p.pid)]
                 if use_adb:
                     self._adb_device.shell(kill_cmd)
@@ -876,7 +869,7 @@ class _Device(_BaseClient):
         r = self.http.post("/newCommandTimeout", data=str(int(timeout)))
         data = r.json()
         assert data['success'], data['description']
-        self.logger.info("%s", data['description'])
+        logger.info("%s", data['description'])
 
     @cached_property
     def device_info(self):
@@ -1030,11 +1023,11 @@ class _Device(_BaseClient):
             before, after = 0, 0
 
         if before:
-            self.logger.debug(f"operation [{operation_name}] pre-delay {before}s")
+            logger.debug(f"operation [{operation_name}] pre-delay {before}s")
             time.sleep(before)
         yield
         if after:
-            self.logger.debug(f"operation [{operation_name}] post-delay {after}s")
+            logger.debug(f"operation [{operation_name}] post-delay {after}s")
             time.sleep(after)
 
     @property
@@ -1953,7 +1946,7 @@ def connect_adb_wifi(addr) -> Device:
     return connect_usb(addr)
 
 
-def connect_usb(serial: Optional[str] = None, init: bool = False) -> Device:
+def connect_usb(serial: Optional[str] = None) -> Device:
     """
     Args:
         serial (str): android device serial
@@ -1964,9 +1957,6 @@ def connect_usb(serial: Optional[str] = None, init: bool = False) -> Device:
     Raises:
         ConnectError
     """
-    if init:
-        logger.warning("connect_usb, args init=True is deprecated since 2.8.0")
-
     if not serial:
         device = adbutils.adb.device()
         serial = device.serial
