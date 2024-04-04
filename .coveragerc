@@ -21,6 +21,10 @@ exclude_also =
 
 ignore_errors = True
 
+[paths]
+source = 
+    uiautomator2/
+
 omit =
     "tests/*"
     "docs/*"

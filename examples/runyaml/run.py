@@ -3,6 +3,7 @@
 #
 
 import argparse
+import logging
 import os
 import re
 import time
@@ -12,6 +13,7 @@ import yaml
 from logzero import logger
 
 import uiautomator2 as u2
+
 
 CLICK = "click"
 # swipe
@@ -52,7 +54,9 @@ def read_file_content(path: str, mode:str = "r") -> str:
 def run_step(cf: bunch.Bunch, app: u2.Session, step: str):
     logger.info("Step: %s", step)
     oper, body = split_step(step)
-    logger.debug("parse as: %s %s", oper, body)
+    logger
+    
+    logger = logging.getLogger(__name__).debug("parse as: %s %s", oper, body)
 
     if oper == CLICK:
         app.xpath(body).click()

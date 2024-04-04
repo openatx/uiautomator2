@@ -4,23 +4,18 @@
 from __future__ import absolute_import, print_function
 
 import argparse
-import hashlib
 import json
 import logging
-import os
-import re
 
 import adbutils
-import progress.bar
-import requests
-from logzero import logger
-from retry import retry
 
 import uiautomator2 as u2
 
 from .init import Initer
 from .version import __version__
 
+
+logger = logging.getLogger(__name__)
 
 def cmd_init(args):
     serial = args.serial or args.serial_optional
@@ -284,6 +279,4 @@ def main():
 
 
 if __name__ == '__main__':
-    # import logzero
-    # logzero.loglevel(logging.INFO)
     main()

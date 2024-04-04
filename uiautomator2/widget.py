@@ -9,12 +9,12 @@ from pprint import pprint
 from typing import Union
 
 import requests
-from logzero import logger, setup_logger
 from lxml import etree
 
 import uiautomator2 as u2
-import uiautomator2.image as uim
 from uiautomator2.image import compare_ssim, draw_point, imread
+
+logger = logging.getLogger(__name__)
 
 
 def xml2nodes(xml_content: Union[str, bytes]):
@@ -91,9 +91,6 @@ class Widget(object):
         self._compare_results = {}
 
         self.popups = []
-
-        self.logger = setup_logger()
-        self.logger.setLevel(logging.INFO)
 
     @property
     def wait_timeout(self):

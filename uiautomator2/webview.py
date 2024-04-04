@@ -2,17 +2,16 @@
 #
 # Not implemented yet.
 #
-
-import contextlib
 import json
+import logging
 import string
 from pprint import pprint
 
 import adbutils
 import pychrome
 import requests
-from logzero import logger
 
+logger = logging.getLogger(__name__)
 
 class WebviewDriver():
     def __init__(self, url):

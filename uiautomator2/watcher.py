@@ -9,18 +9,14 @@ import typing
 from collections import OrderedDict
 from typing import Optional
 
-from logzero import setup_logger
-
 import uiautomator2
 from uiautomator2.xpath import XPath
+from uiautomator2.utils import inject_call
 
-from .utils import inject_call
-
-logger = logging.getLogger("uiautomator2")
+logger = logging.getLogger(__name__)
 
 
 def _callback_click(el):
-    # print("callback", threading.current_thread())
     el.click()
 
 
@@ -155,18 +151,6 @@ class Watcher():
         self._watching = False  # func start is calling
         self._triggering = False
 
-        self.logger = setup_logger()
-        self.logger.setLevel(logging.INFO)
-
-    @property
-    def debug(self):
-        return self.logger.level == logging.DEBUG
-
-    @debug.setter
-    def debug(self, v: bool):
-        assert isinstance(v, bool)
-        self.logger.setLevel(logging.DEBUG if v else logging.INFO)
-
     @property
     def _xpath(self) -> XPath:
         return self._d.xpath
@@ -180,7 +164,7 @@ class Watcher():
     def start(self, interval: float = 2.0):
         """ stop watcher """
         if self._watching:
-            self.logger.warning("already started")
+            logger.warning("already started")
             return
         self._watching = True
         th = threading.Thread(name="watcher",
@@ -193,7 +177,7 @@ class Watcher():
     def stop(self):
         """ stop watcher """
         if not self._watching:
-            self.logger.warning("watch already stopped")
+            logger.warning("watch already stopped")
             return
 
         if self._watch_stopped.is_set():
@@ -239,7 +223,7 @@ class Watcher():
         try:
             return self._run_watchers(source=source)
         except Exception as e:
-            self.logger.warning("_run_watchers exception: %s", e)
+            logger.warning("_run_watchers exception: %s", e)
             return False
 
     def _run_watchers(self, source=None) -> bool:
@@ -258,7 +242,7 @@ class Watcher():
                     break
 
             if last_selector:
-                self.logger.info("XPath(hook:%s): %s", h['name'], h['xpaths'])
+                logger.info("XPath(hook:%s): %s", h['name'], h['xpaths'])
                 self._triggering = True
                 cb = h['callback']
                 defaults = {
@@ -276,7 +260,7 @@ class Watcher():
                 try:
                     cb(*ba.args, **ba.kwargs)
                 except Exception as e:
-                    self.logger.warning("watchers exception: %s", e)
+                    logger.warning("watchers exception: %s", e)
                 finally:
                     self._triggering = False
                 return True
@@ -292,7 +276,7 @@ class Watcher():
             return
         for w in self._watchers[:]:
             if w['name'] == name:
-                self.logger.debug("remove(%s) %s", name, w['xpaths'])
+                logger.debug("remove(%s) %s", name, w['xpaths'])
                 self._watchers.remove(w)
 
 

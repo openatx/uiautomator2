@@ -12,16 +12,15 @@ include = ["*/assets/*.apk"]
 python = "^3.8"
 requests = "*"
 lxml = "*"
-adbutils = ">=2.2"
+adbutils = "^2.2.3"
 retry = ">=0,<1"
 packaging = ">=20.3"
+pillow = "*"
 
 # TODO: remove later
 Deprecated = "*"
-logzero = "*"
 filelock = ">=3,<4"
 progress = "^1.6"
-pillow = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
