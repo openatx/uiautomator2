@@ -82,7 +82,7 @@ Thank you to all our sponsors! ✨🍰✨
 - 基于adb协议与Android进行交互的库 [adbutils](https://github.com/openatx/adbutils)
 - 设备管理平台，设备多了就会用到 [atxserver2](https://github.com/openatx/atxserver2) （寻找项目维护人员）
 - [atx-agent](https://github.com/openatx/atx-agent) 运行在设备上的驻守程序，go开发，用于保活设备上相关的服务
-- 类似于uiautomatorviewer，用于查看UI层级结构 https://appinspector.devsleep.com
+- [uiauto.dev](https://uiauto.dev) 用于查看UI层级结构，类似于uiautomatorviewer(用于替代之前写的weditor），用于查看UI层级结构 
 - ~~[weditor](https://github.com/openatx/weditor) 类似于uiautomatorviewer，专门为本项目开发的辅助编辑器(这个暂不维护了~~
 
 **[Installation](#installation)**
@@ -153,16 +153,16 @@ Thank you to all our sponsors! ✨🍰✨
 2. UI Inspector
 
     ```bash
-    pip install appinspector
+    pip install uiauto-dev
     # 启动
-    appinspector
+    uiauto.dev
     ```
 
-    浏览器打开 https://appinspector.devsleep.com 查看当前设备的界面结构。
+    浏览器打开 https://uiauto.dev 查看当前设备的界面结构。
 
     **appinspector介绍**
 
-    [appinspector](https://github.com/codeskyblue/appinspector) 是一个独立与uiautomator2之外的一个项目，用于查看图层结构的。属于旧版项目[weditor的重构版本](https://github.com/openatx/weditor)，后续也许会收费（价格肯定物超所值），来支持当前这个项目继续维护下去。感兴趣的可以加群讨论(也包含提需求) QQ群 536481989
+    [uiauto.dev](https://github.com/codeskyblue/uiauto.dev) 是一个独立与uiautomator2之外的一个项目，用于查看图层结构的。属于旧版项目[weditor的重构版本](https://github.com/openatx/weditor)，后续也许会收费（价格肯定物超所值），来支持当前这个项目继续维护下去。感兴趣的可以加群讨论(也包含提需求) QQ群 536481989
 
 # Connect to a device
 There are two ways to connect to the device. 
