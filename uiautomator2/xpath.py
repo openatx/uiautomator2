@@ -4,16 +4,13 @@
 from __future__ import absolute_import
 
 import functools
-import io
-import json
 import logging
 import re
 import threading
 import time
 from collections import defaultdict
-from typing import Callable, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
-import adbutils
 from deprecated import deprecated
 from PIL import Image
 from lxml import etree
@@ -41,7 +38,7 @@ def str2bytes(v: Union[str, bytes]) -> bytes:
     return v.encode("utf-8")
 
 
-def is_xpath_syntax_ok(xpath_expression) -> bool:
+def is_xpath_syntax_ok(xpath_expression: str) -> bool:
     try:
         etree.XPath(xpath_expression)
         return True  # No error means the XPath syntax is likely okay
@@ -465,7 +462,7 @@ class XPathSelector(object):
     def get_last_match(self):
         return self.all(self._last_source)[0]
 
-    def get_text(self):
+    def get_text(self) -> Optional[str]:
         """
         get element text
 
@@ -475,7 +472,7 @@ class XPathSelector(object):
         Raises:
             XPathElementNotFoundError
         """
-        return self.get().attrib.get("text", "")
+        return self.get().text
 
     def set_text(self, text: str = ""):
         el = self.get()
@@ -758,7 +755,7 @@ class XMLElement(object):
         return self.elem.attrib
 
     @property
-    def info(self):
+    def info(self) -> Dict[str, Any]:
         ret = {}
         for key in (
             "text",
@@ -782,86 +779,3 @@ class XMLElement(object):
         )  # this is better than resourceName
         ret["childCount"] = len(self.elem.getchildren())
         return ret
-
-
-class AdbUI(DeviceInterface):
-    """
-    Use adb command to run ui test
-    """
-
-    def __init__(self, d: adbutils.AdbDevice):
-        self._d = d
-
-    def click(self, x, y):
-        self._d.click(x, y)
-
-    def swipe(self, sx, sy, ex, ey, duration):
-        self._d.swipe(sx, sy, ex, ey, duration)
-
-    def window_size(self):
-        w, h = self._d.window_size()
-        return w, h
-
-    def dump_hierarchy(self):
-        return self._d.dump_hierarchy()
-
-    def screenshot(self):
-        d = self._d
-        json_output = d.shell(
-            [
-                "LD_LIBRARY_PATH=/data/local/tmp",
-                "/data/local/tmp/minicap",
-                "-i",
-                "2&>/dev/null",
-            ]
-        ).strip()
-        data = json.loads(json_output)
-        w, h, r = data["width"], data["height"], data["rotation"]
-        remote_image_path = "/sdcard/minicap.jpg"
-        d.shell(["rm", remote_image_path])
-        d.shell(
-            [
-                "LD_LIBRARY_PATH=/data/local/tmp",
-                "/data/local/tmp/minicap",
-                "-P",
-                "{0}x{1}@{0}x{1}/{2}".format(w, h, r),
-                "-s",
-                ">" + remote_image_path,
-            ]
-        )  # yapf: disable
-
-        if d.sync.stat(remote_image_path).size == 0:
-            raise RuntimeError("screenshot using minicap error")
-
-        buf = io.BytesIO()
-        for data in d.sync.iter_content(remote_image_path):
-            buf.write(data)
-        return Image.open(buf)
-
-
-if __name__ == "__main__":
-    d = AdbUI(adbutils.adb.device())
-    xpath = XPath(d)
-    # print(d.screenshot())
-    # print(d.dump_hierarchy()[:20])
-    xpath("App").click()
-    xpath("Alarm").click()
-    # init()
-    # import uiautomator2.ext.htmlreport as htmlreport
-
-    # d = uiautomator2.connect()
-    # hrp = htmlreport.HTMLReport(d)
-
-    # # take screenshot before each click
-    # hrp.patch_click()
-    # d.app_start("com.netease.cloudmusic", stop=True)
-
-    # # watchers
-    # d.ext_xpath.when("跳过").click()
-    # # d.ext_xpath.when("知道了").click()
-
-    # # steps
-    # d.ext_xpath("//*[@text='私人FM']/../android.widget.ImageView").click()
-    # d.ext_xpath("下一首").click()
-    # d.ext_xpath.sleep_watch(2)
-    # d.ext_xpath("转到上一层级").click()

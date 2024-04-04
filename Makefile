@@ -7,7 +7,11 @@ test:
 	poetry run pytest -v tests
 
 cov:
-	poetry run pytest -v tests/unittests --cov=. --cov-report xml --cov-report term
+	poetry run pytest -v tests/unittests \
+			--cov-config=.coveragerc \
+			--cov uiautomator2 \
+			--cov-report xml \
+			--cov-report term
 
 build:
 	poetry self add "poetry-dynamic-versioning[plugin]"

@@ -7,7 +7,7 @@
 import pytest
 from unittest.mock import Mock
 from PIL import Image
-from uiautomator2.xpath import XMLElement, XPathSelector, XPath, XPathElementNotFoundError
+from uiautomator2.xpath import XMLElement, XPathSelector, XPath, XPathElementNotFoundError, is_xpath_syntax_ok
 
 
 mock = Mock()
@@ -23,6 +23,28 @@ mock.dump_hierarchy.return_value = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 x = XPath(mock)
+
+
+def test_is_xpath_syntax_ok():
+    assert is_xpath_syntax_ok("/a")
+    assert is_xpath_syntax_ok("//a")
+    assert is_xpath_syntax_ok("//a[@text='b]") is False
+    assert is_xpath_syntax_ok("//a[") is False
+
+
+def test_xpath_selector():
+    assert isinstance(x("n1"), XPathSelector)
+    assert isinstance(x("//TextView"), XPathSelector)
+    xp1 = x("n1")
+    xp2 = xp1.child("n2")
+    # xp1 should not be changed
+    assert xp1.get(timeout=0).text == "n1"
+    assert xp1.get_text() == "n1"
+
+    # match return None or XMLElement
+    assert xp1.match() is not None
+    assert xp2.match() is None
+    
 
 def test_xpath_click():
     x("n1").click()
@@ -73,11 +95,26 @@ def test_xpath_element():
     el = x("n1").get(timeout=0)
     assert el.text == "n1"
     assert el.center() == (540, 50)
+    assert el.offset(0, 0) == (0, 0)
+    assert el.offset(1, 1) == (1080, 100)
     assert el.screenshot().size == (1080, 100)
     assert el.bounds == (0, 0, 1080, 100)
-    assert el.get_xpath() == "/hierarchy/FrameLayout/TextView[1]"
+    assert el.rect == (0, 0, 1080, 100)
+    assert isinstance(el.info, dict)
+    assert el.get_xpath(strip_index=True) == "/hierarchy/FrameLayout/TextView"
     
     mock.click.reset_mock()
     el.click()
     assert mock.click.called
     assert mock.click.call_args[0] == (540, 50)
+
+    mock.long_click.reset_mock()
+    el.long_click()
+    assert mock.long_click.called
+    assert mock.long_click.call_args[0] == (540, 50)
+
+    mock.swipe.reset_mock()
+    el.swipe("up")
+    assert mock.swipe.called
+
+
