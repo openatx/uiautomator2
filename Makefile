@@ -4,10 +4,10 @@ format:
 	poetry run isort . -m HANGING_INDENT -l 120
 
 test:
-	poetry run pytest -v tests
+	poetry run pytest -v mobile_tests/
 
 cov:
-	poetry run pytest -v tests/unittests \
+	poetry run pytest -v tests/ \
 			--cov-config=.coveragerc \
 			--cov uiautomator2 \
 			--cov-report xml \

@@ -11,8 +11,9 @@ import adbutils
 
 import uiautomator2 as u2
 
-from .init import Initer
-from .version import __version__
+from uiautomator2.init import Initer
+from uiautomator2.version import __version__
+from uiautomator2 import enable_pretty_logging
 
 
 logger = logging.getLogger(__name__)
@@ -138,6 +139,7 @@ def cmd_version(args):
 def cmd_console(args):
     import code
     import platform
+    enable_pretty_logging()
 
     d = u2.connect(args.serial)
     model = d.shell("getprop ro.product.model").output.strip()

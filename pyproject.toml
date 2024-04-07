@@ -6,7 +6,7 @@ homepage = "https://github.com/openatx/uiautomator2"
 authors = ["codeskyblue <codeskyblue@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-include = ["*/assets/*.apk"]
+include = ["*/assets/*"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
