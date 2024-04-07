@@ -5,6 +5,7 @@ import datetime
 import hashlib
 import logging
 import os
+from pathlib import Path
 import shutil
 import tarfile
 
@@ -22,6 +23,7 @@ GITHUB_BASEURL = "https://github.com/openatx"
 
 
 logger = logging.getLogger(__name__)
+assets_dir = Path(__file__).absolute().parent.joinpath("assets")
 
 class DownloadBar(progress.bar.PixelBar):
     message = "Downloading"
@@ -333,14 +335,20 @@ class Initer():
 
     def _install_atx_agent(self):
         logger.info("Install atx-agent %s", __atx_agent_version__)
+        if 'armeabi' in self.abis:
+            local_atx_agent_path = assets_dir.joinpath("atx-agent")
+            if local_atx_agent_path.exists():
+                logger.info("Use local atx-agent[armeabi]: %s", local_atx_agent_path)
+                dest = '/data/local/tmp/atx-agent'
+                self._device.sync.push(local_atx_agent_path, dest, mode=0o755)
+                return
         self.push_url(self.atx_agent_url, tgz=True, extract_name="atx-agent")
 
     def setup_atx_agent(self):
         # stop atx-agent first
         self.shell(self.atx_agent_path, "server", "--stop")
         if self.is_atx_agent_outdated():
-            logger.info("Install atx-agent %s", __atx_agent_version__)
-            self.push_url(self.atx_agent_url, tgz=True, extract_name="atx-agent")
+            self._install_atx_agent()
         
         self.shell(self.atx_agent_path, 'server', '--nouia', '-d', "--addr", self.__atx_listen_addr)
         logger.info("Check atx-agent version")
