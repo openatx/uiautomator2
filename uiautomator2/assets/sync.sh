@@ -3,7 +3,7 @@
 
 set -e
 
-APK_VERSION="2.3.3"
+APK_VERSION="2.3.4"
 AGENT_VERSION="0.10.1"
 
 echo "Created at $(date +"%Y-%m-%d %H:%M:%S %Z")" > version.txt

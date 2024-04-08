@@ -6,7 +6,7 @@ __version__ = "0.0.0"
 
 # See ChangeLog for details
 
-__apk_version__ = '2.3.3'
+__apk_version__ = '2.3.4'
 # 2.3.3 make float windows smaller
 # 2.3.2 merge pull requests # require atx-agent>=0.10.0
 # 2.3.1 support minicapagent, rotationagent, minitouchagent

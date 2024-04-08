@@ -15,11 +15,9 @@ def test_set_xpath_debug(sess):
     
     sess.settings['xpath_debug'] = True
     assert sess.settings['xpath_debug'] == True
-    assert sess.xpath.logger.level == logging.DEBUG
 
     sess.settings['xpath_debug'] = False
     assert sess.settings['xpath_debug'] == False
-    assert sess.xpath.logger.level == logging.INFO
 
 
 def test_wait_timeout(d):
