@@ -16,7 +16,7 @@ from PIL import Image
 from lxml import etree
 
 from uiautomator2._proto import Direction
-from uiautomator2.abcd import DeviceInterface
+from uiautomator2.abcd import AbstractDevice
 from uiautomator2.exceptions import XPathElementNotFoundError
 from uiautomator2.utils import inject_call, swipe_in_bounds
 
@@ -109,7 +109,7 @@ class XPathError(Exception):
     """basic error for xpath plugin"""
 
 class XPath(object):
-    def __init__(self, d: DeviceInterface):
+    def __init__(self, d: AbstractDevice):
         """
         Args:
             d (uiautomator2 instance)
@@ -288,7 +288,7 @@ class XPath(object):
             direction = Direction.DOWN
         elif direction == Direction.HORIZ_FORWARD:  # Horizontal
             direction = Direction.LEFT
-        elif direction == Direction.HBACKWORD:
+        elif direction == Direction.HORIZ_BACKWARD:
             direction = Direction.RIGHT
 
         # FIXME(ssx): 还差一个检测是否到底的功能
