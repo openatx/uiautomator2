@@ -771,7 +771,7 @@ class XMLElement(object):
     def info(self) -> Dict[str, Any]:
         ret = {}
         for k, v in dict(self.attrib).items():
-            if k in ("bounds", "class", "package", "content-desc", "NAF"):
+            if k in ("bounds", "class", "package", "content-desc"):
                 continue
             ret[convert_to_camel_case(k)] = v
 
