@@ -146,6 +146,29 @@ el.screenshot()
 # 控件滑动
 el.swipe("right") # left, right, up, down
 el.swipe("right", scale=0.9) # scale默认0.9, 意思是滑动距离为控件宽度的90%, 上滑则为高度的90%
+
+print(el.info)
+# output example
+{'index': '0',
+ 'text': '',
+ 'resourceId': 'com.example:id/home_searchedit',
+ 'checkable': 'true',
+ 'checked': 'true',
+ 'clickable': 'true',
+ 'enabled': 'true',
+ 'focusable': 'false',
+ 'focused': 'false',
+ 'scrollable': 'false',
+ 'longClickable': 'false',
+ 'password': 'false',
+ 'selected': 'false',
+ 'visibleToUser': 'true',
+ 'childCount': 0,
+ 'className': 'android.widget.Switch',
+ 'bounds': {'left': 882, 'top': 279, 'right': 1026, 'bottom': 423},
+ 'packageName': 'com.android.settings',
+ 'contentDescription': '',
+ 'resourceName': 'android:id/switch_widget'}
 ```
 
 ### 滑动到指定位置
