@@ -44,7 +44,13 @@ def test_xpath_selector():
     # match return None or XMLElement
     assert xp1.match() is not None
     assert xp2.match() is None
-    
+
+
+def test_xpath_with_instance():
+    # issue: https://github.com/openatx/uiautomator2/issues/941
+    el = x('(//TextView)[2]').get(0)
+    assert el.text == "n2"
+
 
 def test_xpath_click():
     x("n1").click()

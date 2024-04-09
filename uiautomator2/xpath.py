@@ -16,18 +16,18 @@ from PIL import Image
 from lxml import etree
 
 from uiautomator2._proto import Direction
-from uiautomator2.abcd import DeviceInterface
+from uiautomator2.abcd import AbstractDevice
 from uiautomator2.exceptions import XPathElementNotFoundError
 from uiautomator2.utils import inject_call, swipe_in_bounds
 
 
 logger = logging.getLogger(__name__)
 
-def safe_xmlstr(s):
+def safe_xmlstr(s: str) -> str:
     return s.replace("$", "-")
 
 
-def string_quote(s):
+def string_quote(s: str) -> str:
     """quick way to quote string"""
     return "{!r}".format(s)
 
@@ -46,11 +46,24 @@ def is_xpath_syntax_ok(xpath_expression: str) -> bool:
         return False  # Indicates a syntax error in the XPath expression
 
 
+def convert_to_camel_case(s: str) -> str:
+    """
+    Convert a string from kebab-case to camelCase.
+
+    :param s: A string in kebab-case format.
+    :return: A string converted to camelCase format.
+    """
+    parts = s.split('-')
+    # Convert the first letter of each part to uppercase, except for the first part
+    camel_case_str = parts[0] + ''.join(part.capitalize() for part in parts[1:])
+    return camel_case_str
+
+
 def strict_xpath(xpath: str) -> str:
     """make xpath to be computer recognized xpath"""
     orig_xpath = xpath
 
-    if xpath.startswith("/"):
+    if xpath.startswith("/") or xpath.startswith("(/"):
         pass
     elif xpath.startswith("@"):
         xpath = "//*[@resource-id={!r}]".format(xpath[1:])
@@ -96,7 +109,7 @@ class XPathError(Exception):
     """basic error for xpath plugin"""
 
 class XPath(object):
-    def __init__(self, d: DeviceInterface):
+    def __init__(self, d: AbstractDevice):
         """
         Args:
             d (uiautomator2 instance)
@@ -275,7 +288,7 @@ class XPath(object):
             direction = Direction.DOWN
         elif direction == Direction.HORIZ_FORWARD:  # Horizontal
             direction = Direction.LEFT
-        elif direction == Direction.HBACKWORD:
+        elif direction == Direction.HORIZ_BACKWARD:
             direction = Direction.RIGHT
 
         # FIXME(ssx): 还差一个检测是否到底的功能
@@ -757,25 +770,18 @@ class XMLElement(object):
     @property
     def info(self) -> Dict[str, Any]:
         ret = {}
-        for key in (
-            "text",
-            "focusable",
-            "enabled",
-            "focused",
-            "scrollable",
-            "selected",
-            "clickable",
-        ):
-            ret[key] = self.attrib.get(key)
+        for k, v in dict(self.attrib).items():
+            if k in ("bounds", "class", "package", "content-desc"):
+                continue
+            ret[convert_to_camel_case(k)] = v
+
+        ret["childCount"] = len(self.elem.getchildren())
         ret["className"] = self.elem.tag
         lx, ly, rx, ry = self.bounds
         ret["bounds"] = {"left": lx, "top": ly, "right": rx, "bottom": ry}
-        ret["contentDescription"] = self.attrib.get("content-desc")
-        ret["longClickable"] = self.attrib.get("long-clickable")
+
+        # 名字命名的有点奇怪，为了兼容性暂时保留
         ret["packageName"] = self.attrib.get("package")
+        ret["contentDescription"] = self.attrib.get("content-desc")
         ret["resourceName"] = self.attrib.get("resource-id")
-        ret["resourceId"] = self.attrib.get(
-            "resource-id"
-        )  # this is better than resourceName
-        ret["childCount"] = len(self.elem.getchildren())
         return ret
