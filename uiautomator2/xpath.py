@@ -773,7 +773,13 @@ class XMLElement(object):
         for k, v in dict(self.attrib).items():
             if k in ("bounds", "class", "package", "content-desc"):
                 continue
-            ret[convert_to_camel_case(k)] = v
+            if k in ("checkable", "checked", "clickable", "enabled", "focusable", "focused", "scrollable",
+                     "long-clickable", "password", "selected", "visible-to-user"):
+                ret[convert_to_camel_case(k)] = v == "true"
+            elif k == "index":
+                ret[k] = int(v)
+            else:
+                ret[convert_to_camel_case(k)] = v
 
         ret["childCount"] = len(self.elem.getchildren())
         ret["className"] = self.elem.tag
