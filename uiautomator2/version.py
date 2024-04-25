@@ -6,7 +6,7 @@ __version__ = "0.0.0"
 
 # See ChangeLog for details
 
-__apk_version__ = '2.3.3'
+# __apk_version__ = '2.3.3'
 # 2.3.3 make float windows smaller
 # 2.3.2 merge pull requests # require atx-agent>=0.10.0
 # 2.3.1 support minicapagent, rotationagent, minitouchagent
@@ -36,7 +36,7 @@ __apk_version__ = '2.3.3'
 # ERR: 1.0.8 bad version number. show ip on notification
 # ERR: 1.0.7 bad version number. new input method, some bug fix
 
-__jar_version__ = 'v0.1.6'  # no useless for now.
+# __jar_version__ = 'v0.1.6'  # no useless for now.
 # v0.1.6 first release version
 
 __atx_agent_version__ = '0.10.1' # sync.sh verison should also be updated

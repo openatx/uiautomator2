@@ -19,7 +19,6 @@ pillow = "*"
 
 # TODO: remove later
 Deprecated = "*"
-filelock = ">=3,<4"
 progress = "^1.6"
 
 [tool.poetry.group.dev.dependencies]

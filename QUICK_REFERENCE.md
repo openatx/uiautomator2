@@ -4,8 +4,7 @@
 import uiautomator2 as u2
 
 d = u2.connect("--serial-here--") # 只有一个设备也可以省略参数
-d = u2.connect() # 一个设备时
-d = u2.connect("10.1.2.3") # 通过设备的IP连接(需要在同一局域网且设备上的atx-agent已经安装并启动)
+d = u2.connect() # 一个设备时, read env-var ANDROID_SERIAL
 
 d.app_current() # 获取前台应用 packageName, activity
 d.app_start("com.example.app") # 启动应用

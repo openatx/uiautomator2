@@ -1,51 +1,57 @@
 # coding: utf-8
 #
 
-import json
-
 
 class BaseError(Exception):
-    """ 所有错误的基类 """
+    """ base error for uiautomator2 """
 
-
-class ConnectError(BaseError):
-    """ adb connect 异常 """
-
-
-class RetryError(BaseError):
-    """ retry when meet this error """
-
-
-class ServerError(BaseError):
-    """ app 服务端错误, 没有安装，或者启动错误 """
-
-
-## Error base on ServerError
-
-class SessionBrokenError(ServerError):
-    """ only happens when app quit or crash """
-
-
-class UiAutomationNotConnectedError(ServerError):
-    """ 与手机上运行的UiAutomator服务连接断开 """
-
-
-class UiautomatorQuitError(ServerError):
-    """ uiautomator 没有运行错误 """
-
-
-class GatewayError(ServerError):
-    """ 网关错误，通常代表 app-uiautomator.apk没有安装 """
-
-## errors which no need to restart uiautomator
-
-class RequestError(BaseError):
-    """ jsonrpc call error """
-
-
-class XPathElementNotFoundError(RequestError):
+class HTTPError(BaseError):
     pass
 
+
+class AdbShellError(BaseError):
+    pass
+
+class LaunchUiautomatorError(BaseError):
+    pass
+
+class ConnectError(BaseError):
+    pass
+
+
+RequestError = HTTPError
+
+class XPathElementNotFoundError(HTTPError):
+    pass
+
+
+class UiAutomationError(BaseError):
+    pass
+
+
+class UiAutomationNotConnectedError(UiAutomationError):
+    pass
+
+class InjectPermissionError(UiAutomationError):
+    """ 开发者选项中: 模拟点击没有打开 """
+
+
+class JSONRpcInvalidResponseError(UiAutomationError):
+    pass
+
+class UnknownRPCError(UiAutomationError):
+    pass
+
+
+class APkSignatureError(UiAutomationError):
+    pass
+
+
+class HierarchyEmptyError(BaseError):
+    """ retry when meet this error """
+
+class SessionBrokenError(BaseError):
+    """ only happens when app quit or crash """
 
 class JSONRPCError(RequestError):
     @staticmethod
@@ -86,24 +92,3 @@ class JSONRPCError(RequestError):
 
 class UiObjectNotFoundError(JSONRPCError):
     """ 控件没找到 """
-
-
-class NullObjectExceptionError(JSONRPCError):
-    """ 空对象错误 """
-
-
-class NullPointerExceptionError(JSONRPCError):
-    """ 空指针错误 """
-
-
-class StaleObjectExceptionError(JSONRPCError):
-    """ 一种，打算要操作的对象突然消失的错误 """
-
-
-class InjectPermissionError(JSONRPCError):
-    """ 开发者选项中: 模拟点击没有打开 """
-
-
-# 保证兼容性
-UiaError = BaseError
-JsonRpcError = JSONRPCError

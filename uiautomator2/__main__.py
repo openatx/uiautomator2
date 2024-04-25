@@ -6,49 +6,52 @@ from __future__ import absolute_import, print_function
 import argparse
 import json
 import logging
+import sys
 
 import adbutils
 
 import uiautomator2 as u2
-
-from uiautomator2.init import Initer
 from uiautomator2.version import __version__
 from uiautomator2 import enable_pretty_logging
 
 
 logger = logging.getLogger(__name__)
 
+
 def cmd_init(args):
     serial = args.serial or args.serial_optional
     if serial:
-        device = adbutils.adb.device(serial)
-        init = Initer(device)
-        init.install()
+        d = u2.connect(serial)
+        logger.debug("install apk to %s", d.serial)
+        d._setup_apks()
     else:
-        for device in adbutils.adb.iter_device():
-            init = Initer(device, loglevel=logging.DEBUG)
-            if args.addr:
-                init.set_atx_agent_addr(args.addr)
-            init.install()
+        for dev in adbutils.adb.iter_device():
+            d = u2.connect(dev)
+            logger.debug("install apk to %s", d.serial)
+            d._setup_apks()
 
 
 def cmd_purge(args):
-    """ remove minicap, minitouch, uiautomator ... """
-    device = adbutils.adb.device(args.serial)
-    init = Initer(device, loglevel=logging.DEBUG)
-    init.uninstall()
+    """remove minicap, minitouch, uiautomator ..."""
+    dev = adbutils.adb.device(args.serial)
+    dev.uninstall("com.github.uiautomator")
+    dev.uninstall("com.github.uiautomator.test")
+    dev.shell(["/data/local/tmp/atx-agent", "server", "--stop"])
+    dev.shell(["rm", "/data/local/tmp/atx-agent"])
+    logger.info("atx-agent stopped and removed")
+    dev.shell(["rm", "/data/local/tmp/minicap"])
+    dev.shell(["rm", "/data/local/tmp/minicap.so"])
+    dev.shell(["rm", "/data/local/tmp/minitouch"])
+    logger.info("minicap, minitouch removed")
+    dev.shell(["pm", "uninstall", "com.github.uiautomator"])
+    dev.shell(["pm", "uninstall", "com.github.uiautomator.test"])
+    logger.info("com.github.uiautomator uninstalled, all done !!!")
 
 
 def cmd_screenshot(args):
     d = u2.connect(args.serial)
     d.screenshot().save(args.filename)
     print("Save screenshot to %s" % args.filename)
-
-
-def cmd_identify(args):
-    d = u2.connect(args.serial)
-    d.press("home")
-    d.open_identify(args.theme)
 
 
 def cmd_install(args):
@@ -63,14 +66,9 @@ def cmd_uninstall(args):
         d.app_uninstall_all(verbose=True)
     else:
         for package_name in args.package_name:
-            print("Uninstall \"%s\" " % package_name, end="", flush=True)
+            print('Uninstall "%s" ' % package_name, end="", flush=True)
             ok = d.app_uninstall(package_name)
             print("OK" if ok else "FAIL")
-
-
-def cmd_healthcheck(args):
-    d = u2.connect(args.serial)
-    d.healthcheck()
 
 
 def cmd_start(args):
@@ -85,61 +83,35 @@ def cmd_stop(args):
         return
 
     for package_name in args.package_name:
-        print("am force-stop \"%s\" " % package_name)
+        print('am force-stop "%s" ' % package_name)
         d.app_stop(package_name)
 
 
 def cmd_current(args):
     d = u2.connect(args.serial)
-    print(json.dumps(d.app_current(), indent=4))
+    print(json.dumps(d.app_current(), indent=4), flush=True)
 
 
 def cmd_doctor(args):
-    d = adbutils.adb.device(args.serial)
-    from .init import Initer
-    init = Initer(d)
-    logger.debug("sdk:%s abi:%s", init.sdk, init.abi)
+    """check if environment is fine"""
+    d = u2.connect(args.serial)
+    logger.debug("device serial: %s", d.serial)
+    try:
+        d.info
+        logger.info("uiautomator2 is OK")
+    except Exception as e:
+        logger.error("error: %s", e)
+        sys.exit(1)
 
-    ok = True
-    print("CHECK atx-agent")
-    if init.is_atx_agent_outdated():
-        print("\tFAIL")
-        ok = False
-        # logger.warning("atx-agent is invalid")
-    else:
-        version = init.check_atx_agent_version()
-        print("\tGOOD: atx-agent version", version)
-
-    print("CHECK uiautomator-apks")
-    if init.is_apk_outdated():
-        print("\tFAIL")
-        logger.warning("apk is invalid")
-        ok = False
-    else:
-        apk_debug = init._device.package_info("com.github.uiautomator")
-        version = apk_debug['version_name']
-        print("\tGOOD: com.github.uiautomator", version)
-    
-    if ok:
-        print("CHECK jsonrpc")
-        d = u2.connect(args.serial)
-        # print(d.info)
-        if d.alive:
-            print("\tGOOD: d.info success")
-        else:
-            ok = False
-    
-    print("==> %s <==" % ("GOOD" if ok else "FAIL"))
-    
 
 def cmd_version(args):
+    """print uiautomator2 lib version"""
     print("uiautomator2 version: %s" % __version__)
 
 
 def cmd_console(args):
     import code
     import platform
-    enable_pretty_logging()
 
     d = u2.connect(args.serial)
     model = d.shell("getprop ro.product.model").output.strip()
@@ -147,6 +119,7 @@ def cmd_console(args):
     try:
         import IPython
         from traitlets.config import get_config
+
         c = get_config()
         c.InteractiveShellEmbed.colors = "neutral"
         IPython.embed(config=c, header="IPython -- d.info is ready")
@@ -154,91 +127,88 @@ def cmd_console(args):
         _vars = globals().copy()
         _vars.update(locals())
         shell = code.InteractiveConsole(_vars)
-        shell.interact(banner="Python: %s\nDevice: %s(%s)" %
-                       (platform.python_version(), model, serial))
+        shell.interact(
+            banner="Python: %s\nDevice: %s(%s)"
+            % (platform.python_version(), model, serial)
+        )
 
 
 _commands = [
-    dict(action=cmd_version,
-         command="version",
-         help="show version"),
-    dict(action=cmd_init,
-         command="init",
-         help="install enssential resources to device",
-         flags=[
-             dict(args=['--addr'], default='127.0.0.1:7912', help='atx-agent listen address'),
-             dict(args=['--serial', '-s'], type=str, help='serial number'),
-             dict(args=['serial_optional'],
-                  nargs='?',
-                  help='serial number, same as --serial'),
-         ]),
-    dict(action=cmd_screenshot,
-         command="screenshot",
-         help="take device screenshot",
-         flags=[
-             dict(args=['filename'],
-                  nargs='?',
-                  default="screenshot.jpg",
-                  type=str,
-                  help="output filename, jpg or png")
-         ]),
-    dict(action=cmd_identify,
-         command="identify",
-         help="quickly find your device by change device screen color",
-         flags=[
-             dict(args=['--theme'],
-                  type=str,
-                  default='red',
-                  help="black or red")
-         ]),
-    dict(action=cmd_install,
-         command="install",
-         help="install packages",
-         flags=[
-             dict(args=["url"], help="package url"),
-         ]),
-    dict(action=cmd_uninstall,
-         command="uninstall",
-         help="uninstall packages",
-         flags=[
-             dict(args=["--all"],
-                  action="store_true",
-                  help="uninstall all packages"),
-             dict(args=["package_name"], nargs="*", help="package name")
-         ]),
-    dict(action=cmd_healthcheck,
-         command="healthcheck",
-         help="recover uiautomator service"),
-    dict(action=cmd_healthcheck, command="check",
-         help="alias of healthcheck"),  # yapf: disable
-    dict(action=cmd_start,
-         command="start",
-         help="start application",
-         flags=[
-             dict(args=["package_name"],
-                  type=str,
-                  nargs=None,
-                  help="package name")
-         ]),
-    dict(action=cmd_stop,
-         command="stop",
-         help="stop application",
-         flags=[
-             dict(args=["--all"], action="store_true", help="stop all"),
-             dict(args=["package_name"], nargs="*", help="package name")
-         ]),
-    dict(action=cmd_current,
-         command="current",
-         help="show current application"),
-    dict(action=cmd_doctor,
-         command='doctor',
-         help='detect connect problem'),
-    dict(action=cmd_console,
-         command="console",
-         help="launch interactive python console"),
-    dict(action=cmd_purge,
+    dict(action=cmd_version, command="version", help="show version"),
+    dict(
+        action=cmd_init,
+        command="init",
+        help="install enssential resources to device",
+        flags=[
+            dict(
+                args=["--addr"],
+                default="127.0.0.1:7912",
+                help="atx-agent listen address",
+            ),
+            dict(args=["--serial", "-s"], type=str, help="serial number"),
+            dict(
+                args=["serial_optional"],
+                nargs="?",
+                help="serial number, same as --serial",
+            ),
+        ],
+    ),
+    dict(
+        action=cmd_screenshot,
+        command="screenshot",
+        help="take device screenshot",
+        flags=[
+            dict(
+                args=["filename"],
+                nargs="?",
+                default="screenshot.jpg",
+                type=str,
+                help="output filename, jpg or png",
+            )
+        ],
+    ),
+    dict(
+        action=cmd_install,
+        command="install",
+        help="install packages",
+        flags=[
+            dict(args=["url"], help="package url"),
+        ],
+    ),
+    dict(
+        action=cmd_uninstall,
+        command="uninstall",
+        help="uninstall packages",
+        flags=[
+            dict(args=["--all"], action="store_true", help="uninstall all packages"),
+            dict(args=["package_name"], nargs="*", help="package name"),
+        ],
+    ),
+    dict(
+        action=cmd_start,
+        command="start",
+        help="start application",
+        flags=[dict(args=["package_name"], type=str, nargs=None, help="package name")],
+    ),
+    dict(
+        action=cmd_stop,
+        command="stop",
+        help="stop application",
+        flags=[
+            dict(args=["--all"], action="store_true", help="stop all"),
+            dict(args=["package_name"], nargs="*", help="package name"),
+        ],
+    ),
+    dict(action=cmd_current, command="current", help="show current application"),
+    dict(action=cmd_doctor, command="doctor", help="detect connect problem"),
+    dict(
+        action=cmd_console, command="console", help="launch interactive python console"
+    ),
+    dict(
+        action=cmd_purge,
         command="purge",
-        help="remove minitouch, minicap, atx app etc, from device"),
+        help="remove minitouch, minicap, atx app etc, from device",
+    ),
 ]
 
 
@@ -269,6 +239,8 @@ def main():
             sp.add_argument(*args, **kwargs)
 
     args = parser.parse_args()
+    enable_pretty_logging()
+
     if args.debug:
         logger.debug("args: %s", args)
 
@@ -280,5 +252,5 @@ def main():
     # yapf: enable
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

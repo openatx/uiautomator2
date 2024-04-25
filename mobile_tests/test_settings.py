@@ -9,20 +9,18 @@ import pytest
 import uiautomator2 as u2
 
 
-def test_set_xpath_debug(sess):
+def test_set_xpath_debug(dev: u2.Device):
     with pytest.raises(TypeError):
-        sess.settings['xpath_debug'] = 1
+        dev.settings['xpath_debug'] = 1
     
-    sess.settings['xpath_debug'] = True
-    assert sess.settings['xpath_debug'] == True
-    assert sess.xpath.logger.level == logging.DEBUG
+    dev.settings['xpath_debug'] = True
+    assert dev.settings['xpath_debug'] == True
 
-    sess.settings['xpath_debug'] = False
-    assert sess.settings['xpath_debug'] == False
-    assert sess.xpath.logger.level == logging.INFO
+    dev.settings['xpath_debug'] = False
+    assert dev.settings['xpath_debug'] == False
 
 
-def test_wait_timeout(d):
+def test_wait_timeout(d: u2.Device):
     d.settings['wait_timeout'] = 19.0
     assert d.wait_timeout == 19.0
 

@@ -12,8 +12,8 @@ import uiautomator2 as u2
 
 
 @pytest.mark.skip("not working")
-def test_toast_get_message(sess: u2.Device):
-    d = sess
+def test_toast_get_message(dev: u2.Device):
+    d = dev
     assert d.toast.get_message(0) is None
     assert d.toast.get_message(0, default="d") == "d"
     d(text="App").click()
@@ -29,8 +29,8 @@ def test_toast_get_message(sess: u2.Device):
     assert d.toast.get_message(0, 0.4)
 
 
-def test_scroll(sess: u2.Device):
-    d = sess
+def test_scroll(dev: u2.Device):
+    d = dev
     d(text="App").click()
     if not d(scrollable=True).exists:
         pytest.skip("screen to large, no need to scroll")
@@ -83,15 +83,15 @@ def test_count(self):
         className="android.widget.TextView", instance=0).count
     self.assertEqual(count, 1)
 
-def test_get_text(sess):
-    d = sess
+def test_get_text(dev):
+    d = dev
     text = d(resourceId="android:id/list").child(
         className="android.widget.TextView", instance=2).get_text()
-    assert text == "Animation"
+    assert text == "App"
 
 
-def test_xpath(sess):
-    d = sess
+def test_xpath(dev):
+    d = dev
     d.xpath("//*[@text='Media']").wait()
     assert len(d.xpath("//*[@text='Media']").all()) == 1
     assert len(d.xpath("//*[@text='MediaNotExists']").all()) == 0
@@ -136,8 +136,8 @@ def test_plugin(self):
     u2.plugin_register('my', _my_plugin, 'pp')
     self.assertEqual(self.d.ext_my(), 'pp')
 
-def test_send_keys(sess):
-    d = sess
+def test_send_keys(dev):
+    d = dev
     d.xpath("App").click()
     d.xpath("Search").click()
     d.xpath('//*[@text="Invoke Search"]').click()

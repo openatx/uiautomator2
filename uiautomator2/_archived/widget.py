@@ -1,5 +1,8 @@
 # coding: utf-8
 #
+#  DEPRECATED
+#
+#  This file is deprecated and will be removed in the future.
 import logging
 import re
 import time

@@ -11,8 +11,6 @@ def test_import():
     u2.Device
     u2.connect
     u2.connect_usb
-    u2.connect_wifi
-    u2.connect_adb_wifi
     u2.Device.app_install
     u2.Device.app_uninstall
     u2.Device.app_current

@@ -20,7 +20,7 @@ def package_name():
 
 
 @pytest.fixture(scope="function")
-def sess(d, package_name) -> u2.Device: # type: ignore
+def dev(d: u2.Device, package_name) -> u2.Device: # type: ignore
     d.watcher.reset()
     
     d.app_start(package_name, stop=True)

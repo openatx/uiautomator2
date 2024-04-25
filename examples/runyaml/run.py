@@ -51,7 +51,7 @@ def read_file_content(path: str, mode:str = "r") -> str:
     with open(path, mode) as f:
         return f.read()
 
-def run_step(cf: bunch.Bunch, app: u2.Session, step: str):
+def run_step(cf: bunch.Bunch, app: u2.Device, step: str):
     logger.info("Step: %s", step)
     oper, body = split_step(step)
     logger

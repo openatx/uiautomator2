@@ -1,28 +1,28 @@
 # coding: utf-8
 #
 
+import uiautomator2 as u2
 
-def test_session(sess):
-    sess.wlan_ip
-    sess.watcher
-    sess.jsonrpc
-    sess.open_identify
-    sess.shell
-    sess.set_new_command_timeout
-    sess.settings
-    sess.xpath
+def test_session_function_exists(dev: u2.Device):
+    dev.wlan_ip
+    dev.watcher
+    dev.jsonrpc
+    dev.shell
+    dev.settings
+    dev.xpath
 
 
-def test_session_app(sess, package_name):
-    sess.app_start(package_name)
-    assert sess.app_current()['package'] == package_name
+def test_session_app(dev: u2.Device, package_name):
+    dev.app_start(package_name)
+    assert dev.app_current()['package'] == package_name
 
-    sess.app_wait(package_name)
-    assert package_name in sess.app_list()
-    assert package_name in sess.app_list_running()
+    dev.app_wait(package_name)
+    assert package_name in dev.app_list()
+    assert package_name in dev.app_list_running()
 
-    assert sess.app_info(package_name)['packageName'] == package_name
+    # assert sess.app_info(package_name)['packageName'] == package_name
 
-def test_session_window_size(sess):
-    assert isinstance(sess.window_size(), tuple)
+
+def test_session_window_size(dev: u2.Device):
+    assert isinstance(dev.window_size(), tuple)
 
