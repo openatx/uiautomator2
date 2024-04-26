@@ -591,12 +591,21 @@ class _AppMixIn(AbstractShell):
         self.app_start(package_name, stop=not attach)
         return Session(self.adb_device, package_name)
 
+    def _compat_shell_ps(self) -> str:
+        """
+        Compatible with some devices that does not support `ps` command
+        """
+        output = self.shell("ps -A").output
+        if len(output.strip().splitlines()) <= 1:
+            output = self.shell("ps").output
+        return output.strip().replace("\r\n", "\n")
+        
     def _pidof_app(self, package_name) -> Optional[int]:
         """
         Return pid of package name
         """
-        ret = self.shell("ps -A")
-        lines = ret.output.splitlines()
+        output = self._compat_shell_ps()
+        lines = output.splitlines()
         for line in lines:
             # line example: u0_a1    1318  123   1010000 27580 SyS_epoll_ 0000000000 S com.github.uiautomator
             fields = line.strip().split()
@@ -711,11 +720,11 @@ class _AppMixIn(AbstractShell):
             if front:
                 if self.app_current()['package'] == package_name:
                     pid = self._pidof_app(package_name)
-                    break
             else:
                 if package_name in self.app_list_running():
                     pid = self._pidof_app(package_name)
-                    break
+            if pid:
+                return pid
             time.sleep(1)
 
         return pid or 0
@@ -739,10 +748,10 @@ class _AppMixIn(AbstractShell):
         Returns:
             list of running apps
         """
-        output, _ = self.shell(['pm', 'list', 'packages'])
+        output, _ = self.shell('pm list packages')
         packages = re.findall(r'package:([^\s]+)', output)
-        process_names = re.findall(r'([^\s]+)$',
-                                   self.shell('ps; ps -A').output, re.M)
+        ps_output = self._compat_shell_ps()
+        process_names = re.findall(r'(\S+)$', ps_output, re.M)
         return list(set(packages).intersection(process_names))
 
     def app_stop(self, package_name: str):
@@ -1005,7 +1014,7 @@ class Session(Device):
     def __init__(self, dev: adbutils.AdbDevice, package_name: str):
         super().__init__(dev)
         self._package_name = package_name
-        self._pid = self._pidof_app(self._package_name)
+        self._pid = self.app_wait(self._package_name)
     
     def running(self) -> bool:
         return self._pid == self._pidof_app(self._package_name)

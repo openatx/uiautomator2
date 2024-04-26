@@ -192,7 +192,10 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         main_apk_info = self._dev.app_info("com.github.uiautomator")
         if main_apk_info is None:
             self._install_apk(main_apk)
-        elif main_apk_info.version_name != apk_version and "dev" in main_apk_info.version_name:
+        elif main_apk_info.version_name != apk_version and "dev" not in main_apk_info.version_name:
+            logger.debug("apk version not match, reinstall")
+            self._dev.uninstall("com.github.uiautomator")
+            self._dev.uninstall("com.github.uiautomator.test")
             self._install_apk(main_apk)
             self._install_apk(test_apk)
 
@@ -204,7 +207,10 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         self._dev.shell("mkdir -p /data/local/tmp/u2")
         target_path = "/data/local/tmp/u2/" + apk_path.name
         self._dev.push(apk_path, target_path)
-        self._dev.shell(['pm', 'install', '-r', '-t', target_path])
+        # -r: replace
+        # -t: allow test packages
+        # -d: allow version code downgrade
+        self._dev.shell(['pm', 'install', '-r', '-t', '-d', target_path])
     
     def _wait_instrument_ready(self, timeout: float):
         deadline = time.time() + timeout
