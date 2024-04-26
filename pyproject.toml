@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "uiautomator2"
 version = "0.0.0"
-description = "automator for anroid device"
+description = "uiautomator for android device"
 homepage = "https://github.com/openatx/uiautomator2"
 authors = ["codeskyblue <codeskyblue@gmail.com>"]
 license = "MIT"
@@ -14,12 +14,7 @@ requests = "*"
 lxml = "*"
 adbutils = "^2.2.3,!=2.3.0"
 retry = ">=0,<1"
-packaging = ">=20.3"
-pillow = "*"
-
-# TODO: remove later
 Deprecated = "*"
-progress = "^1.6"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"

@@ -5,6 +5,7 @@
 """
 
 import atexit
+import re
 import threading
 import time
 import logging
@@ -15,7 +16,7 @@ from typing import Any, Dict, Optional
 import adbutils
 import requests
 
-from uiautomator2.exceptions import InjectPermissionError, RPCInvalidError, UiAutomationNotConnectedError, HTTPError, LaunchUiautomatorError, UiObjectNotFoundError, RPCUnknownError, APkSignatureError
+from uiautomator2.exceptions import RPCInvalidError, UiAutomationNotConnectedError, HTTPError, LaunchUiAutomationError, UiObjectNotFoundError, RPCUnknownError, APkSignatureError, AccessibilityServiceAlreadyRegisteredError
 from uiautomator2.abstract import AbstractUiautomatorServer
 
 
@@ -205,7 +206,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         self._dev.push(apk_path, target_path)
         self._dev.shell(['pm', 'install', '-r', '-t', target_path])
     
-    def _wait_instrument_ready(self, timeout=10):
+    def _wait_instrument_ready(self, timeout: float):
         deadline = time.time() + timeout
         while time.time() < deadline:
             output = self._process.output.decode("utf-8", errors="ignore")
@@ -213,27 +214,35 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
                 raise APkSignatureError("app-uiautomator.apk does not have a signature matching the target")
             if "INSTRUMENTATION_STATUS: Error=" in output:
                 error_message = output[output.find("INSTRUMENTATION_STATUS: Error="):].splitlines()[0]
-                raise LaunchUiautomatorError(error_message, output)
-            if "INSTRUMENTATION_STATUS_CODE: -1" in output:
-                raise LaunchUiautomatorError("am instrument error", output)
-            if "INSTRUMENTATION_STATUS_CODE: 1" in output:
-                # success
-                return
+                raise LaunchUiAutomationError(error_message, output)
+            if "INSTRUMENTATION_STATUS_CODE:" in output:
+                status_code = int(re.search(r"INSTRUMENTATION_STATUS_CODE: (-?\d+)", output).group(1))
+                if status_code == 1: # success
+                    logger.debug("am instrument success, status_code: %d", status_code)
+                    return
+                raise LaunchUiAutomationError("am instrument error", f'CODE:{status_code}', output)
+            if self._process.pool() is not None:
+                raise LaunchUiAutomationError("am instrument quit", output)
             time.sleep(.5)
-        raise LaunchUiautomatorError("am instrument timeout")
+        raise LaunchUiAutomationError("am instrument launch timeout", f"{timeout}s", output)
     
-    def _wait_stub_ready(self, timeout=20):
+    def _wait_stub_ready(self, timeout: float):
         deadline = time.time() + timeout
         while time.time() < deadline:
+            output = self._process.output.decode("utf-8", errors="ignore")
+            if "already registered" in output:
+                raise AccessibilityServiceAlreadyRegisteredError("Possibly another UiAutomation service is running, you may find it output by \"adb shell ps -u shell\"",)
+            if self._process.pool() is not None:
+                raise LaunchUiAutomationError("uiautomator2 server quit", output)
             try:
                 response = _http_request(self._dev, "GET", "/ping")
                 if response.content == b"pong":            
                     return
             except HTTPError:
                 time.sleep(.5)
-        raise LaunchUiautomatorError("uiautomator2 server not ready")
+        raise LaunchUiAutomationError("uiautomator2 server not ready")
         
-    def _wait_ready(self, launch_timeout=10, service_timeout=30):
+    def _wait_ready(self, launch_timeout=30, service_timeout=30):
         """Wait until uiautomator2 server is ready"""
         # wait am instrument start
         self._wait_instrument_ready(launch_timeout)
@@ -252,7 +261,13 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         """Send jsonrpc call to uiautomator2 server"""
         try:
             return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
-        except (HTTPError, RPCInvalidError, UiAutomationNotConnectedError) as e:
+        except APkSignatureError:
+            logger.debug("APkSignatureError: %s", e)
+            self._dev.uninstall("com.github.uiautomator")
+            self._dev.uninstall("com.github.uiautomator.test")
+            self.start_uiautomator()
+            return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
+        except (HTTPError, UiAutomationNotConnectedError) as e:
             logger.debug("uiautomator2 is not ok, error: %s", e)
             try:
                 self.start_uiautomator()
@@ -262,7 +277,6 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
                 self._dev.uninstall("com.github.uiautomator.test")
                 self.start_uiautomator()
             return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
-
 
 class SimpleUiautomatorServer(BasicUiautomatorServer, AbstractUiautomatorServer):
     @property

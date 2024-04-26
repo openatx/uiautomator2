@@ -182,7 +182,7 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
         self.stop_uiautomator()
         self.start_uiautomator()
 
-    def push(self, src, dst: str, mode=0o644, show_progress=False):
+    def push(self, src, dst: str, mode=0o644):
         """
         Push file into device
 
@@ -190,10 +190,7 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
             src (path or fileobj): source file
             dst (str): destination can be folder or file path
             mode (int): file mode
-            show_progress (bool): not supported now
         """
-        if show_progress:
-            logger.warning("show_progress is not supported now")
         self._dev.sync.push(src, dst, mode=mode)
 
     def pull(self, src: str, dst: str):
