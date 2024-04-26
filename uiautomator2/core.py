@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional
 import adbutils
 import requests
 
-from uiautomator2.exceptions import JSONRpcInvalidResponseError, UiAutomationNotConnectedError, HTTPError, LaunchUiautomatorError, UnknownRPCError, APkSignatureError
+from uiautomator2.exceptions import InjectPermissionError, RPCInvalidError, UiAutomationNotConnectedError, HTTPError, LaunchUiautomatorError, UiObjectNotFoundError, RPCUnknownError, APkSignatureError
 from uiautomator2.abstract import AbstractUiautomatorServer
 
 
@@ -121,7 +121,7 @@ def _jsonrpc_call(dev: adbutils.AdbDevice, method: str, params: Any, timeout: fl
     r = _http_request(dev, "POST", "/jsonrpc/0", payload, timeout=timeout, print_request=print_request)
     data = r.json()
     if not isinstance(data, dict):
-        raise JSONRpcInvalidResponseError("Unknown RPC error: not a dict")
+        raise RPCInvalidError("Unknown RPC error: not a dict")
     
     if isinstance(data, dict) and "error" in data:
         logger.debug("jsonrpc error: %s", data)
@@ -129,10 +129,12 @@ def _jsonrpc_call(dev: adbutils.AdbDevice, method: str, params: Any, timeout: fl
         message = data['error'].get('message')
         if "UiAutomation not connected" in r.text:
             raise UiAutomationNotConnectedError("UiAutomation not connected")
-        raise UnknownRPCError(f"Unknown RPC error: {code} {message}")
+        if "uiautomator.UiObjectNotFoundException" in message:
+            raise UiObjectNotFoundError(code, message, params)
+        raise RPCUnknownError(f"Unknown RPC error: {code} {message}", params)
     
     if "result" not in data:
-        raise JSONRpcInvalidResponseError("Unknown RPC error: no result field")
+        raise RPCInvalidError("Unknown RPC error: no result field")
     return data["result"]
 
 
@@ -220,7 +222,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
             time.sleep(.5)
         raise LaunchUiautomatorError("am instrument timeout")
     
-    def _wait_stub_ready(self, timeout=30):
+    def _wait_stub_ready(self, timeout=20):
         deadline = time.time() + timeout
         while time.time() < deadline:
             try:
@@ -250,7 +252,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         """Send jsonrpc call to uiautomator2 server"""
         try:
             return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
-        except (HTTPError, UiAutomationNotConnectedError) as e:
+        except (HTTPError, RPCInvalidError, UiAutomationNotConnectedError) as e:
             logger.debug("uiautomator2 is not ok, error: %s", e)
             try:
                 self.start_uiautomator()

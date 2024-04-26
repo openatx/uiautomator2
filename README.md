@@ -21,11 +21,11 @@ QQ交流群: **815453846**
 [UiAutomator](https://developer.android.com/training/testing/ui-automator.html)是Google提供的用来做安卓自动化测试的一个Java库，基于Accessibility服务。功能很强，可以对第三方App进行测试，获取屏幕上任意一个APP的任意一个控件属性，并对其进行任意操作，但有两个缺点：1. 测试脚本只能使用Java语言 2. 测试脚本要打包成jar或者apk包上传到设备上才能运行。
 
 我们希望测试逻辑能够用Python编写，能够在电脑上运行的时候就控制手机。这里要非常感谢 Xiaocong He ([@xiaocong][])，他将这个想法实现了出来（见[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)），原理是在手机上运行了一个http rpc服务，将uiautomator中的功能开放出来，然后再将这些http接口封装成Python库。
-因为`xiaocong/uiautomator`这个库，已经很久不见更新。所以我们直接fork了一个版本，为了方便做区分我们就在后面加了个2 [openatx/uiautomator2](https://github.com/openatx/uiautomator2)
+因为`xiaocong/uiautomator`这个库，已经很久不见更新。所以我们直接fork了一个版本，为了方便做区分我们就在后面加了个2 [openatx/uiautomator2](https://github.com/openatx/uiautomator2),对应的Android包源码我也fork了一份，[openatx/android-uiautomator-server](https://github.com/openatx/android-uiautomator-server)
 
 除了对原有的库的bug进行了修复，还增加了很多新的Feature。主要有以下部分：
 
-* 设备和开发机可以脱离数据线，通过WiFi互联（基于[atx-agent](https://github.com/openatx/atx-agent)）
+* ~~设备和开发机可以脱离数据线，通过WiFi互联（基于[atx-agent](https://github.com/openatx/atx-agent)~~
 * ~~集成了[openstf/minicap](https://github.com/openstf/minicap)达到实时屏幕投频，以及实时截图~~
 * ~~集成了[openstf/minitouch](https://github.com/openstf/minitouch)达到精确实时控制设备~~
 * 修复了[xiaocong/uiautomator](https://github.com/xiaocong/uiautomator)经常性退出的问题
@@ -429,7 +429,7 @@ This part showcases how to perform common device operations:
 ### Session (Removed)
 Session represent an app lifecycle. Can be used to start app, detect app crash.
 
-<!-- * Launch and close app
+* Launch and close app
 
     ```python
     sess = d.session("com.netease.cloudmusic") # start 网易云音乐
@@ -449,9 +449,6 @@ Session represent an app lifecycle. Can be used to start app, detect app crash.
     ```python
     # launch app if not running, skip launch if already running
     sess = d.session("com.netease.cloudmusic", attach=True)
-
-    # raise SessionBrokenError if not running
-    sess = d.session("com.netease.cloudmusic", attach=True, strict=True)
     ```
 
 * Detect app crash
@@ -469,7 +466,7 @@ Session represent an app lifecycle. Can be used to start app, detect app crash.
     # check if session is ok.
     # Warning: function name may change in the future
     sess.running() # True or False
-    ``` -->
+    ```
 
 
 ### Retrieve the device info

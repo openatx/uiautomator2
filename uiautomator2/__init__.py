@@ -1,17 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-::Timeout
-
-atx-agent:ReverseProxy use http.DefaultTransport. Default Timeout: 30s
-
-|-- Dial --|-- TLS handshake --|-- Request --|-- Resp.headers --|-- Respose.body --|
-|------------------------------ http.Client.Timeout -------------------------------|
-
-Refs:
-    - https://golang.org/pkg/net/http/#RoundTripper
-    - http://colobu.com/2016/07/01/the-complete-guide-to-golang-net-http-timeouts
-"""
 
 from __future__ import absolute_import, print_function
 
@@ -24,10 +12,8 @@ import re
 import time
 import warnings
 import xml.dom.minidom
-from collections import namedtuple
-from datetime import datetime
 from functools import cached_property
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import adbutils
 from deprecated import deprecated
@@ -38,7 +24,7 @@ from uiautomator2.core import BasicUiautomatorServer
 from uiautomator2 import xpath
 from uiautomator2._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
 from uiautomator2._selector import Selector, UiObject
-from uiautomator2.exceptions import AdbShellError, BaseError, HierarchyEmptyError
+from uiautomator2.exceptions import AdbShellError, BaseException, HierarchyEmptyError, SessionBrokenError
 from uiautomator2.settings import Settings
 from uiautomator2.swipe import SwipeExt
 from uiautomator2.utils import list2cmdline
@@ -195,45 +181,6 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
         self.shell("dumpsys deviceidle whitelist +com.github.uiautomator; dumpsys deviceidle whitelist +com.github.uiautomator.test")
         self.stop_uiautomator()
         self.start_uiautomator()
-
-    # def _kill_process_by_name(self, name, use_adb=False):
-    #     for p in self._iter_process(use_adb=use_adb):
-    #         if p.name == name and p.user == "shell":
-    #             logger.debug("kill %s", name)
-    #             kill_cmd = ["kill", "-9", str(p.pid)]
-    #             if use_adb:
-    #                 self.adb_device.shell(kill_cmd)
-    #             else:
-    #                 self.shell(kill_cmd)
-
-    # def _iter_process(self, use_adb=False):
-    #     """
-    #     List processes by cmd:ps
-
-    #     Returns:
-    #         list of Process(pid, name)
-    #     """
-    #     headers, pids = [], {}
-    #     Header = None
-    #     Process = namedtuple("Process", ["user", "pid", "name"])
-    #     if use_adb:
-    #         output = self.adb_device.shell("ps; ps -A")
-    #     else:
-    #         output = self.shell("ps; ps -A").output
-    #     for line in output.splitlines():
-    #         # USER PID ..... NAME
-    #         fields = line.strip().split()
-    #         if len(fields) < 3:
-    #             continue
-    #         if fields[0] == "USER":
-    #             continue
-    #         if not fields[1].isdigit():
-    #             continue
-    #         user, pid, name = fields[0], int(fields[1]), fields[-1]
-    #         if pid in pids:
-    #             continue
-    #         pids[pid] = True
-    #         yield Process(user, pid, name)
 
     def push(self, src, dst: str, mode=0o644, show_progress=False):
         """
@@ -627,12 +574,26 @@ class _Device(_BaseClient):
                 return obj.jsonrpc.makeToast(text, duration * 1000)
 
         return Toast()
-
+    
     def __call__(self, **kwargs):
         return UiObject(self, Selector(**kwargs))
 
 
 class _AppMixIn(AbstractShell):
+    def session(self, package_name: str, attach: bool = False) -> "Session":
+        """
+        launch app and keep watching the app's state
+
+        Args:
+            package_name: package name
+            attach: attach to existing session or not
+
+        Returns:
+            Session
+        """
+        self.app_start(package_name, stop=not attach)
+        return Session(self.adb_device, package_name)
+
     def _pidof_app(self, package_name) -> Optional[int]:
         """
         Return pid of package name
@@ -835,7 +796,7 @@ class _AppMixIn(AbstractShell):
 
         return pkgs
 
-    def app_info(self, package_name: str):
+    def app_info(self, package_name: str) -> Dict[str, Any]:
         """
         Get app info
 
@@ -844,11 +805,8 @@ class _AppMixIn(AbstractShell):
 
         Return example:
             {
-                "mainActivity": "com.github.uiautomator.MainActivity",
-                "label": "ATX",
                 "versionName": "1.1.7",
-                "versionCode": 1001007,
-                "size":1760809
+                "versionCode": 1001007
             }
 
         Raises:
@@ -856,18 +814,11 @@ class _AppMixIn(AbstractShell):
         """
         info = self.adb_device.app_info(package_name)
         if not info:
-            raise BaseError("App not installed")
+            raise BaseException("App not installed")
         return {
             "versionName": info.version_name,
             "versionCode": info.version_code,
         }
-        resp = self.http.get(f"/packages/{package_name}/info")
-        resp.raise_for_status()
-        resp = resp.json()
-        if not resp.get('success'):
-            raise BaseError(resp.get('description', 'unknown'))
-        return resp.get('data')
-
 
 class _DeprecatedMixIn:
     @property
@@ -875,7 +826,6 @@ class _DeprecatedMixIn:
         return self.settings['wait_timeout']
 
     @wait_timeout.setter
-    @deprecated(version="3.0.0", reason="You should use implicitly_wait instead")
     def wait_timeout(self, v: Union[int, float]):
         self.settings['wait_timeout'] = v
 
@@ -1047,9 +997,47 @@ class _PluginMixIn:
     def swipe_ext(self) -> SwipeExt:
         return SwipeExt(self)
 
-
 class Device(_Device, _AppMixIn, _PluginMixIn, _InputMethodMixIn, _DeprecatedMixIn):
     """ Device object """
+
+
+class Session(Device):
+    """Session keeps watch the app status
+    each jsonrpc call will check if the package is still running
+    """
+    def __init__(self, dev: adbutils.AdbDevice, package_name: str):
+        super().__init__(dev)
+        self._package_name = package_name
+        self._pid = self._pidof_app(self._package_name)
+    
+    def running(self) -> bool:
+        return self._pid == self._pidof_app(self._package_name)
+
+    @property
+    def pid(self) -> int:
+        return self._pid
+        
+    def jsonrpc_call(self, method: str, params: Any = None, timeout: float = 10) -> Any:
+        if not self.running():
+            raise SessionBrokenError(f"app:{self._package_name} pid:{self._pid} is quit")
+        return super().jsonrpc_call(method, params, timeout)
+    
+    def restart(self):
+        """ restart app """
+        self.app_start(self._package_name, wait=True, stop=True)
+        self._pid = self._pidof_app(self._package_name)
+    
+    def close(self):
+        """ close app """
+        self.app_stop(self._package_name)
+        self._pid = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
 
 
 
