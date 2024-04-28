@@ -135,6 +135,23 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
     @property
     def info(self):
         return self.jsonrpc.deviceInfo(http_timeout=10)
+    
+    @property
+    def device_info(self) -> Dict[str, Any]:
+        serial = self._dev.getprop("ro.serialno")
+        sdk = self._dev.getprop("ro.build.version.sdk")
+        version = self._dev.getprop("ro.build.version.release")
+        brand = self._dev.getprop("ro.product.brand")
+        model = self._dev.getprop("ro.product.model")
+        arch = self._dev.getprop("ro.product.cpu.abi")
+        return {
+            "serial": serial,
+            "sdk": int(sdk) if sdk.isdigit() else None,
+            "brand": brand,
+            "model": model,
+            "arch": arch,
+            "version": int(version) if version.isdigit() else None,
+        }
 
     @property
     def wlan_ip(self) -> Optional[str]:

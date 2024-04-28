@@ -64,6 +64,8 @@ print(d.info)
 screenOn': True, 'sdkInt': 27, 'naturalOrientation': True}
 ```
 
+另外为了保持稳定，还需要开启`小黄车`的悬浮窗权限。参考文章 [py-uiautomator2通过悬浮窗让服务长时间可用](https://zhuanlan.zhihu.com/p/688009468)
+
 一般情况下都会成功，不过也可能会有意外。可以加QQ群反馈问题(群号在最上面），群里有很多大佬可以帮你解决问题。
 
 ## Sponsors
@@ -77,7 +79,6 @@ Thank you to all our sponsors! ✨🍰✨
 # Article Recommended
 优秀文章推荐 (欢迎QQ群里at我反馈）
 
-- [py-uiautomator2通过悬浮窗让服务长时间可用](https://zhuanlan.zhihu.com/p/688009468) 这个**强烈推荐**看一下
 - [termux里如何部署uiautomator2简介](https://www.cnblogs.com/ze-yan/p/12242383.html) by `成都-测试只会一点点`
 
 ## 相关项目

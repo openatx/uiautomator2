@@ -33,6 +33,4 @@ function download_apk(){
 download_apk "$APK_VERSION" "app-uiautomator.apk"
 download_apk "$APK_VERSION" "app-uiautomator-test.apk"
 
-echo "apk_version: $APK_VERSION" >> version.txt
-
-
+echo "apk_version: $APK_VERSION" > version.txt

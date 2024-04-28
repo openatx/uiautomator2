@@ -12,7 +12,7 @@ include = ["*/assets/*"]
 python = "^3.8"
 requests = "*"
 lxml = "*"
-adbutils = "^2.2.3,!=2.3.0"
+adbutils = "^2.5.0"
 retry = ">=0,<1"
 Deprecated = "*"
 Pillow = "*"
