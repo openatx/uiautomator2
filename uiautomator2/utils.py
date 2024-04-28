@@ -3,16 +3,13 @@
 
 import functools
 import inspect
-import os
 import shlex
 import threading
 import typing
 from typing import Union
 
-import filelock
-
-from ._proto import Direction
-from .exceptions import SessionBrokenError, UiObjectNotFoundError
+from uiautomator2._proto import Direction
+from uiautomator2.exceptions import SessionBrokenError, UiObjectNotFoundError
 
 
 def check_alive(fn):
@@ -105,7 +102,9 @@ class Exists(object):
         return str(bool(self))
 
 
-def list2cmdline(args: Union[list, tuple]):
+def list2cmdline(args: Union[str, list, tuple]) -> str:
+    if isinstance(args, str):
+        return args
     return ' '.join(list(map(shlex.quote, args)))
 
 
@@ -205,24 +204,6 @@ def thread_safe_wrapper(fn: typing.Callable):
             self._lock = threading.Lock()
 
         with self._lock:
-            return fn(self, *args, **kwargs)
-    
-    return inner
-
-
-def process_safe_wrapper(fn: typing.Callable[..., typing.Any]) -> typing.Callable[..., typing.Any]:
-    """
-    threadsafe for process calls
-    """
-    lockfile_path = os.path.expanduser("~/.uiautomator2/" + fn.__name__ + ".lock")
-    flock = filelock.FileLock(lockfile_path, timeout=120) # default timeout
-
-    @functools.wraps(fn)
-    def inner(self, *args, **kwargs):
-        if not hasattr(self, "_plock"):
-            self._plock = flock
-
-        with self._plock:
             return fn(self, *args, **kwargs)
     
     return inner

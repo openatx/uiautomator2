@@ -4,15 +4,14 @@
 import uiautomator2 as u2
 
 d = u2.connect("--serial-here--") # 只有一个设备也可以省略参数
-d = u2.connect() # 一个设备时
-d = u2.connect("10.1.2.3") # 通过设备的IP连接(需要在同一局域网且设备上的atx-agent已经安装并启动)
+d = u2.connect() # 一个设备时, read env-var ANDROID_SERIAL
 
 d.app_current() # 获取前台应用 packageName, activity
-d.app_start("com.example.app") # 启动应用
-d.app_start("com.example.app", stop=True) # 启动应用前停止应用
-d.app_stop("com.example.app") # 停止应用
+d.app_start("io.appium.android.apis") # 启动应用
+d.app_start("io.appium.android.apis", stop=True) # 启动应用前停止应用
+d.app_stop("io.appium.android.apis") # 停止应用
 
-app = d.session("com.example.app") # 启动应用并获取session
+app = d.session("io.appium.android.apis") # 启动应用并获取session
 
 # session的用途是操作的同时监控应用是否闪退，当闪退时操作，会抛出SessionBrokenError
 app.click(10, 20) # 坐标点击

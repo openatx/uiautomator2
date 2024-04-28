@@ -16,7 +16,7 @@ from PIL import Image
 from lxml import etree
 
 from uiautomator2._proto import Direction
-from uiautomator2.abcd import AbstractDevice
+from uiautomator2.abstract import AbstractXPathBasedDevice
 from uiautomator2.exceptions import XPathElementNotFoundError
 from uiautomator2.utils import inject_call, swipe_in_bounds
 
@@ -109,7 +109,7 @@ class XPathError(Exception):
     """basic error for xpath plugin"""
 
 class XPath(object):
-    def __init__(self, d: AbstractDevice):
+    def __init__(self, d: AbstractXPathBasedDevice):
         """
         Args:
             d (uiautomator2 instance)

@@ -1,109 +1,40 @@
 # coding: utf-8
 #
 
-import json
+class BaseException(Exception):
+    """ base error for uiautomator2 """
 
+## DeviceError
+class DeviceError(BaseException):
+    pass
 
-class BaseError(Exception):
-    """ 所有错误的基类 """
+class AdbShellError(DeviceError):...
+class ConnectError(DeviceError):...
+class HTTPError(DeviceError):...
 
-
-class ConnectError(BaseError):
-    """ adb connect 异常 """
-
-
-class RetryError(BaseError):
-    """ retry when meet this error """
-
-
-class ServerError(BaseError):
-    """ app 服务端错误, 没有安装，或者启动错误 """
-
-
-## Error base on ServerError
-
-class SessionBrokenError(ServerError):
-    """ only happens when app quit or crash """
-
-
-class UiAutomationNotConnectedError(ServerError):
-    """ 与手机上运行的UiAutomator服务连接断开 """
-
-
-class UiautomatorQuitError(ServerError):
-    """ uiautomator 没有运行错误 """
-
-
-class GatewayError(ServerError):
-    """ 网关错误，通常代表 app-uiautomator.apk没有安装 """
-
-## errors which no need to restart uiautomator
-
-class RequestError(BaseError):
-    """ jsonrpc call error """
-
-
-class XPathElementNotFoundError(RequestError):
+class UiAutomationError(DeviceError):
     pass
 
 
-class JSONRPCError(RequestError):
-    @staticmethod
-    def format_errcode(errcode):
-        m = {
-            -32700: 'Parse error',
-            -32600: 'Invalid Request',
-            -32601: 'Method not found',
-            -32602: 'Invalid params',
-            -32603: 'Internal error',
-            -32001: 'Jsonrpc error',
-            -32002: 'Client error',
-        }
-        if errcode in m:
-            return m[errcode]
-        if errcode >= -32099 and errcode <= -32000:
-            return 'Server error'
-        return 'Unknown error'
-
-    def __init__(self, error: dict = {}, method=None):
-        self.code = error.get('code')
-        self.message = error.get('message', '')
-        self.data = error.get('data', '')
-        self.method = method
-        if isinstance(self.data, dict):
-            self.exception_name = self.data.get("exceptionTypeName")
-        else:
-            self.exception_name = None
-
-    def __str__(self):
-        return '%d %s: <%s> data: %s, method: %s' % (
-            self.code, self.format_errcode(
-                self.code), self.message, self.data, self.method)
-
-    def __repr__(self):
-        return repr(str(self))
+class UiAutomationNotConnectedError(UiAutomationError):...    
+class InjectPermissionError(UiAutomationError):... #开发者选项中: 模拟点击没有打开
+class APkSignatureError(UiAutomationError):...
+class LaunchUiAutomationError(UiAutomationError):...
+class AccessibilityServiceAlreadyRegisteredError(UiAutomationError):...
 
 
-class UiObjectNotFoundError(JSONRPCError):
-    """ 控件没找到 """
+## RPCError
+class RPCError(BaseException):
+    pass
+
+class RPCUnknownError(RPCError):...
+class RPCInvalidError(RPCError):...
+class HierarchyEmptyError(RPCError):...
 
 
-class NullObjectExceptionError(JSONRPCError):
-    """ 空对象错误 """
+class NormalError(RPCError):
+    pass
 
-
-class NullPointerExceptionError(JSONRPCError):
-    """ 空指针错误 """
-
-
-class StaleObjectExceptionError(JSONRPCError):
-    """ 一种，打算要操作的对象突然消失的错误 """
-
-
-class InjectPermissionError(JSONRPCError):
-    """ 开发者选项中: 模拟点击没有打开 """
-
-
-# 保证兼容性
-UiaError = BaseError
-JsonRpcError = JSONRPCError
+class XPathElementNotFoundError(NormalError):...
+class SessionBrokenError(NormalError):... #only happens when app quit or crash
+class UiObjectNotFoundError(NormalError):...
