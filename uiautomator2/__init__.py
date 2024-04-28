@@ -32,11 +32,7 @@ from uiautomator2.watcher import WatchContext, Watcher
 from uiautomator2.abstract import AbstractShell, AbstractUiautomatorServer, ShellResponse
 
 
-DEBUG = False
 WAIT_FOR_DEVICE_TIMEOUT = int(os.getenv("WAIT_FOR_DEVICE_TIMEOUT", 20))
-
-_mswindows = (os.name == "nt")
-
 
 logger = logging.getLogger(__name__)
 
@@ -429,12 +425,15 @@ class _Device(_BaseClient):
             delete(or del), recent(recent apps), volume_up, volume_down,
             volume_mute, camera, power.
         """
-        with self._operation_delay("press"):
-            if isinstance(key, int):
-                return self.jsonrpc.pressKeyCode(
-                    key, meta) if meta else self.jsonrpc.pressKeyCode(key)
-            else:
-                return self.jsonrpc.pressKey(key)
+        if key in ("home", "back", "enter", "volume_up", "volume_down", "volume_mute", "power", "wakeup"):
+            self.keyevent(key)
+            return
+        if isinstance(key, int):
+            return self.jsonrpc.pressKeyCode(
+                key, meta) if meta else self.jsonrpc.pressKeyCode(key)
+        else:
+            # FIXME: not working with Huiawei P50
+            return self.jsonrpc.pressKey(key)
 
     def screen_on(self):
         self.jsonrpc.wakeUp()

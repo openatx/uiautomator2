@@ -254,6 +254,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         self._wait_instrument_ready(launch_timeout)
         # launch a toast window to make sure uiautomator is alive
         logger.debug("show float window")
+        self._dev.shell("am startservice -a com.github.uiautomator.ACTION_START")
         self._dev.shell("am start -n com.github.uiautomator/.ToastActivity -e showFloatWindow true")
         self._wait_stub_ready(service_timeout)
     

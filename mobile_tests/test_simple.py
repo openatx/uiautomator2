@@ -86,7 +86,7 @@ def test_count(self):
 def test_get_text(dev):
     d = dev
     text = d(resourceId="android:id/list").child(
-        className="android.widget.TextView", instance=2).get_text()
+        className="android.widget.TextView", text="App").get_text()
     assert text == "App"
 
 

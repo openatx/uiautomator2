@@ -102,7 +102,9 @@ class Exists(object):
         return str(bool(self))
 
 
-def list2cmdline(args: Union[list, tuple]):
+def list2cmdline(args: Union[str, list, tuple]) -> str:
+    if isinstance(args, str):
+        return args
     return ' '.join(list(map(shlex.quote, args)))
 
 
