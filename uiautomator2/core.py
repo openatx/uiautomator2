@@ -131,9 +131,13 @@ def _jsonrpc_call(dev: adbutils.AdbDevice, method: str, params: Any, timeout: fl
         stacktrace = data['error'].get('data')
         if "UiAutomation not connected" in r.text:
             raise UiAutomationNotConnectedError("UiAutomation not connected")
+        if "android.os.DeadObjectException" in message:
+            # https://developer.android.com/reference/android/os/DeadObjectException
+            raise UiAutomationNotConnectedError("android.os.DeadObjectException")
         if "uiautomator.UiObjectNotFoundException" in message:
             raise UiObjectNotFoundError(code, message, params)
         raise RPCUnknownError(f"Unknown RPC error: {code} {message}", params, stacktrace)
+    
     
     if "result" not in data:
         raise RPCInvalidError("Unknown RPC error: no result field")
