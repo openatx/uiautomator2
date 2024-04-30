@@ -3,7 +3,7 @@
 
 set -e
 
-APK_VERSION="2.3.3"
+APK_VERSION="2.3.4"
 # AGENT_VERSION="0.10.1"
 
 cd "$(dirname $0)"
@@ -22,7 +22,7 @@ function download_apk(){
 	VERSION=$1
 	NAME=$2
 	URL="https://github.com/openatx/android-uiautomator-server/releases/download/$VERSION/$NAME"
-	echo "$URL"
+	echo ">> download $URL -> $NAME"
 	curl -L "$URL" --output "$NAME"
 	unzip -tq "$NAME"
 }
