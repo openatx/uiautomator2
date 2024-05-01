@@ -442,14 +442,10 @@ class _Device(_BaseClient):
             delete(or del), recent(recent apps), volume_up, volume_down,
             volume_mute, camera, power.
         """
-        if key in ("home", "back", "enter", "volume_up", "volume_down", "volume_mute", "power", "wakeup"):
-            self.keyevent(key)
-            return
         if isinstance(key, int):
             return self.jsonrpc.pressKeyCode(
                 key, meta) if meta else self.jsonrpc.pressKeyCode(key)
         else:
-            # FIXME: not working with Huiawei P50
             return self.jsonrpc.pressKey(key)
 
     def screen_on(self):

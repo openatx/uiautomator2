@@ -13,6 +13,9 @@ cov:
 			--cov-report xml \
 			--cov-report term
 
+sync:
+	cd uiautomator2/assets; ./sync.sh; cd -
+
 build:
 	poetry self add "poetry-dynamic-versioning[plugin]"
 	cd uiautomator2/assets; ./sync.sh; cd -
@@ -24,3 +27,4 @@ init:
 		wget https://github.com/appium/appium/raw/master/packages/appium/sample-code/apps/ApiDemos-debug.apk; \
 	fi
 	poetry run python -m adbutils -i ./ApiDemos-debug.apk
+
