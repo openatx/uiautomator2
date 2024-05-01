@@ -24,7 +24,7 @@ from uiautomator2.core import BasicUiautomatorServer
 from uiautomator2 import xpath
 from uiautomator2._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
 from uiautomator2._selector import Selector, UiObject
-from uiautomator2.exceptions import AdbShellError, BaseException, HierarchyEmptyError, SessionBrokenError
+from uiautomator2.exceptions import AdbShellError, BaseException, DeviceError, HierarchyEmptyError, SessionBrokenError
 from uiautomator2.settings import Settings
 from uiautomator2.swipe import SwipeExt
 from uiautomator2.utils import list2cmdline
@@ -133,7 +133,7 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
             raise AdbShellError(e)
 
     @property
-    def info(self):
+    def info(self) -> Dict[str, Any]:
         return self.jsonrpc.deviceInfo(http_timeout=10)
     
     @property
@@ -442,14 +442,10 @@ class _Device(_BaseClient):
             delete(or del), recent(recent apps), volume_up, volume_down,
             volume_mute, camera, power.
         """
-        if key in ("home", "back", "enter", "volume_up", "volume_down", "volume_mute", "power", "wakeup"):
-            self.keyevent(key)
-            return
         if isinstance(key, int):
             return self.jsonrpc.pressKeyCode(
                 key, meta) if meta else self.jsonrpc.pressKeyCode(key)
         else:
-            # FIXME: not working with Huiawei P50
             return self.jsonrpc.pressKey(key)
 
     def screen_on(self):
@@ -636,7 +632,7 @@ class _AppMixIn(AbstractShell):
             dict(package, activity, pid?)
 
         Raises:
-            OSError
+            DeviceError
 
         For developer:
             Function reset_uiautomator need this function, so can't use jsonrpc here.
@@ -644,7 +640,7 @@ class _AppMixIn(AbstractShell):
         info = self.adb_device.app_current()
         if info:
             return dataclasses.asdict(info)
-        raise OSError("Couldn't get focused app")
+        raise DeviceError("Couldn't get focused app")
 
     def app_install(self, data: str):
         """
@@ -1022,6 +1018,29 @@ class _PluginMixIn:
 class Device(_Device, _AppMixIn, _PluginMixIn, _InputMethodMixIn, _DeprecatedMixIn):
     """ Device object """
 
+    @property
+    def info(self) -> Dict[str, Any]:
+        """ return device info, make sure currentPackageName is set
+        
+        Return example:
+           {'currentPackageName': 'io.appium.android.apis',
+            'displayHeight': 720,
+            'displayRotation': 3,
+            'displaySizeDpX': 780,
+            'displaySizeDpY': 360,
+            'displayWidth': 1560,
+            'productName': 'ELE-AL00',
+            'screenOn': True,
+            'sdkInt': 29,
+            'naturalOrientation': False}
+        """
+        _info = super().info
+        if _info.get('currentPackageName') is None:
+            try:
+                _info['currentPackageName'] = self.app_current().get('package')
+            except DeviceError:
+                pass
+        return _info
 
 class Session(Device):
     """Session keeps watch the app status
@@ -1059,8 +1078,6 @@ class Session(Device):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-
 
 
 def connect(serial: Union[str, adbutils.AdbDevice] = None) -> Device:
