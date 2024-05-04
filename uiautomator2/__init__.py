@@ -126,6 +126,8 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
             AdbShellError
         """
         try:
+            if self.debug:
+                print("shell:", list2cmdline(cmdargs))
             logger.debug("shell: %s", list2cmdline(cmdargs))
             ret = self._dev.shell2(cmdargs, timeout=timeout)
             return ShellResponse(ret.output, ret.returncode)
@@ -442,11 +444,12 @@ class _Device(_BaseClient):
             delete(or del), recent(recent apps), volume_up, volume_down,
             volume_mute, camera, power.
         """
-        if isinstance(key, int):
-            return self.jsonrpc.pressKeyCode(
-                key, meta) if meta else self.jsonrpc.pressKeyCode(key)
-        else:
-            return self.jsonrpc.pressKey(key)
+        with self._operation_delay("press"):
+            if isinstance(key, int):
+                return self.jsonrpc.pressKeyCode(
+                    key, meta) if meta else self.jsonrpc.pressKeyCode(key)
+            else:
+                return self.jsonrpc.pressKey(key)
 
     def screen_on(self):
         self.jsonrpc.wakeUp()
@@ -545,7 +548,7 @@ class _Device(_BaseClient):
         """ 显示悬浮窗，提高uiautomator运行的稳定性 """
         arg = str(show).lower()
         self.shell([
-            "am", "start", "am", "start", "-n", "com.github.uiautomator/.ToastActivity", "-e",
+            "am", "start", "-n", "com.github.uiautomator/.ToastActivity", "-e",
             "showFloatWindow", arg
         ])
 
