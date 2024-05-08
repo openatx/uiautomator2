@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/openatx/uiautomator2/graph/badge.svg?token=d0ZLkqorBu)](https://codecov.io/gh/openatx/uiautomator2)
 
 QQ交流群: **815453846**
-Telegram: **https://t.me/uiautomator2**
+Discord: <https://discord.gg/PbJhnZJKDd>
 
 > 有段时间没有维护这个项目了（可能有两年了），但是最近工作需要又重新研究一下Android原生自动化，当然又调研了Appium，对比下来一看，发现uiautomator2这个项目的运行速度是真的好快，从检测元素到点击，都是毫秒级的，代码也比较好理解。真是没想到以前竟然写出了这么神奇的项目，这么好的项目怎么能让它落灰呢，得好好整一整，一些垃圾代码清理清理。所以项目版本从2.x.x升级到了3.x.x
 
