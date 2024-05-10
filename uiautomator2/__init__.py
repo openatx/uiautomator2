@@ -263,13 +263,19 @@ class _Device(_BaseClient):
         
     @retry(exceptions=HierarchyEmptyError, tries=3, delay=1)
     def dump_hierarchy(self, compressed=False, pretty=False) -> str:
+        # empty output
+        # '<?xml version=\'1.0\' encoding=\'UTF-8\' standalone=\'yes\' ?>\r\n<hierarchy rotation="0" />'
         content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
         if content == "":
             raise HierarchyEmptyError("dump hierarchy is empty")
-
+        
+        if '<hierarchy rotation="0" />' in content:
+            self.clear_traversed_text()
+            raise HierarchyEmptyError("dump hierarchy is empty with no children")
+        
         if pretty and "\n " not in content:
             xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))
-            content = xml_text.decode('utf-8').toprettyxml(indent='  ')
+            content = xml_text.toprettyxml(indent='  ')
         return content
 
     def implicitly_wait(self, seconds: float = None) -> float:
