@@ -11,12 +11,12 @@ import os
 import re
 import time
 import warnings
-import xml.dom.minidom
 from functools import cached_property
 from typing import Any, Dict, List, Optional, Union
 
 import adbutils
 from deprecated import deprecated
+from lxml import etree
 from retry import retry
 
 from uiautomator2.core import BasicUiautomatorServer
@@ -261,21 +261,39 @@ class _Device(_BaseClient):
         elif format == 'raw':
             return pil_img.tobytes()
         
-    @retry(exceptions=HierarchyEmptyError, tries=3, delay=1)
     def dump_hierarchy(self, compressed=False, pretty=False) -> str:
-        # empty output
-        # '<?xml version=\'1.0\' encoding=\'UTF-8\' standalone=\'yes\' ?>\r\n<hierarchy rotation="0" />'
+        """
+        Dump window hierarchy
+
+        Args:
+            compressed (bool): return compressed xml
+            pretty (bool): pretty print xml
+
+        Returns:
+            xml content
+        """
+        try:
+            content = self._do_dump_hierarchy(compressed)
+        except HierarchyEmptyError:
+            logger.warning("dump empty, return empty xml")
+            content = '<?xml version=\'1.0\' encoding=\'UTF-8\' standalone=\'yes\' ?>\r\n<hierarchy rotation="0" />'
+        
+        if pretty:
+            root = etree.fromstring(content.encode("utf-8"))
+            content = etree.tostring(root, pretty_print=True, encoding=str)
+        return content
+
+    @retry(HierarchyEmptyError, tries=3, delay=1)
+    def _do_dump_hierarchy(self, compressed=False) -> str:
         content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
         if content == "":
             raise HierarchyEmptyError("dump hierarchy is empty")
         
+        # '<?xml version=\'1.0\' encoding=\'UTF-8\' standalone=\'yes\' ?>\r\n<hierarchy rotation="0" />'
         if '<hierarchy rotation="0" />' in content:
+            logger.debug("dump empty, call clear_traversed_text and retry")
             self.clear_traversed_text()
             raise HierarchyEmptyError("dump hierarchy is empty with no children")
-        
-        if pretty and "\n " not in content:
-            xml_text = xml.dom.minidom.parseString(content.encode("utf-8"))
-            content = xml_text.toprettyxml(indent='  ')
         return content
 
     def implicitly_wait(self, seconds: float = None) -> float:

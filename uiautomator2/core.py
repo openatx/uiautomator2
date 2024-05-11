@@ -88,7 +88,9 @@ def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[st
         logger.debug("http request %s %s %s", method, path, data)
         lport = dev.forward_port(9008)
         logger.debug("forward tcp:%d -> tcp:9008", lport)
-        url = f"http://localhost:{lport}{path}"
+        # https://stackoverflow.com/questions/2386299/running-sites-on-localhost-is-extremely-slow
+        # so here use 127.0.0.1 instead of localhost
+        url = f"http://127.0.0.1:{lport}{path}"
         if print_request:
             fields = [time.strftime("%H:%M:%S"), f"$ curl -X {method}", url]
             if data:
