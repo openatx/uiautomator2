@@ -43,6 +43,7 @@ def enable_pretty_logging(level=logging.DEBUG):
         formatter = logging.Formatter('[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d pid:%(process)d] %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+
     logger.setLevel(level)
 
 
@@ -100,7 +101,7 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
         return None
 
     @property
-    def adb_device(self):
+    def adb_device(self) -> adbutils.AdbDevice:
         return self._dev
     
     @cached_property

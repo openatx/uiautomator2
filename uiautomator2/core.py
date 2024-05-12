@@ -155,6 +155,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         self._process = None
         self._lock = threading.Lock()
         self._debug = False
+        self.start_uiautomator()
         atexit.register(self.stop_uiautomator)
     
     @property
@@ -177,8 +178,9 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
             if self._process:
                 if self._process.pool() is not None:
                     self._process = None
-            self._process = launch_uiautomator(self._dev)
-            self._wait_ready()
+            if not self._check_alive():
+                self._process = launch_uiautomator(self._dev)
+                self._wait_ready()
     
     def _setup_apks(self):
         assets_dir = Path(__file__).parent / "assets"
@@ -193,17 +195,20 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
             if k == "apk_version":
                 apk_version = v.strip()
                 break
-        logger.debug("apk_version: %s", apk_version)
+        logger.debug("use apk_version: %s", apk_version)
         # install apk when not installed or version not match, dev version always keep
         main_apk_info = self._dev.app_info("com.github.uiautomator")
         if main_apk_info is None:
             self._install_apk(main_apk)
-        elif main_apk_info.version_name != apk_version and "dev" not in main_apk_info.version_name:
-            logger.debug("apk version not match, reinstall")
-            self._dev.uninstall("com.github.uiautomator")
-            self._dev.uninstall("com.github.uiautomator.test")
-            self._install_apk(main_apk)
-            self._install_apk(test_apk)
+        elif main_apk_info.version_name != apk_version:
+            if "dev" in main_apk_info.version_name or "dirty" in main_apk_info.version_name:
+                logger.debug("skip version check for %s", main_apk_info.version_name)
+            else:
+                logger.debug("apk version not match, reinstall")
+                self._dev.uninstall("com.github.uiautomator")
+                self._dev.uninstall("com.github.uiautomator.test")
+                self._install_apk(main_apk)
+                self._install_apk(test_apk)
 
         if self._dev.app_info("com.github.uiautomator.test") is None:
             self._install_apk(test_apk)
@@ -246,13 +251,16 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
                 raise AccessibilityServiceAlreadyRegisteredError("Possibly another UiAutomation service is running, you may find it output by \"adb shell ps -u shell\"",)
             if self._process.pool() is not None:
                 raise LaunchUiAutomationError("uiautomator2 server quit", output)
-            try:
-                response = _http_request(self._dev, "GET", "/ping")
-                if response.content == b"pong":            
-                    return
-            except HTTPError:
-                time.sleep(.5)
+            if self._check_alive():
+                return
         raise LaunchUiAutomationError("uiautomator2 server not ready")
+
+    def _check_alive(self) -> bool:
+        try:
+            response = _http_request(self._dev, "GET", "/ping")
+            return response.content == b"pong"
+        except HTTPError:
+            return False
         
     def _wait_ready(self, launch_timeout=30, service_timeout=30):
         """Wait until uiautomator2 server is ready"""
