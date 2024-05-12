@@ -147,7 +147,7 @@ Empty
 
     浏览器打开 https://uiauto.dev 查看当前设备的界面结构。
 
-    **appinspector介绍**
+    **uiauto.dev**
 
     [uiauto.dev](https://github.com/codeskyblue/uiauto.dev) 是一个独立与uiautomator2之外的一个项目，用于查看图层结构的。属于旧版项目[weditor的重构版本](https://github.com/openatx/weditor)，后续也许会收费（价格肯定物超所值），来支持当前这个项目继续维护下去。感兴趣的可以加群讨论(也包含提需求) QQ群 536481989
 
@@ -426,7 +426,7 @@ This part showcases how to perform common device operations:
 
     Command will be terminated when `r.close()` called. -->
     
-### Session (Removed)
+### Session
 Session represent an app lifecycle. Can be used to start app, detect app crash.
 
 * Launch and close app
@@ -533,7 +533,7 @@ print(d.wlan_ip)
 
 ~~Get detailed device info~~ `d.device_info`
 
-device_info was Removed since 3.x
+device_info
 
 ```python
 print(d.device_info)
@@ -542,31 +542,12 @@ print(d.device_info)
 Below is a possible output:
 
 ```
-{'udid': '3578298f-b4:0b:44:e6:1f:90-OD103',
- 'version': '7.1.1',
- 'serial': '3578298f',
- 'brand': 'SMARTISAN',
- 'model': 'OD103',
- 'hwaddr': 'b4:0b:44:e6:1f:90',
- 'port': 7912,
- 'sdk': 25,
- 'agentVersion': 'dev',
- 'display': {'width': 1080, 'height': 1920},
- 'battery': {'acPowered': False,
-  'usbPowered': False,
-  'wirelessPowered': False,
-  'status': 3,
-  'health': 0,
-  'present': True,
-  'level': 99,
-  'scale': 100,
-  'voltage': 4316,
-  'temperature': 272,
-  'technology': 'Li-ion'},
- 'memory': {'total': 3690280, 'around': '4 GB'},
- 'cpu': {'cores': 8, 'hardware': 'Qualcomm Technologies, Inc MSM8953Pro'},
- 'presenceChangedAt': '0001-01-01T00:00:00Z',
- 'usingBeganAt': '0001-01-01T00:00:00Z'}
+{'arch': 'arm64-v8a',
+ 'brand': 'google',
+ 'model': 'sdk_gphone64_arm64',
+ 'sdk': 34,
+ 'serial': 'EMULATOR34X1X19X0',
+ 'version': 14}
 ```
 
 ### Clipboard
