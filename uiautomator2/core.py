@@ -129,7 +129,7 @@ def _jsonrpc_call(dev: adbutils.AdbDevice, method: str, params: Any, timeout: fl
     if isinstance(data, dict) and "error" in data:
         logger.debug("jsonrpc error: %s", data)
         code = data['error'].get('code')
-        message = data['error'].get('message')
+        message = data['error'].get('message', '')
         stacktrace = data['error'].get('data')
         if "UiAutomation not connected" in r.text:
             raise UiAutomationNotConnectedError("UiAutomation not connected")
