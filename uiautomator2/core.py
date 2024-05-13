@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional
 import adbutils
 import requests
 
-from uiautomator2.exceptions import RPCInvalidError, UiAutomationNotConnectedError, HTTPError, LaunchUiAutomationError, UiObjectNotFoundError, RPCUnknownError, APkSignatureError, AccessibilityServiceAlreadyRegisteredError
+from uiautomator2.exceptions import RPCInvalidError, UiAutomationNotConnectedError, HTTPError, LaunchUiAutomationError, UiObjectNotFoundError, RPCUnknownError, APKSignatureError, AccessibilityServiceAlreadyRegisteredError
 from uiautomator2.abstract import AbstractUiautomatorServer
 
 
@@ -140,7 +140,6 @@ def _jsonrpc_call(dev: adbutils.AdbDevice, method: str, params: Any, timeout: fl
             raise UiObjectNotFoundError(code, message, params)
         raise RPCUnknownError(f"Unknown RPC error: {code} {message}", params, stacktrace)
     
-    
     if "result" not in data:
         raise RPCInvalidError("Unknown RPC error: no result field")
     return data["result"]
@@ -167,6 +166,15 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         self._debug = bool(value)
 
     def start_uiautomator(self):
+        try:
+            self._do_start_uiautomator()
+        except APKSignatureError as e:
+            logger.debug("APkSignatureError: %s", e)
+            self._dev.uninstall("com.github.uiautomator")
+            self._dev.uninstall("com.github.uiautomator.test")
+            self._do_start_uiautomator()
+    
+    def _do_start_uiautomator(self):
         """
         Start uiautomator2 server
 
@@ -228,7 +236,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         while time.time() < deadline:
             output = self._process.output.decode("utf-8", errors="ignore")
             if "does not have a signature matching the target" in output:
-                raise APkSignatureError("app-uiautomator.apk does not have a signature matching the target")
+                raise APKSignatureError("app-uiautomator.apk does not have a signature matching the target")
             if "INSTRUMENTATION_STATUS: Error=" in output:
                 error_message = output[output.find("INSTRUMENTATION_STATUS: Error="):].splitlines()[0]
                 raise LaunchUiAutomationError(error_message, output)
@@ -282,21 +290,9 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         """Send jsonrpc call to uiautomator2 server"""
         try:
             return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
-        except APkSignatureError:
-            logger.debug("APkSignatureError: %s", e)
-            self._dev.uninstall("com.github.uiautomator")
-            self._dev.uninstall("com.github.uiautomator.test")
-            self.start_uiautomator()
-            return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
         except (HTTPError, UiAutomationNotConnectedError) as e:
             logger.debug("uiautomator2 is not ok, error: %s", e)
-            try:
-                self.start_uiautomator()
-            except APkSignatureError as e:
-                logger.debug("APkSignatureError: %s", e)
-                self._dev.uninstall("com.github.uiautomator")
-                self._dev.uninstall("com.github.uiautomator.test")
-                self.start_uiautomator()
+            self.start_uiautomator()
             return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
 
 class SimpleUiautomatorServer(BasicUiautomatorServer, AbstractUiautomatorServer):

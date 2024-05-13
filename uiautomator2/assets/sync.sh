@@ -3,7 +3,7 @@
 
 set -e
 
-APK_VERSION="2.3.8"
+APK_VERSION="2.3.9"
 # AGENT_VERSION="0.10.1"
 
 cd "$(dirname $0)"
