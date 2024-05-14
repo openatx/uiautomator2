@@ -752,6 +752,11 @@ Note: click, swipe, drag operations support percentage position values. Example:
     ```python
     # get the UI hierarchy dump content
     xml = d.dump_hierarchy()
+
+    # compressed=True: include not import nodes
+    # pretty: format xml
+    # max_depth: limit xml depth, default 50
+    xml = d.dump_hierarchy(compressed=False, pretty=False, max_depth=50)
     ```
 
 * Open notification or quick settings

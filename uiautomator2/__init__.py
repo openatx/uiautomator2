@@ -262,19 +262,20 @@ class _Device(_BaseClient):
         elif format == 'raw':
             return pil_img.tobytes()
         
-    def dump_hierarchy(self, compressed=False, pretty=False) -> str:
+    def dump_hierarchy(self, compressed=False, pretty=False, max_depth: int = None) -> str:
         """
         Dump window hierarchy
 
         Args:
             compressed (bool): return compressed xml
             pretty (bool): pretty print xml
+            max_depth (int): max depth of hierarchy
 
         Returns:
             xml content
         """
         try:
-            content = self._do_dump_hierarchy(compressed)
+            content = self._do_dump_hierarchy(compressed, max_depth)
         except HierarchyEmptyError:
             logger.warning("dump empty, return empty xml")
             content = '<?xml version=\'1.0\' encoding=\'UTF-8\' standalone=\'yes\' ?>\r\n<hierarchy rotation="0" />'
@@ -285,15 +286,17 @@ class _Device(_BaseClient):
         return content
 
     @retry(HierarchyEmptyError, tries=3, delay=1)
-    def _do_dump_hierarchy(self, compressed=False) -> str:
-        content = self.jsonrpc.dumpWindowHierarchy(compressed, None)
+    def _do_dump_hierarchy(self, compressed=False, max_depth=None) -> str:
+        if max_depth is None:
+            max_depth = 50
+        content = self.jsonrpc.dumpWindowHierarchy(compressed, max_depth)
         if content == "":
             raise HierarchyEmptyError("dump hierarchy is empty")
         
         # '<?xml version=\'1.0\' encoding=\'UTF-8\' standalone=\'yes\' ?>\r\n<hierarchy rotation="0" />'
         if '<hierarchy rotation="0" />' in content:
             logger.debug("dump empty, call clear_traversed_text and retry")
-            self.clear_traversed_text()
+            # self.clear_traversed_text()
             raise HierarchyEmptyError("dump hierarchy is empty with no children")
         return content
 
