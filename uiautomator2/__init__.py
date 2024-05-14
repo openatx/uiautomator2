@@ -425,13 +425,17 @@ class _Device(_BaseClient):
         Links:
             https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe%28int,%20int,%20int,%20int,%20int%29
         """
+        if duration is not None and steps is not None:
+            warnings.warn("duration and steps can not be set at the same time, use steps")
+            duration = None
+        if duration:
+            steps = int(duration * 200)
+        if not steps:
+            steps = SCROLL_STEPS
+        logger.debug("swipe from (%s, %s) to (%s, %s), steps: %d", fx, fy, tx, ty, steps)
         rel2abs = self.pos_rel2abs
         fx, fy = rel2abs(fx, fy)
         tx, ty = rel2abs(tx, ty)
-        if not duration:
-            steps = SCROLL_STEPS
-        if not steps:
-            steps = int(duration * 200)
         steps = max(2, steps)  # step=1 has no swipe effect
         with self._operation_delay("swipe"):
             return self.jsonrpc.swipe(fx, fy, tx, ty, steps)
