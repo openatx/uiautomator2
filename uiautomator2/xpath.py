@@ -20,8 +20,8 @@ from uiautomator2.abstract import AbstractXPathBasedDevice
 from uiautomator2.exceptions import XPathElementNotFoundError
 from uiautomator2.utils import inject_call, swipe_in_bounds
 
-
 logger = logging.getLogger(__name__)
+
 
 def safe_xmlstr(s: str) -> str:
     return s.replace("$", "-")
@@ -107,6 +107,7 @@ class TimeoutException(Exception):
 
 class XPathError(Exception):
     """basic error for xpath plugin"""
+
 
 class XPath(object):
     def __init__(self, d: AbstractXPathBasedDevice):
@@ -270,10 +271,10 @@ class XPath(object):
         el.click()  # 100ms
 
     def scroll_to(
-        self,
-        xpath: str,
-        direction: Union[Direction, str] = Direction.FORWARD,
-        max_swipes=10,
+            self,
+            xpath: str,
+            direction: Union[Direction, str] = Direction.FORWARD,
+            max_swipes=10,
     ) -> Union["XMLElement", None]:
         """
         Need more tests
@@ -684,7 +685,7 @@ class XMLElement(object):
         return len(els) > 0
 
     def scroll_to(
-        self, xpath: str, direction: Direction = Direction.FORWARD, max_swipes: int = 10
+            self, xpath: str, direction: Direction = Direction.FORWARD, max_swipes: int = 10
     ) -> Union["XMLElement", None]:
         assert max_swipes > 0
         target = self._parent(xpath)

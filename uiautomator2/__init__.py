@@ -31,16 +31,17 @@ from uiautomator2.utils import list2cmdline
 from uiautomator2.watcher import WatchContext, Watcher
 from uiautomator2.abstract import AbstractShell, AbstractUiautomatorServer, ShellResponse
 
-
 WAIT_FOR_DEVICE_TIMEOUT = int(os.getenv("WAIT_FOR_DEVICE_TIMEOUT", 20))
 
 logger = logging.getLogger(__name__)
+
 
 def enable_pretty_logging(level=logging.DEBUG):
     if not logger.handlers:
         # Configure handler
         handler = logging.StreamHandler()
-        formatter = logging.Formatter('[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d pid:%(process)d] %(message)s')
+        formatter = logging.Formatter(
+            '[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d pid:%(process)d] %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
@@ -65,7 +66,7 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
             self._dev = self._wait_for_device()
         self._debug = False
         BasicUiautomatorServer.__init__(self, self._dev)
-    
+
     def _wait_for_device(self, timeout=10) -> adbutils.AdbDevice:
         """
         wait for device came online, if device is remote, reconnect every 1s
@@ -103,7 +104,7 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
     @property
     def adb_device(self) -> adbutils.AdbDevice:
         return self._dev
-    
+
     @cached_property
     def settings(self) -> Settings:
         return Settings(self)
@@ -138,7 +139,7 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
     @property
     def info(self) -> Dict[str, Any]:
         return self.jsonrpc.deviceInfo(http_timeout=10)
-    
+
     @property
     def device_info(self) -> Dict[str, Any]:
         serial = self._dev.getprop("ro.serialno")
@@ -194,7 +195,8 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
         # https://developer.android.google.cn/training/monitoring-device-state/doze-standby
         # 让uiautomator进程不进入doze模式
         # help: dumpsys deviceidle help
-        self.shell("dumpsys deviceidle whitelist +com.github.uiautomator; dumpsys deviceidle whitelist +com.github.uiautomator.test")
+        self.shell(
+            "dumpsys deviceidle whitelist +com.github.uiautomator; dumpsys deviceidle whitelist +com.github.uiautomator.test")
         self.stop_uiautomator()
         self.start_uiautomator()
 
@@ -218,8 +220,8 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
         # FIXME: check if windows still need f.close
         # with open(dst, 'wb') as f:
         #     shutil.copyfileobj(r.raw, f)
-            # if _mswindows:  # FIXME: check hotfix windows file size zero bug
-            #     f.close()
+        # if _mswindows:  # FIXME: check hotfix windows file size zero bug
+        #     f.close()
 
 
 class _Device(_BaseClient):
@@ -261,7 +263,7 @@ class _Device(_BaseClient):
             return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
         elif format == 'raw':
             return pil_img.tobytes()
-        
+
     def dump_hierarchy(self, compressed=False, pretty=False, max_depth: int = None) -> str:
         """
         Dump window hierarchy
@@ -279,7 +281,7 @@ class _Device(_BaseClient):
         except HierarchyEmptyError:
             logger.warning("dump empty, return empty xml")
             content = '<?xml version=\'1.0\' encoding=\'UTF-8\' standalone=\'yes\' ?>\r\n<hierarchy rotation="0" />'
-        
+
         if pretty:
             root = etree.fromstring(content.encode("utf-8"))
             content = etree.tostring(root, pretty_print=True, encoding=str)
@@ -292,7 +294,7 @@ class _Device(_BaseClient):
         content = self.jsonrpc.dumpWindowHierarchy(compressed, max_depth)
         if content == "":
             raise HierarchyEmptyError("dump hierarchy is empty")
-        
+
         # '<?xml version=\'1.0\' encoding=\'UTF-8\' standalone=\'yes\' ?>\r\n<hierarchy rotation="0" />'
         if '<hierarchy rotation="0" />' in content:
             logger.debug("dump empty, call clear_traversed_text and retry")
@@ -618,7 +620,7 @@ class _Device(_BaseClient):
                 return obj.jsonrpc.makeToast(text, duration * 1000)
 
         return Toast()
-    
+
     def __call__(self, **kwargs):
         return UiObject(self, Selector(**kwargs))
 
@@ -646,7 +648,7 @@ class _AppMixIn(AbstractShell):
         if len(output.strip().splitlines()) <= 1:
             output = self.shell("ps").output
         return output.strip().replace("\r\n", "\n")
-        
+
     def _pidof_app(self, package_name) -> Optional[int]:
         """
         Return pid of package name
@@ -703,7 +705,8 @@ class _AppMixIn(AbstractShell):
             time.sleep(.5)
         return False
 
-    def app_start(self, package_name: str, activity: Optional[str] = None, wait: bool = False, stop: bool = False, use_monkey: bool = False):
+    def app_start(self, package_name: str, activity: Optional[str] = None, wait: bool = False, stop: bool = False,
+                  use_monkey: bool = False):
         """ Launch application
         Args:
             package_name (str): package name
@@ -873,6 +876,7 @@ class _AppMixIn(AbstractShell):
             "versionCode": info.version_code,
         }
 
+
 class _DeprecatedMixIn:
     @property
     def wait_timeout(self):  # wait element timeout
@@ -902,9 +906,8 @@ class _DeprecatedMixIn:
 
     def unlock(self):
         """ unlock screen """
-        if not self.info['screenOn']:
-            self.press("power")
-            self.swipe(0.1, 0.9, 0.9, 0.1)
+        self.press("wakeup")
+        self.swipe(0.1, 0.9, 0.9, 0.1)
 
 
 class _InputMethodMixIn(AbstractShell):
@@ -1050,6 +1053,7 @@ class _PluginMixIn:
     def swipe_ext(self) -> SwipeExt:
         return SwipeExt(self)
 
+
 class Device(_Device, _AppMixIn, _PluginMixIn, _InputMethodMixIn, _DeprecatedMixIn):
     """ Device object """
 
@@ -1077,32 +1081,34 @@ class Device(_Device, _AppMixIn, _PluginMixIn, _InputMethodMixIn, _DeprecatedMix
                 pass
         return _info
 
+
 class Session(Device):
     """Session keeps watch the app status
     each jsonrpc call will check if the package is still running
     """
+
     def __init__(self, dev: adbutils.AdbDevice, package_name: str):
         super().__init__(dev)
         self._package_name = package_name
         self._pid = self.app_wait(self._package_name)
-    
+
     def running(self) -> bool:
         return self._pid == self._pidof_app(self._package_name)
 
     @property
     def pid(self) -> int:
         return self._pid
-        
+
     def jsonrpc_call(self, method: str, params: Any = None, timeout: float = 10) -> Any:
         if not self.running():
             raise SessionBrokenError(f"app:{self._package_name} pid:{self._pid} is quit")
         return super().jsonrpc_call(method, params, timeout)
-    
+
     def restart(self):
         """ restart app """
         self.app_start(self._package_name, wait=True, stop=True)
         self._pid = self._pidof_app(self._package_name)
-    
+
     def close(self):
         """ close app """
         self.app_stop(self._package_name)

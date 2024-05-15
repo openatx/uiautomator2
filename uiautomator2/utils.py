@@ -77,6 +77,7 @@ def intersect(rect1, rect2):
 
 class Exists(object):
     """Exists object with magic methods."""
+
     def __init__(self, uiobject):
         self.uiobject = uiobject
 
@@ -167,6 +168,7 @@ def swipe_in_bounds(d: "uiautomator2.Device",
     Raises:
         AssertionError, ValueError
     """
+
     def _swipe(_from, _to):
         print("SWIPE", _from, _to)
         d.swipe(_from[0], _from[1], _to[0], _to[1])
@@ -205,7 +207,7 @@ def thread_safe_wrapper(fn: typing.Callable):
 
         with self._lock:
             return fn(self, *args, **kwargs)
-    
+
     return inner
 
 

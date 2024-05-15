@@ -123,11 +123,11 @@ class UiObject(object):
         return Exists(self)
 
     @property
-    @retry(UiObjectNotFoundError, delay=.5, tries=3, jitter=0.1, logger=logging) # yapf: disable
+    @retry(UiObjectNotFoundError, delay=.5, tries=3, jitter=0.1, logger=logging)  # yapf: disable
     def info(self):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
-    
+
     def screenshot(self) -> Image.Image:
         im = self.session.screenshot()
         return im.crop(self.bounds())
@@ -163,7 +163,7 @@ class UiObject(object):
         """
         info = self.info
         bounds = info.get('visibleBounds') or info.get("bounds")
-        lx, ly, rx, ry = bounds['left'], bounds['top'], bounds['right'], bounds['bottom'] # yapf: disable
+        lx, ly, rx, ry = bounds['left'], bounds['top'], bounds['right'], bounds['bottom']  # yapf: disable
         return (lx, ly, rx, ry)
 
     def center(self, offset=(0.5, 0.5)):
@@ -230,7 +230,6 @@ class UiObject(object):
 
         steps = int(duration * 200)
         if len(args) >= 2 or "x" in kwargs or "y" in kwargs:
-
             def drag2xy(x, y):
                 x, y = self.session.pos_rel2abs(x,
                                                 y)  # convert percent position
@@ -257,7 +256,7 @@ class UiObject(object):
         self.must_wait()
         info = self.info
         bounds = info.get('visibleBounds') or info.get("bounds")
-        lx, ly, rx, ry = bounds['left'], bounds['top'], bounds['right'], bounds['bottom'] # yapf: disable
+        lx, ly, rx, ry = bounds['left'], bounds['top'], bounds['right'], bounds['bottom']  # yapf: disable
         cx, cy = (lx + rx) // 2, (ly + ry) // 2
         if direction == 'up':
             self.session.swipe(cx, cy, cx, ly, steps=steps)
@@ -512,7 +511,7 @@ class UiObject(object):
                     self.vertical = True
                     return self
                 if key in [
-                        "forward", "backward", "toBeginning", "toEnd", "to"
+                    "forward", "backward", "toBeginning", "toEnd", "to"
                 ]:
                     self.action = key
                     return self
@@ -555,7 +554,7 @@ class UiObject(object):
                     self.vertical = True
                     return self
                 if key in [
-                        "forward", "backward", "toBeginning", "toEnd", "to"
+                    "forward", "backward", "toBeginning", "toEnd", "to"
                 ]:
                     self.action = key
                     return self

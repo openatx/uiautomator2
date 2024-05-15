@@ -13,6 +13,7 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+
 class WebviewDriver():
     def __init__(self, url):
         self._url = url
@@ -34,7 +35,7 @@ class WebviewDriver():
             else:
                 tab.stop()
         return tabs
-    
+
     def get_activate_tab(self):
         pass
 
@@ -56,7 +57,7 @@ class BrowserTab():
 
     def close(self):
         self._tab.stop()
-    
+
     def _evaluate(self, expression, **kwargs):
         if kwargs:
             d = {}
@@ -99,11 +100,10 @@ class BrowserTab():
             return JSON.stringify([x, y])
         })(${xpath})''', xpath=xpath)
         return json.loads(coord)
-    
-    def click(self, x, y, duration=0.2, tap_count=1):
-        mills = int(1000*duration) # convert to ms
-        self._call("Input.synthesizeTapGesture", x=x, y=y, duration=mills, tapCount=tap_count)
 
+    def click(self, x, y, duration=0.2, tap_count=1):
+        mills = int(1000 * duration)  # convert to ms
+        self._call("Input.synthesizeTapGesture", x=x, y=y, duration=mills, tapCount=tap_count)
 
     def click_by_xpath(self, xpath):
         x, y = self.coord_by_xpath(xpath)
@@ -153,6 +153,7 @@ def driver(package_name):
     finally:
         dr.quit()
 
+
 def chromedriver():
     package_name = "io.appium.android.apis"
     package_name = "com.xueqiu.android"
@@ -162,7 +163,7 @@ def chromedriver():
         elem = dr.find_element_by_xpath('//*[@id="phone-number"]')
         elem.click()
         elem.send_keys("123456")
-        #dr.save_screenshot("s.png"
+        # dr.save_screenshot("s.png"
 
 
 def test_self_driver():
@@ -173,7 +174,7 @@ def test_self_driver():
     ret = requests.get(f"http://localhost:7912/proc/{package_name}/webview").json()
     for data in ret:
         pprint(data)
-        lport = d.forward_port("localabstract:"+data["socketPath"])
+        lport = d.forward_port("localabstract:" + data["socketPath"])
         wd = WebviewDriver(f"http://localhost:{lport}")
         tabs = wd.get_active_tab_list()
         pprint(tabs)
@@ -208,11 +209,11 @@ def main():
     d = u2.connect_usb()
     assert d.adb_device, "must connect with usb"
     for socket_path in d.request_agent("/webviews").json():
-        port = d.adb_device.forward_port("localabstract:"+socket_path)
+        port = d.adb_device.forward_port("localabstract:" + socket_path)
         data = requests.get(f"http://localhost:{port}/json/version").json()
         import pprint
         pprint.pprint(data)
-    
+
 
 if __name__ == "__main__":
     main()

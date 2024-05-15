@@ -39,7 +39,7 @@ __version__ = "0.0.0"
 # __jar_version__ = 'v0.1.6'  # no useless for now.
 # v0.1.6 first release version
 
-__atx_agent_version__ = '0.10.1' # sync.sh verison should also be updated
+__atx_agent_version__ = '0.10.1'  # sync.sh verison should also be updated
 # 0.10.1 update androidbinary version, https://github.com/openatx/atx-agent/issues/115
 # 0.10.0 remove tunnel code, use androidx.test.runner
 # 0.9.6 fix security reason for remote control device

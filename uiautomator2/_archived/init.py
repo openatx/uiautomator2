@@ -21,9 +21,9 @@ appdir = os.path.join(os.path.expanduser("~"), '.uiautomator2')
 
 GITHUB_BASEURL = "https://github.com/openatx"
 
-
 logger = logging.getLogger(__name__)
 assets_dir = Path(__file__).absolute().parent.joinpath("assets")
+
 
 class DownloadBar(progress.bar.PixelBar):
     message = "Downloading"
@@ -46,6 +46,7 @@ def gen_cachepath(url: str) -> str:
         filename.replace(" ", "_") + "-" +
         hashlib.sha224(url.encode()).hexdigest()[:10], filename)
     return storepath
+
 
 def cache_download(url, filename=None, timeout=None, storepath=None, logger=logger):
     """ return downloaded filepath """
@@ -70,7 +71,7 @@ def cache_download(url, filename=None, timeout=None, storepath=None, logger=logg
         'Connection': 'keep-alive',
         'Origin': 'https://github.com',
         'User-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'
-    } # yapf: disable
+    }  # yapf: disable
     r = requests.get(url, stream=True, headers=headers, timeout=None)
     r.raise_for_status()
 
@@ -90,6 +91,7 @@ def cache_download(url, filename=None, timeout=None, storepath=None, logger=logg
                                         ".part")  # may raise FileNotFoundError
     shutil.move(storepath + '.part', storepath)
     return storepath
+
 
 def mirror_download(url: str, filename=None):
     """
@@ -141,6 +143,7 @@ def parse_apk(path: str):
         "main_activity": main_activity,
     }
 
+
 class Initer():
     def __init__(self, device: adbutils.AdbDevice, loglevel=logging.DEBUG):
         d = self._device = device
@@ -151,7 +154,7 @@ class Initer():
         self.arch = d.getprop('ro.arch')
         self.abis = (d.getprop('ro.product.cpu.abilist').strip()
                      or self.abi).split(",")
-        
+
         self.__atx_listen_addr = "127.0.0.1:7912"
         logger.info("uiautomator2 version: %s", __version__)
 
@@ -208,7 +211,7 @@ class Initer():
         only got abi: armeabi-v7a and arm64-v8a
         """
         base_url = GITHUB_BASEURL + \
-            "/stf-binaries/raw/0.3.0/node_modules/@devicefarmer/minicap-prebuilt/prebuilt/"
+                   "/stf-binaries/raw/0.3.0/node_modules/@devicefarmer/minicap-prebuilt/prebuilt/"
         sdk = self.sdk
         yield base_url + self.abi + "/lib/android-" + sdk + "/minicap.so"
         yield base_url + self.abi + "/bin/minicap"
@@ -291,7 +294,7 @@ class Initer():
             return True
 
         logger.debug("Real version: %s, Expect version: %s", real_ver,
-                          want_ver)
+                     want_ver)
 
         if real_ver[:2] != want_ver[:2]:
             return True
@@ -349,7 +352,7 @@ class Initer():
         self.shell(self.atx_agent_path, "server", "--stop")
         if self.is_atx_agent_outdated():
             self._install_atx_agent()
-        
+
         self.shell(self.atx_agent_path, 'server', '--nouia', '-d', "--addr", self.__atx_listen_addr)
         logger.info("Check atx-agent version")
         self.check_atx_agent_version()

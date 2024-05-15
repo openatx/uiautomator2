@@ -34,6 +34,7 @@ def retryskipabort(message, timeout=20):
         def _inner():
             _kvs['result'] = result
             root.destroy()
+
         return _inner
 
     tk.Label(root, text=message).pack(side=tk.TOP, fill=tk.X, pady=10)
@@ -45,7 +46,7 @@ def retryskipabort(message, timeout=20):
     frmbtns.pack(side=tk.BOTTOM)
 
     prompt = tk.StringVar()
-    label1 = tk.Label(root, textvariable=prompt) #, width=len(prompt))
+    label1 = tk.Label(root, textvariable=prompt)  # , width=len(prompt))
     label1.pack()
 
     deadline = time.time() + timeout

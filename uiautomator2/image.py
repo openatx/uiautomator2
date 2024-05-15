@@ -47,7 +47,7 @@ def template_ssim(image_a: ImageType, image_b: ImageType):
         https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_template_matching/py_template_matching.html
     """
     a = color_bgr2gray(image_a)
-    b = color_bgr2gray(image_b) # template (small)
+    b = color_bgr2gray(image_b)  # template (small)
     res = cv2.matchTemplate(a, b, cv2.TM_CCOEFF_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
     return max_val
@@ -58,14 +58,14 @@ def cv2crop(im: np.ndarray, bounds: tuple = None):
         return im
     assert len(bounds) == 4
 
-    lx, ly, rx, ry = bounds 
+    lx, ly, rx, ry = bounds
     crop_img = im[ly:ry, lx:rx]
     return crop_img
 
 
 def compare_ssim(image_a: ImageType, image_b: ImageType, full=False, bounds=None):
     a = color_bgr2gray(image_a)
-    b = color_bgr2gray(image_b) # template (small)
+    b = color_bgr2gray(image_b)  # template (small)
     ca = cv2crop(a, bounds)
     cb = cv2crop(b, bounds)
     return structural_similarity(ca, cb, full=full)
@@ -91,7 +91,7 @@ def compare_ssim_debug(image_a: ImageType, image_b: ImageType, color=(255, 0, 0)
     im = ima.copy()
     for c in cnts:
         x, y, w, h = cv2.boundingRect(c)
-        cv2.rectangle(im, (x, y), (x+w, y+h), cv2color, 2)
+        cv2.rectangle(im, (x, y), (x + w, y + h), cv2color, 2)
     # todo: show image
     cv2pil(im).show()
     return im
@@ -229,7 +229,7 @@ class ImageX(object):
 
     def send_click(self, x, y):
         return self._d.click(x, y)
-    
+
     def getpixel(self, x, y):
         """
         Returns:
@@ -251,18 +251,18 @@ class ImageX(object):
                            engine_template_scale=(0.9, 1.1, 3),
                            pro_mode=True)
         fi.load_template("template", pic_object=cvimage)
-        th, tw = cvimage.shape[:2] # template width, height
+        th, tw = cvimage.shape[:2]  # template width, height
 
         target = self._d.screenshot(format='opencv')
         assert isinstance(target, np.ndarray), "screenshot is not opencv format"
         raw_result = fi.find("target", target_pic_object=target)
         # from pprint import pprint
         # pprint(raw_result)
-        
+
         result = raw_result['data']['template']['TemplateEngine']
         # compress_rate = result['conf']['engine_template_compress_rate'] # useless
         target_sim = result['target_sim']  # 相似度  similarity
-        x, y = result['target_point'] # this is middle point
+        x, y = result['target_point']  # this is middle point
         # x, y = lx+tw//2, ly+th//2
         return {"similarity": target_sim, "point": [x, y]}
 
@@ -272,7 +272,7 @@ class ImageX(object):
             m = self.match(imdata)
             sim = m['similarity']
             logger.debug("similarity %.2f [~%.2f], left time: %.1fs", sim,
-                              threshold, deadline - time.time())
+                         threshold, deadline - time.time())
             if sim < threshold:
                 continue
             time.sleep(.1)

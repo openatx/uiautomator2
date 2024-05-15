@@ -126,7 +126,7 @@ class WatchContext:
         interval = 2.0  # 检查周期
         threading.Thread(target=self._run_forever,
                          daemon=True,
-                         args=(interval, )).start()
+                         args=(interval,)).start()
 
     def stop(self):
         self.__stop.set()
@@ -169,7 +169,7 @@ class Watcher():
         self._watching = True
         th = threading.Thread(name="watcher",
                               target=self._watch_forever,
-                              args=(interval, ))
+                              args=(interval,))
         th.daemon = True
         th.start()
         return th
@@ -314,6 +314,7 @@ class XPathWatcher():
             "search", "enter", "delete", "del", "recent", "volume_up",
             "menu", "volume_down", "volume_mute", "camera", "power")
         """
+
         def _inner_press(d: "uiautomator2.Device"):
             d.press(key)
 

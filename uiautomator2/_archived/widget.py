@@ -232,7 +232,7 @@ class Widget(object):
         results = {}
         for node2 in root.xpath("/hierarchy//*"):
             result = self.hybird_compare_node(node, node2, node_wsize, root_wsize)
-            results[node2] = result  #score
+            results[node2] = result  # score
         return results
 
     def etree_fromstring(self, s: str):
@@ -263,18 +263,18 @@ class Widget(object):
 
         # 节点打分
         target_root = self.etree_fromstring(hierarchy)
-        results = self.compare_hierarchy(widget_node, target_root, w['window_size'], window_size) # yapf: disable
+        results = self.compare_hierarchy(widget_node, target_root, w['window_size'], window_size)  # yapf: disable
 
         # score结构调整
         scores = {}
         for node, result in results.items():
-            scores[node] = self._hybird_result_to_score(result) # score eg: [3.2, 2.2, [1.0, 1.2]]
+            scores[node] = self._hybird_result_to_score(result)  # score eg: [3.2, 2.2, [1.0, 1.2]]
 
         # 打分排序
         nodes = list(scores.keys())
         nodes.sort(key=lambda n: scores[n], reverse=True)
         possible_nodes = nodes[:10]
-        
+
         # compare image
         # screenshot = self._d.screenshot()
         # for node in possible_nodes:
@@ -321,7 +321,7 @@ class Widget(object):
             None or Result
         """
         timeout = timeout or self.wait_timeout
-        widget = self._get_widget(id) # 获取节点信息
+        widget = self._get_widget(id)  # 获取节点信息
 
         begin_time = time.time()
         deadline = time.time() + timeout
