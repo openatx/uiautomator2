@@ -7,7 +7,7 @@
 import pytest
 from unittest.mock import Mock
 from PIL import Image
-from uiautomator2.xpath import XMLElement, XPathSelector, XPath, XPathElementNotFoundError, is_xpath_syntax_ok
+from uiautomator2.xpath import XMLElement, XPathSelector, XPath, XPathElementNotFoundError, is_xpath_syntax_ok, safe_xmlstr, str2bytes
 
 
 mock = Mock()
@@ -23,6 +23,20 @@ mock.dump_hierarchy.return_value = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 x = XPath(mock)
+
+
+def test_safe_xmlstr():
+    for input, expect in [
+        ('android.widget.TextView', 'android.widget.TextView'),
+        ('test$123', 'test.123'),
+        ('$@#&123.456$', '123.456'),
+    ]:
+        assert safe_xmlstr(input) == expect
+
+
+def test_str2bytes():
+    assert str2bytes(b'123') == b'123'
+    assert str2bytes('123') == b'123'
 
 
 def test_is_xpath_syntax_ok():

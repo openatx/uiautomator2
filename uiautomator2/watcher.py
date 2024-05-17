@@ -7,10 +7,10 @@ import threading
 import time
 import typing
 from collections import OrderedDict
-from typing import Optional
+from typing import List, Optional
 
 import uiautomator2
-from uiautomator2.xpath import XPath
+from uiautomator2.xpath import PageSource, XPath, XPathSelector
 from uiautomator2.utils import inject_call
 
 logger = logging.getLogger(__name__)
@@ -91,7 +91,7 @@ class WatchContext:
             ok = True
             last_match = None
             for xpath in xpaths:
-                sel = self._d.xpath(xpath, source=source)
+                sel: XPathSelector = self._d.xpath(xpath, source=source)
                 if not sel.exists:
                     ok = False
                     break
@@ -213,7 +213,7 @@ class Watcher():
         finally:
             self._watch_stop_event.set()
 
-    def run(self, source: Optional[str] = None):
+    def run(self, source: Optional[PageSource] = None):
         """ run watchers
         Args:
             source: hierarchy content
@@ -231,7 +231,7 @@ class Watcher():
         Returns:
             bool (watched or not)
         """
-        source = source or self._dump_hierarchy()
+        source = source or self._xpath.get_page_source()
 
         for h in self._watchers:
             last_selector = None
@@ -284,13 +284,13 @@ class XPathWatcher():
     def __init__(self, parent: Watcher, xpath: str, name: str = ''):
         self._name = name
         self._parent = parent
-        self._xpath_list = [xpath] if xpath else []
+        self._xpath_list: List[str] = [xpath] if xpath else []
 
-    def when(self, xpath=None):
+    def when(self, xpath: str = None):
         self._xpath_list.append(xpath)
         return self
 
-    def call(self, func):
+    def call(self, func: callable):
         """
         func accept argument, key(d, el)
         d=self._d, el=element
@@ -302,7 +302,7 @@ class XPathWatcher():
         })
 
     def click(self):
-        def _inner_click(selector):
+        def _inner_click(selector: XPathSelector):
             selector.get_last_match().click()
 
         self.call(_inner_click)
