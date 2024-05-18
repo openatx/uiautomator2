@@ -7,7 +7,7 @@
 import pytest
 from unittest.mock import Mock
 from PIL import Image
-from uiautomator2.xpath import XMLElement, XPathSelector, XPath, XPathElementNotFoundError, is_xpath_syntax_ok, safe_xmlstr, str2bytes
+from uiautomator2.xpath import XMLElement, XPathSelector, XPathEntry, XPathElementNotFoundError, is_xpath_syntax_ok, safe_xmlstr, str2bytes
 
 
 mock = Mock()
@@ -22,7 +22,7 @@ mock.dump_hierarchy.return_value = """<?xml version="1.0" encoding="UTF-8"?>
 </hierarchy>
 """
 
-x = XPath(mock)
+x = XPathEntry(mock)
 
 
 def test_safe_xmlstr():

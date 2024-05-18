@@ -1033,8 +1033,8 @@ class _PluginMixIn:
         return Watcher(self)
 
     @cached_property
-    def xpath(self) -> xpath.XPath:
-        return xpath.XPath(self)
+    def xpath(self) -> xpath.XPathEntry:
+        return xpath.XPathEntry(self)
 
     @cached_property
     def image(self):

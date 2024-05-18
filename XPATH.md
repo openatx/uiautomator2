@@ -72,7 +72,7 @@ sl = d.xpath("@com.example:id/home_searchedit") # sl为XPathSelector对象
 
 # 点击
 sl.click()
-sl.click(timeout=10) # 指定超时时间
+sl.click(timeout=10) # 指定超时时间, 找不到抛出异常 XPathElementNotFoundError
 sl.click_exists() # 存在即点击，返回是否点击成功
 sl.click_exists(timeout=10) # 等待最多10s钟
 
@@ -114,6 +114,20 @@ for el in d.xpath('//android.widget.EditText').all():
 d.xpath('@android:id/list').child('/android.widget.TextView').click()
 等价于 d.xpath('//*[@resource-id="android:id/list"]/android.widget.TextView').all()
 ```
+
+高级查找语法
+
+> Added in version 3.1
+
+```python
+# 查找 text=NFC AND id=android:id/item
+(d.xpath("NFC") & d.xpath("@android:id/item")).get()
+
+# 查找 text=NFC OR id=android:id/item
+(d.xpath("NFC") | d.xpath("App") | d.xpath("Content")).get()
+
+# 复杂一点也支持
+((d.xpath("NFC") | d.xpath("@android:id/item")) & d.xpath("//android.widget.TextView")).get()
 
 ### `XMLElement`的操作
 
@@ -239,6 +253,40 @@ def main():
 
     if el.scroll("forward"):
         print("还可以继续滚动")
+```
+
+### `PageSource`对象
+> Added in version 3.1
+
+这个属于高级用法，但是这个对象也最初级，几乎所有的函数都依赖它。
+
+什么是PageSource？
+
+PageSource是从d.dump_hierarchy()的返回值初始化来的。主要用于通过XPATH完成元素的查找工作。
+
+用法？
+
+```python
+source = d.xpath.get_page_source()
+
+# find_elements 是核心方法
+elements = source.find_elements('//android.widget.TextView') # List[XMLElement]
+for el in elements:
+    print(el.text)
+
+# 获取坐标后点击
+x, y = elements[0].center()
+d.click(x, y)
+
+# 多种条件的查询写法
+es1 = source.find_elements('//android.widget.TextView')
+es2 = source.find_elements(XPath('@android:id/content').joinpath("//*"))
+
+# 寻找是TextView但不属于id=android:id/content下的节点
+els = set(es1) - set(es2)
+
+# 寻找是TextView同事属于id=android:id/content下的节点
+els = set(es1) & set(es2)
 ```
 
 ## XPath规则

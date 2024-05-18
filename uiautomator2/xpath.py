@@ -3,6 +3,9 @@
 
 from __future__ import absolute_import
 
+import abc
+import copy
+import enum
 import functools
 import logging
 import re
@@ -93,6 +96,7 @@ def strict_xpath(xpath: str) -> str:
             string_quote(xpath)
         )
 
+    xpath = xpath.rstrip("/")
     if not is_xpath_syntax_ok(xpath):
         raise XPathError("Invalid xpath", orig_xpath)
     logger.debug("xpath %s -> %s", orig_xpath, xpath)
@@ -106,6 +110,28 @@ class TimeoutException(Exception):
 class XPathError(Exception):
     """basic error for xpath plugin"""
 
+
+class XPath(str):
+    def __new__(cls, value, *args):
+        if isinstance(value, XPath):
+            return value
+        xpath = strict_xpath(value)
+        if args:
+            return functools.reduce(lambda a, b: a.joinpath(b), args, XPath(xpath))
+        else:
+            return super().__new__(cls, xpath)
+    
+    def __repr__(self):
+        return f'XPath({super().__repr__()})'
+
+    def __and__(self, value: 'XPath') -> 'XPathSelector':
+        raise NotImplementedError
+
+    def joinpath(self, subpath: str) -> "XPath":
+        if not subpath.startswith('/'):
+            subpath = '/' + subpath
+        return XPath(self + subpath)
+    
 
 class PageSource:
     def __init__(self, xml_content: str):
@@ -126,12 +152,12 @@ class PageSource:
             node.tag = safe_xmlstr(node.attrib.pop("class", "")) or "node"
         return _root
 
-    def find_elements(self, xpath: str) -> List["XMLElement"]:
+    def find_elements(self, xpath: Union[str, XPath]) -> List["XMLElement"]:
         matches = self.root.xpath(xpath, namespaces={"re": "http://exslt.org/regular-expressions"})
         return [XMLElement(node) for node in matches]
 
 
-class XPath(object):
+class XPathEntry(object):
     def __init__(self, d: AbstractXPathBasedDevice):
         """
         Args:
@@ -141,14 +167,9 @@ class XPath(object):
         assert hasattr(d, "wait_timeout")
         # TODO: remove wait_timeout
 
-
     def global_set(self, key, value):
         valid_keys = {
             "timeout",
-            "alias",
-            "alias_strict",
-            "click_after_delay",
-            "click_before_delay",
         }
         if key not in valid_keys:
             raise ValueError("invalid key", key)
@@ -217,7 +238,7 @@ class XPath(object):
         Raises:
             TimeoutException
         """
-        selector = XPathSelector(self, xpath)
+        selector = XPathSelector(xpath, self)
         selector.click(timeout=timeout)
 
     def scroll_to(
@@ -253,51 +274,84 @@ class XPath(object):
         return False
 
     def __call__(self, xpath: str, source: Union[str, PageSource] = None) -> "XPathSelector":
-        return XPathSelector(self, xpath, PageSource.parse(source))
+        return XPathSelector(xpath, self, PageSource.parse(source))
 
 
-class XPathSelector(object):
-    def __init__(self, parent: XPath, xpath: str = None, source: Optional[PageSource] = None):
+class Operator(str, enum.Enum):
+    AND = 'AND'
+    OR = 'OR'
+
+
+class AbstractSelector(abc.ABC):
+    @abc.abstractmethod
+    def all(self, source: PageSource) -> List['XMLElement']:
+        pass
+    
+
+class XPathSelector(AbstractSelector):
+    def __init__(self, xpath: Union[str, XPath, AbstractSelector], parent: XPathEntry = None, source: Optional[PageSource] = None):
+        self._base_xpath = XPath(xpath) if isinstance(xpath, str) else xpath
+        self._operator: Operator = None
+        self._next_xpath: AbstractSelector = None
+
         self._parent = parent
-        self._d = parent._d
         self._source = source
         self._last_source: Optional[PageSource] = None
-        self._fallback = None
-        self._xpath_list = (strict_xpath(xpath),) if xpath else ()
-
-    def __str__(self):
-        return f"XPathSelector={' & '.join(self._xpath_list)}"
-
+        self._fallback: callable = None
+    
     def copy(self) -> "XPathSelector":
         """copy self"""
-        new = XPathSelector(self._parent)
-        new._source = self._source
-        new._last_source = self._last_source
-        new._fallback = self._fallback
-        new._xpath_list = self._xpath_list
-        return new
+        return copy.copy(self)
+    
+    @classmethod
+    def create(cls, value: Union[str, XPath, 'XPathSelector']) -> 'XPathSelector':
+        if isinstance(value, XPathSelector):
+            return value.copy()
+        elif isinstance(value, (str, XPath)):
+            return XPathSelector(XPath(value))
+        else:
+            raise ValueError('Invalid value', value)
 
-    def xpath(self, _xpath: Union[list, tuple, str]):
+    def __repr__(self):
+        if self._operator:
+            return f'XPathSelector({repr(self._base_xpath)} {self._operator.value} {repr(self._next_xpath)})'
+        else:
+            return f'XPathSelector({repr(self._base_xpath)})'
+    
+    def __and__(self, value) -> 'XPathSelector':
+        s = XPathSelector(self)
+        s._next_xpath = XPathSelector.create(value)
+        s._operator = Operator.AND
+        s._parent = self._parent
+        return s
+
+    def __or__(self, value) -> 'XPathSelector':
+        s = XPathSelector(self)
+        s._next_xpath = XPathSelector.create(value)
+        s._operator = Operator.OR
+        s._parent = self._parent
+        return s
+
+    def xpath(self, _xpath: Union[list, tuple, str]) -> 'XPathSelector':
         """
         add xpath to condition list
         the element should match all conditions
+
+        Deprecated, using a & b instead
         """
-        new = self.copy()
         if isinstance(_xpath, (list, tuple)):
-            for xp in _xpath:
-                new = new.xpath(xp)
+            return functools.reduce(lambda a, b: a & b, _xpath, self)
         else:
-            new._xpath_list = new._xpath_list + (strict_xpath(_xpath),)
-        return new
+            return self & _xpath
 
     def child(self, _xpath: str) -> "XPathSelector":
         """
         add child xpath
         """
-        if not _xpath.startswith("/"):
-            _xpath = "/" + _xpath
+        if self._operator or not isinstance(self._base_xpath, XPath):
+            raise XPathError("can't use child when base is not XPath or operator is set")
         new = self.copy()
-        new._xpath_list = new._xpath_list[:-1] + (new._xpath_list[-1] + _xpath,)
+        new._base_xpath = self._base_xpath.joinpath(_xpath)
         return new
 
     def fallback(self, func: Optional[Callable[..., bool]] = None, *args, **kwargs):
@@ -329,18 +383,26 @@ class XPathSelector(object):
         """find all matched elements"""
         if not source:
             source = self._get_page_source()
-
-        match_sets: List[XMLElement] = []
-        for xpath in self._xpath_list:
-            matches = source.find_elements(xpath)
-            match_sets.append(matches)
-        # find out nodes which match all xpaths
-        els: List[XMLElement] = functools.reduce(lambda x, y: set(x).intersection(y), match_sets)
-        for el in els:
-            el._parent = self._parent
-        
         self._last_source = source
-        return els
+
+        elements = []
+        if isinstance(self._base_xpath, XPath):
+            elements = source.find_elements(self._base_xpath)
+        else:
+            elements = self._base_xpath.all(source)
+
+        # AND OR
+        if self._next_xpath and self._operator:
+            next_els = self._next_xpath.all(source)
+            if self._operator == Operator.AND:
+                elements = list(set(elements) & set(next_els))
+            elif self._operator == Operator.OR:
+                elements = list(set(elements) | set(next_els))
+            else:
+                raise ValueError("Invalid operator", self._operator)
+        for el in elements:
+            el._parent = self._parent
+        return elements
 
     @property
     def exists(self) -> bool:
@@ -360,7 +422,7 @@ class XPathSelector(object):
             XPathElementNotFoundError
         """
         if not self.wait(timeout or self._global_timeout):
-            raise XPathElementNotFoundError(self._xpath_list)
+            raise XPathElementNotFoundError(self)
         return self.get_last_match()
 
     def get_last_match(self) -> "XMLElement":
@@ -464,7 +526,7 @@ class XPathSelector(object):
 
 
 class XMLElement(object):
-    def __init__(self, elem: etree._Element, parent: XPath = None):
+    def __init__(self, elem: etree._Element, parent: XPathEntry = None):
         """
         Args:
             elem: lxml node
@@ -481,7 +543,7 @@ class XMLElement(object):
 
     def __repr__(self):
         x, y = self.center()
-        return "<xpath.XMLElement [{tag!r} center:({x}, {y})]>".format(
+        return "<XMLElement [{tag!r} center:({x}, {y})]>".format(
             tag=self.elem.tag, x=x, y=y
         )
 
@@ -613,7 +675,7 @@ class XMLElement(object):
         _, _, w, h = self.rect
         return (w / ww, h / wh)
 
-    @property
+    @functools.cached_property
     def bounds(self) -> Tuple[int, int, int, int]:
         """
         Returns:
@@ -638,7 +700,7 @@ class XMLElement(object):
         return (lx / ww, ly / wh, rx / ww, ry / wh)
 
     @property
-    def rect(self):
+    def rect(self) -> Tuple[int, int, int, int]:
         """
         Returns:
             (left_top_x, left_top_y, width, height)
