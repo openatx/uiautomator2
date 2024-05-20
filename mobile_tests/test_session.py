@@ -54,3 +54,7 @@ def test_session_app(dev: u2.Device, package_name):
 def test_session_window_size(dev: u2.Device):
     assert isinstance(dev.window_size(), tuple)
 
+
+def test_auto_grant_permissions(dev: u2.Device):
+    dev.app_auto_grant_permissions('com.tencent.mm')
+

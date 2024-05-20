@@ -873,6 +873,42 @@ class _AppMixIn(AbstractShell):
             "versionCode": info.version_code,
         }
 
+    def app_auto_grant_permissions(self, package_name: str) -> bool:
+        """ auto grant runtime permissions to target app，prevent dynamic permission pop-up window to pop up
+        Args:
+            package_name (str): package name
+
+        Returns:
+            bool of operate
+        """
+        output, _ = self.shell(['dumpsys', 'package',  f'{package_name}'])
+        groupPattern = re.compile(r'^(\s*' + 'runtime' + r' permissions:[\s\S]+)', re.MULTILINE)
+        groupMatcher = groupPattern.search(output)
+        if not groupPattern:
+            return False
+        groupMatch = groupMatcher.group(1)
+        lines = groupMatch.split("\n")
+        if len(lines) < 2:
+            return False
+        titleIndent = len(lines[0]) - len(lines[0].lstrip())
+        for i in range(1, len(lines)):
+            line = lines[i]
+            currentIndent = len(line) - len(line.lstrip())
+
+            if currentIndent <= titleIndent:
+                break
+
+            permissionNamePattern = re.compile(r'android\.\w*\.?permission\.\w+')
+            permissionNameMatcher = permissionNamePattern.search(line)
+
+            if not permissionNameMatcher:
+                continue
+            else:
+                permissionName = permissionNameMatcher.group()
+                print(permissionName)
+                self.shell(['pm', 'grant', f'{package_name}', permissionName])
+        return True
+
 class _DeprecatedMixIn:
     @property
     def wait_timeout(self):  # wait element timeout
