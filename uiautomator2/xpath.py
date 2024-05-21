@@ -24,6 +24,16 @@ from uiautomator2.utils import inject_call, swipe_in_bounds
 
 logger = logging.getLogger(__name__)
 
+
+class TimeoutException(Exception):
+    pass
+
+
+class XPathError(Exception):
+    """basic error for xpath plugin"""
+
+
+
 def safe_xmlstr(s: str) -> str:
     s = re.sub('[$@#&]', '.', s)
     s = re.sub('\\.+', '.', s)
@@ -101,14 +111,6 @@ def strict_xpath(xpath: str) -> str:
         raise XPathError("Invalid xpath", orig_xpath)
     logger.debug("xpath %s -> %s", orig_xpath, xpath)
     return xpath
-
-
-class TimeoutException(Exception):
-    pass
-
-
-class XPathError(Exception):
-    """basic error for xpath plugin"""
 
 
 class XPath(str):

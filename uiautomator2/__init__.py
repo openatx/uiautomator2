@@ -24,7 +24,7 @@ from uiautomator2.core import BasicUiautomatorServer
 from uiautomator2 import xpath
 from uiautomator2._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
 from uiautomator2._selector import Selector, UiObject
-from uiautomator2.exceptions import AdbShellError, BaseException, DeviceError, HierarchyEmptyError, SessionBrokenError
+from uiautomator2.exceptions import AdbShellError, BaseException, ConnectError, DeviceError, HierarchyEmptyError, SessionBrokenError
 from uiautomator2.settings import Settings
 from uiautomator2.swipe import SwipeExt
 from uiautomator2.utils import list2cmdline
@@ -71,7 +71,10 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
         wait for device came online, if device is remote, reconnect every 1s
 
         Returns:
-            adbutils.AdbDevice or None
+            adbutils.AdbDevice
+        
+        Raises:
+            ConnectError
         """
         for d in adbutils.adb.device_list():
             if d.serial == self._serial:
@@ -98,7 +101,7 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
             except (adbutils.AdbError, adbutils.AdbTimeout):
                 continue
             return adb.device(self._serial)
-        return None
+        raise ConnectError(f"device {self._serial} not online")
 
     @property
     def adb_device(self) -> adbutils.AdbDevice:

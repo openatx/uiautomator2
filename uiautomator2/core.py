@@ -294,6 +294,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
             return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
         except (HTTPError, UiAutomationNotConnectedError) as e:
             logger.debug("uiautomator2 is not ok, error: %s", e)
+            self.stop_uiautomator()
             self.start_uiautomator()
             return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
 
