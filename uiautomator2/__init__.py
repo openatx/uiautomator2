@@ -882,6 +882,16 @@ class _AppMixIn(AbstractShell):
             bool of operate
         """
         output, _ = self.shell(['dumpsys', 'package',  f'{package_name}'])
+
+        app_target_api = None
+        target_api_pattern = re.compile(r"targetSdk=(?P<version>[^\s]+)")
+        target_api_matcher = target_api_pattern.search(output)
+        if target_api_matcher:
+            app_target_api = target_api_matcher.group("version")
+            print(f'find target api = {app_target_api}')
+        else:
+            print('find null target api version')
+
         group_pattern = re.compile(r'^(\s*' + 'runtime' + r' permissions:[\s\S]+)', re.MULTILINE)
         group_matcher = group_pattern.search(output)
         if not group_pattern:
@@ -891,6 +901,9 @@ class _AppMixIn(AbstractShell):
         if len(lines) < 2:
             return False
         title_indent = len(lines[0]) - len(lines[0].lstrip())
+        if app_target_api is None or int(app_target_api) < 23:
+            print('Skipping permissions grant option,only target api greater or equal to 23 support')
+            return True
         for i in range(1, len(lines)):
             line = lines[i]
             current_indent = len(line) - len(line.lstrip())
@@ -905,7 +918,7 @@ class _AppMixIn(AbstractShell):
                 continue
             else:
                 permission_name = permission_name_matcher.group()
-                print(permission_name)
+                print(f'auto grant permission {permission_name}')
                 self.shell(['pm', 'grant', package_name, permission_name])
         return True
 
