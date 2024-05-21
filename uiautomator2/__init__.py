@@ -882,32 +882,33 @@ class _AppMixIn(AbstractShell):
             bool of operate
         """
         output, _ = self.shell(['dumpsys', 'package',  f'{package_name}'])
-        groupPattern = re.compile(r'^(\s*' + 'runtime' + r' permissions:[\s\S]+)', re.MULTILINE)
-        groupMatcher = groupPattern.search(output)
-        if not groupPattern:
+        group_pattern = re.compile(r'^(\s*' + 'runtime' + r' permissions:[\s\S]+)', re.MULTILINE)
+        group_matcher = group_pattern.search(output)
+        if not group_pattern:
             return False
-        groupMatch = groupMatcher.group(1)
-        lines = groupMatch.split("\n")
+        group_match = group_matcher.group(1)
+        lines = group_match.split("\n")
         if len(lines) < 2:
             return False
-        titleIndent = len(lines[0]) - len(lines[0].lstrip())
+        title_indent = len(lines[0]) - len(lines[0].lstrip())
         for i in range(1, len(lines)):
             line = lines[i]
-            currentIndent = len(line) - len(line.lstrip())
+            current_indent = len(line) - len(line.lstrip())
 
-            if currentIndent <= titleIndent:
+            if current_indent <= title_indent:
                 break
 
-            permissionNamePattern = re.compile(r'android\.\w*\.?permission\.\w+')
-            permissionNameMatcher = permissionNamePattern.search(line)
+            permission_name_pattern = re.compile(r'android\.\w*\.?permission\.\w+')
+            permission_name_matcher = permission_name_pattern.search(line)
 
-            if not permissionNameMatcher:
+            if not permission_name_matcher:
                 continue
             else:
-                permissionName = permissionNameMatcher.group()
-                print(permissionName)
-                self.shell(['pm', 'grant', f'{package_name}', permissionName])
+                permission_name = permission_name_matcher.group()
+                print(permission_name)
+                self.shell(['pm', 'grant', package_name, permission_name])
         return True
+
 
 class _DeprecatedMixIn:
     @property
