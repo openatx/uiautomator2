@@ -5,9 +5,10 @@
 """
 
 import abc
-from typing import Any, List, NamedTuple, Union
+from typing import Any, List, NamedTuple, Tuple, Union
 import adbutils
-
+from PIL import Image
+from uiautomator2._proto import Direction
 
 
 class ShellResponse(NamedTuple):
@@ -47,11 +48,23 @@ class AbstractXPathBasedDevice(metaclass=abc.ABCMeta):
         pass
     
     @abc.abstractmethod
+    def long_click(self, x: int, y: int):
+        pass
+
+    @abc.abstractmethod
+    def send_keys(self, text: str):
+        pass
+
+    @abc.abstractmethod
     def swipe(self, fx: int, fy: int, tx: int, ty: int, duration: float):
         """ duration is float type, indicate seconds """
     
     @abc.abstractmethod
-    def window_size(self) -> tuple:
+    def swipe_ext(self, direction: Direction, scale: float):
+        pass
+    
+    @abc.abstractmethod
+    def window_size(self) -> Tuple[int, int]:
         """ return (width, height) """
     
     @abc.abstractmethod
@@ -59,5 +72,5 @@ class AbstractXPathBasedDevice(metaclass=abc.ABCMeta):
         """ return xml content """
     
     @abc.abstractmethod
-    def screenshot(self):
+    def screenshot(self) -> Image.Image:
         """ return PIL.Image.Image """

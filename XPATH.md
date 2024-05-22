@@ -31,7 +31,6 @@ pip3 install -U uiautomator2
 ```
 
 ## 使用方法
-目前该插件已经内置到uiautomator2中了，所以不需要plugin注册了。
 
 ### 简单用法
 
@@ -73,7 +72,7 @@ sl = d.xpath("@com.example:id/home_searchedit") # sl为XPathSelector对象
 
 # 点击
 sl.click()
-sl.click(timeout=10) # 指定超时时间
+sl.click(timeout=10) # 指定超时时间, 找不到抛出异常 XPathElementNotFoundError
 sl.click_exists() # 存在即点击，返回是否点击成功
 sl.click_exists(timeout=10) # 等待最多10s钟
 
@@ -94,7 +93,7 @@ el = sl.get(timeout=15)
 
 # 修改默认的等待时间为15s
 d.xpath.global_set("timeout", 15)
-d.xpath.implicitly_wait(15) # 与上一行代码等价
+d.xpath.implicitly_wait(15) # 与上一行代码等价 (TODO: Removed)
 
 print(sl.exists) # 返回是否存在 (bool)
 sl.get_last_match() # 获取上次匹配的XMLElement
@@ -111,14 +110,24 @@ for el in d.xpath('//android.widget.EditText').all():
     print(el.elem) # 输出lxml解析出来的Node
     print(el.text)
 
-# 尚未测试的方法
-# 点击位于控件包含坐标(50%, 50%)的方法
-d.xpath("//*").position(0.5, 0.5).click() 
-
 # child操作
 d.xpath('@android:id/list').child('/android.widget.TextView').click()
 等价于 d.xpath('//*[@resource-id="android:id/list"]/android.widget.TextView').all()
 ```
+
+高级查找语法
+
+> Added in version 3.1
+
+```python
+# 查找 text=NFC AND id=android:id/item
+(d.xpath("NFC") & d.xpath("@android:id/item")).get()
+
+# 查找 text=NFC OR id=android:id/item
+(d.xpath("NFC") | d.xpath("App") | d.xpath("Content")).get()
+
+# 复杂一点也支持
+((d.xpath("NFC") | d.xpath("@android:id/item")) & d.xpath("//android.widget.TextView")).get()
 
 ### `XMLElement`的操作
 
@@ -246,6 +255,40 @@ def main():
         print("还可以继续滚动")
 ```
 
+### `PageSource`对象
+> Added in version 3.1
+
+这个属于高级用法，但是这个对象也最初级，几乎所有的函数都依赖它。
+
+什么是PageSource？
+
+PageSource是从d.dump_hierarchy()的返回值初始化来的。主要用于通过XPATH完成元素的查找工作。
+
+用法？
+
+```python
+source = d.xpath.get_page_source()
+
+# find_elements 是核心方法
+elements = source.find_elements('//android.widget.TextView') # List[XMLElement]
+for el in elements:
+    print(el.text)
+
+# 获取坐标后点击
+x, y = elements[0].center()
+d.click(x, y)
+
+# 多种条件的查询写法
+es1 = source.find_elements('//android.widget.TextView')
+es2 = source.find_elements(XPath('@android:id/content').joinpath("//*"))
+
+# 寻找是TextView但不属于id=android:id/content下的节点
+els = set(es1) - set(es2)
+
+# 寻找是TextView同事属于id=android:id/content下的节点
+els = set(es1) & set(es2)
+```
+
 ## XPath规则
 为了写起脚本来更快，我们自定义了一些简化的xpath规则
 
@@ -276,12 +319,6 @@ def main():
 
 `%知道%` 匹配包含`知道`的文本，相当于 `//*[contains(text(), '知道')]`
 
-**~~规则5~~(目前该功能已移除）**
-
-> 另外来自Selenium PageObjects
-
-`$知道` 匹配 通过`d.xpath.global_set("alias", dict)` dict字典中的内容， 如果不存在将使用`知道`来匹配
-
 **规则 Last**
 
 会匹配text 和 description字段
@@ -289,7 +326,7 @@ def main():
 如 `搜索` 相当于 XPath `//*[@text="搜索" or @content-desc="搜索" or @resource-id="搜索"]`
 
 ## 特殊说明
-- 有时className中包含有`$`字符，这个字符在XML中是不合法的，所以全部替换成了`-`
+- 有时className中包含有`$@#&`字符，这个字符在XML中是不合法的，所以全部替换成了`.`
 
 ## XPath的一些高级用法
 ```
@@ -318,43 +355,3 @@ def main():
 - [XPath Quicksheet](https://devhints.io/xpath)
 
 如有其他资料，欢迎提[Issues](https://github.com/openatx/uiautomator2/issues/new)补充
-
-## 废弃功能
-**别名定义** 从`1.3.4`版本不再支持别名
-
-这种写法有点类似selenium中的[PageObjects](https://selenium-python.readthedocs.io/page-objects.html)
-
-```python
-# 这里是Python3的写法，python2的string定义需要改成 u"菜单" 注意前的这个u
-d.xpath.global_set("alias", {
-    "菜单": "@com.netease.cloudmusic:id/qh", # TODO(ssx): maybe we can support P("@com.netease.cloudmusic:id/qh", wait_timeout=2) someday
-    "设置": "//android.widget.TextView[@text='设置']",
-})
-
-# 这里需要 $ 开头
-d.xpath("$菜单").click() # 等价于 d.xpath()
-d.xpath("$设置").click()
-
-
-d.xpath("$菜单").click()
-# 等价于 d.xpath("@com.netease.cloudmusic:id/qh").click()
-
-d.xpath("$小吃").click() # 在这里会直接跑出XPathError异常，因为并不存在 小吃 这个alias
-
-# alias_strict 设置项
-d.xpath.global_set("alias_strict", False) # 默认 True
-d.xpath("$小吃").click() # 这里就会正常运行
-# 等价于
-d.xpath('//*[@text="小吃" or @content-desc="小吃"]').click()
-```
-
-# 调整xpath的日志级别
-目前默认logging.INFO
-
-调整方法 
-
-```python
-import logging
-
-d.xpath.logger.setLevel(logging.DEBUG)
-```

@@ -24,7 +24,7 @@ from uiautomator2.core import BasicUiautomatorServer
 from uiautomator2 import xpath
 from uiautomator2._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
 from uiautomator2._selector import Selector, UiObject
-from uiautomator2.exceptions import AdbShellError, BaseException, DeviceError, HierarchyEmptyError, SessionBrokenError
+from uiautomator2.exceptions import AdbShellError, BaseException, ConnectError, DeviceError, HierarchyEmptyError, SessionBrokenError
 from uiautomator2.settings import Settings
 from uiautomator2.swipe import SwipeExt
 from uiautomator2.utils import list2cmdline
@@ -71,7 +71,10 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
         wait for device came online, if device is remote, reconnect every 1s
 
         Returns:
-            adbutils.AdbDevice or None
+            adbutils.AdbDevice
+        
+        Raises:
+            ConnectError
         """
         for d in adbutils.adb.device_list():
             if d.serial == self._serial:
@@ -98,7 +101,7 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
             except (adbutils.AdbError, adbutils.AdbTimeout):
                 continue
             return adb.device(self._serial)
-        return None
+        raise ConnectError(f"device {self._serial} not online")
 
     @property
     def adb_device(self) -> adbutils.AdbDevice:
@@ -406,12 +409,13 @@ class _Device(_BaseClient):
 
     def long_click(self, x, y, duration: float = .5):
         '''long click at arbitrary coordinates.
+        
         Args:
             duration (float): seconds of pressed
         '''
         x, y = self.pos_rel2abs(x, y)
         with self._operation_delay("click"):
-            return self.touch.down(x, y).sleep(duration).up(x, y)
+            self.jsonrpc.click(x, y, int(duration*1000))
 
     def swipe(self, fx, fy, tx, ty, duration: Optional[float] = None, steps: Optional[int] = None):
         """
@@ -901,9 +905,9 @@ class _DeprecatedMixIn:
         return self.jsonrpc.makeToast(text, duration * 1000)
 
     def unlock(self):
-        """ unlock screen """
+        """ unlock screen with swipe from left-bottom to right-top """
         if not self.info['screenOn']:
-            self.press("power")
+            self.shell("input keyevent WAKEUP")
             self.swipe(0.1, 0.9, 0.9, 0.1)
 
 
@@ -1033,8 +1037,8 @@ class _PluginMixIn:
         return Watcher(self)
 
     @cached_property
-    def xpath(self) -> xpath.XPath:
-        return xpath.XPath(self)
+    def xpath(self) -> xpath.XPathEntry:
+        return xpath.XPathEntry(self)
 
     @cached_property
     def image(self):

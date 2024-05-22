@@ -209,6 +209,32 @@ def thread_safe_wrapper(fn: typing.Callable):
     return inner
 
 
+
+def is_version_compatiable(expect_version: str, actual_version: str) -> bool:
+    """
+    Check if the actual version is compatiable with the expect version
+
+    Args:
+        expect_version: expect version, e.g. 1.0.0
+        actual_version: actual version, e.g. 1.0.0
+
+    Returns:
+        bool: True if compatiable, otherwise False
+    """
+    def _parse_version(version: str):
+        return tuple(map(int, version.split(".")))
+
+    evs = _parse_version(expect_version)
+    avs = _parse_version(actual_version)
+    assert len(evs) == len(avs) == 3, "version format error"
+    if evs[0] == avs[0]:
+        if evs[1] < avs[1]:
+            return True
+        if evs[1] == avs[1]:
+            return evs[2] <= avs[2]
+    return False
+    
+    
 if __name__ == "__main__":
     for n in (1, 10000, 10000000, 10000000000):
         print(n, natualsize(n))

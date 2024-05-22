@@ -7,7 +7,7 @@
 import pytest
 from unittest.mock import Mock
 from PIL import Image
-from uiautomator2.xpath import XMLElement, XPathSelector, XPath, XPathElementNotFoundError, is_xpath_syntax_ok
+from uiautomator2.xpath import XMLElement, XPath, XPathSelector, XPathEntry, XPathElementNotFoundError, convert_to_camel_case, is_xpath_syntax_ok, safe_xmlstr, str2bytes, strict_xpath
 
 
 mock = Mock()
@@ -22,7 +22,21 @@ mock.dump_hierarchy.return_value = """<?xml version="1.0" encoding="UTF-8"?>
 </hierarchy>
 """
 
-x = XPath(mock)
+x = XPathEntry(mock)
+
+
+def test_safe_xmlstr():
+    for input, expect in [
+        ('android.widget.TextView', 'android.widget.TextView'),
+        ('test$123', 'test.123'),
+        ('$@#&123.456$', '123.456'),
+    ]:
+        assert safe_xmlstr(input) == expect
+
+
+def test_str2bytes():
+    assert str2bytes(b'123') == b'123'
+    assert str2bytes('123') == b'123'
 
 
 def test_is_xpath_syntax_ok():
@@ -30,6 +44,28 @@ def test_is_xpath_syntax_ok():
     assert is_xpath_syntax_ok("//a")
     assert is_xpath_syntax_ok("//a[@text='b]") is False
     assert is_xpath_syntax_ok("//a[") is False
+
+
+def test_convert_to_camel_case():
+    assert convert_to_camel_case("hello-world") == "helloWorld"
+
+
+def test_strict_xpath():
+    for (input, expect) in [
+        ("@n1", "//*[@resource-id='n1']"),
+        ("//TextView", "//TextView"),
+        ("//TextView[@text='n1']", "//TextView[@text='n1']"),
+        ("(//TextView)[2]", "(//TextView)[2]"),
+        ("//TextView/", "//TextView"), # test rstrip /
+    ]:
+        assert strict_xpath(input) == expect
+
+
+def test_XPath():
+    xp = XPath("//TextView")
+    assert xp == "//TextView"
+    assert xp.joinpath("/n1") == "//TextView/n1"
+
 
 
 def test_xpath_selector():
