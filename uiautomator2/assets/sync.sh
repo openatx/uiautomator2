@@ -3,8 +3,8 @@
 
 set -e
 
-APK_VERSION="2.3.11"
-# AGENT_VERSION="0.10.1"
+APK_VERSION=$(cat ../version.py| grep apk_version | awk '{print $NF}')
+APK_VERSION=${APK_VERSION//[\"\']}
 
 cd "$(dirname $0)"
 
@@ -30,7 +30,8 @@ function download_apk(){
 # download_atx_agent "$AGENT_VERSION"
 # echo "atx_agent_version: $AGENT_VERSION" >> version.txt
 
+echo "APK_VERSION: $APK_VERSION"
+
 download_apk "$APK_VERSION" "app-uiautomator.apk"
 download_apk "$APK_VERSION" "app-uiautomator-test.apk"
-
 echo "apk_version: $APK_VERSION" > version.txt

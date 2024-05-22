@@ -409,12 +409,13 @@ class _Device(_BaseClient):
 
     def long_click(self, x, y, duration: float = .5):
         '''long click at arbitrary coordinates.
+        
         Args:
             duration (float): seconds of pressed
         '''
         x, y = self.pos_rel2abs(x, y)
         with self._operation_delay("click"):
-            return self.touch.down(x, y).sleep(duration).up(x, y)
+            self.jsonrpc.click(x, y, int(duration*1000))
 
     def swipe(self, fx, fy, tx, ty, duration: Optional[float] = None, steps: Optional[int] = None):
         """

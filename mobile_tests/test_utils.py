@@ -52,4 +52,13 @@ def test_threadsafe_wrapper():
     assert 2 == a.n
 
 
-        
+def test_is_version_compatiable():
+    assert utils.is_version_compatiable("1.0.0", "1.0.0")
+    assert utils.is_version_compatiable("1.0.0", "1.0.1")
+    assert utils.is_version_compatiable("1.0.0", "1.2.0")
+    assert utils.is_version_compatiable("1.0.1", "1.1.0")
+
+    assert not utils.is_version_compatiable("1.0.1", "2.1.0")
+    assert not utils.is_version_compatiable("1.3.1", "1.3.0")
+    assert not utils.is_version_compatiable("1.3.1", "1.2.0")
+    assert not utils.is_version_compatiable("1.3.1", "1.2.2")

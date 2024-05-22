@@ -18,6 +18,8 @@ import requests
 
 from uiautomator2.exceptions import RPCInvalidError, RPCStackOverflowError, UiAutomationNotConnectedError, HTTPError, LaunchUiAutomationError, UiObjectNotFoundError, RPCUnknownError, APKSignatureError, AccessibilityServiceAlreadyRegisteredError
 from uiautomator2.abstract import AbstractUiautomatorServer
+from uiautomator2.utils import is_version_compatiable
+from uiautomator2.version import __apk_version__
 
 
 logger = logging.getLogger(__name__)
@@ -157,7 +159,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         self._lock = threading.Lock()
         self._debug = False
         self.start_uiautomator()
-        atexit.register(self.stop_uiautomator)
+        atexit.register(self.stop_uiautomator, wait=False)
     
     @property
     def debug(self) -> bool:
@@ -191,30 +193,24 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
             if not self._check_alive():
                 self._process = launch_uiautomator(self._dev)
                 self._wait_ready()
-    
+
     def _setup_apks(self):
         assets_dir = Path(__file__).parent / "assets"
         main_apk = assets_dir / "app-uiautomator.apk"
         test_apk = assets_dir / "app-uiautomator-test.apk"
 
-        # get apk version
-        version_text = assets_dir / "version.txt"
-        apk_version = None
-        for line in version_text.read_text('utf-8').splitlines():
-            k, v = line.split(":")
-            if k == "apk_version":
-                apk_version = v.strip()
-                break
-        logger.debug("use apk_version: %s", apk_version)
+        logger.debug("use apk_version: %s", __apk_version__)
         # install apk when not installed or version not match, dev version always keep
         main_apk_info = self._dev.app_info("com.github.uiautomator")
         if main_apk_info is None:
             self._install_apk(main_apk)
-        elif main_apk_info.version_name != apk_version:
+        elif main_apk_info.version_name != __apk_version__:
             if "dev" in main_apk_info.version_name or "dirty" in main_apk_info.version_name:
                 logger.debug("skip version check for %s", main_apk_info.version_name)
+            elif is_version_compatiable(__apk_version__, main_apk_info.version_name):
+                logger.debug("apk version compatiable, expect %s, actual %s", __apk_version__, main_apk_info.version_name)
             else:
-                logger.debug("apk version not match, reinstall")
+                logger.debug("apk version not ok, expect %s, actual %s", __apk_version__, main_apk_info.version_name)
                 self._dev.uninstall("com.github.uiautomator")
                 self._dev.uninstall("com.github.uiautomator.test")
                 self._install_apk(main_apk)
@@ -281,12 +277,20 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         self._dev.shell("am startservice -a com.github.uiautomator.ACTION_START")
         self._dev.shell("am start -n com.github.uiautomator/.ToastActivity -e showFloatWindow true")
         self._wait_stub_ready(service_timeout)
+        time.sleep(1) # wait ATX goto background
     
-    def stop_uiautomator(self):
+    def stop_uiautomator(self, wait=True):
         with self._lock:
             if self._process:
                 self._process.kill()
                 self._process = None
+        # wait server quit
+        if wait:
+            deadline = time.time() + 10
+            while time.time() < deadline:
+                if not self._check_alive():
+                    return
+                time.sleep(.5)
 
     def jsonrpc_call(self, method: str, params: Any = None, timeout: float = 10) -> Any:
         """Send jsonrpc call to uiautomator2 server"""
