@@ -9,6 +9,7 @@ import dataclasses
 import logging
 import os
 import re
+import string
 import time
 import warnings
 from functools import cached_property
@@ -881,16 +882,9 @@ class _AppMixIn(AbstractShell):
         Returns:
             bool of operate
         """
+        device_api_version = self.shell(['getprop', 'ro.build.version.sdk']).output
+        device_api_version = device_api_version.rstrip("\n")
         output, _ = self.shell(['dumpsys', 'package',  f'{package_name}'])
-
-        app_target_api = None
-        target_api_pattern = re.compile(r"targetSdk=(?P<version>[^\s]+)")
-        target_api_matcher = target_api_pattern.search(output)
-        if target_api_matcher:
-            app_target_api = target_api_matcher.group("version")
-            print(f'find target api = {app_target_api}')
-        else:
-            print('find null target api version')
 
         group_pattern = re.compile(r'^(\s*' + 'runtime' + r' permissions:[\s\S]+)', re.MULTILINE)
         group_matcher = group_pattern.search(output)
@@ -901,7 +895,7 @@ class _AppMixIn(AbstractShell):
         if len(lines) < 2:
             return False
         title_indent = len(lines[0]) - len(lines[0].lstrip())
-        if app_target_api is None or int(app_target_api) < 23:
+        if device_api_version is None or int(device_api_version) < 23:
             print('Skipping permissions grant option,only target api greater or equal to 23 support')
             return True
         for i in range(1, len(lines)):
