@@ -1270,22 +1270,23 @@ Refs: [Google uiautomator Configurator](https://developer.android.com/reference/
 这种方法通常用于不知道控件的情况下的输入。第一步需要切换输入法，然后发送adb广播命令，具体使用方法如下
 
 ```python
-d.set_fastinput_ime(True) # 切换成FastInputIME输入法
 d.send_keys("你好123abcEFG") # adb广播输入
-d.clear_text() # 清除输入框所有内容(Require android-uiautomator.apk version >= 1.0.7)
-d.set_fastinput_ime(False) # 切换成正常的输入法
-d.send_action("search") # 模拟输入法的搜索
+d.send_keys("你好123abcEFG", clear=True) # adb广播输入
+
+d.clear_text() # 清除输入框所有内容
+
+d.send_action() # 根据输入框的需求，自动执行回车、搜索等指令, Added in version 3.1
+# 也可以指定发送的输入法action, eg: d.send_action("search") 支持 go, search, send, next, done, previous
 ```
 
-**send_action** 说明
 
-该函数可以使用的参数有 `go search send next done previous`
 
-_什么时候该使用这个函数呢？_
+```python
+print(d.current_ime()) # 获取当前输入法ID
 
-有些时候在EditText中输入完内容之后，调用`press("search")` or `press("enter")`发现并没有什么反应。
-这个时候就需要`send_action`函数了，这里用到了只有输入法才能用的[IME_ACTION_CODE](https://developer.android.com/reference/android/view/inputmethod/EditorInfo)。
-`send_action`先broadcast命令发送给输入法操作`IME_ACTION_CODE`，由输入法完成后续跟EditText的通信。（原理我不太清楚，有了解的，提issue告诉我)
+```
+
+> 更多参考: [IME_ACTION_CODE](https://developer.android.com/reference/android/view/inputmethod/EditorInfo)
 
 ### Toast (2.2版本之后有添加回来)
 Show Toast (好像有点bug)

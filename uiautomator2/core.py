@@ -205,7 +205,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         if main_apk_info is None:
             self._install_apk(main_apk)
         elif main_apk_info.version_name != __apk_version__:
-            if "dev" in main_apk_info.version_name or "dirty" in main_apk_info.version_name:
+            if re.match(r"([\d.]+)\-(\d+)\-\w+", main_apk_info.version_name) or "dirty" in main_apk_info.version_name:
                 logger.debug("skip version check for %s", main_apk_info.version_name)
             elif is_version_compatiable(__apk_version__, main_apk_info.version_name):
                 logger.debug("apk version compatiable, expect %s, actual %s", __apk_version__, main_apk_info.version_name)
