@@ -486,6 +486,23 @@ class _Device(_BaseClient):
                     key, meta) if meta else self.jsonrpc.pressKeyCode(key)
             else:
                 return self.jsonrpc.pressKey(key)
+    
+    def long_press(self, key: Union[int, str]):
+        """
+        long press key via name or key code
+
+        Args:
+            key: key name or key code
+        
+        Examples:
+            long_press("home") same as "adb shell input keyevent --longpress KEYCODE_HOME"
+        """
+        with self._operation_delay("press"):
+            if isinstance(key, int):
+                self.shell("input keyevent --longpress %d" % key)
+            else:
+                key = key.upper()
+                self.shell(f"input keyevent --longpress {key}")
 
     def screen_on(self):
         self.jsonrpc.wakeUp()
