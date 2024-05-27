@@ -235,7 +235,7 @@ class _Device(_BaseClient):
         w, h = self._dev.window_size()
         return w, h
 
-    def screenshot(self, filename: Optional[str] = None, format="pillow"):
+    def screenshot(self, filename: Optional[str] = None, format="pillow", display_id: Optional[int] = None):
         """
         Take screenshot of device
 
@@ -245,13 +245,14 @@ class _Device(_BaseClient):
         Args:
             filename (str): saved filename, if filename is set then return None
             format (str): used when filename is empty. one of ["pillow", "opencv", "raw"]
+            display_id (int): use specific display if device has multiple screen
 
         Examples:
             screenshot("saved.jpg")
             screenshot().save("saved.png")
             cv2.imwrite('saved.jpg', screenshot(format='opencv'))
         """
-        pil_img = self._dev.screenshot()
+        pil_img = self._dev.screenshot(display_id=display_id)
         if filename:
             pil_img.save(filename)
             return
