@@ -9,6 +9,7 @@ import dataclasses
 import logging
 import os
 import re
+import string
 import time
 import warnings
 from functools import cached_property
@@ -894,6 +895,49 @@ class _AppMixIn(AbstractShell):
             "versionName": info.version_name,
             "versionCode": info.version_code,
         }
+
+    def app_auto_grant_permissions(self, package_name: str) -> bool:
+        """ auto grant runtime permissions to target app，prevent dynamic permission pop-up window to pop up
+        Args:
+            package_name (str): package name
+
+        Returns:
+            bool of operate
+        """
+        device_api_version = self.shell(['getprop', 'ro.build.version.sdk']).output
+        device_api_version = device_api_version.rstrip("\n")
+        output, _ = self.shell(['dumpsys', 'package',  f'{package_name}'])
+
+        group_pattern = re.compile(r'^(\s*' + 'runtime' + r' permissions:[\s\S]+)', re.MULTILINE)
+        group_matcher = group_pattern.search(output)
+        if not group_pattern:
+            return False
+        group_match = group_matcher.group(1)
+        lines = group_match.split("\n")
+        if len(lines) < 2:
+            return False
+        title_indent = len(lines[0]) - len(lines[0].lstrip())
+        if device_api_version is None or int(device_api_version) < 23:
+            print('Skipping permissions grant option,only target api greater or equal to 23 support')
+            return True
+        for i in range(1, len(lines)):
+            line = lines[i]
+            current_indent = len(line) - len(line.lstrip())
+
+            if current_indent <= title_indent:
+                break
+
+            permission_name_pattern = re.compile(r'android\.\w*\.?permission\.\w+')
+            permission_name_matcher = permission_name_pattern.search(line)
+
+            if not permission_name_matcher:
+                continue
+            else:
+                permission_name = permission_name_matcher.group()
+                print(f'auto grant permission {permission_name}')
+                self.shell(['pm', 'grant', package_name, permission_name])
+        return True
+
 
 class _DeprecatedMixIn:
     @property
