@@ -1,6 +1,7 @@
 import logging
 import time
 import warnings
+from typing import Optional
 
 import requests
 from PIL import Image
@@ -128,8 +129,8 @@ class UiObject(object):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
     
-    def screenshot(self) -> Image.Image:
-        im = self.session.screenshot()
+    def screenshot(self, display_id: Optional[int] = None) -> Image.Image:
+        im = self.session.screenshot(display_id=display_id)
         return im.crop(self.bounds())
 
     def click(self, timeout=None, offset=None):
