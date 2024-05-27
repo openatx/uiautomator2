@@ -15,7 +15,6 @@ from functools import cached_property
 from typing import Any, Dict, List, Optional, Union
 
 import adbutils
-from deprecated import deprecated
 from lxml import etree
 from retry import retry
 
@@ -24,10 +23,11 @@ from uiautomator2.core import BasicUiautomatorServer
 from uiautomator2 import xpath
 from uiautomator2._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
 from uiautomator2._selector import Selector, UiObject
+from uiautomator2._input import InputMethodMixIn
 from uiautomator2.exceptions import AdbShellError, BaseException, ConnectError, DeviceError, HierarchyEmptyError, SessionBrokenError
 from uiautomator2.settings import Settings
 from uiautomator2.swipe import SwipeExt
-from uiautomator2.utils import list2cmdline
+from uiautomator2.utils import list2cmdline, deprecated
 from uiautomator2.watcher import WatchContext, Watcher
 from uiautomator2.abstract import AbstractShell, AbstractUiautomatorServer, ShellResponse
 
@@ -557,8 +557,9 @@ class _Device(_BaseClient):
         return self(**kwargs).exists
 
     @property
-    def clipboard(self):
-        return self.jsonrpc.getClipboard()
+    def clipboard(self) -> str:
+        return super().clipboard
+        # return self.jsonrpc.getClipboard() # FIXME(ssx): bug
 
     @clipboard.setter
     def clipboard(self, text: str):
@@ -912,7 +913,7 @@ class _DeprecatedMixIn:
     def click_post_delay(self, v: Union[int, float]):
         self.settings['post_delay'] = v
 
-    @deprecated(version="2.0.0", reason="use d.toast.show(text, duration) instead")
+    @deprecated(reason="use d.toast.show(text, duration) instead")
     def make_toast(self, text, duration=1.0):
         """ Show toast
         Args:
@@ -927,119 +928,6 @@ class _DeprecatedMixIn:
             self.shell("input keyevent WAKEUP")
             self.swipe(0.1, 0.9, 0.9, 0.1)
 
-
-class _InputMethodMixIn(AbstractShell):
-    def set_fastinput_ime(self, enable: bool = True):
-        """ Enable of Disable FastInputIME """
-        fast_ime = 'com.github.uiautomator/.FastInputIME'
-        if enable:
-            self.shell(['ime', 'enable', fast_ime])
-            self.shell(['ime', 'set', fast_ime])
-        else:
-            self.shell(['ime', 'disable', fast_ime])
-
-    def send_keys(self, text: str, clear: bool = False):
-        """
-        Args:
-            text (str): text to set
-            clear (bool): clear before set text
-
-        Raises:
-            EnvironmentError
-        """
-        try:
-            self.wait_fastinput_ime()
-            btext = text.encode('utf-8')
-            base64text = base64.b64encode(btext).decode()
-            cmd = "ADB_SET_TEXT" if clear else "ADB_INPUT_TEXT"
-            self.shell(
-                ['am', 'broadcast', '-a', cmd, '--es', 'text', base64text])
-            return True
-        except EnvironmentError:
-            warnings.warn(
-                "set FastInputIME failed. use \"d(focused=True).set_text instead\"",
-                Warning)
-            return self(focused=True).set_text(text)
-            # warnings.warn("set FastInputIME failed. use \"adb shell input text\" instead", Warning)
-            # self.shell(["input", "text", text.replace(" ", "%s")])
-
-    def send_action(self, code):
-        """
-        Simulate input method edito code
-
-        Args:
-            code (str or int): input method editor code
-
-        Examples:
-            send_action("search"), send_action(3)
-
-        Refs:
-            https://developer.android.com/reference/android/view/inputmethod/EditorInfo
-        """
-        self.wait_fastinput_ime()
-        __alias = {
-            "go": 2,
-            "search": 3,
-            "send": 4,
-            "next": 5,
-            "done": 6,
-            "previous": 7,
-        }
-        if isinstance(code, str):
-            code = __alias.get(code, code)
-        self.shell([
-            'am', 'broadcast', '-a', 'ADB_EDITOR_CODE', '--ei', 'code',
-            str(code)
-        ])
-
-    def clear_text(self):
-        """ clear text
-        Raises:
-            EnvironmentError
-        """
-        try:
-            self.wait_fastinput_ime()
-            self.shell(['am', 'broadcast', '-a', 'ADB_CLEAR_TEXT'])
-        except EnvironmentError:
-            # for Android simulator
-            self(focused=True).clear_text()
-
-    def wait_fastinput_ime(self, timeout=5.0):
-        """ wait FastInputIME is ready
-        Args:
-            timeout(float): maxium wait time
-
-        Raises:
-            EnvironmentError
-        """
-        # TODO: 模拟器待兼容 eg. Genymotion, 海马玩, Mumu
-
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            ime_id, shown = self.current_ime()
-            if ime_id != "com.github.uiautomator/.FastInputIME":
-                self.set_fastinput_ime(True)
-                time.sleep(0.5)
-                continue
-            if shown:
-                return True
-            time.sleep(0.2)
-        raise EnvironmentError("FastInputIME started failed")
-
-    def current_ime(self):
-        """ Current input method
-        Returns:
-            (method_id(str), shown(bool)
-
-        Example output:
-            ("com.github.uiautomator/.FastInputIME", True)
-        """
-        _INPUT_METHOD_RE = re.compile(r'mCurMethodId=([-_./\w]+)')
-        dim, _ = self.shell(['dumpsys', 'input_method'])
-        m = _INPUT_METHOD_RE.search(dim)
-        method_id = None if not m else m.group(1)
-        shown = "mInputShown=true" in dim
-        return (method_id, shown)
 
 
 class _PluginMixIn:
@@ -1071,32 +959,11 @@ class _PluginMixIn:
     def swipe_ext(self) -> SwipeExt:
         return SwipeExt(self)
 
-class Device(_Device, _AppMixIn, _PluginMixIn, _InputMethodMixIn, _DeprecatedMixIn):
-    """ Device object """
 
-    @property
-    def info(self) -> Dict[str, Any]:
-        """ return device info, make sure currentPackageName is set
-        
-        Return example:
-           {'currentPackageName': 'io.appium.android.apis',
-            'displayHeight': 720,
-            'displayRotation': 3,
-            'displaySizeDpX': 780,
-            'displaySizeDpY': 360,
-            'displayWidth': 1560,
-            'productName': 'ELE-AL00',
-            'screenOn': True,
-            'sdkInt': 29,
-            'naturalOrientation': False}
-        """
-        _info = super().info
-        if _info.get('currentPackageName') is None:
-            try:
-                _info['currentPackageName'] = self.app_current().get('package')
-            except DeviceError:
-                pass
-        return _info
+class Device(_Device, _AppMixIn, _PluginMixIn, InputMethodMixIn, _DeprecatedMixIn):
+    """ Device object """
+    pass
+
 
 class Session(Device):
     """Session keeps watch the app status

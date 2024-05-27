@@ -6,7 +6,7 @@ __version__ = '0.0.0'
 
 
 # see release note for details <https://github.com/openatx/android-uiautomator-server/releases>
-__apk_version__ = '2.3.11'
+__apk_version__ = '2.4.0'
 
 # old apk version history
 # 2.3.3 make float windows smaller
