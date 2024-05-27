@@ -12,14 +12,13 @@ import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-from deprecated import deprecated
 from PIL import Image
 from lxml import etree
 
 from uiautomator2._proto import Direction
 from uiautomator2.abstract import AbstractXPathBasedDevice
 from uiautomator2.exceptions import XPathElementNotFoundError
-from uiautomator2.utils import inject_call, swipe_in_bounds
+from uiautomator2.utils import inject_call, swipe_in_bounds, deprecated
 
 
 logger = logging.getLogger(__name__)
@@ -198,28 +197,28 @@ class XPathEntry(object):
     def match(self, xpath, source=None):
         return len(self(xpath, source).all()) > 0
 
-    @deprecated(version="3.0.0", reason="use d.watcher.when(..) instead")
+    @deprecated(reason="use d.watcher.when(..) instead")
     def when(self, xquery: str):
         return self._watcher.when(xquery)
 
-    @deprecated(version="3.0.0", reason="use d.watcher.run() instead")
+    @deprecated(reason="use d.watcher.run() instead")
     def run_watchers(self, source=None):
         self._watcher.run()
 
-    @deprecated(version="3.0.0", reason="use d.watcher.start(..) instead")
+    @deprecated(reason="use d.watcher.start(..) instead")
     def watch_background(self, interval: float = 4.0):
         return self._watcher.start(interval)
 
-    @deprecated(version="3.0.0", reason="use d.watcher.stop() instead")
+    @deprecated(reason="use d.watcher.stop() instead")
     def watch_stop(self):
         """stop watch background"""
         self._watcher.stop()
 
-    @deprecated(version="3.0.0", reason="use d.watcher.remove() instead")
+    @deprecated(reason="use d.watcher.remove() instead")
     def watch_clear(self):
         self._watcher.stop()
 
-    @deprecated(version="3.0.0", reason="removed")
+    @deprecated(reason="removed")
     def sleep_watch(self, seconds):
         """run watchers when sleep"""
         deadline = time.time() + seconds

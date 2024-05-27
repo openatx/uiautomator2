@@ -15,7 +15,6 @@ from functools import cached_property
 from typing import Any, Dict, List, Optional, Union
 
 import adbutils
-from deprecated import deprecated
 from lxml import etree
 from retry import retry
 
@@ -28,7 +27,7 @@ from uiautomator2._input import InputMethodMixIn
 from uiautomator2.exceptions import AdbShellError, BaseException, ConnectError, DeviceError, HierarchyEmptyError, SessionBrokenError
 from uiautomator2.settings import Settings
 from uiautomator2.swipe import SwipeExt
-from uiautomator2.utils import list2cmdline
+from uiautomator2.utils import list2cmdline, deprecated
 from uiautomator2.watcher import WatchContext, Watcher
 from uiautomator2.abstract import AbstractShell, AbstractUiautomatorServer, ShellResponse
 
@@ -897,7 +896,7 @@ class _DeprecatedMixIn:
     def click_post_delay(self, v: Union[int, float]):
         self.settings['post_delay'] = v
 
-    @deprecated(version="2.0.0", reason="use d.toast.show(text, duration) instead")
+    @deprecated(reason="use d.toast.show(text, duration) instead")
     def make_toast(self, text, duration=1.0):
         """ Show toast
         Args:
