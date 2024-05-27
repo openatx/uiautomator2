@@ -3,7 +3,7 @@ from uiautomator2 import Device
 from uiautomator2 import PointerInput, Sequence, Pause
 from typing import List
 
-class MultiTouchHelper:
+class multiTouchHelper:
     def __init__(self, device: Device):
         self.device = device
 
