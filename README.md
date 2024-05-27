@@ -553,12 +553,24 @@ Below is a possible output:
 ### Clipboard
 Get of set clipboard content
 
-设置粘贴板内容或获取内容 (目前已知问题是9.0之后的后台程序无法获取剪贴板的内容)
+设置粘贴板内容或获取内容
 
 * clipboard/set_clipboard
 
     ```python
-    d.set_clipboard('text', 'label')
+    d.clipboard = 'hello-world'
+    # or
+    d.set_clipboard('hello-world', 'label')
+
+    ```
+
+Get clipboard content
+
+>  get clipboard requires IME(com.github.uiautomator/.AdbKeyboard) call `d.set_input_ime()` before using it.
+
+    ```python
+    
+    # get clipboard content
     print(d.clipboard)
     ```
 

@@ -29,9 +29,12 @@ BROADCAST_RESULT_CANCELED = 0
 
 
 class InputMethodMixIn(AbstractShell):
-    @deprecated(reason="use set_input_ime instead")
-    def set_fastinput_ime(self, enable: bool = True):
-        return self.set_input_ime(enable)
+    @property
+    def clipboard(self):
+        result = self._broadcast("ADB_KEYBOARD_GET_CLIPBOARD")
+        if result.code == BORADCAST_RESULT_OK:
+            return base64.b64decode(result.data).decode('utf-8')
+        return self.jsonrpc.getClipboard()
 
     def set_input_ime(self, enable: bool = True):
         """ Enable of Disable InputIME """
@@ -130,29 +133,6 @@ class InputMethodMixIn(AbstractShell):
             # for Android simulator
             self(focused=True).clear_text()
 
-    @deprecated(reason="use set_input_ime instead")
-    def wait_fastinput_ime(self, timeout=5.0):
-        """ wait FastInputIME is ready (Depreacated in version 3.1)
-        Args:
-            timeout(float): maxium wait time
-
-        Raises:
-            EnvironmentError
-        """
-        pass
-        # TODO: 模拟器待兼容 eg. Genymotion, 海马玩, Mumu
-        # deadline = time.time() + timeout
-        # while time.time() < deadline:
-        #     ime_id, shown = self.current_ime()
-        #     if ime_id != "com.github.uiautomator/.FastInputIME":
-        #         self.set_fastinput_ime(True)
-        #         time.sleep(0.5)
-        #         continue
-        #     if shown:
-        #         return True
-        #     time.sleep(0.2)
-        # raise EnvironmentError("FastInputIME started failed")
-
     def current_ime(self) -> str:
         """ Current input method
         Returns:
@@ -168,3 +148,12 @@ class InputMethodMixIn(AbstractShell):
         # method_id = None if not m else m.group(1)
         # shown = "mInputShown=true" in dim
         # return (method_id, shown)
+    
+    @deprecated(reason="use set_input_ime instead")
+    def set_fastinput_ime(self, enable: bool = True):
+        return self.set_input_ime(enable)
+    
+    @deprecated(reason="use set_input_ime instead")
+    def wait_fastinput_ime(self, timeout=5.0):
+        """ wait FastInputIME is ready (Depreacated in version 3.1) """
+        pass

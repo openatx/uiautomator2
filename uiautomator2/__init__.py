@@ -541,8 +541,9 @@ class _Device(_BaseClient):
         return self(**kwargs).exists
 
     @property
-    def clipboard(self):
-        return self.jsonrpc.getClipboard()
+    def clipboard(self) -> str:
+        return super().clipboard
+        # return self.jsonrpc.getClipboard() # FIXME(ssx): bug
 
     @clipboard.setter
     def clipboard(self, text: str):
