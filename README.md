@@ -103,8 +103,9 @@ Empty
   - **[Stop an app](#stop-an-app)**
   - **[Stop all running apps](#stop-all-running-apps)**
   - **[Push and pull files](#push-and-pull-files)**
-  - **[Auto click permission dialogs](#auto-click-permission-dialogs)**
-  - **[Open Scheme](#open-scheme)**
+  - **[Other app operations](#other-app-operations)**
+  ```
+  cheme)**
 
 **[UI automation](#basic-api-usages)**
   - **[Shell commands](#shell-commands)**
@@ -353,26 +354,17 @@ d.app_wait("com.example.android", timeout=20.0) # 最长等待时间20s（默认
     d.pull("/sdcard/some-file-not-exists.txt", "tmp.txt")
     ```
 
-
-### ~~Auto click permission dialogs~~ (Removed)
-**注意注意** `disable_popups`函数，检测发现很不稳定，暂时不要使用，等候通知。
-<!-- 
-Import in version 0.1.1
+### Other app operations
 
 ```python
-d.disable_popups() # automatic skip popups
-d.disable_popups(False) # disable automatic skip popups
-```
+# grant all the permissions
+d.app_auto_grant_permissions("io.appium.android.apis")
 
-![popup](docs/img/popup.png) -->
-
-### Open Scheme
-
-```python
+# open scheme
 d.open_url("appname://appnamehost")
+# same as
+# adb shell am start -a android.intent.action.VIEW -d "appname://appnamehost"
 ```
-
-等价于 `adb shell am start -a android.intent.action.VIEW -d "appname://appnamehost"`
 
 ## Basic API Usages
 This part showcases how to perform common device operations:
