@@ -65,7 +65,8 @@ def launch_uiautomator(dev: adbutils.AdbDevice) -> MockAdbProcess:
     """Launch uiautomator2 server on device"""
     logger.debug("launch uiautomator")
     dev.shell("am force-stop com.github.uiautomator")
-    dev.shell("am start -n com.github.uiautomator/.ToastActivity")
+    # silent
+    # dev.shell("am start -n com.github.uiautomator/.ToastActivity")
     # use command to see if uiautomator is running: ps -A | grep uiautomator
     conn = dev.shell("am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/androidx.test.runner.AndroidJUnitRunner", stream=True)
     process = MockAdbProcess(conn)
@@ -272,10 +273,13 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         """Wait until uiautomator2 server is ready"""
         # wait am instrument start
         self._wait_instrument_ready(launch_timeout)
+        
+        # silent mode
         # launch a toast window to make sure uiautomator is alive
-        logger.debug("show float window")
+        # logger.debug("show float window")
         self._dev.shell("am startservice -a com.github.uiautomator.ACTION_START")
-        self._dev.shell("am start -n com.github.uiautomator/.ToastActivity -e showFloatWindow true")
+        # self._dev.shell("am start -n com.github.uiautomator/.ToastActivity -e showFloatWindow true")
+        
         self._wait_stub_ready(service_timeout)
         time.sleep(1) # wait ATX goto background
     
