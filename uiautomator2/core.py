@@ -138,6 +138,8 @@ def _jsonrpc_call(dev: adbutils.AdbDevice, method: str, params: Any, timeout: fl
         if "android.os.DeadObjectException" in message:
             # https://developer.android.com/reference/android/os/DeadObjectException
             raise UiAutomationNotConnectedError("android.os.DeadObjectException")
+        if "android.os.DeadSystemRuntimeException":
+            raise UiAutomationNotConnectedError("android.os.DeadSystemRuntimeException")
         if "uiautomator.UiObjectNotFoundException" in message:
             raise UiObjectNotFoundError(code, message, params)
         if "java.lang.StackOverflowError" in message:
@@ -158,7 +160,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         self._process = None
         self._lock = threading.Lock()
         self._debug = False
-        self.start_uiautomator()
+        self.start_uiautomator(_silent=True)
         atexit.register(self.stop_uiautomator, wait=False)
     
     @property
@@ -169,16 +171,16 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     def debug(self, value: bool):
         self._debug = bool(value)
 
-    def start_uiautomator(self):
+    def start_uiautomator(self, _silent: bool = False):
         try:
-            self._do_start_uiautomator()
+            self._do_start_uiautomator(silent=_silent)
         except APKSignatureError as e:
             logger.debug("APkSignatureError: %s", e)
             self._dev.uninstall("com.github.uiautomator")
             self._dev.uninstall("com.github.uiautomator.test")
-            self._do_start_uiautomator()
+            self._do_start_uiautomator(silent=_silent)
     
-    def _do_start_uiautomator(self):
+    def _do_start_uiautomator(self, silent: bool):
         """
         Start uiautomator2 server
 
@@ -192,7 +194,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
                     self._process = None
             if not self._check_alive():
                 self._process = launch_uiautomator(self._dev)
-                self._wait_ready()
+                self._wait_ready(show_float_window=not silent)
 
     def _setup_apks(self):
         assets_dir = Path(__file__).parent / "assets"
@@ -230,6 +232,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         self._dev.shell(['pm', 'install', '-r', '-t', '-d', target_path])
     
     def _wait_instrument_ready(self, timeout: float):
+        """wait until "INSTRUMENTATION_STATUS_CODE: 1" show up"""
         deadline = time.time() + timeout
         while time.time() < deadline:
             output = self._process.output.decode("utf-8", errors="ignore")
@@ -268,14 +271,15 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         except HTTPError:
             return False
         
-    def _wait_ready(self, launch_timeout=30, service_timeout=30):
+    def _wait_ready(self, launch_timeout=30, service_timeout=30, show_float_window: bool = True):
         """Wait until uiautomator2 server is ready"""
         # wait am instrument start
         self._wait_instrument_ready(launch_timeout)
-        # launch a toast window to make sure uiautomator is alive
-        logger.debug("show float window")
         self._dev.shell("am startservice -a com.github.uiautomator.ACTION_START")
-        self._dev.shell("am start -n com.github.uiautomator/.ToastActivity -e showFloatWindow true")
+        if show_float_window:
+            # launch a toast window to make sure uiautomator is alive
+            logger.debug("show float window")
+            self._dev.shell("am start -n com.github.uiautomator/.ToastActivity -e showFloatWindow true")
         self._wait_stub_ready(service_timeout)
         time.sleep(1) # wait ATX goto background
     

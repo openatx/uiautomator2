@@ -6,6 +6,7 @@ from __future__ import absolute_import, print_function
 import base64
 import contextlib
 import dataclasses
+import io
 import logging
 import os
 import re
@@ -18,6 +19,7 @@ from typing import Any, Dict, List, Optional, Union
 import adbutils
 from lxml import etree
 from retry import retry
+from PIL import Image
 
 from uiautomator2.core import BasicUiautomatorServer
 
@@ -28,7 +30,7 @@ from uiautomator2._input import InputMethodMixIn
 from uiautomator2.exceptions import AdbShellError, BaseException, ConnectError, DeviceError, HierarchyEmptyError, SessionBrokenError
 from uiautomator2.settings import Settings
 from uiautomator2.swipe import SwipeExt
-from uiautomator2.utils import list2cmdline, deprecated
+from uiautomator2.utils import image_convert, list2cmdline, deprecated
 from uiautomator2.watcher import WatchContext, Watcher
 from uiautomator2.abstract import AbstractShell, AbstractUiautomatorServer, ShellResponse
 
@@ -253,19 +255,17 @@ class _Device(_BaseClient):
             screenshot().save("saved.png")
             cv2.imwrite('saved.jpg', screenshot(format='opencv'))
         """
-        pil_img = self._dev.screenshot(display_id=display_id)
+        if display_id is None:
+            base64_data = self.jsonrpc.takeScreenshot(1, 80)
+            jpg_raw = base64.b64decode(base64_data)
+            pil_img = Image.open(io.BytesIO(jpg_raw))
+        else:
+            pil_img = self._dev.screenshot(display_id=display_id)
+        
         if filename:
             pil_img.save(filename)
             return
-        if format == 'pillow':
-            return pil_img
-        elif format == 'opencv':
-            pil_img = pil_img.convert("RGB")
-            import cv2
-            import numpy as np
-            return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-        elif format == 'raw':
-            return pil_img.tobytes()
+        return image_convert(pil_img, format)
         
     def dump_hierarchy(self, compressed=False, pretty=False, max_depth: int = None) -> str:
         """
