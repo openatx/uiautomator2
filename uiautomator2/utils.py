@@ -8,9 +8,10 @@ import threading
 import typing
 from typing import Union
 import warnings
+from PIL import Image
 
 from uiautomator2._proto import Direction
-from uiautomator2.exceptions import SessionBrokenError, UiObjectNotFoundError
+from uiautomator2.exceptions import MissingLibError, SessionBrokenError, UiObjectNotFoundError
 
 
 def check_alive(fn):
@@ -244,6 +245,22 @@ def deprecated(reason):
             return func(*args, **kwargs)
         return wrapper
     return decorator
+
+
+def image_convert(im: Image.Image, format: str):
+    if format == "pillow":
+        return im
+    if format == "opencv":
+        try:
+            import cv2
+            import numpy as np
+            im = im.convert("RGB")
+            return cv2.cvtColor(np.array(im), cv2.COLOR_RGB2BGR)
+        except ImportError:
+            raise MissingLibError("missing lib: cv2 or numpy")
+    if format == "raw":
+        return im.tobytes()
+    raise ValueError("Unsupported format:", format)
 
 
 if __name__ == "__main__":
