@@ -138,7 +138,7 @@ def _jsonrpc_call(dev: adbutils.AdbDevice, method: str, params: Any, timeout: fl
         if "android.os.DeadObjectException" in message:
             # https://developer.android.com/reference/android/os/DeadObjectException
             raise UiAutomationNotConnectedError("android.os.DeadObjectException")
-        if "android.os.DeadSystemRuntimeException":
+        if "android.os.DeadSystemRuntimeException" in message:
             raise UiAutomationNotConnectedError("android.os.DeadSystemRuntimeException")
         if "uiautomator.UiObjectNotFoundException" in message:
             raise UiObjectNotFoundError(code, message, params)
