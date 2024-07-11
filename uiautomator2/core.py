@@ -5,6 +5,7 @@
 """
 
 import atexit
+import datetime
 import threading
 import time
 import logging
@@ -91,7 +92,9 @@ def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[st
         # so here use 127.0.0.1 instead of localhost
         url = f"http://127.0.0.1:{lport}{path}"
         if print_request:
-            fields = [time.strftime("%H:%M:%S"), f"$ curl -X {method}", url]
+            start_time = datetime.datetime.now()
+            current_time = start_time.strftime("%H:%M:%S.%f")[:-3]
+            fields = [current_time, f"$ curl -X {method}", url]
             if data:
                 fields.append(f"-d '{json.dumps(data)}'")
             print(f"# http timeout={timeout}")
@@ -100,9 +103,11 @@ def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[st
         r.raise_for_status()
         response = HTTPResponse(r.content)
         if print_request:
-            print(f"{time.strftime('%H:%M:%S')} Response >>>")
-            print(response.text)
-            print(f"<<< END")
+            end_time = datetime.datetime.now()
+            current_time = end_time.strftime("%H:%M:%S.%f")[:-3]
+            print(f"{current_time} Response >>>")
+            print(response.text.rstrip())
+            print(f"<<< END timed_used = %.3f\n" % (end_time - start_time).total_seconds())
         return response
     except requests.RequestException as e:
         raise HTTPError(f"HTTP request failed: {e}") from e
