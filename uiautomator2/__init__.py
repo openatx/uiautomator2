@@ -26,7 +26,7 @@ from uiautomator2 import xpath
 from uiautomator2._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
 from uiautomator2._selector import Selector, UiObject
 from uiautomator2._input import InputMethodMixIn
-from uiautomator2.exceptions import AdbShellError, BaseException, ConnectError, DeviceError, HierarchyEmptyError, SessionBrokenError
+from uiautomator2.exceptions import *
 from uiautomator2.settings import Settings
 from uiautomator2.swipe import SwipeExt
 from uiautomator2.utils import image_convert, list2cmdline, deprecated
@@ -39,7 +39,7 @@ WAIT_FOR_DEVICE_TIMEOUT = int(os.getenv("WAIT_FOR_DEVICE_TIMEOUT", 20))
 logger = logging.getLogger(__name__)
 
 def enable_pretty_logging(level=logging.DEBUG):
-    if not logger.handlers:
+    if not logger.handlers: # pragma: no cover
         # Configure handler
         handler = logging.StreamHandler()
         formatter = logging.Formatter('[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d pid:%(process)d] %(message)s')
@@ -196,9 +196,6 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
             - start uiautomator keeper(am instrument -w ...)
             - wait until uiautomator service is ready
         """
-        # https://developer.android.google.cn/training/monitoring-device-state/doze-standby
-        # 让uiautomator进程不进入doze模式
-        # help: dumpsys deviceidle help
         self.stop_uiautomator()
         self.start_uiautomator()
 
@@ -245,7 +242,7 @@ class _Device(_BaseClient):
 
         Args:
             filename (str): saved filename, if filename is set then return None
-            format (str): used when filename is empty. one of ["pillow", "opencv", "raw"]
+            format (str): used when filename is empty. one of ["pillow", "opencv"]
             display_id (int): use specific display if device has multiple screen
 
         Examples:
@@ -279,13 +276,14 @@ class _Device(_BaseClient):
         """
         try:
             content = self._do_dump_hierarchy(compressed, max_depth)
-        except HierarchyEmptyError:
+        except HierarchyEmptyError: # pragma: no cover
             logger.warning("dump empty, return empty xml")
             content = '<?xml version=\'1.0\' encoding=\'UTF-8\' standalone=\'yes\' ?>\r\n<hierarchy rotation="0" />'
         
         if pretty:
             root = etree.fromstring(content.encode("utf-8"))
-            content = etree.tostring(root, pretty_print=True, encoding=str)
+            content = etree.tostring(root, pretty_print=True, encoding='UTF-8', xml_declaration=True)
+            content = content.decode("utf-8")
         return content
 
     @retry(HierarchyEmptyError, tries=3, delay=1)
@@ -433,7 +431,7 @@ class _Device(_BaseClient):
             https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe%28int,%20int,%20int,%20int,%20int%29
         """
         if duration is not None and steps is not None:
-            warnings.warn("duration and steps can not be set at the same time, use steps")
+            warnings.warn("duration and steps can not be set at the same time, use steps", UserWarning)
             duration = None
         if duration:
             steps = int(duration * 200)
@@ -566,9 +564,8 @@ class _Device(_BaseClient):
         return self(**kwargs).exists
 
     @property
-    def clipboard(self) -> str:
-        return super().clipboard
-        # return self.jsonrpc.getClipboard() # FIXME(ssx): bug
+    def clipboard(self) -> Optional[str]:
+        return self.jsonrpc.getClipboard()
 
     @clipboard.setter
     def clipboard(self, text: str):
@@ -607,7 +604,7 @@ class _Device(_BaseClient):
             return self._serial
         return self.shell(['getprop', 'ro.serialno']).output.strip()
     
-    def __call__(self, **kwargs):
+    def __call__(self, **kwargs) -> 'UiObject':
         return UiObject(self, Selector(**kwargs))
 
 
@@ -851,11 +848,11 @@ class _AppMixIn(AbstractShell):
             }
 
         Raises:
-            UiaError
+            AppNotFoundError
         """
         info = self.adb_device.app_info(package_name)
         if not info:
-            raise BaseException("App not installed")
+            raise AppNotFoundError("App not installed", package_name)
         return {
             "versionName": info.version_name,
             "versionCode": info.version_code,
@@ -906,7 +903,7 @@ class _AppMixIn(AbstractShell):
             logger.info(f'auto grant permission {permission}')
 
 
-class _DeprecatedMixIn:
+class _DeprecatedMixIn: # pragma: no cover
     @property
     def wait_timeout(self):  # wait element timeout
         return self.settings['wait_timeout']

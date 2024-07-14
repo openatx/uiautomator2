@@ -21,6 +21,7 @@ pytest = "^8.1.1"
 isort = "^5.13.2"
 pytest-cov = "^4.1.0"
 ipython = "*"
+coverage = "^7.6.0"
 
 [tool.poetry.scripts]
 uiautomator2 = "uiautomator2.__main__:main"

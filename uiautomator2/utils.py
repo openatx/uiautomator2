@@ -11,7 +11,7 @@ import warnings
 from PIL import Image
 
 from uiautomator2._proto import Direction
-from uiautomator2.exceptions import MissingLibError, SessionBrokenError, UiObjectNotFoundError
+from uiautomator2.exceptions import SessionBrokenError, UiObjectNotFoundError
 
 
 def check_alive(fn):
@@ -134,15 +134,7 @@ def inject_call(fn, *args, **kwargs):
     return fn(*ba.args, **ba.kwargs)
 
 
-class ProgressReader:
-    def __init__(self, rd):
-        pass
-
-    def read(self, size=-1):
-        pass
-
-
-def natualsize(size: int):
+def natualsize(size: int) -> str:
     _KB = 1 << 10
     _MB = 1 << 20
     _GB = 1 << 30
@@ -170,7 +162,6 @@ def swipe_in_bounds(d: "uiautomator2.Device",
         AssertionError, ValueError
     """
     def _swipe(_from, _to):
-        print("SWIPE", _from, _to)
         d.swipe(_from[0], _from[1], _to[0], _to[1])
 
     assert 0 < scale <= 1.0
@@ -257,12 +248,7 @@ def image_convert(im: Image.Image, format: str):
             im = im.convert("RGB")
             return cv2.cvtColor(np.array(im), cv2.COLOR_RGB2BGR)
         except ImportError:
-            raise MissingLibError("missing lib: cv2 or numpy")
-    if format == "raw":
-        return im.tobytes()
+            warnings.warn("missing lib: cv2 or numpy")
+            raise
     raise ValueError("Unsupported format:", format)
 
-
-if __name__ == "__main__":
-    for n in (1, 10000, 10000000, 10000000000):
-        print(n, natualsize(n))

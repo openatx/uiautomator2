@@ -6,6 +6,11 @@ format:
 test:
 	poetry run pytest -v mobile_tests/
 
+covtest:
+	poetry run coverage run -m pytest -v demo_tests tests
+	poetry run coverage html --include 'uiautomator2/**'
+
+
 cov:
 	poetry run pytest -v tests/ \
 			--cov-config=.coveragerc \

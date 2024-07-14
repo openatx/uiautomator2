@@ -1,3 +1,4 @@
 *.apk
 atx-agent
-version.txt
+version.json
+*.jar

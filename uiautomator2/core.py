@@ -6,12 +6,14 @@
 
 import atexit
 import datetime
+import hashlib
+import os
 import threading
 import time
 import logging
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 import adbutils
 import requests
@@ -192,9 +194,23 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     def _setup_jar(self):
         assets_dir = Path(__file__).parent / "assets"
         jar_path = assets_dir / "u2.jar"
-        # TODO: check if jar is up-to-date
-        self._dev.push(jar_path, "/data/local/tmp/u2.jar")
+        target_path = "/data/local/tmp/u2.jar"
+        if self._check_device_file_hash(jar_path, target_path):
+            logger.debug("file u2.jar already pushed")
+        else:
+            logger.debug("push %s -> %s", jar_path, target_path)
+            self._dev.sync.push(jar_path, target_path, check=True)
     
+    def _check_device_file_hash(self, local_file: Union[str, Path], remote_file: str) -> bool:
+        """ check if remote file hash is correct """
+        md5 = hashlib.md5()
+        with open(local_file, "rb") as f:
+            md5.update(f.read())
+        local_md5 = md5.hexdigest()
+        logger.debug("file %s md5: %s", os.path.basename(local_file), local_md5)
+        output = self._dev.shell(["toybox", "md5sum", remote_file])
+        return local_md5 in output
+
     def _wait_ready(self, launch_timeout=30):
         """Wait until uiautomator2 server is ready"""
         self._wait_app_process_ready(launch_timeout)
@@ -212,16 +228,18 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
             SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
         """
         deadline = time.time() + timeout
+        output_buffer = ''
         while time.time() < deadline:
             output = self._process.output.decode("utf-8", errors="ignore")
+            output_buffer += output
             if "already registered" in output:
                 raise AccessibilityServiceAlreadyRegisteredError("Possibly another UiAutomation service is running, you may find it output by \"adb shell ps -u shell\"",)
             if self._process.pool() is not None:
-                raise LaunchUiAutomationError("u2.jar server quit", output)
+                raise LaunchUiAutomationError("server quit unexpectly", output_buffer)
             if self._check_alive():
                 return
             time.sleep(.5)
-        raise LaunchUiAutomationError("u2.jar server not ready")
+        raise LaunchUiAutomationError("server not ready", output_buffer)
 
     def _check_alive(self) -> bool:
         try:
