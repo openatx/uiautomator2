@@ -122,7 +122,6 @@ class UiObject(object):
         '''check if the object exists in current window.'''
         return Exists(self)
 
-    # @retry(UiObjectNotFoundError, delay=.5, tries=3, jitter=0.1, logger=logging) # yapf: disable
     @property
     def info(self):
         '''ui object info.'''
