@@ -68,7 +68,7 @@ def launch_uiautomator(dev: adbutils.AdbDevice) -> MockAdbProcess:
     """Launch uiautomator2 server on device"""
     command = "CLASSPATH=/data/local/tmp/u2.jar app_process / com.wetest.uia2.Main"
     logger.debug("launch uiautomator with cmd: %s", command)
-    conn = dev.shell("CLASSPATH=/data/local/tmp/u2.jar app_process / com.wetest.uia2.Main", stream=True)
+    conn = dev.shell(command, stream=True)
     process = MockAdbProcess(conn)
     return process
 
@@ -160,10 +160,11 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     """ Simple uiautomator2 server client
     this is runs without atx-agent
     """
+    _lock = threading.Lock() # thread safe lock
+    
     def __init__(self, dev: adbutils.AdbDevice) -> None:
         self._dev = dev
         self._process = None
-        self._lock = threading.Lock()
         self._debug = False
         self.start_uiautomator()
         atexit.register(self.stop_uiautomator, wait=False)
@@ -234,7 +235,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
             output = self._process.output.decode("utf-8", errors="ignore")
             output_buffer += output
             if "already registered" in output:
-                raise AccessibilityServiceAlreadyRegisteredError("Possibly another UiAutomation service is running, you may find it output by \"adb shell ps -u shell\"",)
+                raise AccessibilityServiceAlreadyRegisteredError(output)
             if self._process.pool() is not None:
                 raise LaunchUiAutomationError("server quit unexpectly", output_buffer)
             if self._check_alive():
