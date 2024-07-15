@@ -1295,7 +1295,7 @@ print(d.current_ime()) # 获取当前输入法ID
 ### Toast
 ```python
 print(d.last_toast) # get last toast, if not toast return None
-d.clear_last_toast()
+d.clear_toast()
 ```
 
 > Fixed in version 3.2.0

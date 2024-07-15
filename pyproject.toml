@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "uiautomator2"
-version = "0.0.0"
+version = "3.2.0"
 description = "uiautomator for android device"
 homepage = "https://github.com/openatx/uiautomator2"
 authors = ["codeskyblue <codeskyblue@gmail.com>"]

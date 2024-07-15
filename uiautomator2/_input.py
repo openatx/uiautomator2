@@ -102,11 +102,19 @@ class InputMethodMixIn(AbstractShell):
             text (str): text to set
             clear (bool): clear before set text
         """
+        if clear:
+            self.clear_text()
+        if re.match(r'^[-+*\/_a-zA-Z0-9 ]+$', text):
+            self.shell(['input', 'text', text.replace(' ', '%s')])
+        else:
+            self.__send_keys_with_ime(text)
+
+    def __send_keys_with_ime(self, text: str):
         try:
             self.set_input_ime()
             btext = text.encode('utf-8')
             base64text = base64.b64encode(btext).decode()
-            cmd = "ADB_KEYBOARD_SET_TEXT" if clear else "ADB_KEYBOARD_INPUT_TEXT"
+            cmd = "ADB_KEYBOARD_INPUT_TEXT"
             self._must_broadcast(cmd, {"text": base64text})
             return True
         except AdbBroadcastError:
@@ -114,9 +122,7 @@ class InputMethodMixIn(AbstractShell):
                 "set FastInputIME failed. use \"d(focused=True).set_text instead\"",
                 Warning)
             return self(focused=True).set_text(text)
-            # warnings.warn("set FastInputIME failed. use \"adb shell input text\" instead", Warning)
-            # self.shell(["input", "text", text.replace(" ", "%s")])
-
+        
     def send_action(self, code: Union[str, int] = None):
         """
         Simulate input method edito code

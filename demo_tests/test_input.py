@@ -23,11 +23,13 @@ def test_send_keys(app: u2.Device):
     num1.set_text('1')
     
     num2.click()
-    app.send_keys('6')
-    assert num2.get_text() == '6'
+    
+    for chars in ('1', '123abcDEF +-*/_', '你好，世界!'):
+        app.send_keys(chars, clear=True)
+        assert num2.get_text() == chars
+    
     app.clear_text()
     app.send_keys('2')
-    
     app(text="Add").click()
     result = app(className="android.widget.EditText", instance=2).get_text()
     assert result == "3"

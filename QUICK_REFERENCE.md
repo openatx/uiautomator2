@@ -58,7 +58,7 @@ d.orientation = 'natural'
 d.freeze_rotation(True)
 
 print(d.last_toast) # 获取显示的toast文本
-d.clear_last_toast() # 重置一下
+d.clear_toast() # 重置一下
 
 d.open_notification()
 d.open_quick_settings()

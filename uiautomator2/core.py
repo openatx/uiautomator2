@@ -61,6 +61,7 @@ class MockAdbProcess:
 
     def kill(self):
         self._conn.close()
+        self.wait()
 
 
 def launch_uiautomator(dev: adbutils.AdbDevice) -> MockAdbProcess:
@@ -270,11 +271,3 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
             self.stop_uiautomator()
             self.start_uiautomator()
             return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
-
-class SimpleUiautomatorServer(BasicUiautomatorServer, AbstractUiautomatorServer):
-    @property
-    def info(self) -> Dict[str, Any]:
-        return self.jsonrpc_call("deviceInfo")
-    
-    def dump_hierarchy(self, compressed: bool = False, pretty: bool = False) -> str:
-        return self.jsonrpc_call("dumpWindowHierarchy", [compressed, pretty])
