@@ -380,7 +380,7 @@ class XPathSelector(AbstractSelector):
             raise XPathError("self._parent is not set")
         return self._parent.get_page_source()
     
-    def all(self, source: PageSource=None) -> List["XMLElement"]:
+    def all(self, source: Optional[PageSource] = None) -> List["XMLElement"]:
         """find all matched elements"""
         if not source:
             source = self._get_page_source()

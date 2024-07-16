@@ -6,16 +6,21 @@
 
 import base64
 from dataclasses import dataclass
+import logging
+from pathlib import Path
 import re
-from typing import Dict, Optional, Union
+import time
+from typing import Dict, List, Optional, Union
 import warnings
 
 from retry import retry
 
 from uiautomator2.abstract import AbstractShell
-from uiautomator2.exceptions import AdbBroadcastError, DeviceError
+from uiautomator2.exceptions import AdbBroadcastError, DeviceError, InputIMEError
 from uiautomator2.utils import deprecated
 
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class BroadcastResult:
@@ -29,25 +34,45 @@ BROADCAST_RESULT_CANCELED = 0
 
 
 class InputMethodMixIn(AbstractShell):
+    # @property
+    # def clipboard(self) -> Optional[str]:
+    #     result = self._broadcast("ADB_KEYBOARD_GET_CLIPBOARD")
+    #     if result.code == BORADCAST_RESULT_OK:
+    #         return base64.b64decode(result.data).decode('utf-8')
+    #     # jsonrpc.getClipboard is not OK for now
+    #     return None
+    
     @property
-    def clipboard(self):
-        result = self._broadcast("ADB_KEYBOARD_GET_CLIPBOARD")
-        if result.code == BORADCAST_RESULT_OK:
-            return base64.b64decode(result.data).decode('utf-8')
-        return self.jsonrpc.getClipboard()
+    def __ime_id(self) -> str:
+        return 'com.github.uiautomator/.AdbKeyboard'
 
     def set_input_ime(self, enable: bool = True):
         """ Enable of Disable InputIME """
-        ime_id = 'com.github.uiautomator/.AdbKeyboard'
         if not enable:
-            self.shell(['ime', 'disable', ime_id])
+            self.shell(['ime', 'disable', self.__ime_id])
             return
+        if self.current_ime() == self.__ime_id:
+            return
+        # prepare ime
+        if self.__ime_id not in self.__get_ime_list():
+            self.__setup_ime()
+        assert self.__ime_id in self.__get_ime_list()
         
-        if self.current_ime() == ime_id:
-            return
-        self.shell(['ime', 'enable', ime_id])
-        self.shell(['ime', 'set', ime_id])
-        self.shell(['settings', 'put', 'secure', 'default_input_method', ime_id])
+        self.shell(['ime', 'enable', self.__ime_id])
+        self.shell(['ime', 'set', self.__ime_id])
+        self.shell(['settings', 'put', 'secure', 'default_input_method', self.__ime_id])
+    
+    def __setup_ime(self):
+        logger.debug("installing AdbKeyboard ime")
+        assets_dir = Path(__file__).parent / "assets"
+        ime_apk_path = assets_dir / 'app-uiautomator.apk'
+        self.adb_device.install(str(ime_apk_path), nolaunch=True, uninstall=True)
+        # wait for ime registered
+        for _ in range(10):
+            if self.__ime_id in self.__get_ime_list():
+                return
+            time.sleep(.3)
+        raise InputIMEError("install AdbKeyboard ime failed")
     
     def _broadcast(self, action: str, extras: Dict[str, str] = {}) -> BroadcastResult:
         # requires ATX 2.4.0+
@@ -77,11 +102,19 @@ class InputMethodMixIn(AbstractShell):
             text (str): text to set
             clear (bool): clear before set text
         """
+        if clear:
+            self.clear_text()
+        if re.match(r'^[-+*\/_a-zA-Z0-9 ]+$', text):
+            self.shell(['input', 'text', text.replace(' ', '%s')])
+        else:
+            self.__send_keys_with_ime(text)
+
+    def __send_keys_with_ime(self, text: str):
         try:
             self.set_input_ime()
             btext = text.encode('utf-8')
             base64text = base64.b64encode(btext).decode()
-            cmd = "ADB_KEYBOARD_SET_TEXT" if clear else "ADB_KEYBOARD_INPUT_TEXT"
+            cmd = "ADB_KEYBOARD_INPUT_TEXT"
             self._must_broadcast(cmd, {"text": base64text})
             return True
         except AdbBroadcastError:
@@ -89,9 +122,7 @@ class InputMethodMixIn(AbstractShell):
                 "set FastInputIME failed. use \"d(focused=True).set_text instead\"",
                 Warning)
             return self(focused=True).set_text(text)
-            # warnings.warn("set FastInputIME failed. use \"adb shell input text\" instead", Warning)
-            # self.shell(["input", "text", text.replace(" ", "%s")])
-
+        
     def send_action(self, code: Union[str, int] = None):
         """
         Simulate input method edito code
@@ -149,6 +180,10 @@ class InputMethodMixIn(AbstractShell):
         # shown = "mInputShown=true" in dim
         # return (method_id, shown)
     
+    def __get_ime_list(self) -> List[str]:
+        ret = self.shell(['ime', 'list', '-s', '-a'])
+        return ret.output.strip().splitlines(keepends=False)
+        
     @deprecated(reason="use set_input_ime instead")
     def set_fastinput_ime(self, enable: bool = True):
         return self.set_input_ime(enable)

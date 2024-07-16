@@ -2,8 +2,9 @@
 branch = True
 
 omit =
-    "tests/*"
-    "docs/*"
+    /tests/**
+    /docs/*
+    /*_tests/**
 
 [report]
 ; Regexes for lines to exclude from consideration
@@ -22,5 +23,8 @@ exclude_also =
 
     ; Don't complain about abstract methods, they aren't run:
     @(abc\.)?abstractmethod
+
+    except adbutils.AdbError
+    @deprecated
 
 ignore_errors = True

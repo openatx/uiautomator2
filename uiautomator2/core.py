@@ -5,13 +5,15 @@
 """
 
 import atexit
-import re
+import datetime
+import hashlib
+import os
 import threading
 import time
 import logging
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 import adbutils
 import requests
@@ -59,15 +61,14 @@ class MockAdbProcess:
 
     def kill(self):
         self._conn.close()
+        self.wait()
 
 
 def launch_uiautomator(dev: adbutils.AdbDevice) -> MockAdbProcess:
     """Launch uiautomator2 server on device"""
-    logger.debug("launch uiautomator")
-    dev.shell("am force-stop com.github.uiautomator")
-    dev.shell("am start -n com.github.uiautomator/.ToastActivity")
-    # use command to see if uiautomator is running: ps -A | grep uiautomator
-    conn = dev.shell("am instrument -w -r -e debug false -e class com.github.uiautomator.stub.Stub com.github.uiautomator.test/androidx.test.runner.AndroidJUnitRunner", stream=True)
+    command = "CLASSPATH=/data/local/tmp/u2.jar app_process / com.wetest.uia2.Main"
+    logger.debug("launch uiautomator with cmd: %s", command)
+    conn = dev.shell(command, stream=True)
     process = MockAdbProcess(conn)
     return process
 
@@ -94,7 +95,9 @@ def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[st
         # so here use 127.0.0.1 instead of localhost
         url = f"http://127.0.0.1:{lport}{path}"
         if print_request:
-            fields = [time.strftime("%H:%M:%S"), f"$ curl -X {method}", url]
+            start_time = datetime.datetime.now()
+            current_time = start_time.strftime("%H:%M:%S.%f")[:-3]
+            fields = [current_time, f"$ curl -X {method}", url]
             if data:
                 fields.append(f"-d '{json.dumps(data)}'")
             print(f"# http timeout={timeout}")
@@ -103,9 +106,11 @@ def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[st
         r.raise_for_status()
         response = HTTPResponse(r.content)
         if print_request:
-            print(f"{time.strftime('%H:%M:%S')} Response >>>")
-            print(response.text)
-            print(f"<<< END")
+            end_time = datetime.datetime.now()
+            current_time = end_time.strftime("%H:%M:%S.%f")[:-3]
+            print(f"{current_time} Response >>>")
+            print(response.text.rstrip())
+            print(f"<<< END timed_used = %.3f\n" % (end_time - start_time).total_seconds())
         return response
     except requests.RequestException as e:
         raise HTTPError(f"HTTP request failed: {e}") from e
@@ -155,12 +160,13 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     """ Simple uiautomator2 server client
     this is runs without atx-agent
     """
+    _lock = threading.Lock() # thread safe lock
+    
     def __init__(self, dev: adbutils.AdbDevice) -> None:
         self._dev = dev
         self._process = None
-        self._lock = threading.Lock()
         self._debug = False
-        self.start_uiautomator(_silent=True)
+        self.start_uiautomator()
         atexit.register(self.stop_uiautomator, wait=False)
     
     @property
@@ -171,16 +177,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     def debug(self, value: bool):
         self._debug = bool(value)
 
-    def start_uiautomator(self, _silent: bool = False):
-        try:
-            self._do_start_uiautomator(silent=_silent)
-        except APKSignatureError as e:
-            logger.debug("APkSignatureError: %s", e)
-            self._dev.uninstall("com.github.uiautomator")
-            self._dev.uninstall("com.github.uiautomator.test")
-            self._do_start_uiautomator(silent=_silent)
-    
-    def _do_start_uiautomator(self, silent: bool):
+    def start_uiautomator(self):
         """
         Start uiautomator2 server
 
@@ -188,81 +185,63 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
             LaunchUiautomatorError: uiautomator2 server not ready
         """
         with self._lock:
-            self._setup_apks()
+            self._setup_jar()
             if self._process:
                 if self._process.pool() is not None:
                     self._process = None
             if not self._check_alive():
                 self._process = launch_uiautomator(self._dev)
-                self._wait_ready(show_float_window=not silent)
+                self._wait_ready()
 
-    def _setup_apks(self):
+    def _setup_jar(self):
         assets_dir = Path(__file__).parent / "assets"
-        main_apk = assets_dir / "app-uiautomator.apk"
-        test_apk = assets_dir / "app-uiautomator-test.apk"
-
-        logger.debug("use apk_version: %s", __apk_version__)
-        # install apk when not installed or version not match, dev version always keep
-        main_apk_info = self._dev.app_info("com.github.uiautomator")
-        if main_apk_info is None:
-            self._install_apk(main_apk)
-        elif main_apk_info.version_name != __apk_version__:
-            if re.match(r"([\d.]+)\-(\d+)\-\w+", main_apk_info.version_name) or "dirty" in main_apk_info.version_name:
-                logger.debug("skip version check for %s", main_apk_info.version_name)
-            elif is_version_compatiable(__apk_version__, main_apk_info.version_name):
-                logger.debug("apk version compatiable, expect %s, actual %s", __apk_version__, main_apk_info.version_name)
-            else:
-                logger.debug("apk version not ok, expect %s, actual %s", __apk_version__, main_apk_info.version_name)
-                self._dev.uninstall("com.github.uiautomator")
-                self._dev.uninstall("com.github.uiautomator.test")
-                self._install_apk(main_apk)
-                self._install_apk(test_apk)
-
-        if self._dev.app_info("com.github.uiautomator.test") is None:
-            self._install_apk(test_apk)
+        jar_path = assets_dir / "u2.jar"
+        target_path = "/data/local/tmp/u2.jar"
+        if self._check_device_file_hash(jar_path, target_path):
+            logger.debug("file u2.jar already pushed")
+        else:
+            logger.debug("push %s -> %s", jar_path, target_path)
+            self._dev.sync.push(jar_path, target_path, check=True)
     
-    def _install_apk(self, apk_path: Path):
-        logger.debug("Install %s", apk_path)
-        self._dev.shell("mkdir -p /data/local/tmp/u2")
-        target_path = "/data/local/tmp/u2/" + apk_path.name
-        self._dev.push(apk_path, target_path)
-        # -r: replace
-        # -t: allow test packages
-        # -d: allow version code downgrade
-        self._dev.shell(['pm', 'install', '-r', '-t', '-d', target_path])
+    def _check_device_file_hash(self, local_file: Union[str, Path], remote_file: str) -> bool:
+        """ check if remote file hash is correct """
+        md5 = hashlib.md5()
+        with open(local_file, "rb") as f:
+            md5.update(f.read())
+        local_md5 = md5.hexdigest()
+        logger.debug("file %s md5: %s", os.path.basename(local_file), local_md5)
+        output = self._dev.shell(["toybox", "md5sum", remote_file])
+        return local_md5 in output
+
+    def _wait_ready(self, launch_timeout=30):
+        """Wait until uiautomator2 server is ready"""
+        self._wait_app_process_ready(launch_timeout)
     
-    def _wait_instrument_ready(self, timeout: float):
-        """wait until "INSTRUMENTATION_STATUS_CODE: 1" show up"""
+    def _wait_app_process_ready(self, timeout: float):
+        """
+        ERROR1:
+            [server] INFO: [UiAutomator2Server] Starting Server
+            java.lang.IllegalStateException: UiAutomationService android.accessibilityservice.IAccessibilityServiceClient$Stub$Proxy@5deffd5already registered!
+
+        NORMAL:
+            [server] INFO: [UiAutomator2Server] Starting Server
+            SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+            SLF4J: Defaulting to no-operation (NOP) logger implementation
+            SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+        """
         deadline = time.time() + timeout
+        output_buffer = ''
         while time.time() < deadline:
             output = self._process.output.decode("utf-8", errors="ignore")
-            if "does not have a signature matching the target" in output:
-                raise APKSignatureError("app-uiautomator.apk does not have a signature matching the target")
-            if "INSTRUMENTATION_STATUS: Error=" in output:
-                error_message = output[output.find("INSTRUMENTATION_STATUS: Error="):].splitlines()[0]
-                raise LaunchUiAutomationError(error_message, output)
-            if "INSTRUMENTATION_STATUS_CODE:" in output:
-                status_code = int(re.search(r"INSTRUMENTATION_STATUS_CODE: (-?\d+)", output).group(1))
-                if status_code == 1: # success
-                    logger.debug("am instrument success, status_code: %d", status_code)
-                    return
-                raise LaunchUiAutomationError("am instrument error", f'CODE:{status_code}', output)
-            if self._process.pool() is not None:
-                raise LaunchUiAutomationError("am instrument quit", output)
-            time.sleep(.5)
-        raise LaunchUiAutomationError("am instrument launch timeout", f"{timeout}s", output)
-    
-    def _wait_stub_ready(self, timeout: float):
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            output = self._process.output.decode("utf-8", errors="ignore")
+            output_buffer += output
             if "already registered" in output:
-                raise AccessibilityServiceAlreadyRegisteredError("Possibly another UiAutomation service is running, you may find it output by \"adb shell ps -u shell\"",)
+                raise AccessibilityServiceAlreadyRegisteredError(output)
             if self._process.pool() is not None:
-                raise LaunchUiAutomationError("uiautomator2 server quit", output)
+                raise LaunchUiAutomationError("server quit unexpectly", output_buffer)
             if self._check_alive():
                 return
-        raise LaunchUiAutomationError("uiautomator2 server not ready")
+            time.sleep(.5)
+        raise LaunchUiAutomationError("server not ready", output_buffer)
 
     def _check_alive(self) -> bool:
         try:
@@ -270,18 +249,6 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
             return response.content == b"pong"
         except HTTPError:
             return False
-        
-    def _wait_ready(self, launch_timeout=30, service_timeout=30, show_float_window: bool = True):
-        """Wait until uiautomator2 server is ready"""
-        # wait am instrument start
-        self._wait_instrument_ready(launch_timeout)
-        self._dev.shell("am startservice -a com.github.uiautomator.ACTION_START")
-        if show_float_window:
-            # launch a toast window to make sure uiautomator is alive
-            logger.debug("show float window")
-            self._dev.shell("am start -n com.github.uiautomator/.ToastActivity -e showFloatWindow true")
-        self._wait_stub_ready(service_timeout)
-        time.sleep(1) # wait ATX goto background
     
     def stop_uiautomator(self, wait=True):
         with self._lock:
@@ -305,11 +272,3 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
             self.stop_uiautomator()
             self.start_uiautomator()
             return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
-
-class SimpleUiautomatorServer(BasicUiautomatorServer, AbstractUiautomatorServer):
-    @property
-    def info(self) -> Dict[str, Any]:
-        return self.jsonrpc_call("deviceInfo")
-    
-    def dump_hierarchy(self, compressed: bool = False, pretty: bool = False) -> str:
-        return self.jsonrpc_call("dumpWindowHierarchy", [compressed, pretty])

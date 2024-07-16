@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from typing import Union
+from typing import Optional, Tuple, Union
 
 from ._proto import Direction
 
@@ -16,7 +16,7 @@ class SwipeExt(object):
     def __call__(self,
                  direction: Union[Direction, str],
                  scale: float = 0.9,
-                 box: Union[None, tuple] = None,
+                 box: Optional[Tuple[int, int, int, int]] = None,
                  **kwargs):
         """
         Args:

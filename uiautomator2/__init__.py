@@ -10,11 +10,10 @@ import io
 import logging
 import os
 import re
-import string
 import time
 import warnings
 from functools import cached_property
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import adbutils
 from lxml import etree
@@ -27,7 +26,7 @@ from uiautomator2 import xpath
 from uiautomator2._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
 from uiautomator2._selector import Selector, UiObject
 from uiautomator2._input import InputMethodMixIn
-from uiautomator2.exceptions import AdbShellError, BaseException, ConnectError, DeviceError, HierarchyEmptyError, SessionBrokenError
+from uiautomator2.exceptions import *
 from uiautomator2.settings import Settings
 from uiautomator2.swipe import SwipeExt
 from uiautomator2.utils import image_convert, list2cmdline, deprecated
@@ -40,7 +39,7 @@ WAIT_FOR_DEVICE_TIMEOUT = int(os.getenv("WAIT_FOR_DEVICE_TIMEOUT", 20))
 logger = logging.getLogger(__name__)
 
 def enable_pretty_logging(level=logging.DEBUG):
-    if not logger.handlers:
+    if not logger.handlers: # pragma: no cover
         # Configure handler
         handler = logging.StreamHandler()
         formatter = logging.Formatter('[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d pid:%(process)d] %(message)s')
@@ -197,10 +196,6 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
             - start uiautomator keeper(am instrument -w ...)
             - wait until uiautomator service is ready
         """
-        # https://developer.android.google.cn/training/monitoring-device-state/doze-standby
-        # 让uiautomator进程不进入doze模式
-        # help: dumpsys deviceidle help
-        self.shell("dumpsys deviceidle whitelist +com.github.uiautomator; dumpsys deviceidle whitelist +com.github.uiautomator.test")
         self.stop_uiautomator()
         self.start_uiautomator()
 
@@ -247,7 +242,7 @@ class _Device(_BaseClient):
 
         Args:
             filename (str): saved filename, if filename is set then return None
-            format (str): used when filename is empty. one of ["pillow", "opencv", "raw"]
+            format (str): used when filename is empty. one of ["pillow", "opencv"]
             display_id (int): use specific display if device has multiple screen
 
         Examples:
@@ -281,13 +276,14 @@ class _Device(_BaseClient):
         """
         try:
             content = self._do_dump_hierarchy(compressed, max_depth)
-        except HierarchyEmptyError:
+        except HierarchyEmptyError: # pragma: no cover
             logger.warning("dump empty, return empty xml")
             content = '<?xml version=\'1.0\' encoding=\'UTF-8\' standalone=\'yes\' ?>\r\n<hierarchy rotation="0" />'
         
         if pretty:
             root = etree.fromstring(content.encode("utf-8"))
-            content = etree.tostring(root, pretty_print=True, encoding=str)
+            content = etree.tostring(root, pretty_print=True, encoding='UTF-8', xml_declaration=True)
+            content = content.decode("utf-8")
         return content
 
     @retry(HierarchyEmptyError, tries=3, delay=1)
@@ -435,7 +431,7 @@ class _Device(_BaseClient):
             https://developer.android.com/reference/android/support/test/uiautomator/UiDevice.html#swipe%28int,%20int,%20int,%20int,%20int%29
         """
         if duration is not None and steps is not None:
-            warnings.warn("duration and steps can not be set at the same time, use steps")
+            warnings.warn("duration and steps can not be set at the same time, use steps", UserWarning)
             duration = None
         if duration:
             steps = int(duration * 200)
@@ -449,7 +445,7 @@ class _Device(_BaseClient):
         with self._operation_delay("swipe"):
             return self.jsonrpc.swipe(fx, fy, tx, ty, steps)
 
-    def swipe_points(self, points, duration: float = 0.5):
+    def swipe_points(self, points: List[Tuple[int, int]], duration: float = 0.5):
         """
         Args:
             points: is point array containg at least one point object. eg [[200, 300], [210, 320]]
@@ -464,7 +460,8 @@ class _Device(_BaseClient):
             x, y = rel2abs(p[0], p[1])
             ppoints.append(x)
             ppoints.append(y)
-        steps = int(duration * 200)
+        # Each step execution is throttled to 5ms per step. So for a 100 steps, the swipe will take about 1/ 2 second to complete
+        steps = int(duration / .005)
         return self.jsonrpc.swipePoints(ppoints, steps)
 
     def drag(self, sx, sy, ex, ey, duration=0.5):
@@ -513,7 +510,7 @@ class _Device(_BaseClient):
         self.jsonrpc.sleep()
 
     @property
-    def orientation(self):
+    def orientation(self) -> str:
         '''
         orienting the devie to left/right or natural.
         left/l:       rotation=90 , displayRotation=1
@@ -523,7 +520,8 @@ class _Device(_BaseClient):
         '''
         return self.__orientation[self.info["displayRotation"]][1]
 
-    def set_orientation(self, value):
+    @orientation.setter
+    def orientation(self, value: str):
         '''setter of orientation property.'''
         for values in self.__orientation:
             if value in values:
@@ -544,6 +542,13 @@ class _Device(_BaseClient):
     def clear_traversed_text(self):
         '''clear the last traversed text.'''
         self.jsonrpc.clearLastTraversedText()
+    
+    @property
+    def last_toast(self) -> Optional[str]:
+        return self.jsonrpc.getLastToast()
+    
+    def clear_toast(self):
+        self.jsonrpc.clearLastToast()
 
     def open_notification(self):
         return self.jsonrpc.openNotification()
@@ -559,9 +564,8 @@ class _Device(_BaseClient):
         return self(**kwargs).exists
 
     @property
-    def clipboard(self) -> str:
-        return super().clipboard
-        # return self.jsonrpc.getClipboard() # FIXME(ssx): bug
+    def clipboard(self) -> Optional[str]:
+        return self.jsonrpc.getClipboard()
 
     @clipboard.setter
     def clipboard(self, text: str):
@@ -599,51 +603,8 @@ class _Device(_BaseClient):
         if self._serial:
             return self._serial
         return self.shell(['getprop', 'ro.serialno']).output.strip()
-
-    def show_float_window(self, show=True):
-        """ 显示悬浮窗，提高uiautomator运行的稳定性 """
-        arg = str(show).lower()
-        self.shell([
-            "am", "start", "-n", "com.github.uiautomator/.ToastActivity", "-e",
-            "showFloatWindow", arg
-        ])
-
-    @property
-    def toast(self):
-        obj = self
-
-        class Toast(object):
-            def get_message(self,
-                            wait_timeout=10,
-                            cache_timeout=10,
-                            default=None):
-                """
-                Args:
-                    wait_timeout: seconds of max wait time if toast now show right now
-                    cache_timeout: return immediately if toast showed in recent $cache_timeout
-                    default: default messsage to return when no toast show up
-
-                Returns:
-                    None or toast message
-                """
-                deadline = time.time() + wait_timeout
-                while 1:
-                    message = obj.jsonrpc.getLastToast(cache_timeout * 1000)
-                    if message:
-                        return message
-                    if time.time() > deadline:
-                        return default
-                    time.sleep(.5)
-
-            def reset(self):
-                return obj.jsonrpc.clearLastToast()
-
-            def show(self, text, duration=1.0):
-                return obj.jsonrpc.makeToast(text, duration * 1000)
-
-        return Toast()
     
-    def __call__(self, **kwargs):
+    def __call__(self, **kwargs) -> 'UiObject':
         return UiObject(self, Selector(**kwargs))
 
 
@@ -887,11 +848,11 @@ class _AppMixIn(AbstractShell):
             }
 
         Raises:
-            UiaError
+            AppNotFoundError
         """
         info = self.adb_device.app_info(package_name)
         if not info:
-            raise BaseException("App not installed")
+            raise AppNotFoundError("App not installed", package_name)
         return {
             "versionName": info.version_name,
             "versionCode": info.version_code,
@@ -942,7 +903,7 @@ class _AppMixIn(AbstractShell):
             logger.info(f'auto grant permission {permission}')
 
 
-class _DeprecatedMixIn:
+class _DeprecatedMixIn: # pragma: no cover
     @property
     def wait_timeout(self):  # wait element timeout
         return self.settings['wait_timeout']
@@ -960,6 +921,16 @@ class _DeprecatedMixIn:
     def click_post_delay(self, v: Union[int, float]):
         self.settings['post_delay'] = v
 
+    def unlock(self):
+        """ unlock screen with swipe from left-bottom to right-top """
+        if not self.info['screenOn']:
+            self.shell("input keyevent WAKEUP")
+            self.swipe(0.1, 0.9, 0.9, 0.1)
+
+    def show_float_window(self, show=True):
+        """ 显示悬浮窗，提高uiautomator运行的稳定性 """
+        print("show_float_window is deprecated, this is not needed anymore")
+    
     @deprecated(reason="use d.toast.show(text, duration) instead")
     def make_toast(self, text, duration=1.0):
         """ Show toast
@@ -968,13 +939,45 @@ class _DeprecatedMixIn:
             duration (float): seconds of display
         """
         return self.jsonrpc.makeToast(text, duration * 1000)
+    
+    @property
+    def toast(self):
+        obj = self
 
-    def unlock(self):
-        """ unlock screen with swipe from left-bottom to right-top """
-        if not self.info['screenOn']:
-            self.shell("input keyevent WAKEUP")
-            self.swipe(0.1, 0.9, 0.9, 0.1)
+        class Toast(object):
+            def get_message(self,
+                            wait_timeout=10,
+                            cache_timeout=10,
+                            default=None):
+                """
+                Args:
+                    wait_timeout: seconds of max wait time if toast now show right now
+                    cache_timeout: depreacated
+                    default: default messsage to return when no toast show up
 
+                Returns:
+                    None or toast message
+                """
+                deadline = time.time() + wait_timeout
+                while 1:
+                    message = obj.jsonrpc.getLastToast()
+                    if message:
+                        return message
+                    if time.time() > deadline:
+                        return default
+                    time.sleep(.5)
+
+            def reset(self):
+                return obj.jsonrpc.clearLastToast()
+
+            def show(self, text, duration=1.0):
+                return obj.jsonrpc.makeToast(text, duration * 1000)
+
+        return Toast()
+    
+    def set_orientation(self, value: str):
+        '''setter of orientation property.'''
+        self.orientation = value
 
 
 class _PluginMixIn:
