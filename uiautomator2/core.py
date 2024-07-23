@@ -50,9 +50,8 @@ class MockAdbProcess:
         """ subprocess do not have this property """
         return self._output
 
-    def wait(self) -> int:
-        self._event.wait()
-        return 0
+    def wait(self) -> bool:
+        return self._event.wait(timeout=3)
 
     def pool(self) -> Optional[int]:
         if self._event.is_set():
