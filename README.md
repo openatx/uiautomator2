@@ -1229,6 +1229,8 @@ d.settings['operation_delay'] = (.5, 1)
 # 其中 double_click, long_click 都对应click
 d.settings['operation_delay_methods'] = ['click', 'swipe', 'drag', 'press']
 d.settings['wait_timeout'] = 20.0 # 默认控件等待时间（原生操作，xpath插件的等待时间）
+
+d.settings['max_depth'] = 50 # 默认50，限制dump_hierarchy返回的元素层级
 ```
 
 对于随着版本升级，设置过期的配置时，会提示Deprecated，但是不会抛异常。

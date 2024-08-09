@@ -18,7 +18,7 @@ from typing import Any, Dict, Optional, Union
 import adbutils
 import requests
 
-from uiautomator2.exceptions import RPCInvalidError, RPCStackOverflowError, UiAutomationNotConnectedError, HTTPError, LaunchUiAutomationError, UiObjectNotFoundError, RPCUnknownError, APKSignatureError, AccessibilityServiceAlreadyRegisteredError
+from uiautomator2.exceptions import HTTPTimeoutError, RPCInvalidError, RPCStackOverflowError, UiAutomationNotConnectedError, HTTPError, LaunchUiAutomationError, UiObjectNotFoundError, RPCUnknownError, APKSignatureError, AccessibilityServiceAlreadyRegisteredError
 from uiautomator2.abstract import AbstractUiautomatorServer
 from uiautomator2.utils import is_version_compatiable
 from uiautomator2.version import __apk_version__
@@ -111,6 +111,8 @@ def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[st
             print(response.text.rstrip())
             print(f"<<< END timed_used = %.3f\n" % (end_time - start_time).total_seconds())
         return response
+    except requests.Timeout as e:
+        raise HTTPTimeoutError(f"HTTP request timeout: {e}") from e
     except requests.RequestException as e:
         raise HTTPError(f"HTTP request failed: {e}") from e
 
