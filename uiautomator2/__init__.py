@@ -252,8 +252,12 @@ class _Device(_BaseClient):
         """
         if display_id is None:
             base64_data = self.jsonrpc.takeScreenshot(1, 80)
-            jpg_raw = base64.b64decode(base64_data)
-            pil_img = Image.open(io.BytesIO(jpg_raw))
+            # takeScreenshot may return None
+            if base64_data:
+                jpg_raw = base64.b64decode(base64_data)
+                pil_img = Image.open(io.BytesIO(jpg_raw))
+            else:
+                pil_img = self._dev.screenshot(display_id=display_id)
         else:
             pil_img = self._dev.screenshot(display_id=display_id)
         
