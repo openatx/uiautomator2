@@ -18,6 +18,7 @@ class Settings(object):
             "operation_delay": (0, 0),
             "operation_delay_methods": ["click", "swipe"],
             "fallback_to_blank_screenshot": False,
+            "max_depth": 50,
         }
 
         self._deprecated_props = {

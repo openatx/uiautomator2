@@ -262,7 +262,7 @@ class _Device(_BaseClient):
             return
         return image_convert(pil_img, format)
         
-    def dump_hierarchy(self, compressed=False, pretty=False, max_depth: int = None) -> str:
+    def dump_hierarchy(self, compressed=False, pretty=False, max_depth: Optional[int] = None) -> str:
         """
         Dump window hierarchy
 
@@ -275,6 +275,8 @@ class _Device(_BaseClient):
             xml content
         """
         try:
+            if max_depth is None:
+                max_depth = self.settings['max_depth']
             content = self._do_dump_hierarchy(compressed, max_depth)
         except HierarchyEmptyError: # pragma: no cover
             logger.warning("dump empty, return empty xml")
