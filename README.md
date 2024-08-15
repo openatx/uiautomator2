@@ -104,7 +104,6 @@ Empty
   - **[Stop all running apps](#stop-all-running-apps)**
   - **[Push and pull files](#push-and-pull-files)**
   - **[Other app operations](#other-app-operations)**
-  ```
 
 **[UI automation](#basic-api-usages)**
   - **[Shell commands](#shell-commands)**
