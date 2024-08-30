@@ -132,6 +132,10 @@ class WatchContext:
         self.__stop.set()
         self.__stopped.wait(timeout=10)
         self.__started = False
+    
+    def close(self):
+        """ alias of stop """
+        self.stop()
 
     def __enter__(self):
         return self
