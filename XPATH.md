@@ -7,6 +7,7 @@
 - [XPath tutorial](http://www.zvon.org/xxl/XPathTutorial/)
 - [阮一峰的XPath学习笔记](http://www.ruanyifeng.com/blog/2009/07/xpath_path_expressions.html)
 - [测试XPath的网站](https://www.freeformatter.com/xpath-tester.html)
+- [XPath tester](https://extendsclass.com/xpath-tester.html)
 
 代码并没有完全测试完，可能还有bug，欢迎跟我反馈。
 
