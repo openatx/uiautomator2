@@ -112,7 +112,7 @@ def cmd_version(args):
 def cmd_console(args):
     import code
     import platform
-
+    
     d = u2.connect(args.serial)
     model = d.shell("getprop ro.product.model").output.strip()
     serial = d.serial
@@ -122,7 +122,7 @@ def cmd_console(args):
 
         c = get_config()
         c.InteractiveShellEmbed.colors = "neutral"
-        IPython.embed(config=c, header="IPython -- d.info is ready")
+        IPython.embed(config=c, header=f"IPython is ready, uiautomator2: {__version__}, try d.info")
     except ImportError:
         _vars = globals().copy()
         _vars.update(locals())
