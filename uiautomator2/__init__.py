@@ -584,6 +584,23 @@ class _Device(_BaseClient):
             label: User-visible label for the clip data.
         '''
         self.jsonrpc.setClipboard(label, text)
+    
+    def clear_text(self):
+        """ clear input text """
+        self.jsonrpc.clearInputText()
+    
+    def send_keys(self, text: str, clear: bool = False):
+        """
+        send text to focused input area
+        
+        Args:
+            text: input text
+            clear: clear text before input
+        """
+        if clear:
+            self.clear_text()
+        self.clipboard = text
+        self.jsonrpc.pasteClipboard()
 
     def keyevent(self, v):
         """
