@@ -96,20 +96,8 @@ class InputMethodMixIn(AbstractShell):
         if result.code != BORADCAST_RESULT_OK:
             raise AdbBroadcastError(f"broadcast {action} failed: {result.data}")
 
-    def send_keys(self, text: str, clear: bool = False):
-        """
-        Args:
-            text (str): text to set
-            clear (bool): clear before set text
-        """
-        if clear:
-            self.clear_text()
-        if re.match(r'^[-+*\/_a-zA-Z0-9 ]+$', text):
-            self.shell(['input', 'text', text.replace(' ', '%s')])
-        else:
-            self.__send_keys_with_ime(text)
-
-    def __send_keys_with_ime(self, text: str):
+    @deprecated(reason="use send_keys instead")
+    def _send_keys_with_ime(self, text: str):
         try:
             self.set_input_ime()
             btext = text.encode('utf-8')
@@ -152,7 +140,8 @@ class InputMethodMixIn(AbstractShell):
         else:
             self._must_broadcast('ADB_KEYBOARD_SMART_ENTER')
 
-    def clear_text(self):
+    @deprecated(reason="use clear_text() instead")
+    def _clear_text_with_ime(self):
         """ clear text
         Raises:
             EnvironmentError

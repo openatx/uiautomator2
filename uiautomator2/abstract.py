@@ -6,6 +6,7 @@
 
 import abc
 from typing import Any, List, NamedTuple, Tuple, Union
+import typing
 import adbutils
 from PIL import Image
 from uiautomator2._proto import Direction
@@ -41,6 +42,12 @@ class AbstractShell(abc.ABC):
     @abc.abstractmethod
     def adb_device(self) -> adbutils.AdbDevice:
         pass
+    
+    @property
+    @abc.abstractmethod
+    def jsonrpc(self) -> typing.Any:
+        pass
+    
 
 class AbstractXPathBasedDevice(metaclass=abc.ABCMeta):
     @abc.abstractmethod
