@@ -96,7 +96,6 @@ class InputMethodMixIn(AbstractShell):
         if result.code != BORADCAST_RESULT_OK:
             raise AdbBroadcastError(f"broadcast {action} failed: {result.data}")
 
-    @deprecated(reason="use send_keys instead")
     def _send_keys_with_ime(self, text: str):
         try:
             self.set_input_ime()
@@ -140,7 +139,6 @@ class InputMethodMixIn(AbstractShell):
         else:
             self._must_broadcast('ADB_KEYBOARD_SMART_ENTER')
 
-    @deprecated(reason="use clear_text() instead")
     def _clear_text_with_ime(self):
         """ clear text
         Raises:
