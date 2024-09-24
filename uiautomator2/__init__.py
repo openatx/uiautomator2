@@ -587,7 +587,12 @@ class _Device(_BaseClient):
     
     def clear_text(self):
         """ clear input text """
-        self.jsonrpc.clearInputText()
+        try:
+            # 这个问题基本不大
+            # 不过考虑到u2.jar不一定升级成功了，所以还有留个兜底方案·
+            self.jsonrpc.clearInputText()
+        except:
+            self._clear_text_with_ime()
     
     def send_keys(self, text: str, clear: bool = False):
         """
@@ -599,8 +604,14 @@ class _Device(_BaseClient):
         """
         if clear:
             self.clear_text()
-        self.clipboard = text
-        self.jsonrpc.pasteClipboard()
+        try:
+            # setClipboard的兼容性并不是特别好，但是这样做有个优点就是不用装输入法了。
+            self.clipboard = text
+            if self.clipboard != text:
+                raise UiAutomationError("setClipboard failed")
+            self.jsonrpc.pasteClipboard()
+        except:
+            self._send_keys_with_ime(text)
 
     def keyevent(self, v):
         """
