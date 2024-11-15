@@ -154,6 +154,7 @@ class UiObject(object):
         # delay = self.session.click_post_delay
         # if delay:
         #     time.sleep(delay)
+        return x, y
 
     def bounds(self) -> Tuple[int, int, int, int]:
         """
