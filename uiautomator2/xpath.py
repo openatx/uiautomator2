@@ -484,11 +484,11 @@ class XPathSelector(AbstractSelector):
         logger.info("click %d, %d", x, y)
         self._parent._d.click(x, y)
 
-    def click(self, timeout=None):
+    def click(self, timeout=None, offset=None):
         """find element and perform click"""
         try:
             el = self.get(timeout=timeout)
-            el.click()
+            return el.click(offset)
         except XPathElementNotFoundError:
             if not self._fallback:
                 raise
@@ -556,12 +556,14 @@ class XMLElement(object):
             path = re.sub(r"\[\d+\]", "", path)  # remove indexes
         return path
 
-    def center(self):
+    def center(self, offset=None):
         """
         Returns:
             (x, y)
         """
-        return self.offset(0.5, 0.5)
+        if offset is None:
+            offset = (0.5, 0.5)
+        return self.offset(*offset)
 
     def offset(self, px: float = 0.0, py: float = 0.0):
         """
@@ -577,12 +579,13 @@ class XMLElement(object):
         x, y, width, height = self.rect
         return x + int(width * px), y + int(height * py)
 
-    def click(self):
+    def click(self, offset=(0.5, 0.5)):
         """
         click element, 100ms between down and up
         """
-        x, y = self.center()
+        x, y = self.center(offset)
         self._parent._d.click(x, y)
+        return x, y
 
     def long_click(self):
         """
