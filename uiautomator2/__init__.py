@@ -210,11 +210,11 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
         """
         self._dev.sync.push(src, dst, mode=mode)
 
-    def pull(self, src: str, dst: str):
+    def pull(self, src: str, dst: str, exist_ok: bool = False):
         """
         Pull file from device to local
         """
-        self._dev.sync.pull(src, dst)
+        self._dev.sync.pull(src, dst, exist_ok)
 
         # FIXME: check if windows still need f.close
         # with open(dst, 'wb') as f:
