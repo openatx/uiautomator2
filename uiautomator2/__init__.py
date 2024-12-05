@@ -210,18 +210,14 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
         """
         self._dev.sync.push(src, dst, mode=mode)
 
-    def pull(self, src: str, dst: str, exist_ok: bool = False):
+    def pull(self, src: str, dst: str):
         """
         Pull file from device to local
         """
-        self._dev.sync.pull(src, dst, exist_ok)
-
-        # FIXME: check if windows still need f.close
-        # with open(dst, 'wb') as f:
-        #     shutil.copyfileobj(r.raw, f)
-            # if _mswindows:  # FIXME: check hotfix windows file size zero bug
-            #     f.close()
-
+        try:
+            self._dev.sync.pull(src, dst, exist_ok=True)
+        except TypeError:
+            self._dev.sync.pull(src, dst)
 
 class _Device(_BaseClient):
     __orientation = (  # device orientation
