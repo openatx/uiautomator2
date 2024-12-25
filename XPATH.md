@@ -1,41 +1,43 @@
-# uiautomator2 xpath extension
+# uiautomator2 XPath Extension
 
-用这个插件前，要先了解一些XPath知识。
-好在网上这方便的资料很多。下面列举一些
+[📖 阅读中文版](XPATH_CN.md)
 
-- [W3CSchool XPath教程](http://www.w3school.com.cn/xpath/index.asp)
-- [XPath tutorial](http://www.zvon.org/xxl/XPathTutorial/)
-- [阮一峰的XPath学习笔记](http://www.ruanyifeng.com/blog/2009/07/xpath_path_expressions.html)
-- [测试XPath的网站](https://www.freeformatter.com/xpath-tester.html)
-- [XPath tester](https://extendsclass.com/xpath-tester.html)
+Before using this plugin, you need to understand some XPath knowledge. Fortunately, there are many convenient resources available online. Below are some examples:
 
-代码并没有完全测试完，可能还有bug，欢迎跟我反馈。
+- [W3CSchool XPath Tutorial](http://www.w3school.com.cn/xpath/index.asp)
+- [XPath Tutorial](http://www.zvon.org/xxl/XPathTutorial/)
+- [Ruan Yifeng’s XPath Learning Notes](http://www.ruanyifeng.com/blog/2009/07/xpath_path_expressions.html)
+- [Website for Testing XPath](https://www.freeformatter.com/xpath-tester.html)
+- [XPath Tester](https://extendsclass.com/xpath-tester.html)
 
-## 工作原理
-1. 通过uiautomator2库的`dump_hierarchy`接口，获取到当前的UI界面（一个很丰富的XML）。
-2. 然后使用`lxml`库解析，寻找匹配的xpath，然后使用click指令完后操作
+The code has not been fully tested and may still have bugs. Feedback is welcome.
 
->目前发现lxml只支持XPath1.0, 有了解的可以告诉我下怎么支持XPath2.0
+## How It Works
 
-**弹窗监控原理**
+1. Use the `dump_hierarchy` interface from the `uiautomator2` library to obtain the current UI screen (a comprehensive XML).
+2. Then use the `lxml` library to parse and search for matching XPath expressions, and perform click operations using the `click` command.
 
-通过hierarchy可以知道界面上的所有元素信息（包括弹窗和要点击的按钮）。
-假设有 `跳过`, `知道了` 这两个弹窗按钮。需要点击的按钮名是 `播放`
+> Currently, `lxml` only supports XPath 1.0. If anyone knows how to support XPath 2.0, please let me know.
 
-1. 获取到当前界面的XML（通过dump_hierarchy函数）
-2. 检查有没有`跳过`, `知道了` 这两个按钮，如果有就点击，然后回到第一步
-3. 检查有没有`播放`按钮, 有就点击，结束。没有找到在回到第一步，一直执行到查找次数超标。
+**Popup Monitoring Principle**
 
-## 安装方法
-```
+The hierarchy provides information about all elements on the screen (including popups and buttons to be clicked). Suppose there are two popup buttons: `Skip` and `Got It`. The button to be clicked is `Play`.
+
+1. Obtain the current screen’s XML (using the `dump_hierarchy` function).
+2. Check if the `Skip` or `Got It` buttons are present. If they are, click them and return to step 1.
+3. Check if the `Play` button is present. If it is, click it and finish. If not found, return to step 1 and keep executing until the search attempts exceed the limit.
+
+## Installation
+
+```bash
 pip3 install -U uiautomator2
 ```
 
-## 使用方法
+## Usage
 
-### 简单用法
+### Simple Usage
 
-看下面的这个简单的例子了解下如何使用
+Check out the following simple example to understand how to use it:
 
 ```python
 import uiautomator2 as u2
@@ -44,122 +46,125 @@ def main():
     d = u2.connect()
     d.app_start("com.netease.cloudmusic", stop=True)
 
-    d.xpath('//*[@text="私人FM"]').click()
+    d.xpath('//*[@text="Private FM"]').click()
     
     #
-    # 高级用法(元素定位)
+    # Advanced Usage (Element Positioning)
     #
 
-    # @开头
-    d.xpath('@personal-fm') # 等价于 d.xpath('//*[@resource-id="personal-fm"]')
-    # 多个条件定位, 类似于AND
-    d.xpath('//android.widget.Button').xpath('//*[@text="私人FM"]')
+    # Starting with @
+    d.xpath('@personal-fm') # Equivalent to d.xpath('//*[@resource-id="personal-fm"]')
     
-    d.xpath('//*[@text="私人FM"]').parent() # 定位到父元素
-    d.xpath('//*[@text="私人FM"]').parent("@android:list") # 定位到符合条件的父元素
+    # Multiple condition positioning, similar to AND
+    d.xpath('//android.widget.Button').xpath('//*[@text="Private FM"]')
+    
+    d.xpath('//*[@text="Private FM"]').parent() # Position to the parent element
+    d.xpath('//*[@text="Private FM"]').parent("@android:list") # Position to the parent element that meets the condition
 
-	# 包含child的时候，不建议在使用多条件的xpath，因为容易搞混
-	d.xpath('@android:id/list').child('/android.widget.TextView').click()
-	# 等价于下面这个
-	# d.xpath('//*[@resource-id="android:id/list"]/android.widget.TextView').click()
+    # When using child, it is not recommended to use multiple condition XPath because it can be confusing
+    d.xpath('@android:id/list').child('/android.widget.TextView').click()
+    # Equivalent to the following
+    # d.xpath('//*[@resource-id="android:id/list"]/android.widget.TextView').click()
 ```
 
->下面的代码为了方便就不写`import`和`main`了，默认存在`d`这个变量
+> For convenience, the following code does not include `import` and `main`. It is assumed that the variable `d` exists.
 
-### `XPathSelector`的操作
+### Operations of `XPathSelector`
 
 ```python
-sl = d.xpath("@com.example:id/home_searchedit") # sl为XPathSelector对象
+sl = d.xpath("@com.example:id/home_searchedit") # sl is an XPathSelector object
 
-# 点击
+# Click
 sl.click()
-sl.click(timeout=10) # 指定超时时间, 找不到抛出异常 XPathElementNotFoundError
-sl.click_exists() # 存在即点击，返回是否点击成功
-sl.click_exists(timeout=10) # 等待最多10s钟
+sl.click(timeout=10) # Specify a timeout, throws XPathElementNotFoundError if not found
+sl.click_exists() # Click if exists, returns whether the click was successful
+sl.click_exists(timeout=10) # Wait up to 10 seconds
 
-sl.match() # 不匹配返回None, 否则返回XMLElement
+sl.match() # Returns None if not matched, otherwise returns an XMLElement
 
-# 等到对应的元素出现，返回XMLElement
-# 默认的等待时间是10s
+# Wait for the corresponding element to appear, returns XMLElement
+# The default waiting time is 10 seconds
 el = sl.wait()
-el = sl.wait(timeout=15) # 等待15s, 没有找到会返回None
+el = sl.wait(timeout=15) # Wait for 15 seconds, returns None if not found
 
-# 等待元素消失
+# Wait for the element to disappear
 sl.wait_gone()
 sl.wait_gone(timeout=15) 
 
-# 跟wait用法类似，区别是如果没找到直接抛出 XPathElementNotFoundError 异常
+# Similar to wait, but throws XPathElementNotFoundError if not found
 el = sl.get() 
 el = sl.get(timeout=15)
 
-# 修改默认的等待时间为15s
+# Change the default waiting time to 15 seconds
 d.xpath.global_set("timeout", 15)
-d.xpath.implicitly_wait(15) # 与上一行代码等价 (TODO: Removed)
+d.xpath.implicitly_wait(15) # Equivalent to the previous line (TODO: Removed)
 
-print(sl.exists) # 返回是否存在 (bool)
-sl.get_last_match() # 获取上次匹配的XMLElement
+print(sl.exists) # Returns whether it exists (bool)
+sl.get_last_match() # Get the last matched XMLElement
 
-sl.get_text() # 获取组件名
-sl.set_text("") # 清空输入框
-sl.set_text("hello world") # 输入框输入 hello world
+sl.get_text() # Get the component name
+sl.set_text("") # Clear the input box
+sl.set_text("hello world") # Input "hello world" into the input box
 
-# 遍历所有匹配的元素
+# Iterate through all matched elements
 for el in d.xpath('//android.widget.EditText').all():
-    print("rect:", el.rect) # output tuple: (x, y, width, height)
+    print("rect:", el.rect) # Output tuple: (x, y, width, height)
     print("center:", el.center())
-    el.click() # click operation
-    print(el.elem) # 输出lxml解析出来的Node
+    el.click() # Click operation
+    print(el.elem) # Output the Node parsed by lxml
     print(el.text)
 
-# child操作
+# Child operation
 d.xpath('@android:id/list').child('/android.widget.TextView').click()
-等价于 d.xpath('//*[@resource-id="android:id/list"]/android.widget.TextView').all()
+# Equivalent to d.xpath('//*[@resource-id="android:id/list"]/android.widget.TextView').all()
 ```
 
-高级查找语法
+### Advanced Search Syntax
 
 > Added in version 3.1
 
 ```python
-# 查找 text=NFC AND id=android:id/item
+# Find text=NFC AND id=android:id/item
 (d.xpath("NFC") & d.xpath("@android:id/item")).get()
 
-# 查找 text=NFC OR id=android:id/item
+# Find text=NFC OR id=android:id/item
 (d.xpath("NFC") | d.xpath("App") | d.xpath("Content")).get()
 
-# 复杂一点也支持
+# Supports more complex queries
 ((d.xpath("NFC") | d.xpath("@android:id/item")) & d.xpath("//android.widget.TextView")).get()
+```
 
-### `XMLElement`的操作
+### Operations of `XMLElement`
 
 ```python
-# 通过XPathSelector.get() 返回的对象叫做 XMLElement
+# The object returned by XPathSelector.get() is called XMLElement
 el = d.xpath("@com.example:id/home_searchedit").get()
 
-lx, ly, width, height = el.rect # 获取左上角坐标和宽高
-lx, ly, rx, ry = el.bounds # 左上角与右下角的坐标
-x, y = el.center() # get element center position
-x, y = el.offset(0.5, 0.5) # same as center()
+lx, ly, width, height = el.rect # Get the top-left coordinates and size
+lx, ly, rx, ry = el.bounds # Top-left and bottom-right coordinates
+x, y = el.center() # Get the element’s center position
+x, y = el.offset(0.5, 0.5) # Same as center()
 
-# send click
+# Send click
 el.click()
 
-# 打印文本内容
+# Print text content
 print(el.text) 
 
-# 获取组内的属性, dict类型
+# Get the attributes within the group, as a dict
 print(el.attrib)
 
-# 控件截图 （原理为先整张截图，然后再crop）
+# Take a screenshot of the control (the principle is to take a full screenshot first, then crop)
 el.screenshot()
 
-# 控件滑动
+# Swipe the control
 el.swipe("right") # left, right, up, down
-el.swipe("right", scale=0.9) # scale默认0.9, 意思是滑动距离为控件宽度的90%, 上滑则为高度的90%
+el.swipe("right", scale=0.9) # scale defaults to 0.9, meaning the swipe distance is 90% of the control's width. Swiping up uses 90% of the height.
 
 print(el.info)
-# output example
-{'index': '0',
+# Output example
+{
+ 'index': '0',
  'text': '',
  'resourceId': 'com.example:id/home_searchedit',
  'checkable': 'true',
@@ -178,29 +183,31 @@ print(el.info)
  'bounds': {'left': 882, 'top': 279, 'right': 1026, 'bottom': 423},
  'packageName': 'com.android.settings',
  'contentDescription': '',
- 'resourceName': 'android:id/switch_widget'}
+ 'resourceName': 'android:id/switch_widget'
+}
 ```
 
-### 滑动到指定位置
-> `scroll_to` 这个功能属于新增加的，可能不这么完善（比如不能检测是否滑动到底部了）
+### Swipe to a Specified Position
 
-先看例子
+> The `scroll_to` feature is newly added and may not be fully polished (for example, it cannot detect if it has scrolled to the bottom).
+
+First, see the example:
 
 ```python
 from uiautomator2 import connect_usb, Direction
 
 d = connect_usb()
 
-d.scroll_to("下单")
-d.scroll_to("下单", Direction.FORWARD) # 默认就是向下滑动，除此之外还可以BACKWARD, HORIZ_FORWARD(水平), HORIZ_BACKWARD(水平反向)
-d.scroll_to("下单", Direction.HORIZ_FORWARD, max_swipes=5)
+d.scroll_to("Place Order")
+d.scroll_to("Place Order", Direction.FORWARD) # Defaults to scrolling down. Other options include BACKWARD, HORIZ_FORWARD (horizontal), HORIZ_BACKWARD (horizontal reverse)
+d.scroll_to("Place Order", Direction.HORIZ_FORWARD, max_swipes=5)
 
-# 除此之外还可以在指定在某个元素内滑动
+# Additionally, you can scroll within a specified element
 d.xpath('@com.taobao.taobao:id/dx_root').scroll(Direction.HORIZ_FORWARD)
-d.xpath('@com.taobao.taobao:id/dx_root').scroll_to("下单", Direction.HORIZ_FORWARD)
+d.xpath('@com.taobao.taobao:id/dx_root').scroll_to("Place Order", Direction.HORIZ_FORWARD)
 ```
 
-**比较完整的例子**
+**A More Complete Example**
 
 ```python
 import uiautomator2 as u2
@@ -210,149 +217,153 @@ def main():
     d = u2.connect()
     d.app_start("com.netease.cloudmusic", stop=True)
 
-    # steps
-    d.xpath("//*[@text='私人FM']/../android.widget.ImageView").click()
-    d.xpath("下一首").click()
+    # Steps
+    d.xpath("//*[@text='Private FM']/../android.widget.ImageView").click()
+    d.xpath("Next Song").click()
 
-    # 监控弹窗2s钟，时间可能大于2s
+    # Monitor popups for 2 seconds, the time may exceed 2 seconds
     d.xpath.sleep_watch(2)
-    d.xpath("转到上一层级").click()
+    d.xpath("Go to Previous Level").click()
     
-    d.xpath("转到上一层级").click(watch=False) # click without trigger watch
-    d.xpath("转到上一层级").click(timeout=5.0) # wait timeout 5s
+    d.xpath("Go to Previous Level").click(watch=False) # Click without triggering watch
+    d.xpath("Go to Previous Level").click(timeout=5.0) # Wait timeout 5 seconds
 
-    d.xpath.watch_background() # 开启后台监控模式，默认每4s检查一次
-    d.xpath.watch_background(interval=2.0) # 每2s检查一次
-    d.xpath.watch_stop() # 停止监控
+    d.xpath.watch_background() # Enable background monitoring mode, checks every 4 seconds by default
+    d.xpath.watch_background(interval=2.0) # Check every 2 seconds
+    d.xpath.watch_stop() # Stop monitoring
 
     for el in d.xpath('//android.widget.EditText').all():
-        print("rect:", el.rect) # output tuple: (left_x, top_y, width, height)
-        print("bounds:", el.bounds) # output tuple: （left, top, right, bottom)
+        print("rect:", el.rect) # Output tuple: (left_x, top_y, width, height)
+        print("bounds:", el.bounds) # Output tuple: (left, top, right, bottom)
         print("center:", el.center())
-        el.click() # click operation
-        print(el.elem) # 输出lxml解析出来的Node
-    
-    # 滑动
+        el.click() # Click operation
+        print(el.elem) # Output the Node parsed by lxml
+
+    # Swiping
     el = d.xpath('@com.taobao.taobao:id/fl_banner_container').get()
 
-    # 从右滑到左
+    # Swipe from right to left
     el.swipe(Direction.HORIZ_FORWARD) 
-    el.swipe(Direction.LEFT) # 从右滑到左
+    el.swipe(Direction.LEFT) # Swipe from right to left
 
-    # 从下滑到上
+    # Swipe from bottom to top
     el.swipe(Direction.FORWARD)
     el.swipe(Direction.UP)
 
-    el.swipe("right", scale=0.9) # scale 默认0.9, 滑动距离为控件宽度的80%, 滑动的中心点与控件中心点一致
-    el.swipe("up", scale=0.5) # 滑动距离为控件高度的50%
+    el.swipe("right", scale=0.9) # scale defaults to 0.9, swipe distance is 80% of the control's width, the swipe center aligns with the control's center
+    el.swipe("up", scale=0.5) # Swipe distance is 50% of the control's height
 
-    # scroll同swipe不一样，scroll返回bool值，表示是否还有新元素出现
-    el.scroll(Direction.FORWARD) # 向下滑动
-    el.scroll(Direction.BACKWARD) # 向上滑动
-    el.scroll(Direction.HORIZ_FORWARD) # 水平向前
-    el.scroll(Direction.HORIZ_BACKWARD) # 水平向后
+    # scroll is different from swipe; scroll returns a bool indicating whether new elements appeared
+    el.scroll(Direction.FORWARD) # Swipe down
+    el.scroll(Direction.BACKWARD) # Swipe up
+    el.scroll(Direction.HORIZ_FORWARD) # Swipe horizontally forward
+    el.scroll(Direction.HORIZ_BACKWARD) # Swipe horizontally backward
 
     if el.scroll("forward"):
-        print("还可以继续滚动")
+        print("Can continue scrolling")
 ```
 
-### `PageSource`对象
+### `PageSource` Object
+
 > Added in version 3.1
 
-这个属于高级用法，但是这个对象也最初级，几乎所有的函数都依赖它。
+This is an advanced usage, but this object is also the most fundamental, as almost all functions depend on it.
 
-什么是PageSource？
+**What is PageSource?**
 
-PageSource是从d.dump_hierarchy()的返回值初始化来的。主要用于通过XPATH完成元素的查找工作。
+PageSource is initialized from the return value of `d.dump_hierarchy()`. It is mainly used to find elements through XPath.
 
-用法？
+**Usage:**
 
 ```python
 source = d.xpath.get_page_source()
 
-# find_elements 是核心方法
+# find_elements is the core method
 elements = source.find_elements('//android.widget.TextView') # List[XMLElement]
 for el in elements:
     print(el.text)
 
-# 获取坐标后点击
+# Get coordinates and click
 x, y = elements[0].center()
 d.click(x, y)
 
-# 多种条件的查询写法
+# Multiple condition query syntax
 es1 = source.find_elements('//android.widget.TextView')
 es2 = source.find_elements(XPath('@android:id/content').joinpath("//*"))
 
-# 寻找是TextView但不属于id=android:id/content下的节点
+# Find TextViews that do not belong to nodes under id=android:id/content
 els = set(es1) - set(es2)
 
-# 寻找是TextView同事属于id=android:id/content下的节点
+# Find TextViews that belong to nodes under id=android:id/content
 els = set(es1) & set(es2)
 ```
 
-## XPath规则
-为了写起脚本来更快，我们自定义了一些简化的xpath规则
+## XPath Rules
 
-**规则1**
+To write scripts faster, we have customized some simplified XPath rules.
 
-`//` 开头代表原生xpath
+**Rule 1**
 
-**规则2**
+Starting with `//` represents native XPath.
 
-`@` 开头代表resourceId定位
+**Rule 2**
 
-`@smartisanos:id/right_container` 相当于 
-`//*[@resource-id="smartisanos:id/right_container"]`
+Starting with `@` represents resourceId positioning.
 
-**规则3**
+`@smartisanos:id/right_container` is equivalent to `//*[@resource-id="smartisanos:id/right_container"]`
 
-`^`开头代表正则表达式
+**Rule 3**
 
-`^.*道了` 相当于 `//*[re:match(text(), '^.*道了')]`
+Starting with `^` represents a regular expression.
 
-**规则4**
+`^.*done` is equivalent to `//*[re:match(text(), '^.*done')]`
 
-> 灵感来自SQL like
+**Rule 4**
 
-`知道%` 匹配`知道`开始的文本， 相当于 `//*[starts-with(text(), '知道')]`
+> Inspired by SQL LIKE
 
-`%知道` 匹配`知道`结束的文本，相当于 `//*[ends-with(text(), '知道')]`
+`Know%` matches text starting with `Know`, equivalent to `//*[starts-with(text(), 'Know')]`
 
-`%知道%` 匹配包含`知道`的文本，相当于 `//*[contains(text(), '知道')]`
+`%Know` matches text ending with `Know`, equivalent to `//*[ends-with(text(), 'Know')]`
 
-**规则 Last**
+`%Know%` matches text containing `Know`, equivalent to `//*[contains(text(), 'Know')]`
 
-会匹配text 和 description字段
+**Last Rule**
 
-如 `搜索` 相当于 XPath `//*[@text="搜索" or @content-desc="搜索" or @resource-id="搜索"]`
+Matches both `text` and `description` fields.
 
-## 特殊说明
-- 有时className中包含有`$@#&`字符，这个字符在XML中是不合法的，所以全部替换成了`.`
+For example, `Search` is equivalent to XPath `//*[@text="Search" or @content-desc="Search" or @resource-id="Search"]`
 
-## XPath的一些高级用法
+## Special Notes
+
+- Sometimes, `className` contains characters like `$@#&`, which are invalid in XML. Therefore, they are all replaced with `.`.
+
+## Some Advanced Uses of XPath
+
 ```
-# 所有元素
+# All elements
 //*
 
-# resource-id包含login字符
+# Elements where resource-id contains 'login'
 //*[contains(@resource-id, 'login')]
 
-# 按钮包含账号或帐号
-//android.widget.Button[contains(@text, '账号') or contains(@text, '帐号')]
+# Buttons containing 'Account' or 'Account Number'
+/android.widget.Button[contains(@text, 'Account') or contains(@text, 'Account Number')]
 
-# 所有ImageView中的第二个
+# The second element among all ImageViews
 (//android.widget.ImageView)[2]
 
-# 所有ImageView中的最后一个
+# The last element among all ImageViews
 (//android.widget.ImageView)[last()]
 
-# className包含ImageView
+# Elements where className contains 'ImageView'
 //*[contains(name(), "ImageView")]
 ```
 
-## 一些有用的网站
-- [XPath playground](https://scrapinghub.github.io/xpath-playground/)
-- [XPath的一些高级用法-简书](https://www.jianshu.com/p/4fef4142b33f)
+## Some Useful Websites
+
+- [XPath Playground](https://scrapinghub.github.io/xpath-playground/)
+- [Some Advanced Uses of XPath - JianShu](https://www.jianshu.com/p/4fef4142b33f)
 - [XPath Quicksheet](https://devhints.io/xpath)
 
-如有其他资料，欢迎提[Issues](https://github.com/openatx/uiautomator2/issues/new)补充
+If you have other resources, feel free to submit [Issues](https://github.com/openatx/uiautomator2/issues/new) to contribute.
