@@ -214,14 +214,10 @@ class _BaseClient(BasicUiautomatorServer, AbstractUiautomatorServer, AbstractShe
         """
         Pull file from device to local
         """
-        self._dev.sync.pull(src, dst)
-
-        # FIXME: check if windows still need f.close
-        # with open(dst, 'wb') as f:
-        #     shutil.copyfileobj(r.raw, f)
-            # if _mswindows:  # FIXME: check hotfix windows file size zero bug
-            #     f.close()
-
+        try:
+            self._dev.sync.pull(src, dst, exist_ok=True)
+        except TypeError:
+            self._dev.sync.pull(src, dst)
 
 class _Device(_BaseClient):
     __orientation = (  # device orientation
@@ -584,6 +580,34 @@ class _Device(_BaseClient):
             label: User-visible label for the clip data.
         '''
         self.jsonrpc.setClipboard(label, text)
+    
+    def clear_text(self):
+        """ clear input text """
+        try:
+            # 这个问题基本不大
+            # 不过考虑到u2.jar不一定升级成功了，所以还有留个兜底方案·
+            self.jsonrpc.clearInputText()
+        except:
+            self._clear_text_with_ime()
+    
+    def send_keys(self, text: str, clear: bool = False):
+        """
+        send text to focused input area
+        
+        Args:
+            text: input text
+            clear: clear text before input
+        """
+        if clear:
+            self.clear_text()
+        try:
+            # setClipboard的兼容性并不是特别好，但是这样做有个优点就是不用装输入法了。
+            self.clipboard = text
+            if self.clipboard != text:
+                raise UiAutomationError("setClipboard failed")
+            self.jsonrpc.pasteClipboard()
+        except:
+            self._send_keys_with_ime(text)
 
     def keyevent(self, v):
         """

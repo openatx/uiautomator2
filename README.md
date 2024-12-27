@@ -1271,11 +1271,12 @@ UiAutomator中的超时设置(隐藏方法)
 Refs: [Google uiautomator Configurator](https://developer.android.com/reference/android/support/test/uiautomator/Configurator)
 
 ### Input method
-这种方法通常用于不知道控件的情况下的输入。第一步需要切换输入法，然后发送adb广播命令，具体使用方法如下
+这种方法通常用于不知道控件的情况下的输入。
 
 ```python
-d.send_keys("你好123abcEFG") # adb广播输入
-d.send_keys("你好123abcEFG", clear=True) # adb广播输入
+# 目前采用从剪贴板粘贴的方式输入
+d.send_keys("你好123abcEFG")
+d.send_keys("你好123abcEFG", clear=True)
 
 d.clear_text() # 清除输入框所有内容
 
