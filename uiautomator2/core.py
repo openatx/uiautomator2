@@ -161,9 +161,9 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     """ Simple uiautomator2 server client
     this is runs without atx-agent
     """
-    _lock = threading.Lock() # thread safe lock
     
     def __init__(self, dev: adbutils.AdbDevice) -> None:
+        self._lock = = threading.Lock()
         self._dev = dev
         self._process = None
         self._debug = False
