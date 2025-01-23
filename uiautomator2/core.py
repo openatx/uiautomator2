@@ -163,7 +163,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     """
     
     def __init__(self, dev: adbutils.AdbDevice) -> None:
-        self._lock = = threading.Lock()
+        self._lock = threading.Lock()
         self._dev = dev
         self._process = None
         self._debug = False
