@@ -1,6 +1,6 @@
 # uiautomator2
 
-[📖 阅读中文版](readme_CN.md)
+[📖 阅读中文版](README_CN.md)
 
 [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2)
 ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg)
