@@ -101,7 +101,16 @@ def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[st
                 fields.append(f"-d '{json.dumps(data)}'")
             print(f"# http timeout={timeout}")
             print(" ".join(fields))
-        r = requests.request(method, url, json=data, timeout=timeout)
+        
+        # set Accept-Encoding to empty to avoid gzip compression
+        # nanohttpd gzip has resource leaks
+        # https://github.com/NanoHttpd/nanohttpd/issues/492
+        # https://blog.csdn.net/fcp12138/article/details/80436644
+        headers = {
+            'User-Agent': 'uiautomator2',
+            'Accept-Encoding': ''
+        }
+        r = requests.request(method, url, json=data, timeout=timeout, headers=headers)
         r.raise_for_status()
         response = HTTPResponse(r.content)
         if print_request:
