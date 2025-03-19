@@ -34,6 +34,8 @@ class XPathError(Exception):
 
 
 def safe_xmlstr(s: str) -> str:
+    # https://www.w3.org/TR/xml/#NT-NameStartChar
+    s = s.strip()
     s = re.sub('[$@#&]', '.', s)
     s = re.sub('\\.+', '.', s)
     s = re.sub('^\\.|\\.$', '', s)
