@@ -12,9 +12,9 @@ include = ["*/assets/*"]
 python = "^3.8"
 requests = "*"
 lxml = "*"
-adbutils = "^2.5.0"
-retry = ">=0,<1"
+adbutils = "^2.8.9"
 Pillow = "*"
+retry2 = "^0.9.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
