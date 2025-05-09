@@ -16,7 +16,9 @@ cov:
 			--cov-config=.coveragerc \
 			--cov uiautomator2 \
 			--cov-report xml \
-			--cov-report term
+			--cov-report term \
+			--junitxml=junit.xml -o junit_family=legacy
+
 
 sync:
 	cd uiautomator2/assets; ./sync.sh; cd -
