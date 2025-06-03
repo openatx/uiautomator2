@@ -29,6 +29,7 @@ def cmd_init(args):
             d = u2.connect(dev)
             logger.debug("install apk to %s", d.serial)
             d._setup_jar()
+            d._setup_ime()
 
 
 def cmd_purge(args):
