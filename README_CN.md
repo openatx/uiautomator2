@@ -73,12 +73,6 @@ screenOn': True, 'sdkInt': 27, 'naturalOrientation': True}
 
 一般情况下都会成功，不过也可能会有意外。可以加QQ群反馈问题(群号在最上面），群里有很多大佬可以帮你解决问题。
 
-## Sponsors
-Thank you to all our sponsors! ✨🍰✨
-
-### 金牌赞助商（Gold Sponsor）
-Empty
-
 # Article Recommended
 优秀文章推荐 (欢迎QQ群里at我反馈）
 
@@ -155,7 +149,7 @@ Empty
     [uiauto.dev](https://github.com/codeskyblue/uiauto.dev) 是一个独立与uiautomator2之外的一个项目，用于查看图层结构的。属于旧版项目[weditor的重构版本](https://github.com/openatx/weditor)，后续也许会收费（价格肯定物超所值），来支持当前这个项目继续维护下去。感兴趣的可以加群讨论(也包含提需求) QQ群 536481989
 
 # Connect to a device
-use serialno to connect device eg. `123456f` (seen from `adb devices`)
+方法1: 使用设备序列号链接设备 例如序列号. `Q5S5T19611004599` (seen from `adb devices`)
 
 ```python
 import uiautomator2 as u2
@@ -164,13 +158,33 @@ d = u2.connect('123456f') # alias for u2.connect_usb('123456f')
 print(d.info)
 ```
 
-Serial can be passed through env-var `ANDROID_SERIAL`
+方法2: 序列号可以通过环境变量传递 `ANDROID_SERIAL`
 
 
 ```python
 # export ANDROID_SERIAL=123456f
 d = u2.connect()
 ```
+
+方法3: 通过transport_id指定设备
+
+```sh
+$ adb devices -l
+Q5S5T19611004599       device 0-1.2.2 product:ELE-AL00 model:ELE_AL00 device:HWELE transport_id:6
+```
+
+这里可以看到transport_id:6
+
+> 也可以通过 adbutils.adb.list(extended=True)获取所有连接的transport_id
+> 参考 https://github.com/openatx/adbutils
+
+```python
+import adbutils # 需要版本>=2.9.1
+import uiautomator2 as u2
+dev = adbutils.device(transport_id=6)
+d = u2.connect(dev)
+```
+
 
 # Command line
 其中的`$device_ip`代表设备的ip地址
