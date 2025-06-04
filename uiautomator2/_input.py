@@ -106,7 +106,7 @@ class InputMethodMixIn(AbstractShell):
         if result.code != BORADCAST_RESULT_OK:
             raise AdbBroadcastError(f"broadcast {action} failed: {result.data}")
 
-    def _send_keys_with_ime(self, text: str):
+    def send_keys(self, text: str):
         try:
             self.set_input_ime()
             btext = text.encode('utf-8')
@@ -149,17 +149,9 @@ class InputMethodMixIn(AbstractShell):
         else:
             self._must_broadcast('ADB_KEYBOARD_SMART_ENTER')
 
-    def _clear_text_with_ime(self):
-        """ clear text
-        Raises:
-            EnvironmentError
-        """
-        try:
-            self.set_input_ime(True)
-            self._must_broadcast('ADB_KEYBOARD_CLEAR_TEXT')
-        except AdbBroadcastError:
-            # for Android simulator
-            self(focused=True).clear_text()
+    def clear_text(self):
+        self.set_input_ime(True)
+        self._must_broadcast('ADB_KEYBOARD_CLEAR_TEXT')
 
     def current_ime(self) -> str:
         """ Current input method

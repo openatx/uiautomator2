@@ -410,14 +410,9 @@ class _Device(_BaseClient):
     
     def clear_text(self):
         """ clear input text """
-        try:
-            # 这个问题基本不大
-            # 不过考虑到u2.jar不一定升级成功了，所以还有留个兜底方案·
-            self.jsonrpc.clearInputText()
-        except:
-            self._clear_text_with_ime()
+        self.jsonrpc.clearInputText()
     
-    def send_keys(self, text: str, clear: bool = False):
+    def send_keys(self, text: str):
         """
         send text to focused input area
         
@@ -425,16 +420,12 @@ class _Device(_BaseClient):
             text: input text
             clear: clear text before input
         """
-        if clear:
-            self.clear_text()
-        try:
-            # setClipboard的兼容性并不是特别好，但是这样做有个优点就是不用装输入法了。
-            self.clipboard = text
-            if self.clipboard != text:
-                raise UiAutomationError("setClipboard failed")
-            self.jsonrpc.pasteClipboard()
-        except:
-            self._send_keys_with_ime(text)
+        # 使用el =self(focused=True); el.set_text(el.get_text()+text)不可取
+        # 因为placeholder中的文字也会加进去
+        self.clipboard = text
+        if self.clipboard != text:
+            raise UiAutomationError("setClipboard failed")
+        self.jsonrpc.pasteClipboard()
 
     def keyevent(self, v):
         """
@@ -869,7 +860,32 @@ class _PluginMixIn:
 
 class Device(_Device, _AppMixIn, _PluginMixIn, InputMethodMixIn, _DeprecatedMixIn):
     """ Device object """
-    pass
+    
+    def clear_text(self):
+        """ clear input text """
+        if self.is_input_ime_installed():
+            InputMethodMixIn.clear_text(self)
+        else:
+            _Device.clear_text(self)
+    
+    def send_keys(self, text: str, clear: bool = False):
+        """
+        send text to focused input area
+        
+        Args:
+            text: input text
+            clear: clear text before input
+        """
+        if clear:
+            self.clear_text()    
+        if self.is_input_ime_installed():
+            InputMethodMixIn.send_keys(self, text)
+            return
+        try:
+            _Device.send_keys(self, text)            
+        except:
+            # 安装输入法后继续输入
+            InputMethodMixIn.send_keys(self, text)
 
 
 class Session(Device):
