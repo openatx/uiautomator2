@@ -1,23 +1,12 @@
 # uiautomator2
 
-一个简单、好用、稳定的Android自动化的库
-
-[📖 Read the English version](README.md)
-
 [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2)
 ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg)
 [![codecov](https://codecov.io/gh/openatx/uiautomator2/graph/badge.svg?token=d0ZLkqorBu)](https://codecov.io/gh/openatx/uiautomator2)
 
+[📖 Read the English version](README.md)
 
-QQ交流群: 1群:815453846 2群:943964182
-Discord: <https://discord.gg/PbJhnZJKDd>
-
-> 还在用2.x.x版本的用户，可以先看一下[2to3](docs/2to3.md) 再决定是否要升级3.x.x （强烈建议升级）
-
-各种依赖库的版本号
-
-- [![PyPI](https://img.shields.io/pypi/v/adbutils.svg?label=adbutils)](https://github.com/openatx/adbutils)
-- [![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/openatx/android-uiautomator-server.svg?label=android-uiautomator-server)](https://github.com/openatx/android-uiautomator-server) 已迁移到私有仓库，需要合作开发进QQ群联系群主
+一个简单、好用、稳定的Android自动化的库
 
 ## 工作原理
 本框架主要包含两个部分:
@@ -26,6 +15,13 @@ Discord: <https://discord.gg/PbJhnZJKDd>
 2. Python客户端: 通过HTTP协议与手机端通信，调用UiAutomator的各种功能
 
 简单来说就是把Android自动化的能力通过HTTP接口的方式暴露给Python使用。这种设计使得Python端的代码编写更加简单直观。
+
+> 还在用2.x.x版本的用户，可以先看一下[2to3](docs/2to3.md) 再决定是否要升级3.x.x （强烈建议升级）
+
+## 交流群
+
+- QQ交流群: 1群:815453846 2群:943964182
+- Discord: <https://discord.gg/PbJhnZJKDd>
 
 # 依赖
 - Android版本 4.4+
@@ -1202,7 +1198,8 @@ https://www.cnblogs.com/insist8089/p/6898181.html
 
 
 ## 依赖项目
-- uiautomator jsonrpc server<https://github.com/openatx/android-uiautomator-server/>
+- [![PyPI](https://img.shields.io/pypi/v/adbutils.svg?label=adbutils)](https://github.com/openatx/adbutils)
+- [![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/openatx/android-uiautomator-server.svg?label=android-uiautomator-server)](https://github.com/openatx/android-uiautomator-server) 已迁移到私有仓库，需要合作开发进QQ群联系群主
 
 # Contributors
 
