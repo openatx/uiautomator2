@@ -1,24 +1,18 @@
 <!-- filepath: /Users/codeskyblue/Codes/uiautomator2/README.md -->
 # uiautomator2
 
-A simple, easy-to-use, and stable Android automation library.
-
-[📖 Read the Chinese version](README_CN.md)
-
 [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2)
 ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg)
 [![codecov](https://codecov.io/gh/openatx/uiautomator2/graph/badge.svg?token=d0ZLkqorBu)](https://codecov.io/gh/openatx/uiautomator2)
 
+[📖 Read the Chinese version](README_CN.md)
+
+A simple, easy-to-use, and stable Android automation library.
 
 - QQ Group: Group 1: 815453846, Group 2: 943964182
 - Discord: <https://discord.gg/PbJhnZJKDd>
 
 > Users still on version 2.x.x, please check [2to3](docs/2to3.md) before deciding to upgrade to 3.x.x (Upgrade is highly recommended).
-
-Dependency library versions:
-
-- [![PyPI](https://img.shields.io/pypi/v/adbutils.svg?label=adbutils)](https://github.com/openatx/adbutils)
-- [![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/openatx/android-uiautomator-server.svg?label=android-uiautomator-server)](https://github.com/openatx/android-uiautomator-server) Migrated to a private repository. For collaborative development, please contact the QQ group owner.
 
 ## How it Works
 This framework mainly consists of two parts:
