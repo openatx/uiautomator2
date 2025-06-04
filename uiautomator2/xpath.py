@@ -446,6 +446,7 @@ class XPathSelector(AbstractSelector):
     def set_text(self, text: str):
         el = self.get()
         el.click()  # focus input-area
+        self._parent._d.clear_text()  # type: ignore
         self._parent._d.send_keys(text)
 
     def wait(self, timeout=None) -> bool:
