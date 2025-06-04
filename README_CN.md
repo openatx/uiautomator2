@@ -818,7 +818,7 @@ Selector supports below parameters. Refer to [UiSelector Java doc](http://develo
 
 ### 输入法
 
-> 输入法APK源码地址: https://github.com/openatx/android-uiautomator-server/releases
+> 输入法APK: https://github.com/openatx/android-uiautomator-server/releases
 
 ```python
 d.send_keys("你好123abcEFG")
