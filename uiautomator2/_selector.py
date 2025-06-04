@@ -145,15 +145,10 @@ class UiObject(object):
         Raises:
             UiObjectNotFoundError
         """
+        # self.jsonrpc.click(self.selector)
         self.must_wait(timeout=timeout)
         x, y = self.center(offset=offset)
-        # ext.htmlreport need to comment bellow code
-        # if info['clickable']:
-        #     return self.jsonrpc.click(self.selector)
         self.session.click(x, y)
-        # delay = self.session.click_post_delay
-        # if delay:
-        #     time.sleep(delay)
 
     def bounds(self) -> Tuple[int, int, int, int]:
         """
