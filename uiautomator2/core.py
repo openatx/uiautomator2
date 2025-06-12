@@ -7,13 +7,20 @@
 import atexit
 import datetime
 import hashlib
-import os
-import threading
-import time
 import logging
 import json
-from pathlib import Path
-from typing import Any, Dict, Optional, Union
+import sys
+import threading
+import time
+
+
+from typing import Any, Dict, Optional
+if sys.version_info.major == 3 and sys.version_info.minor < 11 :
+    import importlib_resources as pkg_resources
+    from importlib_resources.abc import Traversable
+else:
+    import importlib.resources as pkg_resources
+    from importlib.abc import Traversable
 
 import adbutils
 import requests
@@ -44,7 +51,7 @@ class MockAdbProcess:
         t.daemon = True
         t.name = "wait_adb_conn"
         t.start()
-    
+
     @property
     def output(self) -> bytes:
         """ subprocess do not have this property """
@@ -84,7 +91,14 @@ class HTTPResponse:
         return self.content.decode("utf-8", errors="ignore")
 
 
-def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[str, Any] = None, timeout=10, print_request: bool = False) -> HTTPResponse:
+def _http_request(
+        dev: adbutils.AdbDevice,
+        method: str,
+        path: str,
+        data: Optional[Dict[str, Any]] = None,
+        timeout=10,
+        print_request: bool = False
+    ) -> HTTPResponse:
     """Send http request to uiautomator2 server"""
     try:
         logger.debug("http request %s %s %s", method, path, data)
@@ -204,29 +218,36 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
                 self._wait_ready()
 
     def _setup_jar(self):
-        assets_dir = Path(__file__).parent / "assets"
-        jar_path = assets_dir / "u2.jar"
-        target_path = "/data/local/tmp/u2.jar"
+        """
+        Check if u2.jar file is available on device. If not deploy to end device
+        """
+        jar_name = "u2.jar"
+        jar_path = pkg_resources.files(__package__) / "assets" / jar_name
+        target_path = f"/data/local/tmp/{jar_name}"
+
+        # Validate if the file is accessible from under the package resources
+        if not jar_path.is_file():
+            raise FileNotFoundError(f"{jar_name} file not found.")
+
         if self._check_device_file_hash(jar_path, target_path):
-            logger.debug("file u2.jar already pushed")
+            logger.debug(f"file {jar_name} already pushed")
         else:
             logger.debug("push %s -> %s", jar_path, target_path)
-            self._dev.sync.push(jar_path, target_path, check=True)
+            self._dev.sync.push(jar_path.read_bytes(), target_path, check=True)
     
-    def _check_device_file_hash(self, local_file: Union[str, Path], remote_file: str) -> bool:
+    def _check_device_file_hash(self, local_file: Traversable, remote_file: str) -> bool:
         """ check if remote file hash is correct """
         md5 = hashlib.md5()
-        with open(local_file, "rb") as f:
-            md5.update(f.read())
+        md5.update(local_file.read_bytes())
         local_md5 = md5.hexdigest()
-        logger.debug("file %s md5: %s", os.path.basename(local_file), local_md5)
+        logger.debug(f"file {local_file.name} md5: {local_md5}")
         output = self._dev.shell(["toybox", "md5sum", remote_file])
         return local_md5 in output
 
     def _wait_ready(self, launch_timeout=30):
         """Wait until uiautomator2 server is ready"""
         self._wait_app_process_ready(launch_timeout)
-    
+
     def _wait_app_process_ready(self, timeout: float):
         """
         ERROR1:
