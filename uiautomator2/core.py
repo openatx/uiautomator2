@@ -109,10 +109,10 @@ def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[st
 
         # https://stackoverflow.com/questions/2386299/running-sites-on-localhost-is-extremely-slow
         # so here use 127.0.0.1 instead of localhost
-        url = f"http://127.0.0.1:9008{path}"
         if print_request:
             start_time = datetime.datetime.now()
             current_time = start_time.strftime("%H:%M:%S.%f")[:-3]
+            url = f"http://127.0.0.1:9008{path}"
             fields = [current_time, f"$ curl -X {method}", url]
             if data:
                 fields.append(f"-d '{json.dumps(data)}'")
