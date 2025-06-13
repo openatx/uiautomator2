@@ -7,22 +7,24 @@
 import atexit
 import datetime
 import hashlib
+import json
+import logging
 import os
 import threading
 import time
-import logging
-import json
+from http.client import HTTPConnection
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import adbutils
 import requests
 
-from uiautomator2.exceptions import HTTPTimeoutError, RPCInvalidError, RPCStackOverflowError, UiAutomationNotConnectedError, HTTPError, LaunchUiAutomationError, UiObjectNotFoundError, RPCUnknownError, APKSignatureError, AccessibilityServiceAlreadyRegisteredError
 from uiautomator2.abstract import AbstractUiautomatorServer
+from uiautomator2.exceptions import AccessibilityServiceAlreadyRegisteredError, APKSignatureError, HTTPError, \
+    HTTPTimeoutError, LaunchUiAutomationError, RPCInvalidError, RPCStackOverflowError, RPCUnknownError, \
+    UiAutomationNotConnectedError, UiObjectNotFoundError
 from uiautomator2.utils import is_version_compatiable
 from uiautomator2.version import __apk_version__
-
 
 logger = logging.getLogger(__name__)
 
@@ -84,15 +86,30 @@ class HTTPResponse:
         return self.content.decode("utf-8", errors="ignore")
 
 
+class AdbHTTPConnection(HTTPConnection):
+    def __init__(self, device: adbutils.AdbDevice, port=9008):
+        super().__init__("localhost", port)
+        self.__device = device
+        self.__port = port
+
+    def connect(self):
+        self.sock = self.__device.create_connection(adbutils.Network.TCP, self.__port)
+
+    def __enter__(self) -> HTTPConnection:
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+        
+
 def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[str, Any] = None, timeout=10, print_request: bool = False) -> HTTPResponse:
     """Send http request to uiautomator2 server"""
     try:
         logger.debug("http request %s %s %s", method, path, data)
-        lport = dev.forward_port(9008)
-        logger.debug("forward tcp:%d -> tcp:9008", lport)
+
         # https://stackoverflow.com/questions/2386299/running-sites-on-localhost-is-extremely-slow
         # so here use 127.0.0.1 instead of localhost
-        url = f"http://127.0.0.1:{lport}{path}"
+        url = f"http://127.0.0.1:9008{path}"
         if print_request:
             start_time = datetime.datetime.now()
             current_time = start_time.strftime("%H:%M:%S.%f")[:-3]
@@ -108,11 +125,26 @@ def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[st
         # https://blog.csdn.net/fcp12138/article/details/80436644
         headers = {
             'User-Agent': 'uiautomator2',
-            'Accept-Encoding': ''
+            'Accept-Encoding': '',
+            'Content-Type': 'application/json'
         }
-        r = requests.request(method, url, json=data, timeout=timeout, headers=headers)
-        r.raise_for_status()
-        response = HTTPResponse(r.content)
+        conn = AdbHTTPConnection(dev, port=9008)
+        conn.timeout = timeout
+        try:
+            if not data:
+                conn.request(method, path, headers=headers)
+            else:
+                conn.request(method, path, json.dumps(data), headers=headers)
+        except adbutils.AdbError as e:
+            raise HTTPError(f"Unable to make http request through adb")
+        _response = conn.getresponse()
+        content = bytearray()
+        while chunk := _response.read(4096):
+            content.extend(chunk)
+        if _response.status != 200:
+            raise HTTPError(f"HTTP request failed: {_response.status} {_response.reason}")
+        response = HTTPResponse(content)
+
         if print_request:
             end_time = datetime.datetime.now()
             current_time = end_time.strftime("%H:%M:%S.%f")[:-3]
