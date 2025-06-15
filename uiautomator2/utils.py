@@ -35,6 +35,8 @@ def with_package_resource(filename: str) -> typing.Generator[pathlib.Path, None,
         from importlib_resources import as_file, files
     anchor = files("uiautomator2") / filename
     with as_file(anchor) as f:
+        if not f.exists():
+            raise FileNotFoundError(f"Resource {filename} not found in uiautomator2 package.")
         yield f
     
 

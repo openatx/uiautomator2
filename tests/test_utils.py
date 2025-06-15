@@ -89,3 +89,15 @@ def test_depreacated():
 
     with pytest.warns(DeprecationWarning):
         foo()
+
+
+def test_with_package_resource():
+    with utils.with_package_resource("assets/u2.jar") as asset_path:
+        assert asset_path.exists()
+        assert asset_path.is_file()
+        assert asset_path.name == "u2.jar"
+    
+    # Test that the context manager works properly
+    with pytest.raises(FileNotFoundError):
+        with utils.with_package_resource("nonexistent_file.xyz") as _:
+            pass
