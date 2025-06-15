@@ -93,7 +93,10 @@ class AdbHTTPConnection(HTTPConnection):
         self.__port = port
 
     def connect(self):
-        self.sock = self.__device.create_connection(adbutils.Network.TCP, self.__port)
+        try:
+            self.sock = self.__device.create_connection(adbutils.Network.TCP, self.__port)
+        except adbutils.AdbError as e:
+            raise HTTPError(f"Unable to connect to uiautomator2 server: {e}") from e
 
     def __enter__(self) -> HTTPConnection:
         return self
@@ -128,22 +131,19 @@ def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[st
             'Accept-Encoding': '',
             'Content-Type': 'application/json'
         }
-        conn = AdbHTTPConnection(dev, port=9008)
-        conn.timeout = timeout
-        try:
+        with AdbHTTPConnection(dev, port=9008) as conn:
+            conn.timeout = timeout
             if not data:
                 conn.request(method, path, headers=headers)
             else:
                 conn.request(method, path, json.dumps(data), headers=headers)
-        except adbutils.AdbError as e:
-            raise HTTPError(f"Unable to make http request through adb")
-        _response = conn.getresponse()
-        content = bytearray()
-        while chunk := _response.read(4096):
-            content.extend(chunk)
-        if _response.status != 200:
-            raise HTTPError(f"HTTP request failed: {_response.status} {_response.reason}")
-        response = HTTPResponse(content)
+            _response = conn.getresponse()
+            content = bytearray()
+            while chunk := _response.read(4096):
+                content.extend(chunk)
+            if _response.status != 200:
+                raise HTTPError(f"HTTP request failed: {_response.status} {_response.reason}")
+            response = HTTPResponse(content)
 
         if print_request:
             end_time = datetime.datetime.now()
