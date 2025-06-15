@@ -23,7 +23,7 @@ from uiautomator2.abstract import AbstractUiautomatorServer
 from uiautomator2.exceptions import AccessibilityServiceAlreadyRegisteredError, APKSignatureError, HTTPError, \
     HTTPTimeoutError, LaunchUiAutomationError, RPCInvalidError, RPCStackOverflowError, RPCUnknownError, \
     UiAutomationNotConnectedError, UiObjectNotFoundError
-from uiautomator2.utils import is_version_compatiable
+from uiautomator2.utils import with_package_resource
 from uiautomator2.version import __apk_version__
 
 logger = logging.getLogger(__name__)
@@ -236,14 +236,13 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
                 self._wait_ready()
 
     def _setup_jar(self):
-        assets_dir = Path(__file__).parent / "assets"
-        jar_path = assets_dir / "u2.jar"
-        target_path = "/data/local/tmp/u2.jar"
-        if self._check_device_file_hash(jar_path, target_path):
-            logger.debug("file u2.jar already pushed")
-        else:
-            logger.debug("push %s -> %s", jar_path, target_path)
-            self._dev.sync.push(jar_path, target_path, check=True)
+        with with_package_resource("assets/u2.jar") as jar_path:
+            target_path = "/data/local/tmp/u2.jar"
+            if self._check_device_file_hash(jar_path, target_path):
+                logger.debug("file u2.jar already pushed")
+            else:
+                logger.debug("push %s -> %s", jar_path, target_path)
+                self._dev.sync.push(jar_path, target_path, check=True)
     
     def _check_device_file_hash(self, local_file: Union[str, Path], remote_file: str) -> bool:
         """ check if remote file hash is correct """
