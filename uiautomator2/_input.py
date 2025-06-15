@@ -18,7 +18,7 @@ from retry import retry
 
 from uiautomator2.abstract import AbstractShell
 from uiautomator2.exceptions import AdbBroadcastError, DeviceError, InputIMEError
-from uiautomator2.utils import deprecated
+from uiautomator2.utils import deprecated, with_package_resource
 
 
 logger = logging.getLogger(__name__)
@@ -69,13 +69,12 @@ class InputMethodMixIn(AbstractShell):
         
     def _setup_ime(self):
         logger.debug("installing AdbKeyboard ime")
-        assets_dir = Path(__file__).parent / "assets"
-        ime_apk_path = assets_dir / 'app-uiautomator.apk'
-        try:
-            self.adb_device.install(str(ime_apk_path), nolaunch=True, uninstall=True)
-        except adbutils.AdbError as e:
-            self.adb_device.uninstall(self.__ime_id.split('/')[0])
-            self.adb_device.install(str(ime_apk_path), nolaunch=True, uninstall=True)
+        with with_package_resource("assets/app-uiautomator.apk") as ime_apk_path:
+            try:
+                self.adb_device.install(str(ime_apk_path), nolaunch=True, uninstall=True)
+            except adbutils.AdbError as e:
+                self.adb_device.uninstall(self.__ime_id.split('/')[0])
+                self.adb_device.install(str(ime_apk_path), nolaunch=True, uninstall=True)
             
         # wait for ime registered
         for _ in range(10):

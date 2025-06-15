@@ -1,18 +1,42 @@
 # coding: utf-8
 #
 
+import contextlib
 import functools
 import inspect
+import pathlib
 import shlex
 import threading
 import typing
-from typing import Union
 import warnings
+from typing import Union
+
 from PIL import Image
 
 from uiautomator2._proto import Direction
 from uiautomator2.exceptions import SessionBrokenError, UiObjectNotFoundError
 
+
+@contextlib.contextmanager
+def with_package_resource(filename: str) -> typing.Generator[pathlib.Path, None, None]:
+    """
+    Context manager to access a package asset file using importlib.resources.
+    
+    Args:
+        filename (str): The name of the file to locate.
+    
+    Yields:
+        str: The full path to the located file.
+    """
+    try:
+        from importlib.resources import as_file, files
+    except ImportError:
+        # For Python < 3.9
+        from importlib_resources import as_file, files
+    anchor = files("uiautomator2") / filename
+    with as_file(anchor) as f:
+        yield f
+    
 
 def check_alive(fn):
     @functools.wraps(fn)
