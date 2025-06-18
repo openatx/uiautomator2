@@ -105,7 +105,7 @@ class AdbHTTPConnection(HTTPConnection):
         self.close()
         
 
-def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[str, Any] = None, timeout=10, print_request: bool = False) -> HTTPResponse:
+def _http_request(dev: adbutils.AdbDevice, device_port: int, method: str, path: str, data: Optional[Dict[str, Any]] = None, timeout=10.0, print_request: bool = False) -> HTTPResponse:
     """Send http request to uiautomator2 server"""
     try:
         logger.debug("http request %s %s %s", method, path, data)
@@ -115,7 +115,7 @@ def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[st
         if print_request:
             start_time = datetime.datetime.now()
             current_time = start_time.strftime("%H:%M:%S.%f")[:-3]
-            url = f"http://127.0.0.1:9008{path}"
+            url = f"http://127.0.0.1:{device_port}{path}"
             fields = [current_time, f"$ curl -X {method}", url]
             if data:
                 fields.append(f"-d '{json.dumps(data)}'")
@@ -131,7 +131,7 @@ def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[st
             'Accept-Encoding': '',
             'Content-Type': 'application/json'
         }
-        with AdbHTTPConnection(dev, port=9008) as conn:
+        with AdbHTTPConnection(dev, port=device_port) as conn:
             conn.timeout = timeout
             if not data:
                 conn.request(method, path, headers=headers)
@@ -158,7 +158,7 @@ def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[st
         raise HTTPError(f"HTTP request failed: {e}") from e
 
 
-def _jsonrpc_call(dev: adbutils.AdbDevice, method: str, params: Any, timeout: float, print_request: bool) -> Any:
+def _jsonrpc_call(dev: adbutils.AdbDevice, device_port: int, method: str, params: Any, timeout: float, print_request: bool) -> Any:
     """Send jsonrpc call to uiautomator2 server
     
     Raises:
@@ -170,7 +170,7 @@ def _jsonrpc_call(dev: adbutils.AdbDevice, method: str, params: Any, timeout: fl
         "method": method,
         "params": params
     }
-    r = _http_request(dev, "POST", "/jsonrpc/0", payload, timeout=timeout, print_request=print_request)
+    r = _http_request(dev, device_port, "POST", "/jsonrpc/0", payload, timeout=timeout, print_request=print_request)
     data = r.json()
     if not isinstance(data, dict):
         raise RPCInvalidError("Unknown RPC error: not a dict")
@@ -204,10 +204,11 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     """
     _lock = threading.Lock() # thread safe lock
     
-    def __init__(self, dev: adbutils.AdbDevice) -> None:
+    def __init__(self, dev: adbutils.AdbDevice, device_server_port: int = 9008) -> None:
         self._dev = dev
         self._process = None
         self._debug = False
+        self._device_server_port = device_server_port
         self.start_uiautomator()
         atexit.register(self.stop_uiautomator, wait=False)
     
@@ -286,7 +287,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
 
     def _check_alive(self) -> bool:
         try:
-            response = _http_request(self._dev, "GET", "/ping")
+            response = _http_request(self._dev, self._device_server_port, "GET", "/ping")
             return response.content == b"pong"
         except HTTPError:
             return False
@@ -307,9 +308,9 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     def jsonrpc_call(self, method: str, params: Any = None, timeout: float = 10) -> Any:
         """Send jsonrpc call to uiautomator2 server"""
         try:
-            return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
+            return _jsonrpc_call(self._dev, self._device_server_port, method, params, timeout, self._debug)
         except (HTTPError, UiAutomationNotConnectedError) as e:
             logger.debug("uiautomator2 is not ok, error: %s", e)
             self.stop_uiautomator()
             self.start_uiautomator()
-            return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
+            return _jsonrpc_call(self._dev, self._device_server_port, method, params, timeout, self._debug)
