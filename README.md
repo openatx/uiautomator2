@@ -1306,6 +1306,7 @@ Reference: https://www.cnblogs.com/insist8089/p/6898181.html (Chinese)
 - [google/mobly](https://github.com/google/mobly): Google's internal test framework.
 - <https://github.com/zhangzhao4444/Maxim>: A monkey test tool based on UiAutomator.
 - <http://www.sikulix.com/>: A well-established image-based automation framework.
+- <https://github.com/ecnusse/Kea2>: Fusing automated UI testing with scripts for effectively fuzzing Android apps.
 - <http://airtest.netease.com/>: The predecessor of this project, later taken over and optimized by NetEase Guangzhou team. Features a good IDE.
 
 (Order matters, additions welcome)
