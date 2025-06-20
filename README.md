@@ -1302,11 +1302,12 @@ Reference: https://www.cnblogs.com/insist8089/p/6898181.html (Chinese)
 
 # Other Excellent Projects
 
+- <https://github.com/ecnusse/Kea2>: Fusing automated UI testing with scripts for effectively fuzzing Android apps.
 - <https://github.com/atinfo/awesome-test-automation>: A collection of excellent test automation frameworks.
 - [google/mobly](https://github.com/google/mobly): Google's internal test framework.
 - <https://github.com/zhangzhao4444/Maxim>: A monkey test tool based on UiAutomator.
 - <http://www.sikulix.com/>: A well-established image-based automation framework.
-- <http://airtest.netease.com/>: The predecessor of this project, later taken over and optimized by NetEase Guangzhou team. Features a good IDE.
+- <http://airtest.netease.com/>: The predecessor of this project, later taken over and optimized by NetEase Guangzhou team. Features a good IDE. (archived)
 
 (Order matters, additions welcome)
 

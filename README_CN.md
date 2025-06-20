@@ -1207,11 +1207,12 @@ https://www.cnblogs.com/insist8089/p/6898181.html
 
 # 其他优秀的项目
 
+- https://github.com/ecnusse/Kea2: 面向安卓的自动化界面遍历与脚本协同测试框架
 - https://github.com/atinfo/awesome-test-automation 所有优秀测试框架的集合，包罗万象
 - [google/mobly](https://github.com/google/mobly) 谷歌内部的测试框架，虽然我不太懂，但是感觉很好用
 - https://github.com/zhangzhao4444/Maxim 基于Uiautomator的monkey
 - http://www.sikulix.com/ 基于图像识别的自动化测试框架，非常的老牌
-- http://airtest.netease.com/ 本项目的前身，后来被网易广州团队接手并继续优化。实现有一个不错的IDE
+- http://airtest.netease.com/ 本项目的前身，后来被网易广州团队接手并继续优化。实现有一个不错的IDE (archived)
 
 排名有先后，欢迎补充
 
