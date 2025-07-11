@@ -1267,10 +1267,6 @@ To specify a device, pass `--serial`, e.g., `python -m uiautomator2 --serial bff
     uiautomator2 start <package-name>
     uiautomator2 start <package-name>/<activity-name>
     ```
-- `list`: List connected devices
-    ```bash
-    uiautomator2 list
-    ```
 - `version`: Show uiautomator2 version
     ```bash
     uiautomator2 version
