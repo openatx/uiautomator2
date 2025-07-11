@@ -34,6 +34,8 @@ class XPathError(Exception):
 
 
 def safe_xmlstr(s: str) -> str:
+    # https://www.w3.org/TR/xml/#NT-NameStartChar
+    s = s.strip()
     s = re.sub('[$@#&]', '.', s)
     s = re.sub('\\.+', '.', s)
     s = re.sub('^\\.|\\.$', '', s)
@@ -444,6 +446,7 @@ class XPathSelector(AbstractSelector):
     def set_text(self, text: str):
         el = self.get()
         el.click()  # focus input-area
+        self._parent._d.clear_text()  # type: ignore
         self._parent._d.send_keys(text)
 
     def wait(self, timeout=None) -> bool:

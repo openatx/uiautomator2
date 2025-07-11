@@ -1,7 +1,7 @@
 import enum
 
 SCROLL_STEPS = 55
-HTTP_TIMEOUT = 60
+HTTP_TIMEOUT = 300
 
 class Direction(str, enum.Enum):
     LEFT = "left"

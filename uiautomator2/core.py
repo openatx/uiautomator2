@@ -7,22 +7,24 @@
 import atexit
 import datetime
 import hashlib
+import json
+import logging
 import os
 import threading
 import time
-import logging
-import json
+from http.client import HTTPConnection
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import adbutils
 import requests
 
-from uiautomator2.exceptions import HTTPTimeoutError, RPCInvalidError, RPCStackOverflowError, UiAutomationNotConnectedError, HTTPError, LaunchUiAutomationError, UiObjectNotFoundError, RPCUnknownError, APKSignatureError, AccessibilityServiceAlreadyRegisteredError
 from uiautomator2.abstract import AbstractUiautomatorServer
-from uiautomator2.utils import is_version_compatiable
+from uiautomator2.exceptions import AccessibilityServiceAlreadyRegisteredError, APKSignatureError, HTTPError, \
+    HTTPTimeoutError, LaunchUiAutomationError, RPCInvalidError, RPCStackOverflowError, RPCUnknownError, \
+    UiAutomationNotConnectedError, UiObjectNotFoundError
+from uiautomator2.utils import with_package_resource
 from uiautomator2.version import __apk_version__
-
 
 logger = logging.getLogger(__name__)
 
@@ -84,26 +86,65 @@ class HTTPResponse:
         return self.content.decode("utf-8", errors="ignore")
 
 
-def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[str, Any] = None, timeout=10, print_request: bool = False) -> HTTPResponse:
+class AdbHTTPConnection(HTTPConnection):
+    def __init__(self, device: adbutils.AdbDevice, port=9008):
+        super().__init__("localhost", port)
+        self.__device = device
+        self.__port = port
+
+    def connect(self):
+        try:
+            self.sock = self.__device.create_connection(adbutils.Network.TCP, self.__port)
+        except adbutils.AdbError as e:
+            raise HTTPError(f"Unable to connect to uiautomator2 server: {e}") from e
+
+    def __enter__(self) -> HTTPConnection:
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+        
+
+def _http_request(dev: adbutils.AdbDevice, device_port: int, method: str, path: str, data: Optional[Dict[str, Any]] = None, timeout=10.0, print_request: bool = False) -> HTTPResponse:
     """Send http request to uiautomator2 server"""
     try:
         logger.debug("http request %s %s %s", method, path, data)
-        lport = dev.forward_port(9008)
-        logger.debug("forward tcp:%d -> tcp:9008", lport)
+
         # https://stackoverflow.com/questions/2386299/running-sites-on-localhost-is-extremely-slow
         # so here use 127.0.0.1 instead of localhost
-        url = f"http://127.0.0.1:{lport}{path}"
         if print_request:
             start_time = datetime.datetime.now()
             current_time = start_time.strftime("%H:%M:%S.%f")[:-3]
+            url = f"http://127.0.0.1:{device_port}{path}"
             fields = [current_time, f"$ curl -X {method}", url]
             if data:
                 fields.append(f"-d '{json.dumps(data)}'")
             print(f"# http timeout={timeout}")
             print(" ".join(fields))
-        r = requests.request(method, url, json=data, timeout=timeout)
-        r.raise_for_status()
-        response = HTTPResponse(r.content)
+        
+        # set Accept-Encoding to empty to avoid gzip compression
+        # nanohttpd gzip has resource leaks
+        # https://github.com/NanoHttpd/nanohttpd/issues/492
+        # https://blog.csdn.net/fcp12138/article/details/80436644
+        headers = {
+            'User-Agent': 'uiautomator2',
+            'Accept-Encoding': '',
+            'Content-Type': 'application/json'
+        }
+        with AdbHTTPConnection(dev, port=device_port) as conn:
+            conn.timeout = timeout
+            if not data:
+                conn.request(method, path, headers=headers)
+            else:
+                conn.request(method, path, json.dumps(data), headers=headers)
+            _response = conn.getresponse()
+            content = bytearray()
+            while chunk := _response.read(4096):
+                content.extend(chunk)
+            if _response.status != 200:
+                raise HTTPError(f"HTTP request failed: {_response.status} {_response.reason}")
+            response = HTTPResponse(content)
+
         if print_request:
             end_time = datetime.datetime.now()
             current_time = end_time.strftime("%H:%M:%S.%f")[:-3]
@@ -117,7 +158,7 @@ def _http_request(dev: adbutils.AdbDevice, method: str, path: str, data: Dict[st
         raise HTTPError(f"HTTP request failed: {e}") from e
 
 
-def _jsonrpc_call(dev: adbutils.AdbDevice, method: str, params: Any, timeout: float, print_request: bool) -> Any:
+def _jsonrpc_call(dev: adbutils.AdbDevice, device_port: int, method: str, params: Any, timeout: float, print_request: bool) -> Any:
     """Send jsonrpc call to uiautomator2 server
     
     Raises:
@@ -129,7 +170,7 @@ def _jsonrpc_call(dev: adbutils.AdbDevice, method: str, params: Any, timeout: fl
         "method": method,
         "params": params
     }
-    r = _http_request(dev, "POST", "/jsonrpc/0", payload, timeout=timeout, print_request=print_request)
+    r = _http_request(dev, device_port, "POST", "/jsonrpc/0", payload, timeout=timeout, print_request=print_request)
     data = r.json()
     if not isinstance(data, dict):
         raise RPCInvalidError("Unknown RPC error: not a dict")
@@ -163,10 +204,11 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     """
     _lock = threading.Lock() # thread safe lock
     
-    def __init__(self, dev: adbutils.AdbDevice) -> None:
+    def __init__(self, dev: adbutils.AdbDevice, device_server_port: int = 9008) -> None:
         self._dev = dev
         self._process = None
         self._debug = False
+        self._device_server_port = device_server_port
         self.start_uiautomator()
         atexit.register(self.stop_uiautomator, wait=False)
     
@@ -195,14 +237,13 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
                 self._wait_ready()
 
     def _setup_jar(self):
-        assets_dir = Path(__file__).parent / "assets"
-        jar_path = assets_dir / "u2.jar"
-        target_path = "/data/local/tmp/u2.jar"
-        if self._check_device_file_hash(jar_path, target_path):
-            logger.debug("file u2.jar already pushed")
-        else:
-            logger.debug("push %s -> %s", jar_path, target_path)
-            self._dev.sync.push(jar_path, target_path, check=True)
+        with with_package_resource("assets/u2.jar") as jar_path:
+            target_path = "/data/local/tmp/u2.jar"
+            if self._check_device_file_hash(jar_path, target_path):
+                logger.debug("file u2.jar already pushed")
+            else:
+                logger.debug("push %s -> %s", jar_path, target_path)
+                self._dev.sync.push(jar_path, target_path, check=True)
     
     def _check_device_file_hash(self, local_file: Union[str, Path], remote_file: str) -> bool:
         """ check if remote file hash is correct """
@@ -246,7 +287,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
 
     def _check_alive(self) -> bool:
         try:
-            response = _http_request(self._dev, "GET", "/ping")
+            response = _http_request(self._dev, self._device_server_port, "GET", "/ping")
             return response.content == b"pong"
         except HTTPError:
             return False
@@ -267,9 +308,9 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     def jsonrpc_call(self, method: str, params: Any = None, timeout: float = 10) -> Any:
         """Send jsonrpc call to uiautomator2 server"""
         try:
-            return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
+            return _jsonrpc_call(self._dev, self._device_server_port, method, params, timeout, self._debug)
         except (HTTPError, UiAutomationNotConnectedError) as e:
             logger.debug("uiautomator2 is not ok, error: %s", e)
             self.stop_uiautomator()
             self.start_uiautomator()
-            return _jsonrpc_call(self._dev, method, params, timeout, self._debug)
+            return _jsonrpc_call(self._dev, self._device_server_port, method, params, timeout, self._debug)

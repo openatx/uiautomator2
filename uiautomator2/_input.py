@@ -13,11 +13,12 @@ import time
 from typing import Dict, List, Optional, Union
 import warnings
 
+import adbutils
 from retry import retry
 
 from uiautomator2.abstract import AbstractShell
 from uiautomator2.exceptions import AdbBroadcastError, DeviceError, InputIMEError
-from uiautomator2.utils import deprecated
+from uiautomator2.utils import deprecated, with_package_resource
 
 
 logger = logging.getLogger(__name__)
@@ -55,18 +56,26 @@ class InputMethodMixIn(AbstractShell):
             return
         # prepare ime
         if self.__ime_id not in self.__get_ime_list():
-            self.__setup_ime()
+            self._setup_ime()
         assert self.__ime_id in self.__get_ime_list()
         
         self.shell(['ime', 'enable', self.__ime_id])
         self.shell(['ime', 'set', self.__ime_id])
         self.shell(['settings', 'put', 'secure', 'default_input_method', self.__ime_id])
+        self._wait_ime_ready()
     
-    def __setup_ime(self):
+    def is_input_ime_installed(self) -> bool:
+        return self.__ime_id in self.__get_ime_list()
+        
+    def _setup_ime(self):
         logger.debug("installing AdbKeyboard ime")
-        assets_dir = Path(__file__).parent / "assets"
-        ime_apk_path = assets_dir / 'app-uiautomator.apk'
-        self.adb_device.install(str(ime_apk_path), nolaunch=True, uninstall=True)
+        with with_package_resource("assets/app-uiautomator.apk") as ime_apk_path:
+            try:
+                self.adb_device.install(str(ime_apk_path), nolaunch=True, uninstall=True)
+            except adbutils.AdbError as e:
+                self.adb_device.uninstall(self.__ime_id.split('/')[0])
+                self.adb_device.install(str(ime_apk_path), nolaunch=True, uninstall=True)
+            
         # wait for ime registered
         for _ in range(10):
             if self.__ime_id in self.__get_ime_list():
@@ -96,7 +105,7 @@ class InputMethodMixIn(AbstractShell):
         if result.code != BORADCAST_RESULT_OK:
             raise AdbBroadcastError(f"broadcast {action} failed: {result.data}")
 
-    def _send_keys_with_ime(self, text: str):
+    def send_keys(self, text: str):
         try:
             self.set_input_ime()
             btext = text.encode('utf-8')
@@ -139,17 +148,9 @@ class InputMethodMixIn(AbstractShell):
         else:
             self._must_broadcast('ADB_KEYBOARD_SMART_ENTER')
 
-    def _clear_text_with_ime(self):
-        """ clear text
-        Raises:
-            EnvironmentError
-        """
-        try:
-            self.set_input_ime(True)
-            self._must_broadcast('ADB_KEYBOARD_CLEAR_TEXT')
-        except AdbBroadcastError:
-            # for Android simulator
-            self(focused=True).clear_text()
+    def clear_text(self):
+        self.set_input_ime(True)
+        self._must_broadcast('ADB_KEYBOARD_CLEAR_TEXT')
 
     def current_ime(self) -> str:
         """ Current input method
@@ -167,9 +168,23 @@ class InputMethodMixIn(AbstractShell):
         # shown = "mInputShown=true" in dim
         # return (method_id, shown)
     
+    def _wait_ime_ready(self, timeout: float = 5.0) -> bool:
+        """ Wait for input method is ready """
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if self.current_ime() == self.__ime_id:
+                return True
+            time.sleep(0.1)
+        return False
+    
     def __get_ime_list(self) -> List[str]:
         ret = self.shell(['ime', 'list', '-s', '-a'])
         return ret.output.strip().splitlines(keepends=False)
+
+    def hide_keyboard(self):
+        """ Hide keyboard """
+        self.set_input_ime()
+        self._must_broadcast('ADB_KEYBOARD_HIDE')
         
     @deprecated(reason="use set_input_ime instead")
     def set_fastinput_ime(self, enable: bool = True):
