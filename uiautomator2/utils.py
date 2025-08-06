@@ -6,6 +6,7 @@ import functools
 import inspect
 import pathlib
 import shlex
+import sys
 import threading
 import typing
 import warnings
@@ -35,9 +36,22 @@ def with_package_resource(filename: str) -> typing.Generator[pathlib.Path, None,
         from importlib_resources import as_file, files
     anchor = files("uiautomator2") / filename
     with as_file(anchor) as f:
-        if not f.exists():
-            raise FileNotFoundError(f"Resource {filename} not found in uiautomator2 package.")
-        yield f
+        if f.exists():
+            yield f
+            return
+    
+    # check if binary folder contains
+    binary_path = pathlib.Path(sys.argv[0])
+    if (binary_path / filename).exists():
+        yield binary_path / filename
+        return
+    
+    # check if running program directory contains
+    if (pathlib.Path.cwd() / filename).exists():
+        yield pathlib.Path.cwd() / filename
+        return
+    
+    raise FileNotFoundError(f"Resource {filename} not found in uiautomator2 package.")
     
 
 def check_alive(fn):
