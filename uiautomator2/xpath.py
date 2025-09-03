@@ -50,7 +50,9 @@ def string_quote(s: str) -> str:
 def str2bytes(v: Union[str, bytes]) -> bytes:
     if isinstance(v, bytes):
         return v
-    return v.encode("utf-8")
+    if isinstance(v, str):
+        return v.encode("utf-8")
+    raise ValueError("Invalid type", type(v), v)
 
 
 def is_xpath_syntax_ok(xpath_expression: str) -> bool:
@@ -134,6 +136,9 @@ class XPath(str):
         if not subpath.startswith('/'):
             subpath = '/' + subpath
         return XPath(self + subpath)
+
+    def all(self, source: "PageSource"):
+        return source.find_elements(self)
     
 
 class PageSource:
@@ -141,9 +146,7 @@ class PageSource:
         self._xml_content = xml_content
     
     @staticmethod
-    def parse(data: Optional[Union[str, "PageSource"]]) -> Optional["PageSource"]:
-        if not data:
-            return None
+    def parse(data: Union[str, "PageSource"]) -> "PageSource":
         if isinstance(data, str):
             return PageSource(data)
         return data
@@ -155,7 +158,7 @@ class PageSource:
             node.tag = safe_xmlstr(node.attrib.pop("class", "")) or "node"
         return _root
 
-    def find_elements(self, xpath: Union[str, XPath]) -> List["XMLElement"]:
+    def find_elements(self, xpath: str) -> List["XMLElement"]:
         matches = self.root.xpath(xpath, namespaces={"re": "http://exslt.org/regular-expressions"})
         return [XMLElement(node) for node in matches]
 
@@ -229,7 +232,7 @@ class XPathEntry(object):
             left_time = max(0, deadline - time.time())
             time.sleep(min(0.5, left_time))
 
-    def click(self, xpath: Union[str, list], timeout: float=None):
+    def click(self, xpath: str, timeout: Optional[float]=None):
         """
         Find element and perform click
 
@@ -241,7 +244,7 @@ class XPathEntry(object):
         Raises:
             TimeoutException
         """
-        selector = XPathSelector(xpath, self)
+        selector = DeviceXPathSelector(xpath, self)
         selector.click(timeout=timeout)
 
     def scroll_to(
@@ -265,6 +268,8 @@ class XPathEntry(object):
             direction = Direction.LEFT
         elif direction == Direction.HORIZ_BACKWARD:
             direction = Direction.RIGHT
+        else:
+            raise ValueError("Invalid direction", direction)
 
         # FIXME(ssx): 还差一个检测是否到底的功能
         assert max_swipes > 0
@@ -274,10 +279,10 @@ class XPathEntry(object):
                 self._d.swipe_ext(direction, 0.1)  # 防止元素停留在边缘
                 return target.get_last_match()
             self._d.swipe_ext(direction, 0.5)
-        return False
+        return None
 
-    def __call__(self, xpath: str, source: Union[str, PageSource] = None) -> "XPathSelector":
-        return XPathSelector(xpath, self, PageSource.parse(source))
+    def __call__(self, xpath: str, source: Optional[Union[str, PageSource]] = None) -> "DeviceXPathSelector":
+        return DeviceXPathSelector(xpath, self, PageSource.parse(source) if source else None)
 
 
 class Operator(str, enum.Enum):
@@ -292,61 +297,58 @@ class AbstractSelector(abc.ABC):
     
 
 class XPathSelector(AbstractSelector):
-    def __init__(self, xpath: Union[str, XPath, AbstractSelector], parent: XPathEntry = None, source: Optional[PageSource] = None):
-        self._base_xpath = XPath(xpath) if isinstance(xpath, str) else xpath
-        self._operator: Operator = None
-        self._next_xpath: AbstractSelector = None
+    def __init__(self, value: Union[str, XPath, AbstractSelector]):
+        if isinstance(value, str):
+            self._base_xpath = XPath(value)
+        elif isinstance(value, (XPath, AbstractSelector)):
+            self._base_xpath = value
+        else:
+            raise ValueError("Invalid type", type(value), value)
+        self._operator: Optional[Operator] = None
+        self._next_xpath: Optional[AbstractSelector] = None
 
-        self._parent = parent
-        self._source = source
-        self._last_source: Optional[PageSource] = None
-        self._fallback: callable = None
-    
-    def copy(self) -> "XPathSelector":
+    def copy(self):
         """copy self"""
         return copy.copy(self)
-    
+
     @classmethod
-    def create(cls, value: Union[str, XPath, 'XPathSelector']) -> 'XPathSelector':
+    def create(cls, value: Union[str, 'XPathSelector']) -> 'XPathSelector':
         if isinstance(value, XPathSelector):
             return value.copy()
-        elif isinstance(value, (str, XPath)):
-            return XPathSelector(XPath(value))
+        elif isinstance(value, str):
+            return cls(XPath(value))
         else:
             raise ValueError('Invalid value', value)
-
+    
     def __repr__(self):
         if self._operator:
-            return f'XPathSelector({repr(self._base_xpath)} {self._operator.value} {repr(self._next_xpath)})'
+            return f'#({repr(self._base_xpath)} {self._operator.value} {repr(self._next_xpath)})'
         else:
-            return f'XPathSelector({repr(self._base_xpath)})'
-    
+            return f'#({repr(self._base_xpath)})'
+
     def __and__(self, value) -> 'XPathSelector':
         s = XPathSelector(self)
         s._next_xpath = XPathSelector.create(value)
         s._operator = Operator.AND
-        s._parent = self._parent
         return s
 
     def __or__(self, value) -> 'XPathSelector':
         s = XPathSelector(self)
         s._next_xpath = XPathSelector.create(value)
         s._operator = Operator.OR
-        s._parent = self._parent
         return s
 
+    @deprecated(reason="use and_ or & instead")
     def xpath(self, _xpath: Union[list, tuple, str]) -> 'XPathSelector':
         """
         add xpath to condition list
         the element should match all conditions
-
-        Deprecated, using a & b instead
         """
         if isinstance(_xpath, (list, tuple)):
             return functools.reduce(lambda a, b: a & b, _xpath, self)
         else:
             return self & _xpath
-
+    
     def child(self, _xpath: str) -> "XPathSelector":
         """
         add child xpath
@@ -356,6 +358,43 @@ class XPathSelector(AbstractSelector):
         new = self.copy()
         new._base_xpath = self._base_xpath.joinpath(_xpath)
         return new
+    
+    def all(self, source: PageSource) -> List["XMLElement"]:
+        """find all matched elements"""
+        elements = self._base_xpath.all(source)
+
+        # AND OR
+        if self._next_xpath and self._operator:
+            next_els = self._next_xpath.all(source)
+            if self._operator == Operator.AND:
+                elements = list(set(elements) & set(next_els))
+            elif self._operator == Operator.OR:
+                elements = list(set(elements) | set(next_els))
+            else:
+                raise ValueError("Invalid operator", self._operator)
+        return elements
+
+class DeviceXPathSelector(XPathSelector):
+    def __init__(self, xpath: Union[str, AbstractSelector], parent: XPathEntry, source: Optional[PageSource] = None):
+        super().__init__(xpath)
+        self._parent = parent
+        self._source = source
+        self._last_source: Optional[PageSource] = None
+        self._fallback: Optional[Callable] = None
+    
+    def from_parent(self, p: XPathSelector):
+        dp = DeviceXPathSelector(p._base_xpath, self._parent, self._source)
+        dp._operator = p._operator
+        dp._next_xpath = p._next_xpath
+        return dp
+
+    def __and__(self, value) -> 'DeviceXPathSelector':
+        s = super().__and__(value)
+        return self.from_parent(s)
+
+    def __or__(self, value) -> 'DeviceXPathSelector':
+        s = super().__or__(value)
+        return self.from_parent(s)
 
     def fallback(self, func: Optional[Callable[..., bool]] = None, *args, **kwargs):
         """
@@ -382,36 +421,20 @@ class XPathSelector(AbstractSelector):
             raise XPathError("self._parent is not set")
         return self._parent.get_page_source()
     
-    def all(self, source: Optional[PageSource] = None) -> List["XMLElement"]:
+
+    def all(self, source: Optional[PageSource] = None) -> List["DeviceXMLElement"]:
         """find all matched elements"""
         if not source:
             source = self._get_page_source()
         self._last_source = source
-
-        elements = []
-        if isinstance(self._base_xpath, XPath):
-            elements = source.find_elements(self._base_xpath)
-        else:
-            elements = self._base_xpath.all(source)
-
-        # AND OR
-        if self._next_xpath and self._operator:
-            next_els = self._next_xpath.all(source)
-            if self._operator == Operator.AND:
-                elements = list(set(elements) & set(next_els))
-            elif self._operator == Operator.OR:
-                elements = list(set(elements) | set(next_els))
-            else:
-                raise ValueError("Invalid operator", self._operator)
-        for el in elements:
-            el._parent = self._parent
-        return elements
+        elements = super().all(source)
+        return [DeviceXMLElement(el, self._parent) for el in elements]
 
     @property
     def exists(self) -> bool:
         return len(self.all()) > 0
 
-    def get(self, timeout=None) -> "XMLElement":
+    def get(self, timeout=None):
         """
         Get first matched element
 
@@ -428,7 +451,7 @@ class XPathSelector(AbstractSelector):
             raise XPathElementNotFoundError(self)
         return self.get_last_match()
 
-    def get_last_match(self) -> "XMLElement":
+    def get_last_match(self) -> "DeviceXMLElement":
         return self.all(self._last_source)[0]
 
     def get_text(self) -> Optional[str]:
@@ -530,14 +553,13 @@ class XPathSelector(AbstractSelector):
 
 
 class XMLElement(object):
-    def __init__(self, elem: etree._Element, parent: XPathEntry = None):
+    def __init__(self, elem: etree._Element):
         """
         Args:
             elem: lxml node
             d: uiautomator2 instance
         """
         self.elem = elem
-        self._parent = parent
 
     def __hash__(self):
         return hash(self.elem)
@@ -579,6 +601,89 @@ class XMLElement(object):
         """
         x, y, width, height = self.rect
         return x + int(width * px), y + int(height * py)
+
+    def parent(self, xpath: Optional[str] = None) -> Union["XMLElement", None]:
+        """
+        Returns parent element
+        """
+        if xpath is None:
+            return XMLElement(self.elem.getparent())
+
+        root = self.elem.getroottree()
+        e = self.elem
+        els = []
+        while e is not None and e != root:
+            els.append(e)
+            e = e.getparent()
+
+        xpath = strict_xpath(xpath)
+        matches = root.xpath(
+            xpath, namespaces={"re": "http://exslt.org/regular-expressions"}
+        )
+        all_paths = [root.getpath(m) for m in matches]
+        for e in reversed(els):
+            if root.getpath(e) in all_paths:
+                return XMLElement(e)
+
+    @functools.cached_property
+    def bounds(self) -> Tuple[int, int, int, int]:
+        """
+        Returns:
+            tuple of (left, top, right, bottom)
+        """
+        bounds = self.elem.attrib.get("bounds")
+        if not bounds:
+            return (0, 0, 0, 0)
+        lx, ly, rx, ry = map(int, re.findall(r"\d+", bounds))
+        return (lx, ly, rx, ry)
+
+    @property
+    def rect(self) -> Tuple[int, int, int, int]:
+        """
+        Returns:
+            (left_top_x, left_top_y, width, height)
+        """
+        lx, ly, rx, ry = self.bounds
+        return lx, ly, rx - lx, ry - ly
+
+    @property
+    def text(self):
+        return self.elem.attrib.get("text")
+
+    @property
+    def attrib(self) -> Dict[str, str]:
+        return dict(self.elem.attrib)
+    
+    @property
+    def info(self) -> Dict[str, Any]:
+        ret = {}
+        for k, v in dict(self.attrib).items():
+            if k in ("bounds", "class", "package", "content-desc"):
+                continue
+            if k in ("checkable", "checked", "clickable", "enabled", "focusable", "focused", "scrollable",
+                     "long-clickable", "password", "selected", "visible-to-user"):
+                ret[convert_to_camel_case(k)] = v == "true"
+            elif k == "index":
+                ret[k] = int(v)
+            else:
+                ret[convert_to_camel_case(k)] = v
+
+        ret["childCount"] = len(self.elem.getchildren())
+        ret["className"] = self.elem.tag
+        lx, ly, rx, ry = self.bounds
+        ret["bounds"] = {"left": lx, "top": ly, "right": rx, "bottom": ry}
+
+        # 名字命名的有点奇怪，为了兼容性暂时保留
+        ret["packageName"] = self.attrib.get("package")
+        ret["contentDescription"] = self.attrib.get("content-desc")
+        ret["resourceName"] = self.attrib.get("resource-id")
+        return ret
+    
+
+class DeviceXMLElement(XMLElement):
+    def __init__(self, el: XMLElement, parent: XPathEntry):
+        super().__init__(el.elem)
+        self._parent = parent
 
     def click(self):
         """
@@ -646,51 +751,6 @@ class XMLElement(object):
                 break
         return None
 
-    def parent(self, xpath: Optional[str] = None) -> Union["XMLElement", None]:
-        """
-        Returns parent element
-        """
-        if xpath is None:
-            return XMLElement(self.elem.getparent(), self._parent)
-
-        root = self.elem.getroottree()
-        e = self.elem
-        els = []
-        while e is not None and e != root:
-            els.append(e)
-            e = e.getparent()
-
-        xpath = strict_xpath(xpath)
-        matches = root.xpath(
-            xpath, namespaces={"re": "http://exslt.org/regular-expressions"}
-        )
-        all_paths = [root.getpath(m) for m in matches]
-        for e in reversed(els):
-            if root.getpath(e) in all_paths:
-                return XMLElement(e, self._parent)
-            # if e in matches:
-            #     return XMLElement(e, self._parent)
-
-    def percent_size(self):
-        """Returns:
-        (float, float): eg, (0.5, 0.5) means 50%, 50%
-        """
-        ww, wh = self._parent._d.window_size()
-        _, _, w, h = self.rect
-        return (w / ww, h / wh)
-
-    @functools.cached_property
-    def bounds(self) -> Tuple[int, int, int, int]:
-        """
-        Returns:
-            tuple of (left, top, right, bottom)
-        """
-        bounds = self.elem.attrib.get("bounds")
-        if not bounds:
-            return (0, 0, 0, 0)
-        lx, ly, rx, ry = map(int, re.findall(r"\d+", bounds))
-        return (lx, ly, rx, ry)
-
     def percent_bounds(self, wsize: Optional[tuple] = None):
         """
         Args:
@@ -703,44 +763,10 @@ class XMLElement(object):
         ww, wh = wsize or self._parent._d.window_size()
         return (lx / ww, ly / wh, rx / ww, ry / wh)
 
-    @property
-    def rect(self) -> Tuple[int, int, int, int]:
+    def percent_size(self):
+        """Returns:
+        (float, float): eg, (0.5, 0.5) means 50%, 50%
         """
-        Returns:
-            (left_top_x, left_top_y, width, height)
-        """
-        lx, ly, rx, ry = self.bounds
-        return lx, ly, rx - lx, ry - ly
-
-    @property
-    def text(self):
-        return self.elem.attrib.get("text")
-
-    @property
-    def attrib(self):
-        return self.elem.attrib
-
-    @property
-    def info(self) -> Dict[str, Any]:
-        ret = {}
-        for k, v in dict(self.attrib).items():
-            if k in ("bounds", "class", "package", "content-desc"):
-                continue
-            if k in ("checkable", "checked", "clickable", "enabled", "focusable", "focused", "scrollable",
-                     "long-clickable", "password", "selected", "visible-to-user"):
-                ret[convert_to_camel_case(k)] = v == "true"
-            elif k == "index":
-                ret[k] = int(v)
-            else:
-                ret[convert_to_camel_case(k)] = v
-
-        ret["childCount"] = len(self.elem.getchildren())
-        ret["className"] = self.elem.tag
-        lx, ly, rx, ry = self.bounds
-        ret["bounds"] = {"left": lx, "top": ly, "right": rx, "bottom": ry}
-
-        # 名字命名的有点奇怪，为了兼容性暂时保留
-        ret["packageName"] = self.attrib.get("package")
-        ret["contentDescription"] = self.attrib.get("content-desc")
-        ret["resourceName"] = self.attrib.get("resource-id")
-        return ret
+        ww, wh = self._parent._d.window_size()
+        _, _, w, h = self.rect
+        return (w / ww, h / wh)
