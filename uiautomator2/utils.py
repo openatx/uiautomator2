@@ -10,7 +10,7 @@ import sys
 import threading
 import typing
 import warnings
-from typing import Union
+from typing import Iterable, List, Tuple, Union
 
 from PIL import Image
 
@@ -188,7 +188,7 @@ def natualsize(size: int) -> str:
 
 
 def swipe_in_bounds(d: "uiautomator2.Device",
-                    bounds: list,
+                    bounds: Tuple[int, int, int, int],
                     direction: Union[Direction, str],
                     scale: float = 0.6):
     """
