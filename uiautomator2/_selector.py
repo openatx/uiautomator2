@@ -495,15 +495,15 @@ class UiObject(object):
 
         class _Fling(object):
             def __init__(self):
-                self.vertical = True
+                self._vertical = True
                 self.action = 'forward'
 
             def __getattr__(self, key):
                 if key in ["horiz", "horizental", "horizentally"]:
-                    self.vertical = False
+                    self._vertical = False
                     return self
                 if key in ['vert', 'vertically', 'vertical']:
-                    self.vertical = True
+                    self._vertical = True
                     return self
                 if key in [
                         "forward", "backward", "toBeginning", "toEnd", "to"
@@ -514,14 +514,14 @@ class UiObject(object):
 
             def __call__(self, max_swipes=500, **kwargs):
                 if self.action == "forward":
-                    return jsonrpc.flingForward(selector, self.vertical)
+                    return jsonrpc.flingForward(selector, self._vertical)
                 elif self.action == "backward":
-                    return jsonrpc.flingBackward(selector, self.vertical)
+                    return jsonrpc.flingBackward(selector, self._vertical)
                 elif self.action == "toBeginning":
-                    return jsonrpc.flingToBeginning(selector, self.vertical,
+                    return jsonrpc.flingToBeginning(selector, self._vertical,
                                                     max_swipes)
                 elif self.action == "toEnd":
-                    return jsonrpc.flingToEnd(selector, self.vertical,
+                    return jsonrpc.flingToEnd(selector, self._vertical,
                                               max_swipes)
 
         return _Fling()
@@ -538,15 +538,15 @@ class UiObject(object):
 
         class _Scroll(object):
             def __init__(self):
-                self.vertical = True
+                self._vertical = True
                 self.action = 'forward'
 
             def __getattr__(self, key):
                 if key in ["horiz", "horizental", "horizentally"]:
-                    self.vertical = False
+                    self._vertical = False
                     return self
                 if key in ['vert', 'vertically', 'vertical']:
-                    self.vertical = True
+                    self._vertical = True
                     return self
                 if key in [
                         "forward", "backward", "toBeginning", "toEnd", "to"
@@ -559,15 +559,15 @@ class UiObject(object):
                 # More steps slows the swipe and prevents contents from being flung too far
                 if self.action in ["forward", "backward"]:
                     method = jsonrpc.scrollForward if self.action == "forward" else jsonrpc.scrollBackward
-                    return method(selector, self.vertical, steps)
+                    return method(selector, self._vertical, steps)
                 elif self.action == "toBeginning":
-                    return jsonrpc.scrollToBeginning(selector, self.vertical,
+                    return jsonrpc.scrollToBeginning(selector, self._vertical,
                                                      max_swipes, steps)
                 elif self.action == "toEnd":
-                    return jsonrpc.scrollToEnd(selector, self.vertical,
+                    return jsonrpc.scrollToEnd(selector, self._vertical,
                                                max_swipes, steps)
                 elif self.action == "to":
                     return jsonrpc.scrollTo(selector, Selector(**kwargs),
-                                            self.vertical)
+                                            self._vertical)
 
         return _Scroll()
