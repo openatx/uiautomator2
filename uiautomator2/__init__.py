@@ -772,7 +772,8 @@ class _DeprecatedMixIn: # pragma: no cover
     def unlock(self):
         """ unlock screen with swipe from left-bottom to right-top """
         if not self.info['screenOn']:
-            self.shell("input keyevent WAKEUP")
+            # WAKEUP might be stuck
+            self.shell("input keyevent POWER")
             self.swipe(0.1, 0.9, 0.9, 0.1)
 
     def show_float_window(self, show=True):

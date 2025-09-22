@@ -1219,6 +1219,10 @@ To specify a device, pass `--serial`, e.g., `python -m uiautomator2 --serial bff
     uiautomator2 --serial <YOUR_DEVICE_SERIAL> screenshot screenshot.jpg
     ```
 
+- `copy-assets`: Copy assets/ to current directory
+
+    Used for pyinstaller、nuitka
+
 - `current`: Get current package name and activity
 
     ```bash

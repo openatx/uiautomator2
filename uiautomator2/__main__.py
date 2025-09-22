@@ -6,11 +6,14 @@ from __future__ import absolute_import, print_function
 import argparse
 import json
 import logging
+import pathlib
+import shutil
 import sys
 
 import adbutils
 
 import uiautomator2 as u2
+from uiautomator2.utils import with_package_resource
 from uiautomator2.version import __version__
 from uiautomator2 import enable_pretty_logging
 
@@ -49,6 +52,18 @@ def cmd_purge(args):
     logger.info("com.github.uiautomator uninstalled, all done !!!")
 
 
+def cmd_copy_assets(args):
+    target_dir = pathlib.Path("assets")
+    target_dir.mkdir(exist_ok=True)
+    with with_package_resource("assets/u2.jar") as jar_path:
+        target_path = target_dir / "u2.jar"
+        shutil.copy2(jar_path, target_path)
+        print("Copied u2.jar to", target_path)
+    with with_package_resource("assets/app-uiautomator.apk") as apk_path:
+        target_path = target_dir / "app-uiautomator.apk"
+        shutil.copy2(apk_path, target_path)
+        print("Copied app-uiautomator.apk to", target_path)
+        
 def cmd_screenshot(args):
     d = u2.connect(args.serial)
     d.screenshot().save(args.filename)
@@ -153,6 +168,11 @@ _commands = [
                 help="serial number, same as --serial",
             ),
         ],
+    ),
+    dict(
+        action=cmd_copy_assets,
+        command="copy-assets",
+        help="copy uiautomator2 assets to current directory",
     ),
     dict(
         action=cmd_screenshot,
