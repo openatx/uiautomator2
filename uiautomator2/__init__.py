@@ -80,7 +80,7 @@ class _Device(_BaseClient):
                 jpg_raw = base64.b64decode(base64_data)
                 pil_img = Image.open(io.BytesIO(jpg_raw))
             else:
-                pil_img = self._dev.screenshot(display_id=display_id)
+                pil_img = self._dev.screenshot(display_id=0)
         else:
             pil_img = self._dev.screenshot(display_id=display_id)
         
