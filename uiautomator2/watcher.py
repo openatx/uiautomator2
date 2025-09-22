@@ -10,8 +10,8 @@ from collections import OrderedDict
 from typing import List, Optional
 
 import uiautomator2
-from uiautomator2.xpath import PageSource, XPathEntry, XPathSelector
 from uiautomator2.utils import inject_call
+from uiautomator2.xpath import PageSource, XPathEntry, XPathSelector
 
 logger = logging.getLogger(__name__)
 

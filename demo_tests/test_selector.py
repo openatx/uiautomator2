@@ -2,9 +2,12 @@
 # author: codeskyblue
 
 import time
+
 import pytest
+
 import uiautomator2 as u2
 from uiautomator2 import Selector
+
 
 def test_selector_magic():
     s = Selector(text='123').child(text='456').sibling(text='789').clone()

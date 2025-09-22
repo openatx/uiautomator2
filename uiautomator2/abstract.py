@@ -5,10 +5,12 @@
 """
 
 import abc
-from typing import Any, List, NamedTuple, Tuple, Union
 import typing
+from typing import Any, List, NamedTuple, Tuple, Union
+
 import adbutils
 from PIL import Image
+
 from uiautomator2._proto import Direction
 
 

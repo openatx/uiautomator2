@@ -4,11 +4,13 @@
 """Created on Thu Apr 04 2024 16:41:25 by codeskyblue
 """
 
-import pytest
 from unittest.mock import Mock
-from PIL import Image
-from uiautomator2.xpath import XMLElement, XPath, XPathSelector, XPathEntry, XPathElementNotFoundError, convert_to_camel_case, is_xpath_syntax_ok, safe_xmlstr, str2bytes, strict_xpath
 
+import pytest
+from PIL import Image
+
+from uiautomator2.xpath import XMLElement, XPath, XPathElementNotFoundError, XPathEntry, XPathSelector, \
+    convert_to_camel_case, is_xpath_syntax_ok, safe_xmlstr, str2bytes, strict_xpath
 
 mock = Mock()
 mock.screenshot.return_value = Image.new("RGB", (1080, 1920), "white")

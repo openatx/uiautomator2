@@ -1,11 +1,13 @@
 # coding: utf-8
 # author: codeskyblue
 
-from pathlib import Path
 import random
+from pathlib import Path
+
 import pytest
-import uiautomator2 as u2
 from PIL import Image
+
+import uiautomator2 as u2
 
 
 def test_info(d: u2.Device):

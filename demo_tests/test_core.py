@@ -2,6 +2,7 @@
 # author: codeskyblue
 
 from typing import Optional
+
 import uiautomator2 as u2
 
 

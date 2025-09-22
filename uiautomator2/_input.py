@@ -5,13 +5,13 @@
 """
 
 import base64
-from dataclasses import dataclass
 import logging
-from pathlib import Path
 import re
 import time
-from typing import Dict, List, Optional, Union
 import warnings
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List, Optional, Union
 
 import adbutils
 from retry import retry
@@ -19,7 +19,6 @@ from retry import retry
 from uiautomator2.abstract import AbstractShell
 from uiautomator2.exceptions import AdbBroadcastError, DeviceError, InputIMEError
 from uiautomator2.utils import deprecated, with_package_resource
-
 
 logger = logging.getLogger(__name__)
 

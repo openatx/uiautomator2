@@ -2,8 +2,10 @@
 #
 
 import pytest
+
 import uiautomator2 as u2
 from uiautomator2.exceptions import SessionBrokenError
+
 
 def test_session_function_exists(dev: u2.Device):
     dev.wlan_ip

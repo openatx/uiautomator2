@@ -12,14 +12,13 @@ import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-from PIL import Image
 from lxml import etree
+from PIL import Image
 
 from uiautomator2._proto import Direction
 from uiautomator2.abstract import AbstractXPathBasedDevice
 from uiautomator2.exceptions import XPathElementNotFoundError
-from uiautomator2.utils import inject_call, swipe_in_bounds, deprecated
-
+from uiautomator2.utils import deprecated, inject_call, swipe_in_bounds
 
 logger = logging.getLogger(__name__)
 

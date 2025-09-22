@@ -13,10 +13,9 @@ import sys
 import adbutils
 
 import uiautomator2 as u2
+from uiautomator2 import enable_pretty_logging
 from uiautomator2.utils import with_package_resource
 from uiautomator2.version import __version__
-from uiautomator2 import enable_pretty_logging
-
 
 logger = logging.getLogger(__name__)
 
