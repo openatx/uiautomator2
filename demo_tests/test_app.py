@@ -2,8 +2,8 @@
 # author: codeskyblue
 
 import pytest
-import uiautomator2 as u2
 
+import uiautomator2 as u2
 
 PACKAGE = "com.example.u2testdemo"
 

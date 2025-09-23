@@ -2,6 +2,7 @@
 # author: codeskyblue
 
 import pytest
+
 from uiautomator2 import Settings
 
 

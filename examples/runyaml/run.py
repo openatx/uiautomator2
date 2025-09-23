@@ -14,7 +14,6 @@ from logzero import logger
 
 import uiautomator2 as u2
 
-
 CLICK = "click"
 # swipe
 SWIPE_UP = "swipe_up"

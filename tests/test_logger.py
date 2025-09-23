@@ -5,7 +5,9 @@
 """
 
 import logging
+
 import pytest
+
 from uiautomator2 import enable_pretty_logging
 
 

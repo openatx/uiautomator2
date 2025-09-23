@@ -5,6 +5,7 @@ import threading
 from functools import partial
 
 import pytest
+
 import uiautomator2 as u2
 
 

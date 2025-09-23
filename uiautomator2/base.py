@@ -8,12 +8,12 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import adbutils
 
-from uiautomator2.core import BasicUiautomatorServer
 from uiautomator2._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
+from uiautomator2.abstract import ShellResponse
+from uiautomator2.core import BasicUiautomatorServer
 from uiautomator2.exceptions import *
 from uiautomator2.settings import Settings
-from uiautomator2.utils import image_convert, list2cmdline, deprecated
-from uiautomator2.abstract import ShellResponse
+from uiautomator2.utils import deprecated, image_convert, list2cmdline
 
 logger = logging.getLogger(__name__)
 
