@@ -47,6 +47,22 @@ class Selector(dict):
         super(Selector, self).__setitem__(self.__mask, 0)
         super(Selector, self).__setitem__(self.__childOrSibling, [])
         super(Selector, self).__setitem__(self.__childOrSiblingSelector, [])
+        if 'selector' in kwargs:
+            selector = kwargs.pop('selector')
+            if isinstance(selector, Selector):
+                for key in selector:
+                    if key == self.__mask:
+                        super(Selector, self).__setitem__(self.__mask, selector[self.__mask])
+                    elif key == self.__childOrSibling:
+                        for v in selector[self.__childOrSibling]:
+                            self[self.__childOrSibling].append(v)
+                    elif key == self.__childOrSiblingSelector:
+                        for s in selector[self.__childOrSiblingSelector]:
+                            self[self.__childOrSiblingSelector].append(s.clone())
+                    else:
+                        self[key] = selector[key]
+            else:
+                raise TypeError("The 'selector' argument must be an instance of Selector.")
         for k in kwargs:
             self[k] = kwargs[k]
 
