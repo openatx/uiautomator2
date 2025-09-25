@@ -341,7 +341,7 @@ class _Device(_BaseClient):
     @property
     def orientation(self) -> str:
         '''
-        orienting the devie to left/right or natural.
+        orienting the device to left/right or natural.
         left/l:       rotation=90 , displayRotation=1
         right/r:      rotation=270, displayRotation=3
         natural/n:    rotation=0  , displayRotation=0
