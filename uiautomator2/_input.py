@@ -111,6 +111,8 @@ class InputMethodMixIn(AbstractShell):
             base64text = base64.b64encode(btext).decode()
             cmd = "ADB_KEYBOARD_INPUT_TEXT"
             self._must_broadcast(cmd, {"text": base64text})
+            # Hide keyboard after successful input when using custom IME
+            self._must_broadcast('ADB_KEYBOARD_HIDE')
             return True
         except AdbBroadcastError:
             warnings.warn(
