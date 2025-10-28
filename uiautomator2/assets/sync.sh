@@ -5,7 +5,7 @@ set -e
 
 APK_VERSION=$(cat ../version.py| grep apk_version | awk '{print $NF}')
 APK_VERSION=${APK_VERSION//[\"\']}
-JAR_VERSION="0.1.5"
+JAR_VERSION="0.2.2"
 
 cd "$(dirname $0)"
 
@@ -28,6 +28,12 @@ function download_apk(){
 function download_jar() {
 	local URL="https://public.uiauto.devsleep.com/u2jar/$JAR_VERSION/u2.jar"
 	https_proxy= download "$URL" "u2.jar"
+	if test -s u2.jar; then
+		echo "Download Jar sucessfully"
+	else
+		echo "Download Jar failed"
+		exit 1
+	fi
 }
 
 echo "APK_VERSION: $APK_VERSION"
