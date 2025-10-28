@@ -481,10 +481,10 @@ class DeviceXPathSelector(XPathSelector):
                 return False
             time.sleep(0.2)
 
-    def match(self) -> Optional["XMLElement"]:
+    def match(self) -> Optional["DeviceXMLElement"]:
         """
         Returns:
-            None or matched XMLElement
+            None or matched DeviceXMLElement
         """
         if self.exists:
             return self.get_last_match()
@@ -545,7 +545,7 @@ class DeviceXPathSelector(XPathSelector):
         """
         if key.startswith("_"):
             raise AttributeError("Invalid attr", key)
-        if not hasattr(XMLElement, key):
+        if not hasattr(DeviceXMLElement, key):
             raise AttributeError("Invalid attr", key)
         el = self.get()
         return getattr(el, key)
