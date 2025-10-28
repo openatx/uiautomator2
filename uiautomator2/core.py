@@ -253,7 +253,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         local_md5 = md5.hexdigest()
         logger.debug("file %s md5: %s", os.path.basename(local_file), local_md5)
         output = self._dev.shell(["toybox", "md5sum", remote_file])
-        if "not found" in output:
+        if "toybox" in output and "not found" in output:
             output = self._dev.shell(["md5", remote_file])
         return local_md5 in output
 
