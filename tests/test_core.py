@@ -43,7 +43,7 @@ def test_check_device_file_hash_with_toybox():
             # Verify it returns True when hash matches
             assert result is True
     finally:
-        Path(tmp_path).unlink()
+        Path(tmp_path).unlink(missing_ok=True)
 
 
 def test_check_device_file_hash_fallback_to_md5():
@@ -84,7 +84,7 @@ def test_check_device_file_hash_fallback_to_md5():
             # Verify it returns True when hash matches
             assert result is True
     finally:
-        Path(tmp_path).unlink()
+        Path(tmp_path).unlink(missing_ok=True)
 
 
 def test_check_device_file_hash_mismatch():
@@ -110,7 +110,7 @@ def test_check_device_file_hash_mismatch():
             # Verify it returns False when hash doesn't match
             assert result is False
     finally:
-        Path(tmp_path).unlink()
+        Path(tmp_path).unlink(missing_ok=True)
 
 
 def test_check_device_file_hash_fallback_mismatch():
@@ -141,4 +141,4 @@ def test_check_device_file_hash_fallback_mismatch():
             # Verify it returns False when hash doesn't match
             assert result is False
     finally:
-        Path(tmp_path).unlink()
+        Path(tmp_path).unlink(missing_ok=True)
