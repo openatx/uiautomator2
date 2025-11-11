@@ -142,7 +142,9 @@ class XPath(str):
 
 class PageSource:
     def __init__(self, xml_content: str):
-        self._xml_content = xml_content
+        # Remove Left-to-Right Mark, BLM, Zero-Width Space, BOM etc Invisible chars
+        clean_xml_content = re.sub(r'[\u200B-\u200F\uFEFF]', '', xml_content)
+        self._xml_content = clean_xml_content
     
     @staticmethod
     def parse(data: Union[str, "PageSource"]) -> "PageSource":
