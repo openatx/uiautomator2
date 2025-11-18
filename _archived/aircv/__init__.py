@@ -186,7 +186,7 @@ class CVHandler(object):
             pts = np.float32([[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0]]).reshape(-1, 1, 2)
             dst = cv2.perspectiveTransform(pts, M)
 
-            # trans numpy arrary to python list
+            # trans numpy array to python list
             # [(a, b), (a1, b1), ...]
             pypts = []
             for npt in dst.astype(int).tolist():
