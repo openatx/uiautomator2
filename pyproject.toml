@@ -12,7 +12,7 @@ include = ["*/assets/*"]
 python = "^3.8"
 requests = "*"
 lxml = "*"
-adbutils = ">=2.9.3,<3"
+adbutils = ">=2.11.0,<3"
 Pillow = "*"
 retry2 = "^0.9.5"
 importlib-resources = {version = "*", markers = "python_version < \"3.9\""}
