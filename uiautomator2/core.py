@@ -291,7 +291,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
         try:
             response = _http_request(self._dev, self._device_server_port, "GET", "/ping")
             return response.content == b"pong"
-        except (HTTPError, ConnectionError) as e:
+        except (HTTPError, ConnectionError):
             return False
     
     def stop_uiautomator(self, wait=True):
