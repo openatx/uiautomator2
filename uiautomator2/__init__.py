@@ -54,14 +54,14 @@ class _Device(_BaseClient):
     def show_touch_trace(self, pointer_location: bool = True, show_touches: bool = True):
         """
         Show touch trace on device screen
-    
+
         Args:
             pointer_location (bool): screen overlay showing current touch data
             show_touches (bool): show visual feedback for taps
         """
         self.shell(f"settings put system pointer_location {int(pointer_location)}")
         self.shell(f"settings put system show_touches {int(show_touches)}")
-    
+
     def window_size(self):
         """ return (width, height) """
         w, h = self._dev.window_size()
