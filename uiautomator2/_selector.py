@@ -368,8 +368,14 @@ class UiObject(object):
     def child_by_text(self, txt, **kwargs):
         if "allow_scroll_search" in kwargs:
             allow_scroll_search = kwargs.pop("allow_scroll_search")
-            name = self.jsonrpc.childByText(self.selector, Selector(**kwargs),
-                                            txt, allow_scroll_search)
+            try:
+                name = self.jsonrpc.childByText(self.selector, Selector(**kwargs),
+                                                txt, allow_scroll_search)
+            except UiObjectNotFoundError:
+                # When allow_scroll_search=True and element is not found,
+                # return a UiObject that will make .exists return False
+                # instead of raising an exception
+                return UiObject(self.session, Selector(text=f"__not_found_{txt}__", instance=999999))
         else:
             name = self.jsonrpc.childByText(self.selector, Selector(**kwargs),
                                             txt)
@@ -379,9 +385,15 @@ class UiObject(object):
         # need test
         if "allow_scroll_search" in kwargs:
             allow_scroll_search = kwargs.pop("allow_scroll_search")
-            name = self.jsonrpc.childByDescription(self.selector,
-                                                   Selector(**kwargs), txt,
-                                                   allow_scroll_search)
+            try:
+                name = self.jsonrpc.childByDescription(self.selector,
+                                                       Selector(**kwargs), txt,
+                                                       allow_scroll_search)
+            except UiObjectNotFoundError:
+                # When allow_scroll_search=True and element is not found,
+                # return a UiObject that will make .exists return False
+                # instead of raising an exception
+                return UiObject(self.session, Selector(description=f"__not_found_{txt}__", instance=999999))
         else:
             name = self.jsonrpc.childByDescription(self.selector,
                                                    Selector(**kwargs), txt)
