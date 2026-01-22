@@ -1,13 +1,16 @@
 # coding: utf-8
 # Test for selector behavior
 
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
 import uiautomator2 as u2
 from uiautomator2._selector import Selector, UiObject
 from uiautomator2.exceptions import UiObjectNotFoundError
+
+# Common error structure for element not found
+_UI_OBJECT_NOT_FOUND_ERROR = {'code': -32001, 'message': 'androidx.test.uiautomator.UiObjectNotFoundException'}
 
 
 def test_child_by_text_allow_scroll_search_exists_returns_false():
@@ -22,9 +25,7 @@ def test_child_by_text_allow_scroll_search_exists_returns_false():
     mock_session.jsonrpc = mock_jsonrpc
     
     # Setup: childByText raises UiObjectNotFoundError when element not found with allow_scroll_search=True
-    mock_jsonrpc.childByText.side_effect = UiObjectNotFoundError(
-        {'code': -32001, 'message': 'androidx.test.uiautomator.UiObjectNotFoundException'}
-    )
+    mock_jsonrpc.childByText.side_effect = UiObjectNotFoundError(_UI_OBJECT_NOT_FOUND_ERROR)
     
     # Create a parent UiObject
     parent_selector = Selector(resourceId="test:id/parent")
@@ -49,9 +50,7 @@ def test_child_by_description_allow_scroll_search_exists_returns_false():
     mock_session.jsonrpc = mock_jsonrpc
     
     # Setup: childByDescription raises UiObjectNotFoundError when element not found with allow_scroll_search=True
-    mock_jsonrpc.childByDescription.side_effect = UiObjectNotFoundError(
-        {'code': -32001, 'message': 'androidx.test.uiautomator.UiObjectNotFoundException'}
-    )
+    mock_jsonrpc.childByDescription.side_effect = UiObjectNotFoundError(_UI_OBJECT_NOT_FOUND_ERROR)
     
     # Create a parent UiObject
     parent_selector = Selector(resourceId="test:id/parent")
@@ -76,9 +75,7 @@ def test_child_by_text_without_allow_scroll_search_raises_exception():
     mock_session.jsonrpc = mock_jsonrpc
     
     # Setup: childByText raises UiObjectNotFoundError
-    mock_jsonrpc.childByText.side_effect = UiObjectNotFoundError(
-        {'code': -32001, 'message': 'androidx.test.uiautomator.UiObjectNotFoundException'}
-    )
+    mock_jsonrpc.childByText.side_effect = UiObjectNotFoundError(_UI_OBJECT_NOT_FOUND_ERROR)
     
     # Create a parent UiObject
     parent_selector = Selector(resourceId="test:id/parent")

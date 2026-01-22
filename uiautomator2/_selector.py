@@ -10,6 +10,10 @@ from uiautomator2._proto import SCROLL_STEPS
 from uiautomator2.exceptions import HTTPError, UiObjectNotFoundError
 from uiautomator2.utils import Exists, intersect
 
+# Sentinel value for instance when element is not found with allow_scroll_search=True
+# Using a large positive number to avoid collision with real instance indices
+_SENTINEL_INSTANCE = 999999
+
 
 class Selector(dict):
     """The class is to build parameters for UiSelector passed to Android device.
@@ -375,7 +379,7 @@ class UiObject(object):
                 # When allow_scroll_search=True and element is not found,
                 # return a UiObject that will make .exists return False
                 # instead of raising an exception
-                return UiObject(self.session, Selector(text=f"__not_found_{txt}__", instance=999999))
+                return UiObject(self.session, Selector(text=f"__not_found_{txt}__", instance=_SENTINEL_INSTANCE))
         else:
             name = self.jsonrpc.childByText(self.selector, Selector(**kwargs),
                                             txt)
@@ -393,7 +397,7 @@ class UiObject(object):
                 # When allow_scroll_search=True and element is not found,
                 # return a UiObject that will make .exists return False
                 # instead of raising an exception
-                return UiObject(self.session, Selector(description=f"__not_found_{txt}__", instance=999999))
+                return UiObject(self.session, Selector(description=f"__not_found_{txt}__", instance=_SENTINEL_INSTANCE))
         else:
             name = self.jsonrpc.childByDescription(self.selector,
                                                    Selector(**kwargs), txt)
