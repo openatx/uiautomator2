@@ -5,7 +5,6 @@ from unittest.mock import Mock
 
 import pytest
 
-import uiautomator2 as u2
 from uiautomator2._selector import Selector, UiObject
 from uiautomator2.exceptions import UiObjectNotFoundError
 

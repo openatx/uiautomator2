@@ -1,4 +1,5 @@
 import logging
+import sys
 import time
 import warnings
 from typing import Optional, Tuple
@@ -11,8 +12,8 @@ from uiautomator2.exceptions import HTTPError, UiObjectNotFoundError
 from uiautomator2.utils import Exists, intersect
 
 # Sentinel value for instance when element is not found with allow_scroll_search=True
-# Using a large positive number to avoid collision with real instance indices
-_SENTINEL_INSTANCE = 999999
+# Using sys.maxsize to ensure a unique large integer that won't collide with real indices
+_SENTINEL_INSTANCE = sys.maxsize
 
 
 class Selector(dict):
@@ -378,8 +379,9 @@ class UiObject(object):
             except UiObjectNotFoundError:
                 # When allow_scroll_search=True and element is not found,
                 # return a UiObject that will make .exists return False
-                # instead of raising an exception
-                return UiObject(self.session, Selector(text=f"__not_found_{txt}__", instance=_SENTINEL_INSTANCE))
+                # instead of raising an exception.
+                # Use a fixed sentinel text to avoid issues with special characters in user input
+                return UiObject(self.session, Selector(text="__ui_object_not_found__", instance=_SENTINEL_INSTANCE))
         else:
             name = self.jsonrpc.childByText(self.selector, Selector(**kwargs),
                                             txt)
@@ -396,8 +398,9 @@ class UiObject(object):
             except UiObjectNotFoundError:
                 # When allow_scroll_search=True and element is not found,
                 # return a UiObject that will make .exists return False
-                # instead of raising an exception
-                return UiObject(self.session, Selector(description=f"__not_found_{txt}__", instance=_SENTINEL_INSTANCE))
+                # instead of raising an exception.
+                # Use a fixed sentinel description to avoid issues with special characters in user input
+                return UiObject(self.session, Selector(description="__ui_object_not_found__", instance=_SENTINEL_INSTANCE))
         else:
             name = self.jsonrpc.childByDescription(self.selector,
                                                    Selector(**kwargs), txt)
