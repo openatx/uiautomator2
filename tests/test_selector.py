@@ -23,9 +23,7 @@ def test_child_by_text_allow_scroll_search_exists_returns_false():
     
     # Setup: childByText raises UiObjectNotFoundError when element not found with allow_scroll_search=True
     mock_jsonrpc.childByText.side_effect = UiObjectNotFoundError(
-        -32001, 
-        'androidx.test.uiautomator.UiObjectNotFoundException', 
-        {}
+        {'code': -32001, 'message': 'androidx.test.uiautomator.UiObjectNotFoundException'}
     )
     
     # Create a parent UiObject
@@ -41,7 +39,6 @@ def test_child_by_text_allow_scroll_search_exists_returns_false():
     
     # The .exists property should return False, not raise an exception
     assert not child.exists
-    assert bool(child.exists) == False
 
 
 def test_child_by_description_allow_scroll_search_exists_returns_false():
@@ -53,9 +50,7 @@ def test_child_by_description_allow_scroll_search_exists_returns_false():
     
     # Setup: childByDescription raises UiObjectNotFoundError when element not found with allow_scroll_search=True
     mock_jsonrpc.childByDescription.side_effect = UiObjectNotFoundError(
-        -32001,
-        'androidx.test.uiautomator.UiObjectNotFoundException',
-        {}
+        {'code': -32001, 'message': 'androidx.test.uiautomator.UiObjectNotFoundException'}
     )
     
     # Create a parent UiObject
@@ -71,7 +66,6 @@ def test_child_by_description_allow_scroll_search_exists_returns_false():
     
     # The .exists property should return False, not raise an exception
     assert not child.exists
-    assert bool(child.exists) == False
 
 
 def test_child_by_text_without_allow_scroll_search_raises_exception():
@@ -83,9 +77,7 @@ def test_child_by_text_without_allow_scroll_search_raises_exception():
     
     # Setup: childByText raises UiObjectNotFoundError
     mock_jsonrpc.childByText.side_effect = UiObjectNotFoundError(
-        -32001,
-        'androidx.test.uiautomator.UiObjectNotFoundException',
-        {}
+        {'code': -32001, 'message': 'androidx.test.uiautomator.UiObjectNotFoundException'}
     )
     
     # Create a parent UiObject
@@ -121,4 +113,3 @@ def test_child_by_text_allow_scroll_search_found_returns_true():
     
     # The .exists property should return True
     assert child.exists
-    assert bool(child.exists) == True
