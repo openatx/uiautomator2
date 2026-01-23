@@ -476,6 +476,15 @@ Note: click, swipe, drag operations support percentage position values. Example:
     d.open_quick_settings()
     ```
 
+* Show touch trace on device screen
+
+    ```python
+    # show touch trace on device screen
+    d.show_touch_trace()
+    # hide touch trace
+    d.show_touch_trace(pointer_location=False, show_touches=False)
+    ```
+
 ### Selector
 
 Selector is a handy mechanism to identify a specific UI object in the current window.
