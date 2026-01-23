@@ -9,7 +9,7 @@
 
 A simple, easy-to-use, and stable Android automation library.
 
-- QQ Group: Group 1: 815453846, Group 2: 943964182
+- QQ Group: 815453846
 - Discord: <https://discord.gg/PbJhnZJKDd>
 
 > Users still on version 2.x.x, please check [2to3](docs/2to3.md) before deciding to upgrade to 3.x.x (Upgrade is highly recommended).
