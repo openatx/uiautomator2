@@ -1,9 +1,9 @@
 [tool.poetry]
 name = "uiautomator2"
-version = "3.2.1+webviewextDrissionPage"
-description = "uiautomator for android device with webviewextension using DrissionPage"
-homepage = "https://github.com/YuYoungG/uiautomator2"
-authors = ["younggg <younggg2218@gmail.com>"]
+version = "3.2.0"
+description = "uiautomator for android device"
+homepage = "https://github.com/openatx/uiautomator2"
+authors = ["codeskyblue <codeskyblue@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 include = ["*/assets/*"]
@@ -29,7 +29,7 @@ coverage = "^7.6.0"
 uiautomator2 = "uiautomator2.__main__:main"
 
 [tool.poetry-dynamic-versioning] # 根据tag来动态配置版本号
-enable = false
+enable = true
 pattern = "^((?P<epoch>\\d+)!)?(?P<base>\\d+(\\.\\d+)*)"
 
 [tool.poetry-dynamic-versioning.substitution]
