@@ -858,6 +858,12 @@ class _PluginMixIn:
     def swipe_ext(self) -> SwipeExt:
         return SwipeExt(self)
 
+    @cached_property
+    def webview(self):
+        """Extension: Hybrid WebView Support (DrissionPage Driverless)"""
+        from uiautomator2.ext.webview import WebViewExtension
+        return WebViewExtension(self)
+
 
 class Device(_Device, _AppMixIn, _PluginMixIn, InputMethodMixIn, _DeprecatedMixIn):
     """ Device object """
@@ -887,19 +893,6 @@ class Device(_Device, _AppMixIn, _PluginMixIn, InputMethodMixIn, _DeprecatedMixI
         except:
             # 安装输入法后继续输入
             InputMethodMixIn.send_keys(self, text)
-
-    @property
-    def webview(self):
-        """
-        Extension: Hybrid WebView Support (DrissionPage Driverless)
-        """
-        if not hasattr(self, '_webview_ext'):
-            # 这里对应文件名 uiautomator2/ext/webview.py
-            # 和类名 WebViewExtension
-            from uiautomator2.ext.webview import WebViewExtension
-            self._webview_ext = WebViewExtension(self)
-        return self._webview_ext
-
 
 class Session(Device):
     """Session keeps watch the app status
