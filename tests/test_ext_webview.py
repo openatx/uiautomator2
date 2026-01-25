@@ -4,7 +4,6 @@
 from unittest.mock import Mock, patch
 import pytest
 
-# 假设你的项目结构已经配置好，可以直接导入
 from uiautomator2.ext.webview import SocketFinder, PortForwarder, WebViewExtension
 
 # 全局 Mock 对象
