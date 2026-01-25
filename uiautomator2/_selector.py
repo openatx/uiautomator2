@@ -1,4 +1,5 @@
 import logging
+import sys
 import time
 import warnings
 from typing import Optional, Tuple
@@ -9,6 +10,10 @@ from retry import retry
 from uiautomator2._proto import SCROLL_STEPS
 from uiautomator2.exceptions import HTTPError, UiObjectNotFoundError
 from uiautomator2.utils import Exists, intersect
+
+# Sentinel value for instance when element is not found with allow_scroll_search=True
+# Using sys.maxsize to ensure a unique large integer that won't collide with real indices
+_SENTINEL_INSTANCE = sys.maxsize
 
 
 class Selector(dict):
@@ -368,8 +373,15 @@ class UiObject(object):
     def child_by_text(self, txt, **kwargs):
         if "allow_scroll_search" in kwargs:
             allow_scroll_search = kwargs.pop("allow_scroll_search")
-            name = self.jsonrpc.childByText(self.selector, Selector(**kwargs),
-                                            txt, allow_scroll_search)
+            try:
+                name = self.jsonrpc.childByText(self.selector, Selector(**kwargs),
+                                                txt, allow_scroll_search)
+            except UiObjectNotFoundError:
+                # When allow_scroll_search=True and element is not found,
+                # return a UiObject that will make .exists return False
+                # instead of raising an exception.
+                # Use a fixed sentinel text to avoid issues with special characters in user input
+                return UiObject(self.session, Selector(text="__ui_object_not_found__", instance=_SENTINEL_INSTANCE))
         else:
             name = self.jsonrpc.childByText(self.selector, Selector(**kwargs),
                                             txt)
@@ -379,9 +391,16 @@ class UiObject(object):
         # need test
         if "allow_scroll_search" in kwargs:
             allow_scroll_search = kwargs.pop("allow_scroll_search")
-            name = self.jsonrpc.childByDescription(self.selector,
-                                                   Selector(**kwargs), txt,
-                                                   allow_scroll_search)
+            try:
+                name = self.jsonrpc.childByDescription(self.selector,
+                                                       Selector(**kwargs), txt,
+                                                       allow_scroll_search)
+            except UiObjectNotFoundError:
+                # When allow_scroll_search=True and element is not found,
+                # return a UiObject that will make .exists return False
+                # instead of raising an exception.
+                # Use a fixed sentinel description to avoid issues with special characters in user input
+                return UiObject(self.session, Selector(description="__ui_object_not_found__", instance=_SENTINEL_INSTANCE))
         else:
             name = self.jsonrpc.childByDescription(self.selector,
                                                    Selector(**kwargs), txt)
