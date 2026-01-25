@@ -1,31 +1,34 @@
 # Standard library imports
 import socket
-import subprocess
 import time
 import re
+import traceback
 
 # Third-party imports
+from adbutils import adb
 from DrissionPage import Chromium, ChromiumOptions
-
 
 class SocketFinder:
     """负责查找 Android 内部的 WebView 调试接口"""
     
     @staticmethod
-    def find(d, timeout=10):
+    def find(d, timeout=10, retry_interval=0.5):
         start_time = time.time()
         while time.time() - start_time < timeout:
-            output = d.shell("cat /proc/net/unix | grep -a devtools_remote").output.strip()
-            
-            if output:
-                lines = output.splitlines()
-                # reverse search the newest
-                for line in reversed(lines):
-                    match = re.search(r'webview_devtools_remote_\d+', line)
-                    if match:
-                        socket_name = match.group(0)
-                        return socket_name
-            time.sleep(0.5)
+            try:
+                output = d.shell("cat /proc/net/unix | grep -a devtools_remote").output.strip()
+                
+                if output:
+                    lines = output.splitlines()
+                    # reverse search the newest
+                    for line in reversed(lines):
+                        match = re.search(r'webview_devtools_remote_\d+', line)
+                        if match:
+                            socket_name = match.group(0)
+                            return socket_name
+            except Exception as e:
+                print(f"[SocketFinder] Shell command failed: {e}")
+            time.sleep(retry_interval)
         return None
 
 class PortForwarder:
@@ -44,14 +47,15 @@ class PortForwarder:
 
     def start(self, socket_name):
         self.socket_name = socket_name
-        cmd = ["adb", "-s", self.serial, "forward", f"tcp:{self.local_port}", f"localabstract:{socket_name}"]
-        subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        adb.device(serial=self.serial).forward(f"tcp:{self.local_port}", f"localabstract:{socket_name}")
         return self.local_port
 
     def stop(self):
         if self.local_port:
-            cmd = ["adb", "-s", self.serial, "forward", "--remove", f"tcp:{self.local_port}"]
-            subprocess.call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            try:
+                adb.device(serial=self.serial).forward_remove(f"tcp:{self.local_port}")
+            except Exception:
+                traceback.print_exc()
 
 class WebViewExtension:
     def __init__(self, d):
@@ -69,11 +73,11 @@ class WebViewExtension:
         socket_name = SocketFinder.find(self.d, timeout)
         
         if not socket_name:
-            raise RuntimeError("未检测到 WebView Socket，请确认 App 已进入 H5 页面并开启了调试模式。")
+            raise RuntimeError("WebView Socket not detected. Please ensure App is on H5 page and debugging is enabled.")
 
         # 2. build forward
         if self.forwarder: 
-            self.forwarder.stop() # 清理旧的
+            self.forwarder.stop()
         
         self.forwarder = PortForwarder(self.d.serial)
         local_port = self.forwarder.start(socket_name)
@@ -82,15 +86,11 @@ class WebViewExtension:
         try:
             co = ChromiumOptions()
             co.set_address(f'127.0.0.1:{local_port}')
-            
-            # 初始化浏览器对象
-            # 注意：这里不需要 'browser_path'，因为是通过 address 接管
             self.browser = Chromium(addr_or_opts=co)
-            
-                
+            return self.browser
         except Exception as e:
             self.detach() # 失败则清理端口
-            raise RuntimeError(f"DrissionPage 连接失败: {e}")
+            raise RuntimeError(f"DrissionPage connection failed: {e}")
 
     def detach(self):
         """断开连接并清理端口转发"""
@@ -108,5 +108,5 @@ class WebViewExtension:
         适用于单页面应用或只关注当前屏幕的场景
         """ 
         if not self.browser:
-            raise RuntimeError("请先调用 d.webview.attach()")
+            raise RuntimeError("Please call d.webview.attach() first")
         return self.browser.latest_tab
