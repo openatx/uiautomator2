@@ -16,6 +16,7 @@ adbutils = ">=2.11.0,<3"
 Pillow = "*"
 retry2 = "^0.9.5"
 importlib-resources = {version = "*", markers = "python_version < \"3.9\""}
+DrissionPage = "^4.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
