@@ -463,8 +463,8 @@ class _Device(_BaseClient):
             return self._serial
         return self.shell(['getprop', 'ro.serialno']).output.strip()
     
-    def __call__(self, **kwargs) -> 'UiObject':
-        return UiObject(self, Selector(**kwargs))
+    def __call__(self, selector: Optional[Selector] = None, **kwargs) -> 'UiObject':
+        return UiObject(self, Selector(selector, **kwargs))
 
 
 class _AppMixIn(AbstractShell):

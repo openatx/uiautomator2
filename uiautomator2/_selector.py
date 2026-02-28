@@ -43,12 +43,40 @@ class Selector(dict):
     }
     __mask, __childOrSibling, __childOrSiblingSelector = "mask", "childOrSibling", "childOrSiblingSelector"
 
-    def __init__(self, **kwargs):
-        super(Selector, self).__setitem__(self.__mask, 0)
-        super(Selector, self).__setitem__(self.__childOrSibling, [])
-        super(Selector, self).__setitem__(self.__childOrSiblingSelector, [])
-        for k in kwargs:
-            self[k] = kwargs[k]
+    def __init__(self, selector=None, **kwargs):
+        super().__init__()
+
+        # Initialize internal fields (bypass __setitem__ to avoid mask update)
+        dict.__setitem__(self, self.__mask, 0)
+        dict.__setitem__(self, self.__childOrSibling, [])
+        dict.__setitem__(self, self.__childOrSiblingSelector, [])
+
+        # Extract source selector (support both positional and kwarg)
+        if selector is not None:
+            if not isinstance(selector, Selector):
+                raise TypeError(f"selector must be Selector instance, got {type(selector).__name__}")
+            self._copy_from(selector)
+
+        # Apply remaining kwargs (triggers __setitem__ + mask update)
+        for k, v in kwargs.items():
+            self[k] = v
+
+    def _copy_from(self, other):
+        """Internal: deep copy from another Selector (shared by __init__ and clone)."""
+        # Copy mask directly
+        dict.__setitem__(self, self.__mask, other[self.__mask])
+
+        # Shallow copy of child/sibling list
+        dict.__setitem__(self, self.__childOrSibling, other[self.__childOrSibling][:])
+
+        # Deep copy of nested selectors
+        dict.__setitem__(self, self.__childOrSiblingSelector,
+                         [s.clone() for s in other[self.__childOrSiblingSelector]])
+
+        # Copy normal fields (triggers __setitem__ to update mask)
+        for key, value in other.items():
+            if key not in {self.__mask, self.__childOrSibling, self.__childOrSiblingSelector}:
+                self[key] = value
 
     def __str__(self):
         """ remove useless part for easily debugger """
@@ -78,25 +106,24 @@ class Selector(dict):
                   self).__setitem__(self.__mask,
                                     self[self.__mask] & ~self.__fields[k][0])
 
-    def clone(self):
-        kwargs = dict((k, self[k]) for k in self if k not in [
-            self.__mask, self.__childOrSibling, self.__childOrSiblingSelector
-        ])
-        selector = Selector(**kwargs)
-        for v in self[self.__childOrSibling]:
-            selector[self.__childOrSibling].append(v)
-        for s in self[self.__childOrSiblingSelector]:
-            selector[self.__childOrSiblingSelector].append(s.clone())
-        return selector
+    def __deepcopy__(self, memo):
+        """Support copy.deepcopy() - delegates to our clean clone logic."""
+        return self.clone()
 
-    def child(self, **kwargs):
+    def clone(self):
+        """Return a deep clone of this Selector."""
+        new_selector = Selector()
+        new_selector._copy_from(self)
+        return new_selector
+
+    def child(self, selector=None, **kwargs):
         self[self.__childOrSibling].append("child")
-        self[self.__childOrSiblingSelector].append(Selector(**kwargs))
+        self[self.__childOrSiblingSelector].append(Selector(selector, **kwargs))
         return self
 
-    def sibling(self, **kwargs):
+    def sibling(self, selector=None, **kwargs):
         self[self.__childOrSibling].append("sibling")
-        self[self.__childOrSiblingSelector].append(Selector(**kwargs))
+        self[self.__childOrSiblingSelector].append(Selector(selector, **kwargs))
         return self
 
     def update_instance(self, i):
@@ -126,7 +153,7 @@ class UiObject(object):
     def info(self):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
-    
+
     def screenshot(self, display_id: Optional[int] = None) -> Image.Image:
         im = self.session.screenshot(display_id=display_id)
         return im.crop(self.bounds())
@@ -217,7 +244,7 @@ class UiObject(object):
         x, y = self.center()
         return self.session.long_click(x, y, duration)
 
-    def drag_to(self, *args, **kwargs):
+    def drag_to(self, *args, **kwargs) -> bool:
         duration = kwargs.pop('duration', 0.5)
         timeout = kwargs.pop('timeout', None)
         self.must_wait(timeout=timeout)
@@ -231,7 +258,9 @@ class UiObject(object):
                 return self.jsonrpc.dragTo(self.selector, x, y, steps)
 
             return drag2xy(*args, **kwargs)
-        return self.jsonrpc.dragTo(self.selector, Selector(**kwargs), steps)
+        elif len(args) == 1 and isinstance(args[0], Selector):
+            return self.jsonrpc.dragTo(self.selector, args[0], steps)
+        return self.jsonrpc.dragTo(self.selector, Selector(*args, **kwargs), steps)
 
     def swipe(self, direction, steps=10):
         """
@@ -357,11 +386,11 @@ class UiObject(object):
         self.must_wait(timeout=timeout)
         return self.set_text(None)
 
-    def child(self, **kwargs):
-        return UiObject(self.session, self.selector.clone().child(**kwargs))
+    def child(self, selector: Optional[Selector] = None, **kwargs) -> 'UiObject':
+        return UiObject(self.session, self.selector.clone().child(selector, **kwargs))
 
-    def sibling(self, **kwargs):
-        return UiObject(self.session, self.selector.clone().sibling(**kwargs))
+    def sibling(self, selector: Optional[Selector] = None, **kwargs) -> 'UiObject':
+        return UiObject(self.session, self.selector.clone().sibling(selector, **kwargs))
 
     child_selector, from_parent = child, sibling
 
@@ -446,38 +475,38 @@ class UiObject(object):
 
         return Iter()
 
-    def right(self, **kwargs):
+    def right(self, selector: Optional[Selector] = None, **kwargs) -> 'UiObject':
         def onrightof(rect1, rect2):
             left, top, right, bottom = intersect(rect1, rect2)
             return rect2["left"] - rect1["right"] if top < bottom else -1
 
-        return self.__view_beside(onrightof, **kwargs)
+        return self.__view_beside(onrightof, selector, **kwargs)
 
-    def left(self, **kwargs):
+    def left(self, selector: Optional[Selector] = None, **kwargs) -> 'UiObject':
         def onleftof(rect1, rect2):
             left, top, right, bottom = intersect(rect1, rect2)
             return rect1["left"] - rect2["right"] if top < bottom else -1
 
-        return self.__view_beside(onleftof, **kwargs)
+        return self.__view_beside(onleftof, selector, **kwargs)
 
-    def up(self, **kwargs):
+    def up(self, selector: Optional[Selector] = None, **kwargs) -> 'UiObject':
         def above(rect1, rect2):
             left, top, right, bottom = intersect(rect1, rect2)
             return rect1["top"] - rect2["bottom"] if left < right else -1
 
-        return self.__view_beside(above, **kwargs)
+        return self.__view_beside(above, selector, **kwargs)
 
-    def down(self, **kwargs):
+    def down(self, selector: Optional[Selector] = None, **kwargs) -> 'UiObject':
         def under(rect1, rect2):
             left, top, right, bottom = intersect(rect1, rect2)
             return rect2["top"] - rect1["bottom"] if left < right else -1
 
-        return self.__view_beside(under, **kwargs)
+        return self.__view_beside(under, selector, **kwargs)
 
-    def __view_beside(self, onsideof, **kwargs):
+    def __view_beside(self, onsideof, selector: Optional[Selector] = None, **kwargs):
         bounds = self.info["bounds"]
         min_dist, found = -1, None
-        for ui in UiObject(self.session, Selector(**kwargs)):
+        for ui in UiObject(self.session, Selector(selector, **kwargs)):
             dist = onsideof(bounds, ui.info["bounds"])
             if dist >= 0 and (min_dist < 0 or dist < min_dist):
                 min_dist, found = dist, ui
