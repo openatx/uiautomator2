@@ -127,7 +127,6 @@ class UiObject(object):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
 
-    @property
     def info_list(self) -> list[dict]:
         '''all matched ui objects info list.'''
         return self.jsonrpc.objInfoOfAllInstances(self.selector)
@@ -482,7 +481,7 @@ class UiObject(object):
     def __view_beside(self, onsideof, **kwargs):
         bounds = self.info["bounds"]
         min_dist, found = -1, None
-        info_list = UiObject(self.session, Selector(**kwargs)).info_list
+        info_list = UiObject(self.session, Selector(**kwargs)).info_list()
         for index, info in enumerate(info_list):
             dist = onsideof(bounds, info["bounds"])
             if dist >= 0 and (min_dist < 0 or dist < min_dist):
