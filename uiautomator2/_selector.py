@@ -126,7 +126,12 @@ class UiObject(object):
     def info(self):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
-    
+
+    @property
+    def info_list(self) -> list[dict]:
+        '''all matched ui objects info list.'''
+        return self.jsonrpc.objInfoOfAllInstances(self.selector)
+
     def screenshot(self, display_id: Optional[int] = None) -> Image.Image:
         im = self.session.screenshot(display_id=display_id)
         return im.crop(self.bounds())
@@ -477,10 +482,13 @@ class UiObject(object):
     def __view_beside(self, onsideof, **kwargs):
         bounds = self.info["bounds"]
         min_dist, found = -1, None
-        for ui in UiObject(self.session, Selector(**kwargs)):
-            dist = onsideof(bounds, ui.info["bounds"])
+        info_list = UiObject(self.session, Selector(**kwargs)).info_list
+        for index, info in enumerate(info_list):
+            dist = onsideof(bounds, info["bounds"])
             if dist >= 0 and (min_dist < 0 or dist < min_dist):
-                min_dist, found = dist, ui
+                ui_selector = Selector(**kwargs)
+                ui_selector.update_instance(index)
+                min_dist, found = dist, UiObject(self.session, ui_selector)
         return found
 
     @property
