@@ -1,7 +1,7 @@
 import logging
 import time
 import warnings
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Dict
 
 from PIL import Image
 from retry import retry
@@ -127,7 +127,7 @@ class UiObject(object):
         '''ui object info.'''
         return self.jsonrpc.objInfo(self.selector)
 
-    def info_list(self) -> list[dict]:
+    def info_list(self) -> List[Dict]:
         '''all matched ui objects info list.'''
         return self.jsonrpc.objInfoOfAllInstances(self.selector)
 
