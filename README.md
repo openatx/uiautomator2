@@ -169,6 +169,12 @@ sl.set_text("hello world") # Input "hello world" into input field
 
 For more usage, refer to [XPath Interface Document](XPATH.md)
 
+## Plugins
+
+- webview: https://github.com/YuYoungG/uiautomator2-webview
+
+To maintain the project's simplicity and extensibility, future plugins will be integrated as third-party libraries.
+
 ## Operating Elements with UiAutomator API
 
 ### Element Wait Timeout

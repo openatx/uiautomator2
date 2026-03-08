@@ -172,6 +172,12 @@ sl.set_text("hello world") # 输入框输入 hello world
 
 更多用法参考 [XPath接口文档](XPATH_CN.md)
 
+## 插件
+
+- webview: https://github.com/YuYoungG/uiautomator2-webview
+
+为了保持项目的简洁与可扩展性，后续插件将以第三方库的形式接入。
+
 ## 通过UiAutomator接口操作元素
 
 ### 元素等待时长
