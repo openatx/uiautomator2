@@ -36,8 +36,9 @@ WAIT_FOR_DEVICE_TIMEOUT = int(os.getenv("WAIT_FOR_DEVICE_TIMEOUT", 20))
 
 logger = logging.getLogger(__name__)
 
+
 def enable_pretty_logging(level=logging.DEBUG):
-    if not logger.handlers: # pragma: no cover
+    if not logger.handlers:  # pragma: no cover
         # Configure handler
         handler = logging.StreamHandler()
         formatter = logging.Formatter('[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d pid:%(process)d] %(message)s')
@@ -45,6 +46,7 @@ def enable_pretty_logging(level=logging.DEBUG):
         logger.addHandler(handler)
 
     logger.setLevel(level)
+
 
 class _Device(_BaseClient):
     __orientation = (  # device orientation
@@ -94,12 +96,12 @@ class _Device(_BaseClient):
                 pil_img = self._dev.screenshot(display_id=0)
         else:
             pil_img = self._dev.screenshot(display_id=display_id)
-        
+
         if filename:
             pil_img.save(filename)
             return
         return image_convert(pil_img, format)
-        
+
     def dump_hierarchy(self, compressed=False, pretty=False, max_depth: Optional[int] = None) -> str:
         """
         Dump window hierarchy
@@ -116,10 +118,10 @@ class _Device(_BaseClient):
             if max_depth is None:
                 max_depth = self.settings['max_depth']
             content = self._do_dump_hierarchy(compressed, max_depth)
-        except HierarchyEmptyError: # pragma: no cover
+        except HierarchyEmptyError:  # pragma: no cover
             logger.warning("dump empty, return empty xml")
             content = '<?xml version=\'1.0\' encoding=\'UTF-8\' standalone=\'yes\' ?>\r\n<hierarchy rotation="0" />'
-        
+
         if pretty:
             root = etree.fromstring(content.encode("utf-8"))
             content = etree.tostring(root, pretty_print=True, encoding='UTF-8', xml_declaration=True)
@@ -133,7 +135,7 @@ class _Device(_BaseClient):
         content = self.jsonrpc.dumpWindowHierarchy(compressed, max_depth)
         if content == "":
             raise HierarchyEmptyError("dump hierarchy is empty")
-        
+
         # '<?xml version=\'1.0\' encoding=\'UTF-8\' standalone=\'yes\' ?>\r\n<hierarchy rotation="0" />'
         if '<hierarchy rotation="0" />' in content:
             logger.debug("dump empty, call clear_traversed_text and retry")
@@ -247,13 +249,13 @@ class _Device(_BaseClient):
 
     def long_click(self, x, y, duration: float = .5):
         '''long click at arbitrary coordinates.
-        
+
         Args:
             duration (float): seconds of pressed
         '''
         x, y = self.pos_rel2abs(x, y)
         with self._operation_delay("click"):
-            self.jsonrpc.click(x, y, int(duration*1000))
+            self.jsonrpc.click(x, y, int(duration * 1000))
 
     def swipe(self, fx, fy, tx, ty, duration: Optional[float] = None, steps: Optional[int] = None):
         """
@@ -261,7 +263,7 @@ class _Device(_BaseClient):
             fx, fy: from position
             tx, ty: to position
             duration (float): duration
-            steps: 1 steps is about 5ms, if set, duration will be ignore
+            steps: 1 steps is about 5ms, if set, duration will be ignored
 
         Documents:
             uiautomator use steps instead of duration
@@ -325,14 +327,14 @@ class _Device(_BaseClient):
                     key, meta) if meta else self.jsonrpc.pressKeyCode(key)
             else:
                 return self.jsonrpc.pressKey(key)
-    
+
     def long_press(self, key: Union[int, str]):
         """
         long press key via name or key code
 
         Args:
             key: key name or key code
-        
+
         Examples:
             long_press("home") same as "adb shell input keyevent --longpress KEYCODE_HOME"
         """
@@ -382,11 +384,11 @@ class _Device(_BaseClient):
     def clear_traversed_text(self):
         '''clear the last traversed text.'''
         self.jsonrpc.clearLastTraversedText()
-    
+
     @property
     def last_toast(self) -> Optional[str]:
         return self.jsonrpc.getLastToast()
-    
+
     def clear_toast(self):
         self.jsonrpc.clearLastToast()
 
@@ -418,15 +420,15 @@ class _Device(_BaseClient):
             label: User-visible label for the clip data.
         '''
         self.jsonrpc.setClipboard(label, text)
-    
+
     def clear_text(self):
         """ clear input text """
         self.jsonrpc.clearInputText()
-    
+
     def send_keys(self, text: str):
         """
         send text to focused input area
-        
+
         Args:
             text: input text
             clear: clear text before input
@@ -462,13 +464,17 @@ class _Device(_BaseClient):
         if self._serial:
             return self._serial
         return self.shell(['getprop', 'ro.serialno']).output.strip()
-    
+
     def __call__(self, **kwargs) -> 'UiObject':
         return UiObject(self, Selector(**kwargs))
 
 
 class _AppMixIn(AbstractShell):
-    def session(self, package_name: str, attach: bool = False) -> "Session":
+
+    _package_finder = re.compile(r'package:(\S+)')
+
+    def session(self, package_name: str, attach: bool = False,
+                activity: Optional[str] = None, user: Union[int, str] = AbstractShell.PRIMARY_USER_ID) -> "Session":
         """
         launch app and keep watching the app's state
 
@@ -479,8 +485,8 @@ class _AppMixIn(AbstractShell):
         Returns:
             Session
         """
-        self.app_start(package_name, stop=not attach)
-        return Session(self.adb_device, package_name)
+        self.app_start(package_name, activity, stop=not attach, user=user)
+        return Session(self.adb_device, package_name, user=user)
 
     def _compat_shell_ps(self) -> str:
         """
@@ -490,7 +496,7 @@ class _AppMixIn(AbstractShell):
         if len(output.strip().splitlines()) <= 1:
             output = self.shell("ps").output
         return output.strip().replace("\r\n", "\n")
-        
+
     def _pidof_app(self, package_name) -> Optional[int]:
         """
         Return pid of package name
@@ -547,7 +553,8 @@ class _AppMixIn(AbstractShell):
             time.sleep(.5)
         return False
 
-    def app_start(self, package_name: str, activity: Optional[str] = None, wait: bool = False, stop: bool = False, use_monkey: bool = False):
+    def app_start(self, package_name: str, activity: Optional[str] = None, wait: bool = False,
+                  stop: bool = False, use_monkey: bool = False, user: Union[int, str] = AbstractShell.PRIMARY_USER_ID):
         """ Launch application
         Args:
             package_name (str): package name
@@ -560,6 +567,11 @@ class _AppMixIn(AbstractShell):
             self.app_stop(package_name)
 
         if use_monkey or not activity:
+            if user != self.PRIMARY_USER_ID:
+                warnings.warn(
+                    "monkey does not support work profiles or secondary users. Please, either pass an `activity` argument"
+                    " or disable `use_monkey` flag.")
+
             self.shell([
                 'monkey', '-p', package_name, '-c',
                 'android.intent.category.LAUNCHER', '1'
@@ -583,7 +595,7 @@ class _AppMixIn(AbstractShell):
         # --ei <EXTRA_KEY> <EXTRA_INT_VALUE>
         # --ez <EXTRA_KEY> <EXTRA_BOOLEAN_VALUE>
         args = [
-            'am', 'start', '-a', 'android.intent.action.MAIN', '-c',
+            'am', 'start', '--user', f'{user}', '-a', 'android.intent.action.MAIN', '-c',
             'android.intent.category.LAUNCHER',
             '-n', f'{package_name}/{activity}'
         ]
@@ -626,12 +638,12 @@ class _AppMixIn(AbstractShell):
 
         Args:
             filter: [-f] [-d] [-e] [-s] [-3] [-i] [-u] [--user USER_ID] [FILTER]
-        
+
         Returns:
             list of apps by filter
         """
         output, _ = self.shell(['pm', 'list', 'packages', filter])
-        packages = re.findall(r'package:([^\s]+)', output)
+        packages = self._package_finder.findall(output)
         return list(packages)
 
     def app_list_running(self) -> List[str]:
@@ -640,7 +652,7 @@ class _AppMixIn(AbstractShell):
             list of running apps
         """
         output, _ = self.shell('pm list packages')
-        packages = re.findall(r'package:([^\s]+)', output)
+        packages = self._package_finder.findall(output)
         ps_output = self._compat_shell_ps()
         process_names = re.findall(r'(\S+)$', ps_output, re.M)
         return list(set(packages).intersection(process_names))
@@ -669,7 +681,7 @@ class _AppMixIn(AbstractShell):
         self.adb_device.app_clear(package_name)
 
     def app_uninstall(self, package_name: str) -> bool:
-        """ Uninstall an app 
+        """ Uninstall an app
 
         Returns:
             bool: success
@@ -681,7 +693,7 @@ class _AppMixIn(AbstractShell):
         """ Uninstall all apps """
         our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
         output, _ = self.shell(['pm', 'list', 'packages', '-3'])
-        pkgs = re.findall(r'package:([^\s]+)', output)
+        pkgs = self._package_finder.findall(output)
         pkgs = set(pkgs).difference(our_apps + excludes)
         pkgs = list(pkgs)
         for pkg_name in pkgs:
@@ -722,14 +734,14 @@ class _AppMixIn(AbstractShell):
 
         Args:
             package_name (str): package name
-        
+
         Help of "adb shell pm":
             grant [--user USER_ID] PACKAGE PERMISSION
             revoke [--user USER_ID] PACKAGE PERMISSION
                 These commands either grant or revoke permissions to apps.  The permissions
                 must be declared as used in the app's manifest, be runtime permissions
                 (protection level dangerous), and the app targeting SDK greater than Lollipop MR1 (API level 22).
-        
+
         Help of "Android official pm" see <https://developer.android.com/tools/adb#pm>
             Grant a permission to an app. On devices running Android 6.0 (API level 23) and higher,
               the permission can be any permission declared in the app manifest.
@@ -745,8 +757,8 @@ class _AppMixIn(AbstractShell):
             # TODO: support android 5.1 (API 22) and lower
             logger.warning("auto grant permissions only support android 6.0+ (API 23+)")
             return
-        
-        dumpsys_package_output = self.shell(['dumpsys', 'package',  package_name]).output
+
+        dumpsys_package_output = self.shell(['dumpsys', 'package', package_name]).output
         target_sdk_match = re.search(r'targetSdk=(\d+)', dumpsys_package_output)
         if not target_sdk_match:
             logger.warning("can't get targetSdk from dumpsys package")
@@ -755,14 +767,14 @@ class _AppMixIn(AbstractShell):
         if target_sdk < 22:
             logger.warning("auto grant permissions only support app targetSdk >= 22")
             return
-            
+
         permissions = re.findall(r'(android\.\w*\.?permission\.\w+): granted=false', dumpsys_package_output)
         for permission in permissions:
             self.shell(['pm', 'grant', package_name, permission])
             logger.info(f'auto grant permission {permission}')
 
 
-class _DeprecatedMixIn: # pragma: no cover
+class _DeprecatedMixIn:  # pragma: no cover
     @property
     def wait_timeout(self):  # wait element timeout
         return self.settings['wait_timeout']
@@ -790,7 +802,7 @@ class _DeprecatedMixIn: # pragma: no cover
     def show_float_window(self, show=True):
         """ 显示悬浮窗，提高uiautomator运行的稳定性 """
         print("show_float_window is deprecated, this is not needed anymore")
-    
+
     @deprecated(reason="use d.toast.show(text, duration) instead")
     def make_toast(self, text, duration=1.0):
         """ Show toast
@@ -799,7 +811,7 @@ class _DeprecatedMixIn: # pragma: no cover
             duration (float): seconds of display
         """
         return self.jsonrpc.makeToast(text, duration * 1000)
-    
+
     @property
     def toast(self):
         obj = self
@@ -834,7 +846,7 @@ class _DeprecatedMixIn: # pragma: no cover
                 return obj.jsonrpc.makeToast(text, duration * 1000)
 
         return Toast()
-    
+
     def set_orientation(self, value: str):
         '''setter of orientation property.'''
         self.orientation = value
@@ -872,29 +884,29 @@ class _PluginMixIn:
 
 class Device(_Device, _AppMixIn, _PluginMixIn, InputMethodMixIn, _DeprecatedMixIn):
     """ Device object """
-    
+
     def clear_text(self):
         """ clear input text """
         if self.is_input_ime_installed():
             InputMethodMixIn.clear_text(self)
         else:
             _Device.clear_text(self)
-    
+
     def send_keys(self, text: str, clear: bool = False):
         """
         send text to focused input area
-        
+
         Args:
             text: input text
             clear: clear text before input
         """
         if clear:
-            self.clear_text()    
+            self.clear_text()
         if self.is_input_ime_installed():
             InputMethodMixIn.send_keys(self, text)
             return
         try:
-            _Device.send_keys(self, text)            
+            _Device.send_keys(self, text)
         except:
             # 安装输入法后继续输入
             InputMethodMixIn.send_keys(self, text)
@@ -904,28 +916,32 @@ class Session(Device):
     """Session keeps watch the app status
     each jsonrpc call will check if the package is still running
     """
-    def __init__(self, dev: adbutils.AdbDevice, package_name: str):
+
+    def __init__(self, dev: adbutils.AdbDevice, package_name: str, activity: Optional[str] = None,
+                 user: Union[int, str] = Device.PRIMARY_USER_ID):
         super().__init__(dev)
+        self._user = user
         self._package_name = package_name
+        self._activity = activity
         self._pid = self.app_wait(self._package_name)
-    
+
     def running(self) -> bool:
         return self._pid == self._pidof_app(self._package_name)
 
     @property
     def pid(self) -> int:
         return self._pid
-        
+
     def jsonrpc_call(self, method: str, params: Any = None, timeout: float = 10) -> Any:
         if not self.running():
             raise SessionBrokenError(f"app:{self._package_name} pid:{self._pid} is quit")
         return super().jsonrpc_call(method, params, timeout)
-    
+
     def restart(self):
         """ restart app """
-        self.app_start(self._package_name, wait=True, stop=True)
+        self.app_start(self._package_name, self._activity, wait=True, stop=True, user=self._user)
         self._pid = self._pidof_app(self._package_name)
-    
+
     def close(self):
         """ close app """
         self.app_stop(self._package_name)
