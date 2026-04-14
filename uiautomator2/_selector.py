@@ -1,7 +1,11 @@
 import logging
 import time
 import warnings
-from typing import Optional, Tuple, List, Dict
+from typing import Dict, List, Optional, Tuple
+
+# UIAutomator's setText can crash the on-device server on certain devices
+# (e.g. HONOR 50, Android 14) when the text exceeds ~300 characters.
+_MAX_SETTEXT_CHARS = 200
 
 from PIL import Image
 from retry import retry
@@ -349,8 +353,14 @@ class UiObject(object):
         self.must_wait(timeout=timeout)
         if not text:
             return self.jsonrpc.clearTextField(self.selector)
-        else:
-            return self.jsonrpc.setText(self.selector, text)
+        if len(text) > _MAX_SETTEXT_CHARS:
+            # Long-text workaround: UIAutomator setText crashes the on-device
+            # server on some devices for strings longer than ~300 characters.
+            self.click()
+            self.jsonrpc.clearTextField(self.selector)
+            self.session.send_keys(text)
+            return
+        return self.jsonrpc.setText(self.selector, text)
 
     def get_text(self, timeout=None):
         """ get text from field """
