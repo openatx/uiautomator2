@@ -23,17 +23,18 @@ class _BaseClient(BasicUiautomatorServer):
     提供最基础的控制类，这个类暂时先不公开吧
     """
 
-    def __init__(self, serial: Optional[Union[str, adbutils.AdbDevice]] = None):
+    def __init__(self, serial: Optional[Union[str, adbutils.AdbDevice]] = None, timeout: float = None):
         """
         Args:
             serial: device serialno
+            timeout: optional connection timeout in seconds
         """
         if isinstance(serial, adbutils.AdbDevice):
             self.__serial = serial.serial
             self._dev = serial
         else:
             self.__serial = serial
-            self._dev = self._wait_for_device()
+            self._dev = self._wait_for_device(timeout=timeout)
         self._debug = False
         BasicUiautomatorServer.__init__(self, self._dev)
     
@@ -41,16 +42,22 @@ class _BaseClient(BasicUiautomatorServer):
     def _serial(self) -> str:
         return self.__serial
     
-    def _wait_for_device(self, timeout=10) -> adbutils.AdbDevice:
+    def _wait_for_device(self, timeout: float = None) -> adbutils.AdbDevice:
         """
         wait for device came online, if device is remote, reconnect every 1s
 
+        Args:
+            timeout: connection timeout in seconds, defaults to WAIT_FOR_DEVICE_TIMEOUT
+
         Returns:
             adbutils.AdbDevice
-        
+
         Raises:
             ConnectError
         """
+        if timeout is None:
+            timeout = 10
+
         for d in adbutils.adb.device_list():
             if d.serial == self._serial:
                 return d
@@ -66,13 +73,13 @@ class _BaseClient(BasicUiautomatorServer):
             if _is_remote:
                 try:
                     adb.disconnect(self._serial)
-                    adb.connect(self._serial, timeout=1)
+                    adb.connect(self._serial, timeout=timeout)
                 except (adbutils.AdbError, adbutils.AdbTimeout) as e:
                     logger.debug("adb reconnect error: %s", str(e))
                     time.sleep(1.0)
                     continue
             try:
-                adb.wait_for(self._serial, timeout=1)
+                adb.wait_for(self._serial, timeout=timeout)
             except (adbutils.AdbError, adbutils.AdbTimeout):
                 continue
             return adb.device(self._serial)

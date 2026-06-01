@@ -938,10 +938,11 @@ class Session(Device):
         self.close()
 
 
-def connect(serial: Union[str, adbutils.AdbDevice] = None) -> Device:
+def connect(serial: Union[str, adbutils.AdbDevice] = None, timeout: float = None) -> Device:
     """
     Args:
         serial (str): Android device serialno
+        timeout (float): optional connection timeout in seconds
 
     Returns:
         Device
@@ -955,13 +956,14 @@ def connect(serial: Union[str, adbutils.AdbDevice] = None) -> Device:
     """
     if not serial:
         serial = os.getenv("ANDROID_SERIAL")
-    return connect_usb(serial)
+    return connect_usb(serial, timeout=timeout)
 
 
-def connect_usb(serial: Optional[str] = None) -> Device:
+def connect_usb(serial: Optional[str] = None, timeout: float = None) -> Device:
     """
     Args:
         serial (str): android device serial
+        timeout (float): optional connection timeout in seconds
 
     Returns:
         Device
@@ -971,4 +973,4 @@ def connect_usb(serial: Optional[str] = None) -> Device:
     """
     if not serial:
         serial = adbutils.adb.device()
-    return Device(serial)
+    return Device(serial, timeout=timeout)
