@@ -22,6 +22,8 @@ This framework mainly consists of two parts:
 
 Simply put, it exposes Android automation capabilities to Python through HTTP interfaces. This design makes Python-side code writing simpler and more intuitive.
 
+> The Device Side run with a jar file which is also open source. see <https://github.com/openatx/android-uiautomator-server-jar>
+
 # Dependencies
 - Android version 4.4+
 - Python 3.8+
