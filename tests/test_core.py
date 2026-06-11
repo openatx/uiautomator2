@@ -14,8 +14,9 @@ def mock_server():
     """Create a mock BasicUiautomatorServer instance with a mock device"""
     mock_dev = Mock()
     with patch.object(BasicUiautomatorServer, '__init__', return_value=None):
-        server = BasicUiautomatorServer(None)
+        server = BasicUiautomatorServer(None, 9008)
         server._dev = mock_dev
+        server._device_server_port = 9008
         yield server, mock_dev
 
 
