@@ -10,7 +10,7 @@ import adbutils
 
 from uiautomator2._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
 from uiautomator2.abstract import ShellResponse
-from uiautomator2.core import BasicUiautomatorServer
+from uiautomator2.core import BasicUiautomatorServer, DEFAULT_SERVER_PORT
 from uiautomator2.exceptions import *
 from uiautomator2.settings import Settings
 from uiautomator2.utils import deprecated, image_convert, list2cmdline
@@ -23,10 +23,11 @@ class _BaseClient(BasicUiautomatorServer):
     提供最基础的控制类，这个类暂时先不公开吧
     """
 
-    def __init__(self, serial: Optional[Union[str, adbutils.AdbDevice]] = None):
+    def __init__(self, serial: Optional[Union[str, adbutils.AdbDevice]] = None, *, port: int = DEFAULT_SERVER_PORT):
         """
         Args:
             serial: device serialno
+            port: uiautomator2 server port on device
         """
         if isinstance(serial, adbutils.AdbDevice):
             self.__serial = serial.serial
@@ -35,7 +36,7 @@ class _BaseClient(BasicUiautomatorServer):
             self.__serial = serial
             self._dev = self._wait_for_device()
         self._debug = False
-        BasicUiautomatorServer.__init__(self, self._dev)
+        BasicUiautomatorServer.__init__(self, self._dev, port)
     
     @property
     def _serial(self) -> str:

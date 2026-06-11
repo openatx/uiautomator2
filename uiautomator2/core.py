@@ -20,6 +20,8 @@ import adbutils
 import requests
 
 from uiautomator2.abstract import AbstractUiautomatorServer
+
+DEFAULT_SERVER_PORT = 9008
 from uiautomator2.exceptions import AccessibilityServiceAlreadyRegisteredError, APKSignatureError, HTTPError, \
     HTTPTimeoutError, LaunchUiAutomationError, RPCInvalidError, RPCStackOverflowError, RPCUnknownError, \
     UiAutomationNotConnectedError, UiObjectNotFoundError
@@ -65,9 +67,9 @@ class MockAdbProcess:
         self.wait()
 
 
-def launch_uiautomator(dev: adbutils.AdbDevice) -> MockAdbProcess:
+def launch_uiautomator(dev: adbutils.AdbDevice, port: int) -> MockAdbProcess:
     """Launch uiautomator2 server on device"""
-    command = "CLASSPATH=/data/local/tmp/u2.jar app_process / com.wetest.uia2.Main"
+    command = f"CLASSPATH=/data/local/tmp/u2.jar app_process / com.wetest.uia2.Main {port}"
     logger.debug("launch uiautomator with cmd: %s", command)
     conn = dev.shell(command, stream=True)
     process = MockAdbProcess(conn)
@@ -87,7 +89,7 @@ class HTTPResponse:
 
 
 class AdbHTTPConnection(HTTPConnection):
-    def __init__(self, device: adbutils.AdbDevice, port=9008):
+    def __init__(self, device: adbutils.AdbDevice, port: int):
         super().__init__("localhost", port)
         self.__device = device
         self.__port = port
@@ -204,7 +206,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     """
     _lock = threading.Lock() # thread safe lock
     
-    def __init__(self, dev: adbutils.AdbDevice, device_server_port: int = 9008) -> None:
+    def __init__(self, dev: adbutils.AdbDevice, device_server_port: int = DEFAULT_SERVER_PORT) -> None:
         self._dev = dev
         self._process = None
         self._debug = False
@@ -233,7 +235,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
                 if self._process.pool() is not None:
                     self._process = None
             if not self._check_alive():
-                self._process = launch_uiautomator(self._dev)
+                self._process = launch_uiautomator(self._dev, self._device_server_port)
                 self._wait_ready()
 
     def _setup_jar(self):
