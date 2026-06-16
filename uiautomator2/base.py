@@ -10,7 +10,7 @@ import adbutils
 
 from uiautomator2._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
 from uiautomator2.abstract import ShellResponse
-from uiautomator2.core import BasicUiautomatorServer, DEFAULT_SERVER_PORT
+from uiautomator2.core import BasicUiautomatorServer, DEFAULT_SERVER_PORT, _check_port
 from uiautomator2.exceptions import *
 from uiautomator2.settings import Settings
 from uiautomator2.utils import deprecated, image_convert, list2cmdline
@@ -29,6 +29,7 @@ class _BaseClient(BasicUiautomatorServer):
             serial: device serialno
             port: uiautomator2 server port on device
         """
+        _check_port(port)
         if isinstance(serial, adbutils.AdbDevice):
             self.__serial = serial.serial
             self._dev = serial
