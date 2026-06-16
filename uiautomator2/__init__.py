@@ -939,10 +939,10 @@ class Session(Device):
         self.close()
 
 
-def connect(serial: Union[str, adbutils.AdbDevice] = None, port: int = DEFAULT_SERVER_PORT) -> Device:
+def connect(serial: Union[str, adbutils.AdbDevice] = None, *, port: int = DEFAULT_SERVER_PORT) -> Device:
     """
     Args:
-        serial (str): Android device serialno
+        serial (str): Android device serialno or adb device instance
         port (int): uiautomator2 server port on device
 
     Returns:
@@ -960,10 +960,10 @@ def connect(serial: Union[str, adbutils.AdbDevice] = None, port: int = DEFAULT_S
     return connect_usb(serial, port=port)
 
 
-def connect_usb(serial: Optional[str] = None, port: int = DEFAULT_SERVER_PORT) -> Device:
+def connect_usb(serial: Optional[str] = None, *, port: int = DEFAULT_SERVER_PORT) -> Device:
     """
     Args:
-        serial (str): android device serial
+        serial (str): android device serial or adb device instance
         port (int): uiautomator2 server port on device
 
     Returns:

@@ -70,7 +70,9 @@ class MockAdbProcess:
 
 def launch_uiautomator(dev: adbutils.AdbDevice, port: int) -> MockAdbProcess:
     """Launch uiautomator2 server on device"""
-    command = f"CLASSPATH=/data/local/tmp/u2.jar app_process / com.wetest.uia2.Main {port}"
+    command = f"CLASSPATH=/data/local/tmp/u2.jar app_process / com.wetest.uia2.Main"
+    if port != DEFAULT_SERVER_PORT:
+        command += f" -p {port}"
     logger.debug("launch uiautomator with cmd: %s", command)
     conn = dev.shell(command, stream=True)
     process = MockAdbProcess(conn)

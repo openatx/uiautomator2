@@ -36,7 +36,7 @@ class _BaseClient(BasicUiautomatorServer):
             self.__serial = serial
             self._dev = self._wait_for_device()
         self._debug = False
-        BasicUiautomatorServer.__init__(self, self._dev, port)
+        BasicUiautomatorServer.__init__(self, dev=self._dev, device_server_port=port)
     
     @property
     def _serial(self) -> str:
