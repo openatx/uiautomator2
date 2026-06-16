@@ -14,7 +14,7 @@ import threading
 import time
 from http.client import HTTPConnection
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, ClassVar, Dict, Optional, Tuple, Union
 
 import adbutils
 import requests
@@ -212,10 +212,18 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     this is runs without atx-agent
     """
     _device_server_port: int
+    # One lock per (serial, port) pair so instances for the same device serialize
+    # start/stop without blocking instances for other devices.
+    _locks: ClassVar[Dict[Tuple[str, int], threading.Lock]] = {}
+    _locks_guard: ClassVar[threading.Lock] = threading.Lock()
 
     def __init__(self, dev: adbutils.AdbDevice, device_server_port: int = DEFAULT_SERVER_PORT) -> None:
         _check_port(device_server_port)
-        self._lock = threading.Lock() # thread safe lock
+        key = (dev.serial, device_server_port)
+        with BasicUiautomatorServer._locks_guard:
+            if key not in BasicUiautomatorServer._locks:
+                BasicUiautomatorServer._locks[key] = threading.Lock()
+            self._lock = BasicUiautomatorServer._locks[key]
         self._dev = dev
         self._process = None
         self._debug = False
