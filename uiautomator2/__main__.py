@@ -162,86 +162,86 @@ def cmd_console(args):
 
 
 _commands = [
-    dict(action=cmd_version, command="version", help="show version", no_port=True),
-    dict(
-        action=cmd_init,
-        command="init",
-        help="install enssential resources to device",
-        flags=[
-            dict(
-                args=["--addr"],
-                default="127.0.0.1:7912",
-                help="atx-agent listen address",
-            ),
-            dict(args=["--serial", "-s"], type=str, help="serial number"),
-            dict(
-                args=["serial_optional"],
-                nargs="?",
-                help="serial number, same as --serial",
-            ),
+    {"action": cmd_version, "command": "version", "help": "show version", "no_port": True},
+    {
+        "action": cmd_init,
+        "command": "init",
+        "help": "install enssential resources to device",
+        "flags": [
+            {
+                "args": ["--addr"],
+                "default": "127.0.0.1:7912",
+                "help": "atx-agent listen address",
+            },
+            {"args": ["--serial", "-s"], "type": str, "help": "serial number"},
+            {
+                "args": ["serial_optional"],
+                "nargs": "?",
+                "help": "serial number, same as --serial",
+            },
         ],
-    ),
-    dict(
-        action=cmd_copy_assets,
-        command="copy-assets",
-        help="copy uiautomator2 assets to current directory",
-        no_port=True,
-    ),
-    dict(
-        action=cmd_screenshot,
-        command="screenshot",
-        help="take device screenshot",
-        flags=[
-            dict(
-                args=["filename"],
-                nargs="?",
-                default="screenshot.jpg",
-                type=str,
-                help="output filename, jpg or png",
-            )
+    },
+    {
+        "action": cmd_copy_assets,
+        "command": "copy-assets",
+        "help": "copy uiautomator2 assets to current directory",
+        "no_port": True,
+    },
+    {
+        "action": cmd_screenshot,
+        "command": "screenshot",
+        "help": "take device screenshot",
+        "flags": [
+            {
+                "args": ["filename"],
+                "nargs": "?",
+                "default": "screenshot.jpg",
+                "type": str,
+                "help": "output filename, jpg or png",
+            }
         ],
-    ),
-    dict(
-        action=cmd_install,
-        command="install",
-        help="install packages",
-        flags=[
-            dict(args=["url"], help="package url"),
+    },
+    {
+        "action": cmd_install,
+        "command": "install",
+        "help": "install packages",
+        "flags": [
+            {"args": ["url"], "help": "package url"},
         ],
-    ),
-    dict(
-        action=cmd_uninstall,
-        command="uninstall",
-        help="uninstall packages",
-        flags=[
-            dict(args=["--all"], action="store_true", help="uninstall all packages"),
-            dict(args=["package_name"], nargs="*", help="package name"),
+    },
+    {
+        "action": cmd_uninstall,
+        "command": "uninstall",
+        "help": "uninstall packages",
+        "flags": [
+            {"args": ["--all"], "action": "store_true", "help": "uninstall all packages"},
+            {"args": ["package_name"], "nargs": "*", "help": "package name"},
         ],
-    ),
-    dict(
-        action=cmd_start,
-        command="start",
-        help="start application",
-        flags=[dict(args=["package_name"], type=str, nargs=None, help="package name")],
-    ),
-    dict(
-        action=cmd_stop,
-        command="stop",
-        help="stop application",
-        flags=[
-            dict(args=["--all"], action="store_true", help="stop all"),
-            dict(args=["package_name"], nargs="*", help="package name"),
+    },
+    {
+        "action": cmd_start,
+        "command": "start",
+        "help": "start application",
+        "flags": [{"args": ["package_name"], "type": str, "nargs": None, "help": "package name"}],
+    },
+    {
+        "action": cmd_stop,
+        "command": "stop",
+        "help": "stop application",
+        "flags": [
+            {"args": ["--all"], "action": "store_true", "help": "stop all"},
+            {"args": ["package_name"], "nargs": "*", "help": "package name"},
         ],
-    ),
-    dict(action=cmd_current, command="current", help="show current application"),
-    dict(action=cmd_doctor, command="doctor", help="detect connect problem"),
-    dict(action=cmd_console, command="console", help="launch interactive python console"),
-    dict(
-        action=cmd_purge,
-        command="purge",
-        help="remove minitouch, minicap, atx app etc, from device",
-        no_port=True,
-    ),
+    },
+    {"action": cmd_current, "command": "current", "help": "show current application"},
+    {"action": cmd_doctor, "command": "doctor", "help": "detect connect problem"},
+    {"action": cmd_console, "command": "console", "help": "launch interactive python console"},
+    {
+        "action": cmd_purge,
+        "command": "purge",
+        "help": "remove minitouch, minicap, atx app etc, from device",
+        "no_port": True,
+    },
 ]
 
 
