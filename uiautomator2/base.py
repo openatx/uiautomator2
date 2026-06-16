@@ -10,7 +10,7 @@ import adbutils
 
 from uiautomator2._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
 from uiautomator2.abstract import ShellResponse
-from uiautomator2.core import BasicUiautomatorServer, DEFAULT_SERVER_PORT, check_port
+from uiautomator2.core import DEFAULT_SERVER_PORT, BasicUiautomatorServer, check_port
 from uiautomator2.exceptions import *
 from uiautomator2.settings import Settings
 from uiautomator2.utils import deprecated, image_convert, list2cmdline

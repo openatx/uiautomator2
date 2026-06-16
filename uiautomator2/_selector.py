@@ -1,7 +1,7 @@
 import logging
 import time
 import warnings
-from typing import Optional, Tuple, List, Dict
+from typing import Dict, List, Optional, Tuple
 
 from PIL import Image
 from retry import retry

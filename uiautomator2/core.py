@@ -20,7 +20,6 @@ import adbutils
 import requests
 
 from uiautomator2.abstract import AbstractUiautomatorServer
-
 from uiautomator2.exceptions import AccessibilityServiceAlreadyRegisteredError, APKSignatureError, HTTPError, \
     HTTPTimeoutError, LaunchUiAutomationError, RPCInvalidError, RPCStackOverflowError, RPCUnknownError, \
     UiAutomationNotConnectedError, UiObjectNotFoundError

@@ -6,7 +6,7 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
-from uiautomator2.core import BasicUiautomatorServer, DEFAULT_SERVER_PORT
+from uiautomator2.core import DEFAULT_SERVER_PORT, BasicUiautomatorServer
 
 
 @pytest.fixture
