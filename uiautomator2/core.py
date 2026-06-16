@@ -31,6 +31,12 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_SERVER_PORT = 9008
 
+
+def _check_port(port: int) -> None:
+    if not 1 <= port <= 65535:
+        raise ValueError(f"port must be 1-65535, got {port}")
+
+
 class MockAdbProcess:
     def __init__(self, conn: adbutils.AdbConnection) -> None:
         self._conn = conn
@@ -208,8 +214,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     _device_server_port: int
 
     def __init__(self, dev: adbutils.AdbDevice, device_server_port: int = DEFAULT_SERVER_PORT) -> None:
-        if not 1 <= device_server_port <= 65535:
-            raise ValueError(f"port must be 1-65535, got {device_server_port}")
+        _check_port(device_server_port)
         self._lock = threading.Lock() # thread safe lock
         self._dev = dev
         self._process = None
