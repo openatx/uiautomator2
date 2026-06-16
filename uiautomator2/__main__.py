@@ -14,7 +14,7 @@ import adbutils
 
 import uiautomator2 as u2
 from uiautomator2 import enable_pretty_logging
-from uiautomator2.core import DEFAULT_SERVER_PORT, _check_port
+from uiautomator2.core import DEFAULT_SERVER_PORT, check_port
 from uiautomator2.utils import with_package_resource
 from uiautomator2.version import __version__
 
@@ -27,7 +27,7 @@ def _valid_port(value: str) -> int:
     except ValueError:
         raise argparse.ArgumentTypeError(f"port must be an integer, got {value!r}")
     try:
-        _check_port(port)
+        check_port(port)
     except ValueError as e:
         raise argparse.ArgumentTypeError(str(e))
     return port

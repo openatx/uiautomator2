@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_SERVER_PORT = 9008
 
 
-def _check_port(port: int) -> None:
+def check_port(port: int) -> None:
     if not 1 <= port <= 65535:
         raise ValueError(f"port must be 1-65535, got {port}")
 
@@ -218,7 +218,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     _locks_guard: ClassVar[threading.Lock] = threading.Lock()
 
     def __init__(self, dev: adbutils.AdbDevice, device_server_port: int = DEFAULT_SERVER_PORT) -> None:
-        _check_port(device_server_port)
+        check_port(device_server_port)
         key = (dev.serial, device_server_port)
         with BasicUiautomatorServer._locks_guard:
             if key not in BasicUiautomatorServer._locks:
