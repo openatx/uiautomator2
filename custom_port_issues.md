@@ -1,0 +1,17 @@
+# custom-port branch — code review findings
+
+Issues identified by code review of the custom-port branch. Pre-existing bugs not
+introduced by this diff are excluded.
+
+| # | File | Line | Severity | Status | Issue |
+|---|------|------|----------|--------|-------|
+| 1 | `core.py` | 215 | High | **Fixed** | Class-level `_lock` serialized all `BasicUiautomatorServer` instances against each other; connecting two devices would cause one to block inside the other's 30-second `_wait_ready`. Fixed by moving `_lock` to an instance attribute in `__init__`. |
+| 2 | `__init__.py` | 904 | High | **Fixed** | `Session()` can be constructed directly without a `port` argument (it is public API, used by `ext/htmlreport` and test suites). When constructed this way it silently defaults to `DEFAULT_SERVER_PORT=9008`, even if the parent `Device` was connected on a different port. `_AppMixIn.session()` correctly threads the port; direct construction does not. Fixed by removing the default from `Session.__init__`'s `port` parameter — direct callers now get a `TypeError` at call time instead of a silent wrong-port connection. |
+| 3 | `core.py` | 74 | Medium | **Fixed** | `launch_uiautomator` omitted `-p {port}` when `port == DEFAULT_SERVER_PORT`, coupling the Python constant to the jar's compiled-in default. Fixed by always passing `-p {port}`, making the launch independent of how the constant relates to the jar's hardcoded value. |
+| 4 | `__init__.py` | 484 | Medium | **Fixed** | `_AppMixIn.session()` reads `self._device_server_port`, but `_AppMixIn` only inherits `AbstractShell`, which does not declare that attribute. Fixed by adding `_device_server_port: int` as a bare class annotation on `_AppMixIn`, documenting the MRO dependency for mypy without introducing a silent default. |
+| 5 | `__init__.py` | 963 | Low | **Fixed** | `connect_usb` annotation said `serial: Optional[str]` but the function accepts `AdbDevice` at runtime via `_BaseClient`. Fixed by changing the annotation to `Union[str, adbutils.AdbDevice, None]` to match `connect()`. |
+| 6 | `core.py` | 211 | Low | **Fixed** | `_device_server_port: int = DEFAULT_SERVER_PORT` declared as a class-level attribute silently masked `AttributeError` when `__init__` was bypassed. Fixed by changing to a bare annotation `_device_server_port: int` so under-initialized instances fail fast. |
+| 7 | `__main__.py` | 269 | Low | **Fixed** | `port=True` was an opt-in flag per command dict entry; a new command that forgot it would get `AttributeError` on `args.port` at runtime. Fixed by inverting to `no_port=True` opt-out — device-connecting commands get `-p` by default; only `version`, `copy-assets`, and `purge` opt out. |
+| 8 | `core.py` | 73 | Low | **Fixed** | `f"..."` prefix used on a string literal with no `{...}` interpolation. Resolved as a side-effect of fix 3: the command string now inlines `{port}` directly, making the `f` prefix correct. |
+| 9 | `__main__.py` | 29 | Low | **Fixed** | Port range check `1 <= port <= 65535` was duplicated in `_valid_port` and `BasicUiautomatorServer.__init__` with differing error messages. Fixed by extracting `_check_port()` in `core.py` as the single source of truth; both callers delegate to it. |
+| 10 | `README.md` | — | Low | **Fixed** | The branch added user-facing `port` support to `connect()` and all CLI subcommands but updated no documentation. Fixed by adding a `port=` example under the connect quickstart and a `-p/--port` note in the CLI section. |

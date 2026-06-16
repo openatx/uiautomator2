@@ -95,6 +95,12 @@ d = u2.connect('Q5S5T19611004599') # alias for u2.connect_usb('123456f')
 print(d.info)
 ```
 
+To connect on a non-default port (default is `9008`):
+
+```python
+d = u2.connect('Q5S5T19611004599', port=9009)
+```
+
 Method 2: Serial number can be passed via environment variable `ANDROID_SERIAL`
 
 ```python
@@ -1225,6 +1231,8 @@ set_log_level(logging.DEBUG) # or logging.INFO
 `$device_ip` represents the device's IP address.
 
 To specify a device, pass `--serial`, e.g., `python -m uiautomator2 --serial bff1234 <SubCommand>`. SubCommand can be `screenshot`, `current`, etc.
+
+To use a non-default uiautomator2 server port, pass `-p`/`--port` after the subcommand, e.g., `uiautomator2 screenshot -p 9009 screenshot.jpg`. The default port is `9008`.
 
 > 1.0.3 Added: `python -m uiautomator2` is equivalent to `uiautomator2`
 
