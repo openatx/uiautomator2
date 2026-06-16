@@ -469,6 +469,8 @@ class _Device(_BaseClient):
 
 
 class _AppMixIn(AbstractShell):
+    _device_server_port: int  # must be provided by BasicUiautomatorServer in the MRO
+
     def session(self, package_name: str, attach: bool = False) -> "Session":
         """
         launch app and keep watching the app's state
@@ -905,7 +907,7 @@ class Session(Device):
     """Session keeps watch the app status
     each jsonrpc call will check if the package is still running
     """
-    def __init__(self, dev: adbutils.AdbDevice, package_name: str, port: int = DEFAULT_SERVER_PORT):
+    def __init__(self, dev: adbutils.AdbDevice, package_name: str, port: int):
         super().__init__(dev, port=port)
         self._package_name = package_name
         self._pid = self.app_wait(self._package_name)
@@ -960,7 +962,7 @@ def connect(serial: Union[str, adbutils.AdbDevice] = None, *, port: int = DEFAUL
     return connect_usb(serial, port=port)
 
 
-def connect_usb(serial: Optional[str] = None, *, port: int = DEFAULT_SERVER_PORT) -> Device:
+def connect_usb(serial: Union[str, adbutils.AdbDevice, None] = None, *, port: int = DEFAULT_SERVER_PORT) -> Device:
     """
     Args:
         serial (str): android device serial or adb device instance

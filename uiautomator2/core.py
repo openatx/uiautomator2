@@ -70,9 +70,7 @@ class MockAdbProcess:
 
 def launch_uiautomator(dev: adbutils.AdbDevice, port: int) -> MockAdbProcess:
     """Launch uiautomator2 server on device"""
-    command = f"CLASSPATH=/data/local/tmp/u2.jar app_process / com.wetest.uia2.Main"
-    if port != DEFAULT_SERVER_PORT:
-        command += f" -p {port}"
+    command = f"CLASSPATH=/data/local/tmp/u2.jar app_process / com.wetest.uia2.Main -p {port}"
     logger.debug("launch uiautomator with cmd: %s", command)
     conn = dev.shell(command, stream=True)
     process = MockAdbProcess(conn)
@@ -207,12 +205,12 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     """ Simple uiautomator2 server client
     this is runs without atx-agent
     """
-    _lock = threading.Lock() # thread safe lock
-    _device_server_port: int = DEFAULT_SERVER_PORT
+    _device_server_port: int
 
     def __init__(self, dev: adbutils.AdbDevice, device_server_port: int = DEFAULT_SERVER_PORT) -> None:
         if not 1 <= device_server_port <= 65535:
             raise ValueError(f"port must be 1-65535, got {device_server_port}")
+        self._lock = threading.Lock() # thread safe lock
         self._dev = dev
         self._process = None
         self._debug = False
