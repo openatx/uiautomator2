@@ -26,6 +26,7 @@ from uiautomator2._proto import HTTP_TIMEOUT, SCROLL_STEPS, Direction
 from uiautomator2._selector import Selector, UiObject
 from uiautomator2.abstract import AbstractShell, AbstractUiautomatorServer, ShellResponse
 from uiautomator2.base import _BaseClient
+from uiautomator2.core import DEFAULT_SERVER_PORT
 from uiautomator2.exceptions import *
 from uiautomator2.settings import Settings
 from uiautomator2.swipe import SwipeExt
@@ -468,6 +469,8 @@ class _Device(_BaseClient):
 
 
 class _AppMixIn(AbstractShell):
+    _device_server_port: int  # must be provided by BasicUiautomatorServer in the MRO
+
     def session(self, package_name: str, attach: bool = False) -> "Session":
         """
         launch app and keep watching the app's state
@@ -480,7 +483,7 @@ class _AppMixIn(AbstractShell):
             Session
         """
         self.app_start(package_name, stop=not attach)
-        return Session(self.adb_device, package_name)
+        return Session(self.adb_device, package_name, port=self._device_server_port)
 
     def _compat_shell_ps(self) -> str:
         """
@@ -872,7 +875,7 @@ class _PluginMixIn:
 
 class Device(_Device, _AppMixIn, _PluginMixIn, InputMethodMixIn, _DeprecatedMixIn):
     """ Device object """
-    
+
     def clear_text(self):
         """ clear input text """
         if self.is_input_ime_installed():
@@ -904,8 +907,8 @@ class Session(Device):
     """Session keeps watch the app status
     each jsonrpc call will check if the package is still running
     """
-    def __init__(self, dev: adbutils.AdbDevice, package_name: str):
-        super().__init__(dev)
+    def __init__(self, dev: adbutils.AdbDevice, package_name: str, port: int):
+        super().__init__(dev, port=port)
         self._package_name = package_name
         self._pid = self.app_wait(self._package_name)
     
@@ -938,10 +941,11 @@ class Session(Device):
         self.close()
 
 
-def connect(serial: Union[str, adbutils.AdbDevice] = None) -> Device:
+def connect(serial: Union[str, adbutils.AdbDevice] = None, *, port: int = DEFAULT_SERVER_PORT) -> Device:
     """
     Args:
-        serial (str): Android device serialno
+        serial (str): Android device serialno or adb device instance
+        port (int): uiautomator2 server port on device
 
     Returns:
         Device
@@ -955,13 +959,14 @@ def connect(serial: Union[str, adbutils.AdbDevice] = None) -> Device:
     """
     if not serial:
         serial = os.getenv("ANDROID_SERIAL")
-    return connect_usb(serial)
+    return connect_usb(serial, port=port)
 
 
-def connect_usb(serial: Optional[str] = None) -> Device:
+def connect_usb(serial: Union[str, adbutils.AdbDevice, None] = None, *, port: int = DEFAULT_SERVER_PORT) -> Device:
     """
     Args:
-        serial (str): android device serial
+        serial (str): android device serial or adb device instance
+        port (int): uiautomator2 server port on device
 
     Returns:
         Device
@@ -971,4 +976,4 @@ def connect_usb(serial: Optional[str] = None) -> Device:
     """
     if not serial:
         serial = adbutils.adb.device()
-    return Device(serial)
+    return Device(serial, port=port)

@@ -6,7 +6,7 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
-from uiautomator2.core import BasicUiautomatorServer
+from uiautomator2.core import DEFAULT_SERVER_PORT, BasicUiautomatorServer
 
 
 @pytest.fixture
@@ -14,8 +14,9 @@ def mock_server():
     """Create a mock BasicUiautomatorServer instance with a mock device"""
     mock_dev = Mock()
     with patch.object(BasicUiautomatorServer, '__init__', return_value=None):
-        server = BasicUiautomatorServer(None)
+        server = BasicUiautomatorServer(None, DEFAULT_SERVER_PORT)
         server._dev = mock_dev
+        server._device_server_port = DEFAULT_SERVER_PORT
         yield server, mock_dev
 
 

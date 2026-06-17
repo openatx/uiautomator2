@@ -14,21 +14,34 @@ import adbutils
 
 import uiautomator2 as u2
 from uiautomator2 import enable_pretty_logging
+from uiautomator2.core import DEFAULT_SERVER_PORT, check_port
 from uiautomator2.utils import with_package_resource
 from uiautomator2.version import __version__
 
 logger = logging.getLogger(__name__)
 
 
+def _valid_port(value: str) -> int:
+    try:
+        port = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"port must be an integer, got {value!r}")
+    try:
+        check_port(port)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(str(e))
+    return port
+
+
 def cmd_init(args):
     serial = args.serial or args.serial_optional
     if serial:
-        d = u2.connect(serial)
+        d = u2.connect(serial, port=args.port)
         logger.debug("install apk to %s", d.serial)
         d._setup_jar()
     else:
         for dev in adbutils.adb.iter_device():
-            d = u2.connect(dev)
+            d = u2.connect(dev, port=args.port)
             logger.debug("install apk to %s", d.serial)
             d._setup_jar()
             d._setup_ime()
@@ -64,19 +77,19 @@ def cmd_copy_assets(args):
         print("Copied app-uiautomator.apk to", target_path)
         
 def cmd_screenshot(args):
-    d = u2.connect(args.serial)
+    d = u2.connect(args.serial, port=args.port)
     d.screenshot().save(args.filename)
     print("Save screenshot to %s" % args.filename)
 
 
 def cmd_install(args):
-    u = u2.connect(args.serial)
+    u = u2.connect(args.serial, port=args.port)
     pkg_name = u.app_install(args.url)
     print("Installed", pkg_name)
 
 
 def cmd_uninstall(args):
-    d = u2.connect(args.serial)
+    d = u2.connect(args.serial, port=args.port)
     if args.all:
         d.app_uninstall_all(verbose=True)
     else:
@@ -87,12 +100,12 @@ def cmd_uninstall(args):
 
 
 def cmd_start(args):
-    d = u2.connect(args.serial)
+    d = u2.connect(args.serial, port=args.port)
     d.app_start(args.package_name)
 
 
 def cmd_stop(args):
-    d = u2.connect(args.serial)
+    d = u2.connect(args.serial, port=args.port)
     if args.all:
         d.app_stop_all()
         return
@@ -103,13 +116,13 @@ def cmd_stop(args):
 
 
 def cmd_current(args):
-    d = u2.connect(args.serial)
+    d = u2.connect(args.serial, port=args.port)
     print(json.dumps(d.app_current(), indent=4), flush=True)
 
 
 def cmd_doctor(args):
     """check if environment is fine"""
-    d = u2.connect(args.serial)
+    d = u2.connect(args.serial, port=args.port)
     logger.debug("device serial: %s", d.serial)
     try:
         d.info
@@ -127,8 +140,8 @@ def cmd_version(args):
 def cmd_console(args):
     import code
     import platform
-    
-    d = u2.connect(args.serial)
+
+    d = u2.connect(args.serial, port=args.port)
     model = d.shell("getprop ro.product.model").output.strip()
     serial = d.serial
     try:
@@ -149,91 +162,96 @@ def cmd_console(args):
 
 
 _commands = [
-    dict(action=cmd_version, command="version", help="show version"),
-    dict(
-        action=cmd_init,
-        command="init",
-        help="install enssential resources to device",
-        flags=[
-            dict(
-                args=["--addr"],
-                default="127.0.0.1:7912",
-                help="atx-agent listen address",
-            ),
-            dict(args=["--serial", "-s"], type=str, help="serial number"),
-            dict(
-                args=["serial_optional"],
-                nargs="?",
-                help="serial number, same as --serial",
-            ),
+    {"action": cmd_version, "command": "version", "help": "show version", "no_port": True},
+    {
+        "action": cmd_init,
+        "command": "init",
+        "help": "install enssential resources to device",
+        "flags": [
+            {
+                "args": ["--addr"],
+                "default": "127.0.0.1:7912",
+                "help": "atx-agent listen address",
+            },
+            {"args": ["--serial", "-s"], "type": str, "help": "serial number"},
+            {
+                "args": ["serial_optional"],
+                "nargs": "?",
+                "help": "serial number, same as --serial",
+            },
         ],
-    ),
-    dict(
-        action=cmd_copy_assets,
-        command="copy-assets",
-        help="copy uiautomator2 assets to current directory",
-    ),
-    dict(
-        action=cmd_screenshot,
-        command="screenshot",
-        help="take device screenshot",
-        flags=[
-            dict(
-                args=["filename"],
-                nargs="?",
-                default="screenshot.jpg",
-                type=str,
-                help="output filename, jpg or png",
-            )
+    },
+    {
+        "action": cmd_copy_assets,
+        "command": "copy-assets",
+        "help": "copy uiautomator2 assets to current directory",
+        "no_port": True,
+    },
+    {
+        "action": cmd_screenshot,
+        "command": "screenshot",
+        "help": "take device screenshot",
+        "flags": [
+            {
+                "args": ["filename"],
+                "nargs": "?",
+                "default": "screenshot.jpg",
+                "type": str,
+                "help": "output filename, jpg or png",
+            }
         ],
-    ),
-    dict(
-        action=cmd_install,
-        command="install",
-        help="install packages",
-        flags=[
-            dict(args=["url"], help="package url"),
+    },
+    {
+        "action": cmd_install,
+        "command": "install",
+        "help": "install packages",
+        "flags": [
+            {"args": ["url"], "help": "package url"},
         ],
-    ),
-    dict(
-        action=cmd_uninstall,
-        command="uninstall",
-        help="uninstall packages",
-        flags=[
-            dict(args=["--all"], action="store_true", help="uninstall all packages"),
-            dict(args=["package_name"], nargs="*", help="package name"),
+    },
+    {
+        "action": cmd_uninstall,
+        "command": "uninstall",
+        "help": "uninstall packages",
+        "flags": [
+            {"args": ["--all"], "action": "store_true", "help": "uninstall all packages"},
+            {"args": ["package_name"], "nargs": "*", "help": "package name"},
         ],
-    ),
-    dict(
-        action=cmd_start,
-        command="start",
-        help="start application",
-        flags=[dict(args=["package_name"], type=str, nargs=None, help="package name")],
-    ),
-    dict(
-        action=cmd_stop,
-        command="stop",
-        help="stop application",
-        flags=[
-            dict(args=["--all"], action="store_true", help="stop all"),
-            dict(args=["package_name"], nargs="*", help="package name"),
+    },
+    {
+        "action": cmd_start,
+        "command": "start",
+        "help": "start application",
+        "flags": [{"args": ["package_name"], "type": str, "nargs": None, "help": "package name"}],
+    },
+    {
+        "action": cmd_stop,
+        "command": "stop",
+        "help": "stop application",
+        "flags": [
+            {"args": ["--all"], "action": "store_true", "help": "stop all"},
+            {"args": ["package_name"], "nargs": "*", "help": "package name"},
         ],
-    ),
-    dict(action=cmd_current, command="current", help="show current application"),
-    dict(action=cmd_doctor, command="doctor", help="detect connect problem"),
-    dict(
-        action=cmd_console, command="console", help="launch interactive python console"
-    ),
-    dict(
-        action=cmd_purge,
-        command="purge",
-        help="remove minitouch, minicap, atx app etc, from device",
-    ),
+    },
+    {"action": cmd_current, "command": "current", "help": "show current application"},
+    {"action": cmd_doctor, "command": "doctor", "help": "detect connect problem"},
+    {"action": cmd_console, "command": "console", "help": "launch interactive python console"},
+    {
+        "action": cmd_purge,
+        "command": "purge",
+        "help": "remove minitouch, minicap, atx app etc, from device",
+        "no_port": True,
+    },
 ]
 
 
 def main():
     # yapf: disable
+    # -p must come after the subcommand: `uiautomator2 screenshot -p 9090`
+    shared = argparse.ArgumentParser(add_help=False)
+    shared.add_argument('-p', '--port', type=_valid_port, default=DEFAULT_SERVER_PORT,
+                        help='uiautomator2 server port on device (1-65535)')
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-d", "--debug", action="store_true",
@@ -247,7 +265,9 @@ def main():
     for c in _commands:
         cmd_name = c['command']
         actions[cmd_name] = c['action']
+        parents = [] if c.get('no_port') else [shared]
         sp = subparser.add_parser(cmd_name, help=c.get('help'),
+                                  parents=parents,
                                   formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         for f in c.get('flags', []):
             args = f.get('args')
