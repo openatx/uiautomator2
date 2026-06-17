@@ -5,7 +5,7 @@ set -e
 
 APK_VERSION=$(cat ../version.py| grep apk_version | awk '{print $NF}')
 APK_VERSION=${APK_VERSION//[\"\']}
-JAR_VERSION="0.2.2"
+JAR_VERSION="0.3.1"
 
 cd "$(dirname $0)"
 
@@ -26,8 +26,8 @@ function download_apk(){
 }
 
 function download_jar() {
-	local URL="https://public.uiauto.devsleep.com/u2jar/$JAR_VERSION/u2.jar"
-	https_proxy= download "$URL" "u2.jar"
+	local URL="https://github.com/openatx/android-uiautomator-server-jar/releases/download/$JAR_VERSION/u2.jar"
+	download "$URL" "u2.jar"
 	if test -s u2.jar; then
 		echo "Download Jar sucessfully"
 	else
@@ -42,6 +42,7 @@ download_jar
 download_apk "$APK_VERSION" "app-uiautomator.apk"
 cat > version.json <<EOF
 {
-  "com.github.uiautomator": "$APK_VERSION"
+  "com.github.uiautomator": "$APK_VERSION",
+  "u2.jar": "$JAR_VERSION"
 }
 EOF
