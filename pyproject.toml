@@ -26,6 +26,7 @@ coverage = "^7.6.0"
 
 [tool.poetry.scripts]
 uiautomator2 = "uiautomator2.__main__:main"
+u2cli = "uiautomator2.agent_cli.__main__:main"
 
 [tool.poetry-dynamic-versioning] # 根据tag来动态配置版本号
 enable = true
