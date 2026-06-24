@@ -7,12 +7,14 @@ import os
 import subprocess
 import sys
 import time
+from http.client import IncompleteRead
 from typing import Any, Dict, Optional, Tuple
 from urllib import error, request
 
 DEFAULT_SERVER_HOST = "127.0.0.1"
 DEFAULT_SERVER_PORT = 17913
-DEFAULT_REQUEST_TIMEOUT = 120.0
+DEFAULT_REQUEST_TIMEOUT = 30.0
+SERVER_PROTOCOL_VERSION = 13
 
 
 class U2CliError(RuntimeError):
@@ -51,6 +53,8 @@ class U2CliClient(object):
             raise ServerNotRunningError("u2cli server is not running") from e
         except OSError as e:
             raise ServerNotRunningError("u2cli server is not running") from e
+        except IncompleteRead as e:
+            raise ServerNotRunningError("u2cli server is not running") from e
         except ValueError as e:
             raise U2CliError("invalid response from u2cli server") from e
 
@@ -73,7 +77,7 @@ def start_server_process(host: str = DEFAULT_SERVER_HOST, port: int = DEFAULT_SE
     command = [
         sys.executable,
         "-m",
-        "uiautomator2.__u2cli__",
+        "uiautomator2.agent_cli",
         "server",
         "--foreground",
         "--server-host",
@@ -96,11 +100,35 @@ def start_server_process(host: str = DEFAULT_SERVER_HOST, port: int = DEFAULT_SE
     return subprocess.Popen(command, **kwargs)
 
 
+def _server_is_compatible(status: Dict[str, Any]) -> bool:
+    return status.get("protocol_version") == SERVER_PROTOCOL_VERSION
+
+
+def _stop_server(client: U2CliClient, timeout: float):
+    try:
+        client.request("server.stop", timeout=2.0)
+    except U2CliError:
+        return
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if not client.is_running():
+            return
+        time.sleep(0.1)
+    raise U2CliError("incompatible u2cli server did not stop")
+
+
 def ensure_server(host: str = DEFAULT_SERVER_HOST, port: int = DEFAULT_SERVER_PORT,
                   timeout: float = 5.0) -> Tuple[U2CliClient, bool]:
     client = U2CliClient(host, port)
-    if client.is_running():
-        return client, False
+    try:
+        status = client.status()
+    except U2CliError:
+        pass
+    else:
+        if _server_is_compatible(status):
+            return client, False
+        _stop_server(client, timeout)
 
     process = start_server_process(host, port)
     deadline = time.time() + timeout
