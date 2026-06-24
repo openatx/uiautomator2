@@ -101,7 +101,7 @@ class _Device(_BaseClient):
             return
         return image_convert(pil_img, format)
         
-    def dump_hierarchy(self, compressed=False, pretty=False, max_depth: Optional[int] = None) -> str:
+    def dump_hierarchy(self, compressed=False, pretty=False, max_depth: Optional[int] = None, root_in_active: Optional[bool] = None) -> str:
         """
         Dump window hierarchy
 
@@ -109,6 +109,7 @@ class _Device(_BaseClient):
             compressed (bool): return compressed xml
             pretty (bool): pretty print xml
             max_depth (int): max depth of hierarchy
+            root_in_active (bool): dump only the active window root when set
 
         Returns:
             xml content
@@ -116,11 +117,11 @@ class _Device(_BaseClient):
         try:
             if max_depth is None:
                 max_depth = self.settings['max_depth']
-            content = self._do_dump_hierarchy(compressed, max_depth)
+            content = self._do_dump_hierarchy(compressed, max_depth, root_in_active)
         except HierarchyEmptyError: # pragma: no cover
             logger.warning("dump empty, return empty xml")
             content = '<?xml version=\'1.0\' encoding=\'UTF-8\' standalone=\'yes\' ?>\r\n<hierarchy rotation="0" />'
-        
+
         if pretty:
             root = etree.fromstring(content.encode("utf-8"))
             content = etree.tostring(root, pretty_print=True, encoding='UTF-8', xml_declaration=True)
@@ -128,10 +129,13 @@ class _Device(_BaseClient):
         return content
 
     @retry(HierarchyEmptyError, tries=3, delay=1)
-    def _do_dump_hierarchy(self, compressed=False, max_depth=None) -> str:
+    def _do_dump_hierarchy(self, compressed=False, max_depth=None, root_in_active: Optional[bool] = None) -> str:
         if max_depth is None:
             max_depth = 50
-        content = self.jsonrpc.dumpWindowHierarchy(compressed, max_depth)
+        if root_in_active is None:
+            content = self.jsonrpc.dumpWindowHierarchy(compressed, max_depth)
+        else:
+            content = self.jsonrpc.dumpWindowHierarchy(compressed, max_depth, root_in_active)
         if content == "":
             raise HierarchyEmptyError("dump hierarchy is empty")
         

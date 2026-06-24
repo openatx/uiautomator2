@@ -476,6 +476,9 @@ Note: click, swipe, drag operations support percentage position values. Example:
     # pretty: format xml
     # max_depth: limit xml depth, default 50
     xml = d.dump_hierarchy(compressed=False, pretty=False, max_depth=50)
+
+    # root_in_active=True: only dump the active window root
+    xml = d.dump_hierarchy(root_in_active=True)
     ```
 
 * Open notification or quick settings
