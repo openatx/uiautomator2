@@ -379,7 +379,7 @@ You can find all key code definitions at [Android KeyEvent](https://developer.an
 
     # Can also use Direction as a parameter
     from uiautomator2 import Direction
-    
+
     d.swipe_ext(Direction.FORWARD) # Scroll down page, equivalent to d.swipe_ext("up"), but easier to understand
     d.swipe_ext(Direction.BACKWARD) # Scroll up page
     d.swipe_ext(Direction.HORIZ_FORWARD) # Scroll page horizontally right
@@ -455,7 +455,7 @@ Note: click, swipe, drag operations support percentage position values. Example:
     ```python
     # take screenshot and save to a file on the computer, requires Android>=4.2.
     d.screenshot("home.jpg")
-    
+
     # get PIL.Image formatted images. Naturally, you need Pillow installed first
     image = d.screenshot() # default format="pillow"
     image.save("home.jpg") # or home.png. Currently, only png and jpg are supported
@@ -642,7 +642,7 @@ Selector supports the below parameters. Refer to [UiSelector Java doc](http://de
     ```python
     if d(text="Settings").exists: # True if exists, else False
         print("Settings button exists")
-    
+
     # alias of above property.
     if d.exists(text="Settings"):
         print("Settings button exists")
@@ -706,7 +706,7 @@ Selector supports the below parameters. Refer to [UiSelector Java doc](http://de
     x, y = d(text="Settings").center()
     # x, y = d(text="Settings").center(offset=(0, 0)) # left-top x, y
     ```
-    
+
 * Take screenshot of widget
 
     ```python
@@ -720,10 +720,10 @@ Selector supports the below parameters. Refer to [UiSelector Java doc](http://de
     ```python
     # click on the center of the specific ui object
     d(text="Settings").click()
-    
+
     # wait for element to appear for at most 10 seconds and then click
     d(text="Settings").click(timeout=10)
-    
+
     # click with offset(x_offset_ratio, y_offset_ratio) from top-left of the element
     # click_x = x_offset_ratio * width + x_left_top
     # click_y = y_offset_ratio * height + y_left_top
@@ -733,7 +733,7 @@ Selector supports the below parameters. Refer to [UiSelector Java doc](http://de
 
     # click if exists within 10s, default timeout 0s
     clicked = d(text='Skip').click_exists(timeout=10.0) # returns bool
-    
+
     # click until element is gone, return bool
     is_gone = d(text="Skip").click_gone(maxretry=10, interval=1.0) # maxretry default 10, interval default 1.0s
     ```
@@ -748,7 +748,7 @@ Selector supports the below parameters. Refer to [UiSelector Java doc](http://de
     ```
 
 #### Gesture actions for the specific UI object
-* Drag the UI object towards another point or another UI object 
+* Drag the UI object towards another point or another UI object
 
     ```python
     # notes : drag cannot be used for Android<4.3.
@@ -798,13 +798,13 @@ Selector supports the below parameters. Refer to [UiSelector Java doc](http://de
   ```
 
 * Wait until the specific UI appears or disappears
-    
+
     ```python
     # wait until the ui object appears
     appeared = d(text="Settings").wait(timeout=3.0) # return bool
     if appeared:
         print("Settings appeared")
-    
+
     # wait until the ui object is gone
     gone = d(text="Settings").wait_gone(timeout=1.0) # return bool
     if gone:
@@ -820,7 +820,7 @@ Selector supports the below parameters. Refer to [UiSelector Java doc](http://de
   - `forward` or `backward` or `toBeginning` or `toEnd`
 
   ```python
-  # fling forward(default) vertically(default) 
+  # fling forward(default) vertically(default)
   d(scrollable=True).fling()
   # fling forward horizontally
   d(scrollable=True).fling.horizontal.forward()
@@ -864,7 +864,7 @@ d.send_keys("Hello123abcEFG", clear=True) # Clear existing text then send
 d.clear_text() # Clear all content in the input field
 
 # Automatically performs Enter, Search, etc., based on input field requirements. Added in version 3.1
-d.send_action() 
+d.send_action()
 # Can also specify the IME action, e.g., d.send_action("search"). Supports go, search, send, next, done, previous.
 
 d.hide_keyboard() # Hide the soft keyboard
@@ -899,7 +899,7 @@ with d.watch_context() as ctx:
     ctx.when("同意").click()
     ctx.when("确定").click()
     # The above three lines execute immediately without waiting.
-    
+
     ctx.wait_stable() # Start pop-up monitoring and wait for the interface to stabilize (stable if no pop-ups in two check cycles)
 
     # Use the call function to trigger a callback
@@ -980,10 +980,10 @@ UiAutomator timeout settings (hidden methods):
 >>> d.jsonrpc.setConfigurator({"waitForIdleTimeout": 100, "waitForSelectorTimeout": 0})
 # Check current configurator settings
 >>> print(d.jsonrpc.getConfigurator())
-# {'actionAcknowledgmentTimeout': 3000, 
-#  'keyInjectionDelay': 0, 
-#  'scrollAcknowledgmentTimeout': 200, 
-#  'waitForIdleTimeout': 100, 
+# {'actionAcknowledgmentTimeout': 3000,
+#  'keyInjectionDelay': 0,
+#  'scrollAcknowledgmentTimeout': 200,
+#  'waitForIdleTimeout': 100,
 #  'waitForSelectorTimeout': 0}
 ```
 
@@ -1118,7 +1118,7 @@ pid = d.app_wait("com.example.android", timeout=10.0)
         d.pull("/sdcard/some-file-not-exists.txt", "tmp.txt")
     except FileNotFoundError:
         print("File not found on device")
-    
+
     # Pull file content as bytes
     # content_bytes = d.pull("/sdcard/tmp.txt") # This is not a standard feature, use sync.read_bytes for this
     # For reading content directly, use the sync object:
@@ -1256,10 +1256,10 @@ To use a non-default uiautomator2 server port, pass `-p`/`--port` after the subc
     # {
     #     "package": "com.android.settings",
     #     "activity": ".Settings",
-    #     "pid": 12345 
+    #     "pid": 12345
     # }
     ```
-    
+
 - `uninstall`: Uninstall app
 
     ```bash
@@ -1300,6 +1300,27 @@ To use a non-default uiautomator2 server port, pass `-p`/`--port` after the subc
     ```bash
     uiautomator2 version
     ```
+
+
+# Agent CLI
+`u2cli` is a lightweight command-line wrapper around common device operations, useful for agent-driven workflows that need to inspect and control a device without writing Python code.
+
+```sh
+u2cli device-info
+u2cli screenshot screen.png
+u2cli dump-hierarchy
+u2cli click --text Settings
+```
+
+The CLI talks to a local `u2cli` server. Normal commands start the server automatically when needed, and you can also manage it manually:
+
+```sh
+u2cli start-server
+u2cli server-status
+u2cli kill-server
+```
+
+The server keeps a device registry and reuses existing device connections by serial and port. This is especially useful for repeated CLI calls, because the device is connected once and then handled through the server instead of reconnecting on every command.
 
 ## Differences between Google UiAutomator 2.0 and 1.x
 Reference: https://www.cnblogs.com/insist8089/p/6898181.html (Chinese)
