@@ -6,7 +6,7 @@
 
 import abc
 import typing
-from typing import Any, List, NamedTuple, Tuple, Union
+from typing import Any, List, NamedTuple, Optional, Tuple, Union
 
 import adbutils
 from PIL import Image
@@ -77,7 +77,7 @@ class AbstractXPathBasedDevice(metaclass=abc.ABCMeta):
         """ return (width, height) """
     
     @abc.abstractmethod
-    def dump_hierarchy(self) -> str:
+    def dump_hierarchy(self, root_in_active: Optional[bool] = None) -> str:
         """ return xml content """
     
     @abc.abstractmethod
