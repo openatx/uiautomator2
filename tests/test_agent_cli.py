@@ -76,8 +76,8 @@ def test_screenshot_command_outputs_resolution(tmp_path, capsys):
     filename = tmp_path / "shot.png"
     client.request.return_value = {"filename": str(filename), "resolution": "1080x2400", "device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)) as ensure_server:
-        main(["-s", "serial-1", "screenshot", "-p", "9009", str(filename)])
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)) as ensure_server:
+        main(["-s", "serial-1", "--device-port", "9009", "screenshot", str(filename)])
 
     ensure_server.assert_called_once_with("127.0.0.1", 17913)
     client.request.assert_called_once_with("screenshot", {
@@ -116,8 +116,8 @@ def test_dump_hierarchy_command_outputs_result(capsys):
         "device_serial": "serial-1",
     }
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
-        main(["-s", "serial-1", "dump-hierarchy", "-p", "9009", "--compressed", "--max-depth", "7"])
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
+        main(["-s", "serial-1", "--device-port", "9009", "dump-hierarchy", "--compressed", "--max-depth", "7"])
 
     client.request.assert_called_once_with("dump_hierarchy", {
         "serial": "serial-1",
@@ -141,7 +141,7 @@ def test_dump_hierarchy_command_outputs_saved_path(tmp_path, capsys):
     output = tmp_path / "hierarchy.txt"
     client.request.return_value = {"filename": str(output), "device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main(["dump-hierarchy", "--raw", "--output", str(output)])
 
     assert client.request.call_args.args[0] == "dump_hierarchy"
@@ -197,8 +197,8 @@ def test_app_current_command_outputs_text(capsys):
         "device_serial": "serial-1",
     }
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
-        main(["-s", "serial-1", "app-current", "-p", "9009"])
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
+        main(["-s", "serial-1", "--device-port", "9009", "app-current"])
 
     client.request.assert_called_once_with("app_current", {
         "serial": "serial-1",
@@ -212,16 +212,6 @@ def test_app_current_command_outputs_text(capsys):
         "pid: 1234",
         "",
     ])
-
-
-def test_app_current_command_accepts_underscore_alias(capsys):
-    client = Mock()
-    client.request.return_value = {"package": "com.example.app", "device_serial": "serial-1"}
-
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
-        main(["app_current"])
-
-    assert "u2_code: d.app_current()" in capsys.readouterr().out
 
 
 def test_server_app_current_returns_device_serial():
@@ -247,8 +237,8 @@ def test_device_info_command_outputs_text(capsys):
     client = Mock()
     client.request.return_value = {"model": "Pixel", "sdk": 35, "device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
-        main(["device-info", "-p", "9009"])
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
+        main(["--device-port", "9009", "device-info"])
 
     client.request.assert_called_once_with("device_info", {"serial": None, "port": 9009})
     assert capsys.readouterr().out == "\n".join([
@@ -264,8 +254,8 @@ def test_window_size_command_outputs_text(capsys):
     client = Mock()
     client.request.return_value = {"width": 1080, "height": 2400, "device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
-        main(["window-size", "-p", "9009"])
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
+        main(["--device-port", "9009", "window-size"])
 
     client.request.assert_called_once_with("window_size", {"serial": None, "port": 9009})
     assert capsys.readouterr().out == "\n".join([
@@ -277,21 +267,11 @@ def test_window_size_command_outputs_text(capsys):
     ])
 
 
-def test_window_size_command_accepts_underscore_alias(capsys):
-    client = Mock()
-    client.request.return_value = {"width": 1080, "height": 2400, "device_serial": "serial-1"}
-
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
-        main(["window_size"])
-
-    assert "u2_code: d.window_size()" in capsys.readouterr().out
-
-
 def test_app_start_command_requests_server(capsys):
     client = Mock()
     client.request.return_value = {"device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main(["app-start", "--activity", ".Main", "--wait", "--stop", "com.example"])
 
     client.request.assert_called_once_with("app_start", {
@@ -313,7 +293,7 @@ def test_app_list_command_outputs_packages(capsys):
     client = Mock()
     client.request.return_value = {"packages": ["com.example.one", "com.example.two"], "device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main(["app-list", "--filter", "-3"])
 
     client.request.assert_called_once_with("app_list", {
@@ -334,7 +314,7 @@ def test_app_stop_command_supports_package_and_all(capsys):
     client = Mock()
     client.request.return_value = {"device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main(["app-stop", "com.example"])
         main(["app-stop", "--all"])
 
@@ -363,7 +343,7 @@ def test_app_install_uninstall_clear_commands(capsys):
         {"device_serial": "serial-1"},
     ]
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main(["app-install", "demo.apk"])
         main(["app-uninstall", "com.example"])
         main(["app-clear", "com.example"])
@@ -395,7 +375,7 @@ def test_shell_command_outputs_response(capsys):
     client = Mock()
     client.request.return_value = {"output": "hello\n", "exit_code": 0, "device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main(["shell", "--timeout", "5", "echo", "hello"])
 
     client.request.assert_called_once_with("shell", {
@@ -417,7 +397,7 @@ def test_system_ui_commands_request_server(capsys):
     client = Mock()
     client.request.return_value = {"device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main(["open-notification"])
         main(["open-quick-settings"])
         main(["open-url", "https://example.com"])
@@ -445,7 +425,7 @@ def test_press_command_parses_key_and_keycode(capsys):
     client = Mock()
     client.request.return_value = {"device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main(["press", "home"])
         main(["press", "66"])
 
@@ -468,9 +448,9 @@ def test_send_keys_command_defaults_to_clear_and_supports_no_clear(capsys):
     client = Mock()
     client.request.return_value = {"device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main(["send-keys", "hello"])
-        main(["send_keys", "--no-clear", "world"])
+        main(["send-keys", "--no-clear", "world"])
 
     assert client.request.call_args_list[0].args == ("send_keys", {
         "serial": None,
@@ -493,9 +473,9 @@ def test_clear_text_command_requests_server(capsys):
     client = Mock()
     client.request.return_value = {"device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main(["clear-text"])
-        main(["clear_text"])
+        main(["clear-text"])
 
     assert client.request.call_args_list[0].args == ("clear_text", {
         "serial": None,
@@ -581,7 +561,7 @@ def test_coordinate_gesture_commands_request_server(capsys):
     client = Mock()
     client.request.return_value = {"device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main(["click", "10", "20"])
         main(["double-click", "--duration", "0.2", "10", "20"])
         main(["long-click", "--duration", "0.8", "10", "20"])
@@ -639,7 +619,7 @@ def test_direction_swipe_command_requests_server(capsys):
     client = Mock()
     client.request.return_value = {"device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main(["swipe", "--scale", "0.8", "--steps", "20", "up"])
         main(["swipe", "forward"])
 
@@ -674,7 +654,7 @@ def test_selector_commands_request_server(capsys):
         {"device_serial": "serial-1"},
     ]
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main(["click", "--text", "Settings", "--timeout", "5"])
         main(["long-click", "--resource-id", "pkg:id/button", "--duration", "0.8", "--timeout", "5"])
         main(["exists", "--text", "Settings", "--timeout", "2"])
@@ -730,7 +710,7 @@ def test_child_selector_command_supports_mixed_parent_and_child_conditions(capsy
     client = Mock()
     client.request.return_value = {"device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main([
             "click",
             "--text",
@@ -763,7 +743,7 @@ def test_repeated_child_selector_builds_chain(capsys):
     client = Mock()
     client.request.return_value = {"device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", return_value=(client, True)):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", return_value=(client, True)):
         main([
             "click",
             "--text",
@@ -895,7 +875,7 @@ def test_server_status_outputs_text(capsys):
     client.is_running.return_value = True
     client.status.return_value = {"host": "127.0.0.1", "port": 17913, "pid": 123, "device_serial": "serial-1"}
 
-    with patch("uiautomator2.agent_cli.__main__.U2CliClient", return_value=client):
+    with patch("uiautomator2.agent_cli.commands.U2CliClient", return_value=client):
         main(["server-status"])
 
     out = capsys.readouterr().out
@@ -907,17 +887,18 @@ def test_server_status_outputs_text(capsys):
     assert "running: True" in out
 
 
-def test_missing_command_outputs_json_error(capsys):
+def test_missing_command_shows_help(capsys):
     with pytest.raises(SystemExit) as exc:
         main([])
 
-    assert exc.value.code == 2
-    err = capsys.readouterr().err
-    assert err == "error: command is required\n"
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "Usage: u2cli" in out
+    assert "server commands:" in out
 
 
 def test_unexpected_cli_error_does_not_print_traceback(capsys):
-    with patch("uiautomator2.agent_cli.__main__.ensure_server", side_effect=RuntimeError("boom")):
+    with patch("uiautomator2.agent_cli.commands.ensure_server", side_effect=RuntimeError("boom")):
         with pytest.raises(SystemExit) as exc:
             main(["device-info"])
 
@@ -934,45 +915,31 @@ def test_help_has_no_json_option(capsys):
     assert exc.value.code == 0
     out = capsys.readouterr().out
     assert "--json" not in out
-    assert "==SUPPRESS==" not in out
-    assert "usage: u2cli [global options] <command> [command options]" in out
-    assert "global options:" in out
+    assert "Usage: u2cli" in out
     assert "server commands:" in out
     assert "device commands:" in out
-    assert "window-size (window_size)" in out
     assert "app commands:" in out
-    assert "input commands:" in out
-    assert "selector commands:" in out
-    assert "system ui commands:" in out
-    assert "app-current (app_current)" in out
-    assert "{server,start-server" not in out
+    assert "app-current" in out
+    assert "window-size" in out
 
 
-def test_subcommand_help_has_grouped_options(capsys):
+def test_subcommand_help_shows_options(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["app-start", "--help"])
 
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    assert "server options:" in out
-    assert "device options:" in out
-    assert "command options:" in out
-    assert "--server-host" in out
-    assert "-p PORT, --port PORT" in out
-    assert "--activity ACTIVITY" in out
+    assert "--activity" in out
+    assert "--wait" in out
+    assert "--stop" in out
 
 
-def test_selector_subcommand_help_has_selector_groups(capsys):
+def test_selector_subcommand_help_shows_options(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["exists", "--help"])
 
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    assert "server options:" in out
-    assert "device options:" in out
-    assert "command options:" in out
-    assert "selector options:" in out
-    assert "child selector options:" in out
-    assert "--text TEXT" in out
-    assert "--child-text CHILD_TEXT" in out
-    assert "--child KEY=VALUE [KEY=VALUE ...]" in out
+    assert "--text" in out
+    assert "--child-text" in out
+    assert "--child" in out
