@@ -14,10 +14,10 @@ from xml.etree import ElementTree as ET
 import adbutils
 
 import uiautomator2 as u2
+from uiautomator2.agent_cli.protocol import SERVER_PROTOCOL_VERSION
 from uiautomator2.core import DEFAULT_SERVER_PORT as DEFAULT_DEVICE_PORT
 
 logger = logging.getLogger(__name__)
-SERVER_PROTOCOL_VERSION = 13
 
 _BOUNDS_RE = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
 
@@ -177,6 +177,34 @@ class U2CliServer(ThreadingHTTPServer):
 
 class U2CliRequestHandler(BaseHTTPRequestHandler):
     server: U2CliServer
+    _REQUEST_HANDLERS = {
+        "screenshot": "_screenshot",
+        "dump_hierarchy": "_dump_hierarchy",
+        "app_current": "_app_current",
+        "device_info": "_device_info",
+        "window_size": "_window_size",
+        "app_start": "_app_start",
+        "app_list": "_app_list",
+        "app_stop": "_app_stop",
+        "app_install": "_app_install",
+        "app_uninstall": "_app_uninstall",
+        "app_clear": "_app_clear",
+        "shell": "_shell",
+        "open_notification": "_open_notification",
+        "open_quick_settings": "_open_quick_settings",
+        "open_url": "_open_url",
+        "press": "_press",
+        "send_keys": "_send_keys",
+        "clear_text": "_clear_text",
+        "click": "_click",
+        "double_click": "_double_click",
+        "long_click": "_long_click",
+        "swipe": "_swipe",
+        "drag": "_drag",
+        "selector_exists": "_selector_exists",
+        "selector_wait": "_selector_wait",
+        "selector_scroll": "_selector_scroll",
+    }
 
     def log_message(self, fmt, *args):
         logger.debug(fmt, *args)
@@ -207,58 +235,10 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         if method == "server.stop":
             threading.Thread(target=self.server.shutdown, name="u2cli_server_shutdown").start()
             return {"stopping": True}
-        if method == "screenshot":
-            return self._screenshot(params)
-        if method == "dump_hierarchy":
-            return self._dump_hierarchy(params)
-        if method == "app_current":
-            return self._app_current(params)
-        if method == "device_info":
-            return self._device_info(params)
-        if method == "window_size":
-            return self._window_size(params)
-        if method == "app_start":
-            return self._app_start(params)
-        if method == "app_list":
-            return self._app_list(params)
-        if method == "app_stop":
-            return self._app_stop(params)
-        if method == "app_install":
-            return self._app_install(params)
-        if method == "app_uninstall":
-            return self._app_uninstall(params)
-        if method == "app_clear":
-            return self._app_clear(params)
-        if method == "shell":
-            return self._shell(params)
-        if method == "open_notification":
-            return self._open_notification(params)
-        if method == "open_quick_settings":
-            return self._open_quick_settings(params)
-        if method == "open_url":
-            return self._open_url(params)
-        if method == "press":
-            return self._press(params)
-        if method == "send_keys":
-            return self._send_keys(params)
-        if method == "clear_text":
-            return self._clear_text(params)
-        if method == "click":
-            return self._click(params)
-        if method == "double_click":
-            return self._double_click(params)
-        if method == "long_click":
-            return self._long_click(params)
-        if method == "swipe":
-            return self._swipe(params)
-        if method == "drag":
-            return self._drag(params)
-        if method == "selector_exists":
-            return self._selector_exists(params)
-        if method == "selector_wait":
-            return self._selector_wait(params)
-        if method == "selector_scroll":
-            return self._selector_scroll(params)
+
+        handler_name = self._REQUEST_HANDLERS.get(method)
+        if handler_name:
+            return getattr(self, handler_name)(params)
         raise ValueError("unknown method: %s" % method)
 
     def _status(self):
@@ -271,20 +251,22 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
             "device_serial": self.server.registry.default_serial,
         }
 
+    def _device(self, params: Dict[str, Any]):
+        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
+        return self.server.registry.get_with_serial(params.get("serial"), port=port)
+
     def _screenshot(self, params: Dict[str, Any]):
         filename = params.get("filename")
         if not filename:
             raise ValueError("filename is required")
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         image = device.screenshot()
         width, height = image.size
         image.save(filename)
         return {"filename": filename, "resolution": "%sx%s" % (width, height), "device_serial": device_serial}
 
     def _dump_hierarchy(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
 
         kwargs = {}
         if params.get("compressed"):
@@ -302,22 +284,19 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         return {"content": result, "device_serial": device_serial}
 
     def _app_current(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         result = device.app_current()
         result["device_serial"] = device_serial
         return result
 
     def _device_info(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         result = dict(device.device_info)
         result["device_serial"] = device_serial
         return result
 
     def _window_size(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         width, height = device.window_size()
         return {"width": width, "height": height, "device_serial": device_serial}
 
@@ -325,8 +304,7 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         package = params.get("package")
         if not package:
             raise ValueError("package is required")
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         kwargs = {}
         if params.get("activity"):
             kwargs["activity"] = params.get("activity")
@@ -338,14 +316,12 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         return {"device_serial": device_serial}
 
     def _app_list(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         packages = device.app_list(params.get("filter") or "")
         return {"packages": packages, "device_serial": device_serial}
 
     def _app_stop(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         if params.get("all"):
             device.app_stop_all()
             return {"device_serial": device_serial}
@@ -359,8 +335,7 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         apk = params.get("apk")
         if not apk:
             raise ValueError("apk is required")
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         result = device.app_install(apk)
         return {"result": result, "device_serial": device_serial}
 
@@ -368,8 +343,7 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         package = params.get("package")
         if not package:
             raise ValueError("package is required")
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         result = device.app_uninstall(package)
         return {"result": result, "device_serial": device_serial}
 
@@ -377,8 +351,7 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         package = params.get("package")
         if not package:
             raise ValueError("package is required")
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         device.app_clear(package)
         return {"device_serial": device_serial}
 
@@ -386,20 +359,17 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         command = params.get("command")
         if not command:
             raise ValueError("command is required")
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         response = device.shell(command, timeout=int(params.get("timeout") or 60))
         return {"output": response.output, "exit_code": response.exit_code, "device_serial": device_serial}
 
     def _open_notification(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         device.open_notification()
         return {"device_serial": device_serial}
 
     def _open_quick_settings(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         device.open_quick_settings()
         return {"device_serial": device_serial}
 
@@ -407,8 +377,7 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         url = params.get("url")
         if not url:
             raise ValueError("url is required")
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         device.open_url(url)
         return {"device_serial": device_serial}
 
@@ -416,8 +385,7 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         key = params.get("key")
         if key is None:
             raise ValueError("key is required")
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         device.press(key)
         return {"device_serial": device_serial}
 
@@ -425,14 +393,12 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         text = params.get("text")
         if text is None:
             raise ValueError("text is required")
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         device.send_keys(text, clear=bool(params.get("clear")))
         return {"device_serial": device_serial}
 
     def _clear_text(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         device.clear_text()
         return {"device_serial": device_serial}
 
@@ -449,8 +415,7 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         return obj
 
     def _click(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         selector = params.get("selector") or {}
         if selector:
             self._ui_object(device, params).click(timeout=params.get("timeout"))
@@ -459,14 +424,12 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         return {"device_serial": device_serial}
 
     def _double_click(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         device.double_click(float(params.get("x")), float(params.get("y")), duration=float(params.get("duration") or 0.1))
         return {"device_serial": device_serial}
 
     def _long_click(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         selector = params.get("selector") or {}
         duration = float(params.get("duration") or 0.5)
         if selector:
@@ -476,8 +439,7 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         return {"device_serial": device_serial}
 
     def _swipe(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         kwargs = {}
         if params.get("steps") is not None:
             kwargs["steps"] = int(params.get("steps"))
@@ -501,8 +463,7 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         return {"device_serial": device_serial}
 
     def _drag(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         device.drag(
             float(params.get("sx")),
             float(params.get("sy")),
@@ -513,16 +474,14 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         return {"device_serial": device_serial}
 
     def _selector_exists(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         timeout = float(params.get("timeout") or 0)
         obj = self._ui_object(device, params)
         exists = obj.exists(timeout=timeout) if timeout else obj.exists
         return {"result": bool(exists), "device_serial": device_serial}
 
     def _selector_wait(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         obj = self._ui_object(device, params)
         timeout = float(params.get("timeout") or 3.0)
         if params.get("gone"):
@@ -532,8 +491,7 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         return {"result": bool(result), "device_serial": device_serial}
 
     def _selector_scroll(self, params: Dict[str, Any]):
-        port = int(params.get("port") or DEFAULT_DEVICE_PORT)
-        device, device_serial = self.server.registry.get_with_serial(params.get("serial"), port=port)
+        device, device_serial = self._device(params)
         obj = self._ui_object(device, params)
         direction = params.get("direction") or "vert"
         action = params.get("action") or "forward"

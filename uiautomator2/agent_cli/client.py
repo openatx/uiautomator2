@@ -11,10 +11,11 @@ from http.client import IncompleteRead
 from typing import Any, Dict, Optional, Tuple
 from urllib import error, request
 
+from uiautomator2.agent_cli.protocol import SERVER_PROTOCOL_VERSION
+
 DEFAULT_SERVER_HOST = "127.0.0.1"
 DEFAULT_SERVER_PORT = 17913
 DEFAULT_REQUEST_TIMEOUT = 30.0
-SERVER_PROTOCOL_VERSION = 13
 
 
 class U2CliError(RuntimeError):
@@ -38,6 +39,9 @@ class U2CliClient(object):
     def base_url(self) -> str:
         return "http://%s:%d" % (self.host, self.port)
 
+    def _server_not_running(self, exc: BaseException) -> ServerNotRunningError:
+        return ServerNotRunningError("u2cli server is not running at %s: %s" % (self.base_url, exc))
+
     def request(self, method: str, params: Optional[Dict[str, Any]] = None, timeout: float = DEFAULT_REQUEST_TIMEOUT):
         payload = json.dumps({"method": method, "params": params or {}}).encode("utf-8")
         req = request.Request(
@@ -49,14 +53,10 @@ class U2CliClient(object):
         try:
             with request.urlopen(req, timeout=timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-        except error.URLError as e:
-            raise ServerNotRunningError("u2cli server is not running") from e
-        except OSError as e:
-            raise ServerNotRunningError("u2cli server is not running") from e
-        except IncompleteRead as e:
-            raise ServerNotRunningError("u2cli server is not running") from e
+        except (error.URLError, OSError, IncompleteRead) as e:
+            raise self._server_not_running(e) from e
         except ValueError as e:
-            raise U2CliError("invalid response from u2cli server") from e
+            raise U2CliError("invalid response from u2cli server at %s: %s" % (self.base_url, e)) from e
 
         if not data.get("ok"):
             raise RemoteError(data.get("error") or "unknown u2cli server error")

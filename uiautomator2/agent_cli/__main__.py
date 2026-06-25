@@ -2,12 +2,13 @@
 
 from __future__ import absolute_import, print_function
 
-import argparse
 import logging
 import pathlib
 import sys
 from typing import Any, Dict, Optional
 
+import click
+from click.parser import normalize_opt
 from PIL import Image
 
 from uiautomator2 import enable_pretty_logging
@@ -20,22 +21,29 @@ from uiautomator2.core import check_port
 logger = logging.getLogger(__name__)
 
 
-class U2CliArgumentParser(argparse.ArgumentParser):
-    def error(self, message):
-        _output_error_message(message, "ArgumentError")
-        self.exit(2)
-
-
 def _valid_port(value: str) -> int:
     try:
         port = int(value)
     except ValueError:
-        raise argparse.ArgumentTypeError("port must be an integer, got %r" % value)
+        raise click.BadParameter("port must be an integer, got %r" % value)
     try:
         check_port(port)
     except ValueError as e:
-        raise argparse.ArgumentTypeError(str(e))
+        raise click.BadParameter(str(e))
     return port
+
+
+class PortParamType(click.ParamType):
+    name = "PORT"
+
+    def convert(self, value, param, ctx):
+        try:
+            return _valid_port(value)
+        except click.BadParameter as e:
+            self.fail(e.message, param, ctx)
+
+
+PORT = PortParamType()
 
 
 def _absolute_filename(filename: str) -> str:
@@ -176,7 +184,10 @@ def _parse_selector_token(token: str) -> tuple:
         raise U2CliError("unknown selector key: %s" % key)
     u2_name = _SELECTOR_NAME_MAP[key]
     if u2_name in _INTEGER_SELECTOR_KEYS:
-        value = int(value)
+        try:
+            value = int(value)
+        except ValueError:
+            raise U2CliError("invalid integer selector value for %s: %s" % (key, value))
     elif u2_name in _BOOLEAN_SELECTOR_KEYS:
         value = _parse_bool(value)
     return u2_name, value
@@ -206,7 +217,7 @@ def _selector_chain(args):
 
 
 def _selector_chain_payload(selector: Dict[str, Any], child_selectors: list) -> Dict[str, Any]:
-    payload = {"selector": selector}
+    payload: Dict[str, Any] = {"selector": selector}
     if child_selectors:
         payload["child_selectors"] = child_selectors
     return payload
@@ -229,52 +240,12 @@ def _require_selector(selector: Dict[str, Any]):
 
 
 def _selector_option_kwargs(option: str) -> Dict[str, Any]:
-    kwargs = {"default": None}
+    kwargs: Dict[str, Any] = {"default": None}
     if option in ("--index", "--instance"):
         kwargs["type"] = int
     if option in ("--checkable", "--checked", "--clickable", "--scrollable", "--enabled", "--focused", "--selected"):
         kwargs["action"] = "store_true"
     return kwargs
-
-
-def _add_selector_flags(parser):
-    selector_group = parser.add_argument_group("selector options")
-    for option, _ in _SELECTOR_OPTIONS:
-        selector_group.add_argument(option, **_selector_option_kwargs(option))
-
-    child_group = parser.add_argument_group("child selector options")
-    for option, _ in _SELECTOR_OPTIONS:
-        child_group.add_argument("--child-" + option[2:], **_selector_option_kwargs(option))
-    child_group.add_argument(
-        "--child",
-        action="append",
-        default=None,
-        nargs="+",
-        metavar="KEY=VALUE",
-        help="append a child selector level, e.g. --child text=OK resourceId=pkg:id/ok",
-    )
-
-
-def _add_server_flags(parser):
-    group = parser.add_argument_group("server options")
-    group.add_argument("--server-host", default=DEFAULT_SERVER_HOST, help="u2cli server listen host")
-    group.add_argument("--server-port", type=_valid_port, default=DEFAULT_SERVER_PORT, help="u2cli server listen port")
-
-
-def _add_device_flags(parser):
-    group = parser.add_argument_group("device options")
-    group.add_argument("-p", "--port", type=_valid_port, default=DEFAULT_DEVICE_PORT,
-                       help="uiautomator2 server port on device (1-65535)")
-
-
-def _add_command_flags(parser, command: Dict[str, Any]):
-    if not command.get("flags"):
-        return
-    group = parser.add_argument_group("command options")
-    for flag in command.get("flags", []):
-        kwargs = flag.copy()
-        args = kwargs.pop("args")
-        group.add_argument(*args, **kwargs)
 
 
 def cmd_server(args):
@@ -318,7 +289,7 @@ def cmd_screenshot(args):
         "port": args.port,
         "filename": abs_filename,
     })
-    saved_to = result.get("filename") if isinstance(result, dict) else abs_filename
+    saved_to = result.get("filename") or abs_filename if isinstance(result, dict) else abs_filename
     resolution = result.get("resolution") if isinstance(result, dict) else None
     device_serial = result.get("device_serial") if isinstance(result, dict) else args.serial
     if not resolution:
@@ -460,10 +431,10 @@ def cmd_shell(args):
     command = " ".join(args.cmd)
     result = _request_device_method(args, "shell", {"command": command, "timeout": args.timeout})
     output = result.get("output") if isinstance(result, dict) else result
-    extra = {"device_serial": result.get("device_serial")} if isinstance(result, dict) else None
+    extra = {"device_serial": result.get("device_serial")} if isinstance(result, dict) else {}
     if isinstance(result, dict) and result.get("exit_code") is not None:
         extra["exit_code"] = result.get("exit_code")
-    _output_result(output, u2_code="d.shell(%r, timeout=%s)" % (command, args.timeout), extra=extra)
+    _output_result(output, u2_code="d.shell(%r, timeout=%s)" % (command, args.timeout), extra=extra or None)
 
 
 def cmd_open_notification(args):
@@ -671,196 +642,6 @@ def cmd_scroll(args):
     _output_result(result, u2_code=u2_code)
 
 
-_commands = [
-    {"action": cmd_server, "command": "server", "help": "run u2cli server in foreground", "server": True,
-     "flags": [{"args": ["--foreground"], "action": "store_true", "help": argparse.SUPPRESS}]},
-    {"action": cmd_start_server, "command": "start-server", "help": "start u2cli server", "server": True},
-    {"action": cmd_kill_server, "command": "kill-server", "help": "stop u2cli server", "server": True},
-    {"action": cmd_server_status, "command": "server-status", "help": "show u2cli server status", "server": True},
-    {
-        "action": cmd_screenshot,
-        "command": "screenshot",
-        "help": "take device screenshot",
-        "flags": [
-            {
-                "args": ["filename"],
-                "nargs": "?",
-                "default": "screenshot.jpg",
-                "type": str,
-                "help": "output filename, jpg or png",
-            }
-        ],
-    },
-    {
-        "action": cmd_dump_hierarchy,
-        "command": "dump-hierarchy",
-        "help": "dump UI hierarchy",
-        "flags": [
-            {"args": ["--compressed"], "action": "store_true", "help": "use compressed hierarchy"},
-            {"args": ["--max-depth"], "default": None, "type": int, "help": "maximum hierarchy depth"},
-            {"args": ["--output", "-o"], "default": None, "help": "save output to file"},
-            {"args": ["--raw"], "action": "store_true", "help": "output raw XML without simplification"},
-        ],
-    },
-    {"action": cmd_app_current, "command": "app-current", "aliases": ["app_current"],
-     "help": "show current foreground app"},
-    {"action": cmd_device_info, "command": "device-info", "aliases": ["device_info"],
-     "help": "show device information"},
-    {"action": cmd_window_size, "command": "window-size", "aliases": ["window_size"],
-     "help": "show screen window size"},
-    {
-        "action": cmd_app_start,
-        "command": "app-start",
-        "aliases": ["app_start"],
-        "help": "start application",
-        "flags": [
-            {"args": ["--activity"], "default": None, "help": "specific activity to launch"},
-            {"args": ["--wait"], "action": "store_true", "help": "wait for app to launch"},
-            {"args": ["--stop"], "action": "store_true", "help": "stop app before launching"},
-            {"args": ["package"], "help": "package name"},
-        ],
-    },
-    {
-        "action": cmd_app_list,
-        "command": "app-list",
-        "aliases": ["app_list"],
-        "help": "list installed packages",
-        "flags": [{"args": ["--filter"], "default": "", "help": "filter string passed to pm list packages"}],
-    },
-    {
-        "action": cmd_app_stop,
-        "command": "app-stop",
-        "aliases": ["app_stop"],
-        "help": "stop application",
-        "flags": [
-            {"args": ["--all"], "action": "store_true", "help": "stop all third-party apps"},
-            {"args": ["package"], "nargs": "?", "help": "package name"},
-        ],
-    },
-    {"action": cmd_app_install, "command": "app-install", "aliases": ["app_install"],
-     "help": "install application", "flags": [{"args": ["apk"], "help": "apk path or url"}]},
-    {"action": cmd_app_uninstall, "command": "app-uninstall", "aliases": ["app_uninstall"],
-     "help": "uninstall application", "flags": [{"args": ["package"], "help": "package name"}]},
-    {"action": cmd_app_clear, "command": "app-clear", "aliases": ["app_clear"],
-     "help": "clear application data", "flags": [{"args": ["package"], "help": "package name"}]},
-    {
-        "action": cmd_shell,
-        "command": "shell",
-        "help": "run shell command",
-        "flags": [
-            {"args": ["--timeout"], "default": 60, "type": int, "help": "command timeout in seconds"},
-            {"args": ["cmd"], "nargs": "+", "help": "shell command"},
-        ],
-    },
-    {"action": cmd_open_notification, "command": "open-notification", "aliases": ["open_notification"],
-     "help": "open notification shade"},
-    {"action": cmd_open_quick_settings, "command": "open-quick-settings", "aliases": ["open_quick_settings"],
-     "help": "open quick settings"},
-    {"action": cmd_open_url, "command": "open-url", "aliases": ["open_url"],
-     "help": "open url", "flags": [{"args": ["url"], "help": "url to open"}]},
-    {"action": cmd_press, "command": "press", "help": "press key",
-     "flags": [{"args": ["key"], "help": "key name or key code"}]},
-    {"action": cmd_send_keys, "command": "send-keys", "aliases": ["send_keys"],
-     "help": "type text into focused input",
-     "flags": [
-         {"args": ["--no-clear"], "action": "store_true", "help": "do not clear before typing"},
-         {"args": ["text"], "help": "text to type"},
-     ]},
-    {"action": cmd_clear_text, "command": "clear-text", "aliases": ["clear_text"],
-     "help": "clear focused input text"},
-    {
-        "action": cmd_click,
-        "command": "click",
-        "help": "click coordinates or selector",
-        "selector": True,
-        "flags": [
-            {"args": ["--timeout"], "default": 3.0, "type": float, "help": "selector wait timeout"},
-            {"args": ["x"], "nargs": "?", "help": "x coordinate"},
-            {"args": ["y"], "nargs": "?", "help": "y coordinate"},
-        ],
-    },
-    {
-        "action": cmd_double_click,
-        "command": "double-click",
-        "aliases": ["double_click"],
-        "help": "double click coordinates",
-        "flags": [
-            {"args": ["--duration"], "default": 0.1, "type": float, "help": "delay between taps"},
-            {"args": ["x"], "type": float, "help": "x coordinate"},
-            {"args": ["y"], "type": float, "help": "y coordinate"},
-        ],
-    },
-    {
-        "action": cmd_long_click,
-        "command": "long-click",
-        "aliases": ["long_click"],
-        "help": "long click coordinates or selector",
-        "selector": True,
-        "flags": [
-            {"args": ["--duration"], "default": 0.5, "type": float, "help": "long press duration"},
-            {"args": ["--timeout"], "default": 3.0, "type": float, "help": "selector wait timeout"},
-            {"args": ["x"], "nargs": "?", "help": "x coordinate"},
-            {"args": ["y"], "nargs": "?", "help": "y coordinate"},
-        ],
-    },
-    {
-        "action": cmd_swipe,
-        "command": "swipe",
-        "help": "swipe coordinates or direction",
-        "flags": [
-            {"args": ["--duration"], "default": 0.5, "type": float, "help": "swipe duration"},
-            {"args": ["--steps"], "default": None, "type": int, "help": "number of swipe steps"},
-            {"args": ["--scale"], "default": 0.9, "type": float, "help": "direction swipe distance scale"},
-            {"args": ["fx"], "help": "direction or from x"},
-            {"args": ["fy"], "nargs": "?", "type": float, "help": "from y"},
-            {"args": ["tx"], "nargs": "?", "type": float, "help": "to x"},
-            {"args": ["ty"], "nargs": "?", "type": float, "help": "to y"},
-        ],
-    },
-    {
-        "action": cmd_drag,
-        "command": "drag",
-        "help": "drag coordinates",
-        "flags": [
-            {"args": ["--duration"], "default": 0.5, "type": float, "help": "drag duration"},
-            {"args": ["sx"], "type": float, "help": "start x"},
-            {"args": ["sy"], "type": float, "help": "start y"},
-            {"args": ["ex"], "type": float, "help": "end x"},
-            {"args": ["ey"], "type": float, "help": "end y"},
-        ],
-    },
-    {
-        "action": cmd_exists,
-        "command": "exists",
-        "help": "check selector exists",
-        "selector": True,
-        "flags": [{"args": ["--timeout"], "default": 0.0, "type": float, "help": "wait timeout"}],
-    },
-    {
-        "action": cmd_wait,
-        "command": "wait",
-        "help": "wait selector appear or disappear",
-        "selector": True,
-        "flags": [
-            {"args": ["--timeout"], "default": 3.0, "type": float, "help": "wait timeout"},
-            {"args": ["--gone"], "action": "store_true", "help": "wait until gone"},
-        ],
-    },
-    {
-        "action": cmd_scroll,
-        "command": "scroll",
-        "help": "scroll selector",
-        "selector": True,
-        "flags": [
-            {"args": ["--direction"], "choices": ["vert", "horiz"], "default": "vert", "help": "scroll axis"},
-            {"args": ["--action"], "choices": ["forward", "backward", "toEnd", "toBeginning"], "default": "forward", "help": "scroll action"},
-            {"args": ["--max-swipes"], "default": None, "type": int, "help": "max swipes"},
-            {"args": ["--to-text"], "default": None, "help": "scroll until text is visible"},
-        ],
-    },
-]
-
-
 _HELP_CATEGORIES = [
     ("server commands", [
         "server",
@@ -907,19 +688,405 @@ _HELP_CATEGORIES = [
 ]
 
 
-def _command_lookup() -> Dict[str, Dict[str, Any]]:
-    return {command["command"]: command for command in _commands}
-
-
-def _command_display(command: Dict[str, Any]) -> str:
-    aliases = command.get("aliases") or []
+def _command_display(command: click.Command) -> str:
+    aliases = getattr(command, "aliases", ())
     if aliases:
-        return "%s (%s)" % (command["command"], ", ".join(aliases))
-    return command["command"]
+        return "%s (%s)" % (command.name, ", ".join(aliases))
+    return command.name or ""
+
+
+def _format_click_metavar(name: str) -> str:
+    return name.replace("-", "_").upper()
+
+
+def _option_help_label(param: click.Option) -> str:
+    option_parts = []
+    metavar = param.metavar or _format_click_metavar(param.name or "")
+    for opt in list(param.opts) + list(param.secondary_opts):
+        if param.is_bool_flag:
+            option_parts.append(opt)
+        else:
+            option_parts.append("%s %s" % (opt, metavar))
+    return ", ".join(option_parts)
+
+
+def _argument_help_label(param: click.Argument) -> str:
+    name = param.human_readable_name.upper()
+    if param.nargs == -1:
+        return "%s [%s ...]" % (name, name)
+    if not param.required:
+        return "[%s]" % name
+    return name
+
+
+class U2CliCommand(click.Command):
+    def format_options(self, ctx, formatter):
+        for section in ["server options", "device options", "command options", "selector options", "child selector options"]:
+            rows = []
+            for param in self.params:
+                if getattr(param, "help_section", None) != section or getattr(param, "hidden", False):
+                    continue
+                if isinstance(param, click.Option):
+                    rows.append((_option_help_label(param), param.help or ""))
+                elif isinstance(param, click.Argument):
+                    rows.append((_argument_help_label(param), getattr(param, "help", "") or ""))
+            if rows:
+                with formatter.section(section):
+                    formatter.write_dl(rows)
+
+
+class U2CliGroup(click.Group):
+    def format_commands(self, ctx, formatter):
+        return
+
+
+class CommandArgs(object):
+    def __init__(self, params: Dict[str, Any]):
+        self.__dict__.update(params)
+
+
+class ChildSelectorOption(click.Option):
+    def add_to_parser(self, parser, ctx):
+        super(ChildSelectorOption, self).add_to_parser(parser, ctx)
+        for option in self.opts:
+            parser_option = parser._long_opt.get(normalize_opt(option, ctx))
+            if parser_option is None:
+                continue
+            process = parser_option.process
+
+            def process_child(value, state, process=process):
+                values = [value]
+                while state.rargs and not _is_option_token(state.rargs[0], parser):
+                    values.append(state.rargs.pop(0))
+                process(tuple(values), state)
+
+            parser_option.process = process_child
+
+
+def _is_option_token(token: str, parser) -> bool:
+    return len(token) > 1 and token[:1] in parser._opt_prefixes
+
+
+def _collect_click_params(ctx: click.Context, params: Dict[str, Any]) -> CommandArgs:
+    all_params = {}
+    if ctx.parent is not None:
+        all_params.update(ctx.parent.params)
+    all_params.update(params)
+    return CommandArgs(all_params)
+
+
+def _run_command_action(action, args: CommandArgs):
+    try:
+        action(args)
+    except U2CliError as e:
+        _output_error(e)
+        raise click.exceptions.Exit(1)
+    except Exception as e:
+        if getattr(args, "debug", False):
+            logger.exception("u2cli command failed")
+        _output_error(e)
+        raise click.exceptions.Exit(1)
+
+
+def _make_option(args, kwargs: Dict[str, Any], section: str) -> click.Option:
+    kwargs = kwargs.copy()
+    action = kwargs.pop("action", None)
+    hidden = kwargs.pop("hidden", False)
+    help_text = kwargs.pop("help", None)
+    default = kwargs.pop("default", None)
+    param_type = kwargs.pop("type", None)
+    choices = kwargs.pop("choices", None)
+    metavar = kwargs.pop("metavar", None)
+    kwargs.pop("nargs", None)
+
+    option_kwargs = {"help": help_text, "hidden": hidden}
+    if action == "store_true":
+        option_kwargs.update({"is_flag": True, "default": bool(default)})
+    else:
+        option_kwargs["default"] = default
+        option_kwargs["metavar"] = metavar or _format_click_metavar(args[-1].lstrip("-").replace("-", "_"))
+        if choices:
+            option_kwargs["type"] = click.Choice(choices)
+        elif param_type is not None:
+            option_kwargs["type"] = param_type
+    option = click.Option(args, **option_kwargs)
+    setattr(option, "help_section", section)
+    return option
+
+
+def _make_argument(name: str, kwargs: Dict[str, Any]) -> click.Argument:
+    kwargs = kwargs.copy()
+    help_text = kwargs.pop("help", "")
+    default = kwargs.pop("default", None)
+    param_type = kwargs.pop("type", None)
+    nargs = kwargs.pop("nargs", None)
+    required = True
+    click_nargs = 1
+    if nargs == "?":
+        required = False
+    elif nargs == "+":
+        click_nargs = -1
+    argument_kwargs = {"required": required, "nargs": click_nargs}
+    if default is not None:
+        argument_kwargs["default"] = default
+    if param_type is not None:
+        argument_kwargs["type"] = param_type
+    argument = click.Argument([name], **argument_kwargs)
+    setattr(argument, "help", help_text)
+    setattr(argument, "help_section", "command options")
+    return argument
+
+
+def _click_selector_option_kwargs(option: str) -> Dict[str, Any]:
+    kwargs = _selector_option_kwargs(option)
+    if option in ("--index", "--instance"):
+        kwargs["type"] = int
+    return kwargs
+
+
+def _click_server_flags() -> list:
+    return [
+        click.Option(["--server-host"], default=DEFAULT_SERVER_HOST, metavar="SERVER_HOST", help="u2cli server listen host"),
+        click.Option(["--server-port"], type=PORT, default=DEFAULT_SERVER_PORT, metavar="PORT", help="u2cli server listen port"),
+    ]
+
+
+def _click_device_flags() -> list:
+    return [
+        click.Option(["-p", "--port"], type=PORT, default=DEFAULT_DEVICE_PORT, metavar="PORT",
+                     help="uiautomator2 server port on device (1-65535)"),
+    ]
+
+
+def _click_selector_flags() -> list:
+    params = []
+    for option, _ in _SELECTOR_OPTIONS:
+        params.append(_make_option([option], _click_selector_option_kwargs(option), "selector options"))
+    for option, _ in _SELECTOR_OPTIONS:
+        params.append(_make_option(["--child-" + option[2:]], _click_selector_option_kwargs(option), "child selector options"))
+    child = ChildSelectorOption(["--child"], multiple=True, type=click.UNPROCESSED,
+                                metavar="KEY=VALUE [KEY=VALUE ...]",
+                                help="append a child selector level, e.g. --child text=OK resourceId=pkg:id/ok")
+    setattr(child, "help_section", "child selector options")
+    params.append(child)
+    return params
+
+
+def _assign_help_section(params: list, section: str) -> list:
+    for param in params:
+        setattr(param, "help_section", section)
+    return params
+
+
+def _command_callback(action):
+    def callback(**params):
+        _run_command_action(action, _collect_click_params(click.get_current_context(), params))
+    return callback
+
+
+def _command_params(params: Optional[list] = None, include_device: bool = True, selector: bool = False) -> list:
+    result = []
+    result.extend(_assign_help_section(_click_server_flags(), "server options"))
+    if include_device:
+        result.extend(_assign_help_section(_click_device_flags(), "device options"))
+    if params:
+        result.extend(params)
+    if selector:
+        result.extend(_click_selector_flags())
+    return result
+
+
+def _click_command(name: str, action, help_text: str, params: Optional[list] = None,
+                   aliases: Optional[tuple] = None) -> click.Command:
+    aliases = aliases or ()
+    command = U2CliCommand(
+        name=name,
+        help=help_text,
+        params=params or [],
+        callback=_command_callback(action),
+        context_settings={"help_option_names": ["-h", "--help"]},
+    )
+    setattr(command, "aliases", aliases)
+    return command
+
+
+def _add_click_command(cli: click.Group, name: str, action, help_text: str, params: Optional[list] = None,
+                       aliases: Optional[tuple] = None):
+    command = _click_command(name, action, help_text, params=params, aliases=aliases)
+    cli.add_command(command, name)
+    for alias in aliases or ():
+        cli.add_command(command, alias)
+
+
+def _option(args: list, kwargs: Dict[str, Any]) -> click.Option:
+    return _make_option(args, kwargs, "command options")
+
+
+def _argument(name: str, kwargs: Dict[str, Any]) -> click.Argument:
+    return _make_argument(name, kwargs)
+
+
+def _register_server_commands(cli: click.Group):
+    _add_click_command(cli, "server", cmd_server, "run u2cli server in foreground", _command_params([
+        _option(["--foreground"], {"action": "store_true", "hidden": True}),
+    ], include_device=False))
+    _add_click_command(cli, "start-server", cmd_start_server, "start u2cli server",
+                       _command_params(include_device=False))
+    _add_click_command(cli, "kill-server", cmd_kill_server, "stop u2cli server",
+                       _command_params(include_device=False))
+    _add_click_command(cli, "server-status", cmd_server_status, "show u2cli server status",
+                       _command_params(include_device=False))
+
+
+def _register_device_commands(cli: click.Group):
+    _add_click_command(cli, "screenshot", cmd_screenshot, "take device screenshot", _command_params([
+        _argument("filename", {"nargs": "?", "default": "screenshot.jpg", "type": str,
+                               "help": "output filename, jpg or png"}),
+    ]))
+    _add_click_command(cli, "dump-hierarchy", cmd_dump_hierarchy, "dump UI hierarchy", _command_params([
+        _option(["--compressed"], {"action": "store_true", "help": "use compressed hierarchy"}),
+        _option(["--max-depth"], {"default": None, "type": int, "help": "maximum hierarchy depth"}),
+        _option(["--output", "-o"], {"default": None, "help": "save output to file"}),
+        _option(["--raw"], {"action": "store_true", "help": "output raw XML without simplification"}),
+    ]))
+    _add_click_command(cli, "app-current", cmd_app_current, "show current foreground app",
+                       _command_params(), aliases=("app_current",))
+    _add_click_command(cli, "device-info", cmd_device_info, "show device information",
+                       _command_params(), aliases=("device_info",))
+    _add_click_command(cli, "window-size", cmd_window_size, "show screen window size",
+                       _command_params(), aliases=("window_size",))
+    _add_click_command(cli, "shell", cmd_shell, "run shell command", _command_params([
+        _option(["--timeout"], {"default": 60, "type": int, "help": "command timeout in seconds"}),
+        _argument("cmd", {"nargs": "+", "help": "shell command"}),
+    ]))
+
+
+def _register_app_commands(cli: click.Group):
+    _add_click_command(cli, "app-start", cmd_app_start, "start application", _command_params([
+        _option(["--activity"], {"default": None, "help": "specific activity to launch"}),
+        _option(["--wait"], {"action": "store_true", "help": "wait for app to launch"}),
+        _option(["--stop"], {"action": "store_true", "help": "stop app before launching"}),
+        _argument("package", {"help": "package name"}),
+    ]), aliases=("app_start",))
+    _add_click_command(cli, "app-list", cmd_app_list, "list installed packages", _command_params([
+        _option(["--filter"], {"default": "", "help": "filter string passed to pm list packages"}),
+    ]), aliases=("app_list",))
+    _add_click_command(cli, "app-stop", cmd_app_stop, "stop application", _command_params([
+        _option(["--all"], {"action": "store_true", "help": "stop all third-party apps"}),
+        _argument("package", {"nargs": "?", "help": "package name"}),
+    ]), aliases=("app_stop",))
+    _add_click_command(cli, "app-install", cmd_app_install, "install application", _command_params([
+        _argument("apk", {"help": "apk path or url"}),
+    ]), aliases=("app_install",))
+    _add_click_command(cli, "app-uninstall", cmd_app_uninstall, "uninstall application", _command_params([
+        _argument("package", {"help": "package name"}),
+    ]), aliases=("app_uninstall",))
+    _add_click_command(cli, "app-clear", cmd_app_clear, "clear application data", _command_params([
+        _argument("package", {"help": "package name"}),
+    ]), aliases=("app_clear",))
+
+
+def _register_system_ui_commands(cli: click.Group):
+    _add_click_command(cli, "open-notification", cmd_open_notification, "open notification shade",
+                       _command_params(), aliases=("open_notification",))
+    _add_click_command(cli, "open-quick-settings", cmd_open_quick_settings, "open quick settings",
+                       _command_params(), aliases=("open_quick_settings",))
+    _add_click_command(cli, "open-url", cmd_open_url, "open url", _command_params([
+        _argument("url", {"help": "url to open"}),
+    ]), aliases=("open_url",))
+
+
+def _register_input_commands(cli: click.Group):
+    _add_click_command(cli, "press", cmd_press, "press key", _command_params([
+        _argument("key", {"help": "key name or key code"}),
+    ]))
+    _add_click_command(cli, "send-keys", cmd_send_keys, "type text into focused input", _command_params([
+        _option(["--no-clear"], {"action": "store_true", "help": "do not clear before typing"}),
+        _argument("text", {"help": "text to type"}),
+    ]), aliases=("send_keys",))
+    _add_click_command(cli, "clear-text", cmd_clear_text, "clear focused input text",
+                       _command_params(), aliases=("clear_text",))
+    _add_click_command(cli, "click", cmd_click, "click coordinates or selector", _command_params([
+        _option(["--timeout"], {"default": 3.0, "type": float, "help": "selector wait timeout"}),
+        _argument("x", {"nargs": "?", "help": "x coordinate"}),
+        _argument("y", {"nargs": "?", "help": "y coordinate"}),
+    ], selector=True))
+    _add_click_command(cli, "double-click", cmd_double_click, "double click coordinates", _command_params([
+        _option(["--duration"], {"default": 0.1, "type": float, "help": "delay between taps"}),
+        _argument("x", {"type": float, "help": "x coordinate"}),
+        _argument("y", {"type": float, "help": "y coordinate"}),
+    ]), aliases=("double_click",))
+    _add_click_command(cli, "long-click", cmd_long_click, "long click coordinates or selector", _command_params([
+        _option(["--duration"], {"default": 0.5, "type": float, "help": "long press duration"}),
+        _option(["--timeout"], {"default": 3.0, "type": float, "help": "selector wait timeout"}),
+        _argument("x", {"nargs": "?", "help": "x coordinate"}),
+        _argument("y", {"nargs": "?", "help": "y coordinate"}),
+    ], selector=True), aliases=("long_click",))
+    _add_click_command(cli, "swipe", cmd_swipe, "swipe coordinates or direction", _command_params([
+        _option(["--duration"], {"default": 0.5, "type": float, "help": "swipe duration"}),
+        _option(["--steps"], {"default": None, "type": int, "help": "number of swipe steps"}),
+        _option(["--scale"], {"default": 0.9, "type": float, "help": "direction swipe distance scale"}),
+        _argument("fx", {"help": "direction or from x"}),
+        _argument("fy", {"nargs": "?", "type": float, "help": "from y"}),
+        _argument("tx", {"nargs": "?", "type": float, "help": "to x"}),
+        _argument("ty", {"nargs": "?", "type": float, "help": "to y"}),
+    ]))
+    _add_click_command(cli, "drag", cmd_drag, "drag coordinates", _command_params([
+        _option(["--duration"], {"default": 0.5, "type": float, "help": "drag duration"}),
+        _argument("sx", {"type": float, "help": "start x"}),
+        _argument("sy", {"type": float, "help": "start y"}),
+        _argument("ex", {"type": float, "help": "end x"}),
+        _argument("ey", {"type": float, "help": "end y"}),
+    ]))
+
+
+def _register_selector_commands(cli: click.Group):
+    _add_click_command(cli, "exists", cmd_exists, "check selector exists", _command_params([
+        _option(["--timeout"], {"default": 0.0, "type": float, "help": "wait timeout"}),
+    ], selector=True))
+    _add_click_command(cli, "wait", cmd_wait, "wait selector appear or disappear", _command_params([
+        _option(["--timeout"], {"default": 3.0, "type": float, "help": "wait timeout"}),
+        _option(["--gone"], {"action": "store_true", "help": "wait until gone"}),
+    ], selector=True))
+    _add_click_command(cli, "scroll", cmd_scroll, "scroll selector", _command_params([
+        _option(["--direction"], {"choices": ["vert", "horiz"], "default": "vert", "help": "scroll axis"}),
+        _option(["--action"], {"choices": ["forward", "backward", "toEnd", "toBeginning"], "default": "forward",
+                                "help": "scroll action"}),
+        _option(["--max-swipes"], {"default": None, "type": int, "help": "max swipes"}),
+        _option(["--to-text"], {"default": None, "help": "scroll until text is visible"}),
+    ], selector=True))
+
+
+def _build_click_cli() -> click.Group:
+    def callback(debug, serial):
+        enable_pretty_logging()
+        if debug:
+            logger.debug("debug mode enabled")
+
+    cli = U2CliGroup(
+        name="u2cli",
+        callback=callback,
+        params=[
+            click.Option(["-d", "--debug"], is_flag=True, help="show log"),
+            click.Option(["-s", "--serial"], type=str, metavar="SERIAL", help="device serial number"),
+        ],
+        invoke_without_command=False,
+        no_args_is_help=False,
+        context_settings={"help_option_names": ["-h", "--help"]},
+    )
+
+    _register_server_commands(cli)
+    _register_device_commands(cli)
+    _register_app_commands(cli)
+    _register_system_ui_commands(cli)
+    _register_input_commands(cli)
+    _register_selector_commands(cli)
+
+    return cli
 
 
 def _print_main_help():
-    commands = _command_lookup()
+    commands = _build_click_cli().commands
     print("usage: u2cli [global options] <command> [command options]")
     print("")
     print("global options:")
@@ -933,7 +1100,7 @@ def _print_main_help():
         print("%s:" % title)
         for command_name in command_names:
             command = commands[command_name]
-            print("  %-44s %s" % (_command_display(command), command.get("help", "")))
+            print("  %-44s %s" % (_command_display(command), command.help or ""))
 
 
 def main(argv=None):
@@ -942,46 +1109,19 @@ def main(argv=None):
     if argv and argv[0] in ("-h", "--help"):
         _print_main_help()
         sys.exit(0)
-
-    parser = U2CliArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("-d", "--debug", action="store_true", help="show log")
-    parser.add_argument("-s", "--serial", type=str, help="device serial number")
-
-    subparser = parser.add_subparsers(dest="subparser", parser_class=U2CliArgumentParser)
-    actions = {}
-    for c in _commands:
-        cmd_name = c["command"]
-        actions[cmd_name] = c["action"]
-        for alias in c.get("aliases", []):
-            actions[alias] = c["action"]
-        sp = subparser.add_parser(cmd_name, help=c.get("help"), aliases=c.get("aliases", []),
-                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-        _add_server_flags(sp)
-        if not c.get("server"):
-            _add_device_flags(sp)
-        _add_command_flags(sp, c)
-        if c.get("selector"):
-            _add_selector_flags(sp)
-
-    args = parser.parse_args(argv)
-    enable_pretty_logging()
-    if args.debug:
-        logger.debug("args: %s", args)
-
-    if not args.subparser:
+    if not argv:
         _output_error_message("command is required", "ArgumentError")
         sys.exit(2)
 
     try:
-        actions[args.subparser](args)
-    except U2CliError as e:
-        _output_error(e)
-        sys.exit(1)
-    except Exception as e:
-        if args.debug:
-            logger.exception("u2cli command failed")
-        _output_error(e)
-        sys.exit(1)
+        exit_code = _build_click_cli().main(args=list(argv), prog_name="u2cli", standalone_mode=False)
+        if exit_code is not None:
+            sys.exit(exit_code)
+    except click.exceptions.Exit as e:
+        sys.exit(e.exit_code)
+    except click.ClickException as e:
+        _output_error_message(e.format_message(), e.__class__.__name__)
+        sys.exit(e.exit_code)
 
 
 if __name__ == "__main__":

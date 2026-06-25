@@ -15,6 +15,7 @@ lxml = "*"
 adbutils = ">=2.11.0,<3"
 Pillow = "*"
 retry2 = "^0.9.5"
+click = "*"
 importlib-resources = {version = "*", markers = "python_version < \"3.9\""}
 
 [tool.poetry.group.dev.dependencies]
