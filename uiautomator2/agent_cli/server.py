@@ -223,6 +223,10 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
         try:
             content_length = int(self.headers.get("Content-Length") or "0")
             payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
+            if payload.get("method") == "server.stop":
+                self._send_json({"ok": True, "result": {"stopping": True}})
+                threading.Thread(target=self.server.shutdown, name="u2cli_server_shutdown").start()
+                return
             result = self._dispatch(payload.get("method"), payload.get("params") or {})
             self._send_json({"ok": True, "result": result})
         except Exception as e:
@@ -232,9 +236,6 @@ class U2CliRequestHandler(BaseHTTPRequestHandler):
     def _dispatch(self, method: str, params: Dict[str, Any]):
         if method == "server.status":
             return self._status()
-        if method == "server.stop":
-            threading.Thread(target=self.server.shutdown, name="u2cli_server_shutdown").start()
-            return {"stopping": True}
 
         handler_name = self._REQUEST_HANDLERS.get(method)
         if handler_name:

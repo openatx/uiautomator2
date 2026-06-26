@@ -9,29 +9,13 @@ from typing import Any, Dict, Optional, Tuple
 import click
 
 from uiautomator2 import enable_pretty_logging
-
 from uiautomator2.agent_cli.click_ext import CategorizedGroup
 from uiautomator2.agent_cli.client import U2CliClient, U2CliError, ensure_server
-from uiautomator2.agent_cli.options import (
-    _normalize_swipe_direction,
-    _optional_float,
-    _parse_swipe_fx,
-    _require_selector,
-    _selector_chain,
-    _selector_chain_code,
-    _selector_chain_payload,
-    global_options,
-    handle_errors,
-    selector_options,
-)
-from uiautomator2.agent_cli.output import (
-    _absolute_filename,
-    _image_resolution,
-    _output_message,
-    _output_result,
-    _output_text,
-    _parse_key,
-)
+from uiautomator2.agent_cli.options import _normalize_swipe_direction, _optional_float, _parse_swipe_fx, \
+    _require_selector, _selector_chain, _selector_chain_code, _selector_chain_payload, global_options, handle_errors, \
+    selector_options
+from uiautomator2.agent_cli.output import _absolute_filename, _image_resolution, _output_message, _output_result, \
+    _output_text, _parse_key
 from uiautomator2.agent_cli.server import run_server
 
 logger = logging.getLogger(__name__)

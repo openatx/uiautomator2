@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 
 from PIL import Image
 
+
 def _absolute_filename(filename: str) -> str:
     path = pathlib.Path(filename).expanduser()
     if not path.is_absolute():

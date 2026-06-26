@@ -78,12 +78,12 @@ def start_server_process(host: str = DEFAULT_SERVER_HOST, port: int = DEFAULT_SE
         sys.executable,
         "-m",
         "uiautomator2.agent_cli",
-        "server",
-        "--foreground",
         "--server-host",
         host,
         "--server-port",
         str(port),
+        "server",
+        "--foreground",
     ]
     kwargs = {
         "stdin": subprocess.DEVNULL,

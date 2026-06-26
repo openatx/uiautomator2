@@ -5,7 +5,6 @@ from __future__ import absolute_import, print_function
 import click
 from click.parser import normalize_opt
 
-
 # Repeat from __main__.py to avoid circular import; kept in sync manually
 _HELP_CATEGORIES = [
     ("server commands", ["server", "start-server", "kill-server", "server-status"]),

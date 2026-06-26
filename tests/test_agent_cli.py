@@ -1,7 +1,9 @@
 # coding: utf-8
 
+import json
 import logging
 from http.client import IncompleteRead
+from io import BytesIO
 from unittest.mock import Mock, patch
 
 import pytest
@@ -186,6 +188,34 @@ def test_server_dump_hierarchy_returns_compact_text():
 
     device.dump_hierarchy.assert_called_once_with(compressed=True, max_depth=7)
     assert result == {"content": 'android.widget.TextView "Settings" [10,20,200,80]', "device_serial": "serial-1"}
+
+
+def test_server_stop_sends_response_before_shutdown():
+    events = []
+
+    class FakeThread(object):
+        def __init__(self, target, name):
+            self.target = target
+            self.name = name
+
+        def start(self):
+            events.append("shutdown")
+            self.target()
+
+    body = json.dumps({"method": "server.stop", "params": {}}).encode("utf-8")
+    server = Mock()
+    handler = object.__new__(U2CliRequestHandler)
+    handler.path = "/request"
+    handler.server = server
+    handler.headers = {"Content-Length": str(len(body))}
+    handler.rfile = BytesIO(body)
+    handler._send_json = Mock(side_effect=lambda data: events.append(("send", data)))
+
+    with patch("uiautomator2.agent_cli.server.threading.Thread", FakeThread):
+        handler.do_POST()
+
+    assert events == [("send", {"ok": True, "result": {"stopping": True}}), "shutdown"]
+    server.shutdown.assert_called_once_with()
 
 
 def test_app_current_command_outputs_text(capsys):
@@ -860,6 +890,7 @@ def test_start_server_process_uses_agent_cli_module():
 
     command = popen.call_args.args[0]
     assert command[:3] == [agent_client.sys.executable, "-m", "uiautomator2.agent_cli"]
+    assert command[3:] == ["--server-host", "127.0.0.1", "--server-port", "17913", "server", "--foreground"]
 
 
 def test_client_request_treats_incomplete_read_as_server_not_running():
