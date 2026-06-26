@@ -115,3 +115,4 @@ docs/*.rst
 .DS_Store
 *.lock
 junit.xml
+.opencode/

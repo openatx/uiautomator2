@@ -15,6 +15,7 @@ lxml = "*"
 adbutils = ">=2.11.0,<3"
 Pillow = "*"
 retry2 = "^0.9.5"
+click = "*"
 importlib-resources = {version = "*", markers = "python_version < \"3.9\""}
 
 [tool.poetry.group.dev.dependencies]
@@ -26,6 +27,7 @@ coverage = "^7.6.0"
 
 [tool.poetry.scripts]
 uiautomator2 = "uiautomator2.__main__:main"
+u2cli = "uiautomator2.agent_cli.__main__:main"
 
 [tool.poetry-dynamic-versioning] # 根据tag来动态配置版本号
 enable = true
