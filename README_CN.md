@@ -1194,6 +1194,19 @@ logger = logging.getLogger("uiautomator2")
 # Agent CLI
 `u2cli` 是一个轻量的命令行封装，适合在 agent 工作流里直接查看、控制设备，不需要额外写 Python 代码。
 
+## Skill
+
+这个仓库同时提供了一个用于 Android 设备自动化的 Copilot Skill。安装好 `uiautomator2` 之后，可以通过 `npx` 或 `gh` 安装仓库内置的 `uiautomator2` skill：
+
+```sh
+npx skills add https://github.com/openatx/uiautomator2 --skill uiautomator2
+
+# 或者
+gh skill install https://github.com/openatx/uiautomator2 skills/uiautomator2
+```
+
+这个 skill 底层调用的是 `u2cli`，所以请先确保当前环境里已经执行过 `pip install uiautomator2`。
+
 ```sh
 u2cli device-info
 u2cli screenshot screen.png

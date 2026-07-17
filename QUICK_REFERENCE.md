@@ -104,4 +104,19 @@ d.watcher.when("跳过").click()
 d.watcher.start()
 ```
 
+## u2cli / Copilot Skill
+
+```sh
+pip install uiautomator2
+
+npx skills add https://github.com/openatx/uiautomator2 --skill uiautomator2
+# 或者
+gh skill install https://github.com/openatx/uiautomator2 skills/uiautomator2
+
+u2cli device-info
+u2cli screenshot screen.png
+u2cli dump-hierarchy
+u2cli click --text Settings
+```
+
 **欢迎多提意见。更欢迎Pull Request**

@@ -1308,6 +1308,19 @@ To use a non-default uiautomator2 server port, pass `-p`/`--port` after the subc
 # Agent CLI
 `u2cli` is a lightweight command-line wrapper around common device operations, useful for agent-driven workflows that need to inspect and control a device without writing Python code.
 
+## Skill
+
+This repository also ships a skill for Android device automation. After installing `uiautomator2`, you can add the bundled `uiautomator2` skill with either `npx` or `gh`:
+
+```sh
+npx skills add https://github.com/openatx/uiautomator2 --skill uiautomator2
+
+# or
+gh skill install https://github.com/openatx/uiautomator2 skills/uiautomator2
+```
+
+The installed skill uses `u2cli` under the hood, so make sure `pip install uiautomator2` is already available in your environment.
+
 ```sh
 u2cli device-info
 u2cli screenshot screen.png
