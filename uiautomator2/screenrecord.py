@@ -40,7 +40,9 @@ class Screenrecord:
         return self
 
     def _iter_minicap(self):
-        http_url = self._d.path2url("/minicap")
+        # since we do not know the originally renamed/refactored attrib/method of path2u we will manually constrct the address using string f
+        # http_url = self._d.path2url("/minicap")
+        http_url = f"{self._d.address}/minicap"
         ws_url = re.sub("^http", "ws", http_url)
         ws = create_connection(ws_url)
         try:
