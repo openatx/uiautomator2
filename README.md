@@ -1,6 +1,8 @@
 <!-- filepath: /Users/codeskyblue/Codes/uiautomator2/README.md -->
 # uiautomator2
 
+[![MCP Toplist](https://mcptoplist.com/badge/mcp.so%2Fmcp-android-agent-python%2Fnim444.svg)](https://mcptoplist.com/server/mcp.so%2Fmcp-android-agent-python%2Fnim444)
+
 [![PyPI](https://img.shields.io/pypi/v/uiautomator2.svg)](https://pypi.python.org/pypi/uiautomator2)
 ![PyPI](https://img.shields.io/pypi/pyversions/uiautomator2.svg)
 [![codecov](https://codecov.io/gh/openatx/uiautomator2/graph/badge.svg?token=d0ZLkqorBu)](https://codecov.io/gh/openatx/uiautomator2)
