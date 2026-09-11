@@ -43,9 +43,13 @@ uiautomator2 version
 
 
 ```sh
-pip install uiautodev
+# 推荐: 通过 npx 启动（需要安装 Node.js），会自动打开浏览器
+npx uiautodev -open
 
-# 命令行启动后会自动打开浏览器
+# 如果没有安装 Node.js，可直接从 https://get.uiauto.dev 下载对应平台的二进制文件运行
+
+# 备选: 通过 pip 安装 Python 版本
+pip install uiautodev
 uiautodev
 # or: python -m uiautodev
 ```

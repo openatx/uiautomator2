@@ -43,9 +43,14 @@ Install element inspection tool (optional, but highly recommended):
 > For more detailed usage instructions, refer to: https://github.com/codeskyblue/uiautodev QQ:536481989
 
 ```sh
-pip install uiautodev
+# Recommended: launch via npx (requires Node.js), it will automatically open the browser
+npx uiautodev -open
 
-# After starting from the command line, it will automatically open the browser
+# If Node.js is not installed, download the standalone binary for your platform
+# from https://get.uiauto.dev and run it directly.
+
+# Alternative: install the Python version via pip
+pip install uiautodev
 uiautodev
 # or: python -m uiautodev
 ```
