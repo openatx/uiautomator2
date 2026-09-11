@@ -40,7 +40,7 @@ uiautomator2 version
 
 Install element inspection tool (optional, but highly recommended):
 
-> For more detailed usage instructions, refer to: https://github.com/codeskyblue/uiautodev QQ:536481989
+> For more detailed usage instructions, refer to: https://github.com/uiautodev/uiautodev QQ:536481989
 
 ```sh
 # Recommended: launch via npx (requires Node.js), it will automatically open the browser

@@ -39,7 +39,7 @@ uiautomator2 version
 
 安装元素查看工具（可选，但是强烈推荐）
 
-> 更详细的使用说明参考: https://github.com/codeskyblue/uiautodev QQ:536481989
+> 更详细的使用说明参考: https://github.com/uiautodev/uiautodev QQ:536481989
 
 
 ```sh
