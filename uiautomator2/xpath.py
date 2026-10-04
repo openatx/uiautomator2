@@ -93,7 +93,7 @@ def strict_xpath(xpath: str) -> str:
         )
     elif xpath.startswith("%"):  # ends-with
         text = xpath[1:]
-        xpath = "//*[{0} = substring(@text, string-length(@text) - {1} + 1) or {0} = substring(@content-desc, string-length(@text) - {1} + 1)]".format(
+        xpath = "//*[{0} = substring(@text, string-length(@text) - {1} + 1) or {0} = substring(@content-desc, string-length(@content-desc) - {1} + 1)]".format(
             string_quote(text), len(text)
         )
     elif xpath.endswith("%"):  # starts-with

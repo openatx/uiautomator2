@@ -162,3 +162,19 @@ def test_xpath_element():
     assert mock.swipe.called
 
 
+def test_strict_xpath_endswith_matches_content_desc():
+    # "%foo" means ends-with on @text or @content-desc. The @content-desc side
+    # sliced from string-length(@text), so a node with empty text and a matching
+    # content-desc (e.g. an icon button) was never found. See strict_xpath.
+    m = Mock()
+    m.screenshot.return_value = Image.new("RGB", (1080, 1920), "white")
+    m.dump_hierarchy.return_value = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<hierarchy rotation="0">'
+        '<node index="0" text="" resource-id="" class="android.widget.ImageButton"'
+        ' content-desc="foobar" bounds="[0,0][100,100]" />'
+        '</hierarchy>'
+    )
+    assert len(XPathEntry(m)("%bar").all()) == 1
+
+
