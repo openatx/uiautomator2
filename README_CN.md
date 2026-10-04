@@ -179,6 +179,7 @@ sl.set_text("hello world") # 输入框输入 hello world
 ## 插件
 
 - webview: https://github.com/YuYoungG/uiautomator2-webview
+- flutter: https://github.com/assassinaj602/u2_flutter - Flutter 驱动插件，可定位并操作 Flutter 组件（如 `flutter.find_by_key("submit_btn").tap()`），解决原生视图层无法识别 Flutter 组件的问题。参见 [proposal #1191](https://github.com/openatx/uiautomator2/issues/1191)。
 
 为了保持项目的简洁与可扩展性，后续插件将以第三方库的形式接入。
 
