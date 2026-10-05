@@ -185,6 +185,7 @@ For more usage, refer to [XPath Interface Document](XPATH.md)
 ## Plugins
 
 - webview: https://github.com/YuYoungG/uiautomator2-webview
+- flutter: https://github.com/assassinaj602/u2_flutter - Flutter driver plugin, lets you locate and operate Flutter widgets (e.g., `flutter.find_by_key("submit_btn").tap()`) instead of the empty native view hierarchy. See [proposal #1191](https://github.com/openatx/uiautomator2/issues/1191).
 
 To maintain the project's simplicity and extensibility, future plugins will be integrated as third-party libraries.
 
