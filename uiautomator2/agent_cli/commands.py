@@ -10,7 +10,7 @@ import click
 
 from uiautomator2 import enable_pretty_logging
 from uiautomator2.agent_cli.click_ext import CategorizedGroup
-from uiautomator2.agent_cli.client import U2CliClient, U2CliError, ensure_server
+from uiautomator2.agent_cli.client import DEFAULT_REQUEST_TIMEOUT, U2CliClient, U2CliError, ensure_server
 from uiautomator2.agent_cli.options import _normalize_swipe_direction, _optional_float, _parse_swipe_fx, \
     _require_selector, _selector_chain, _selector_chain_code, _selector_chain_payload, global_options, handle_errors, \
     selector_options
@@ -69,6 +69,10 @@ def _request_device_method(
     payload: Dict[str, Any] = {"serial": g("serial"), "port": g("device_port")}
     if params:
         payload.update(params)
+    # Let the server finish the requested operation, with time for its response.
+    request_timeout = max(DEFAULT_REQUEST_TIMEOUT, float(payload.get("timeout") or 0) + 10)
+    if request_timeout > DEFAULT_REQUEST_TIMEOUT:
+        return client.request(method, payload, timeout=request_timeout)
     return client.request(method, payload)
 
 # ---------------------------------------------------------------------------
