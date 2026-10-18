@@ -1010,3 +1010,38 @@ def test_short_operations_keep_default_transport_timeout(argv):
             main(argv)
 
     assert urlopen.call_args.kwargs["timeout"] == 30.0
+
+
+@pytest.mark.parametrize("response", [[], [1], None, "text", 42, 1.5, True, False])
+def test_client_rejects_non_object_json_response(response):
+    client = agent_client.U2CliClient()
+    with patch("uiautomator2.agent_cli.client.request.urlopen",
+               return_value=BytesIO(json.dumps(response).encode())):
+        with pytest.raises(agent_client.U2CliError, match="invalid response.*expected a JSON object"):
+            client.status()
+
+
+@pytest.mark.parametrize("response", [[], [1], None, "text", 42, 1.5, True, False])
+def test_client_is_running_handles_non_object_json_response(response):
+    client = agent_client.U2CliClient()
+    with patch("uiautomator2.agent_cli.client.request.urlopen",
+               return_value=BytesIO(json.dumps(response).encode())):
+        assert client.is_running() is False
+
+
+@pytest.mark.parametrize("result", [{"protocol_version": 13}, [], None, "text", 42, True, False])
+def test_client_accepts_json_object_response_with_any_result(result):
+    with patch("uiautomator2.agent_cli.client.request.urlopen",
+               return_value=BytesIO(json.dumps({"ok": True, "result": result}).encode())):
+        assert agent_client.U2CliClient().request("test") == result
+
+
+@pytest.mark.parametrize("response, message", [
+    ({"ok": False, "error": "device unavailable"}, "device unavailable"),
+    ({}, "unknown u2cli server error"),
+])
+def test_client_json_object_error_response_still_raises_remote_error(response, message):
+    with patch("uiautomator2.agent_cli.client.request.urlopen",
+               return_value=BytesIO(json.dumps(response).encode())):
+        with pytest.raises(agent_client.RemoteError, match=message):
+            agent_client.U2CliClient().request("test")
