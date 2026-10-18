@@ -58,6 +58,9 @@ class U2CliClient(object):
         except ValueError as e:
             raise U2CliError("invalid response from u2cli server at %s: %s" % (self.base_url, e)) from e
 
+        if not isinstance(data, dict):
+            raise U2CliError("invalid response from u2cli server at %s: expected a JSON object" % self.base_url)
+
         if not data.get("ok"):
             raise RemoteError(data.get("error") or "unknown u2cli server error")
         return data.get("result")
