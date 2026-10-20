@@ -42,8 +42,13 @@ def safe_xmlstr(s: str) -> str:
 
 
 def string_quote(s: str) -> str:
-    """quick way to quote string"""
-    return "{!r}".format(s)
+    """Quote a string for XPath 1.0, which has no backslash escapes."""
+    if "'" not in s:
+        return "'{}'".format(s)
+    if '"' not in s:
+        return '"{}"'.format(s)
+    parts = ["'{}'".format(part) for part in s.split("'")]
+    return "concat({})".format(", \"'\", ".join(parts))
 
 
 def str2bytes(v: Union[str, bytes]) -> bytes:
@@ -82,7 +87,7 @@ def strict_xpath(xpath: str) -> str:
     if xpath.lstrip("(").startswith("/"):
         pass
     elif xpath.startswith("@"):
-        xpath = "//*[@resource-id={!r}]".format(xpath[1:])
+        xpath = "//*[@resource-id={}]".format(string_quote(xpath[1:]))
     elif xpath.startswith("^"):
         xpath = "//*[re:match(@text, {0}) or re:match(@content-desc, {0}) or re:match(@resource-id, {0})]".format(
             string_quote(xpath)
