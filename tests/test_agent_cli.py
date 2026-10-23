@@ -2,6 +2,8 @@
 
 import json
 import logging
+import subprocess
+import sys
 from http.client import IncompleteRead
 from io import BytesIO
 from unittest.mock import Mock, patch
@@ -918,14 +920,50 @@ def test_server_status_outputs_text(capsys):
     assert "running: True" in out
 
 
-def test_missing_command_shows_help(capsys):
-    with pytest.raises(SystemExit) as exc:
-        main([])
+@pytest.mark.parametrize("argv", [[], (), iter(()), None, ["--help"], ["-h"]])
+def test_missing_command_shows_help(capsys, monkeypatch, argv):
+    monkeypatch.setattr(sys, "argv", ["u2cli"])
+    with patch("uiautomator2.agent_cli.commands.ensure_server") as ensure_server:
+        with pytest.raises(SystemExit) as exc:
+            main(argv)
+
+    ensure_server.assert_not_called()
 
     assert exc.value.code == 0
-    out = capsys.readouterr().out
-    assert "Usage: u2cli" in out
-    assert "server commands:" in out
+    captured = capsys.readouterr()
+    assert "Usage: u2cli" in captured.out
+    assert "server commands:" in captured.out
+    assert captured.err == ""
+
+
+def test_module_without_arguments_matches_explicit_help():
+    command = [sys.executable, "-m", "uiautomator2.agent_cli"]
+    implicit = subprocess.run(command, capture_output=True, text=True, timeout=15)
+    explicit = subprocess.run(command + ["--help"], capture_output=True, text=True, timeout=15)
+
+    assert implicit.returncode == explicit.returncode == 0
+    assert implicit.stdout == explicit.stdout
+    assert "Usage: u2cli" in implicit.stdout
+    assert implicit.stderr == explicit.stderr == ""
+
+
+@pytest.mark.parametrize("argv, message", [
+    (["no-such-command"], "No such command"),
+    (["--no-such-option"], "No such option"),
+    (["--serial"], "requires an argument"),
+    (["--serial", "serial-1"], "Missing command"),
+    (["app-start"], "Missing argument"),
+])
+def test_invalid_cli_arguments_remain_errors(capsys, argv, message):
+    with patch("uiautomator2.agent_cli.commands.ensure_server") as ensure_server:
+        with pytest.raises(SystemExit) as exc:
+            main(argv)
+
+    ensure_server.assert_not_called()
+    assert exc.value.code == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert message in captured.err
 
 
 def test_unexpected_cli_error_does_not_print_traceback(capsys):
