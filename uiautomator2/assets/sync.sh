@@ -5,7 +5,7 @@ set -e
 
 APK_VERSION=$(cat ../version.py| grep apk_version | awk '{print $NF}')
 APK_VERSION=${APK_VERSION//[\"\']}
-JAR_VERSION="0.4.0"
+JAR_VERSION="0.4.1"
 
 cd "$(dirname $0)"
 
