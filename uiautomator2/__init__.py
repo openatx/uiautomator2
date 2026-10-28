@@ -558,13 +558,25 @@ class _AppMixIn(AbstractShell):
         """ Launch application
         Args:
             package_name (str): package name
-            activity (str): app activity
+            activity (str): app activity; resolves the launcher activity when omitted
             stop (bool): Stop app before starting the activity. (require activity)
-            use_monkey (bool): use monkey command to start app when activity is not given
+            use_monkey (bool): force monkey launch; also used if launcher resolution fails
             wait (bool): wait until app started. default False
         """
         if stop:
             self.app_stop(package_name)
+
+        if not activity and not use_monkey:
+            result = self.shell([
+                'cmd', 'package', 'resolve-activity', '--brief',
+                '-a', 'android.intent.action.MAIN',
+                '-c', 'android.intent.category.LAUNCHER', package_name
+            ])
+            lines = result.output.strip().splitlines()
+            if result.exit_code == 0 and lines:
+                package, separator, resolved_activity = lines[-1].strip().partition('/')
+                if separator and package == package_name and resolved_activity:
+                    activity = resolved_activity
 
         if use_monkey or not activity:
             self.shell([
@@ -574,12 +586,6 @@ class _AppMixIn(AbstractShell):
             if wait:
                 self.app_wait(package_name)
             return
-
-        # if not activity:
-        #     info = self.app_info(package_name)
-        #     activity = info['mainActivity']
-        #     if activity.find(".") == -1:
-        #         activity = "." + activity
 
         # -D: enable debugging
         # -W: wait for launch to complete
