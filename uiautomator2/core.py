@@ -10,14 +10,14 @@ import hashlib
 import json
 import logging
 import os
+import socket
 import threading
 import time
-from http.client import HTTPConnection
+from http.client import HTTPConnection, HTTPException
 from pathlib import Path
 from typing import Any, ClassVar, Dict, Optional, Tuple, Union
 
 import adbutils
-import requests
 
 from uiautomator2.abstract import AbstractUiautomatorServer
 from uiautomator2.exceptions import AccessibilityServiceAlreadyRegisteredError, APKSignatureError, HTTPError, \
@@ -105,6 +105,9 @@ class AdbHTTPConnection(HTTPConnection):
             self.sock = self.__device.create_connection(adbutils.Network.TCP, self.__port)
         except adbutils.AdbError as e:
             raise HTTPError(f"Unable to connect to uiautomator2 server: {e}") from e
+        # adbutils leaves its own long timeout on the socket, apply ours instead
+        if self.timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
+            self.sock.settimeout(self.timeout)
 
     def __enter__(self) -> HTTPConnection:
         return self
@@ -146,9 +149,7 @@ def _http_request(dev: adbutils.AdbDevice, device_port: int, method: str, path: 
             else:
                 conn.request(method, path, json.dumps(data), headers=headers)
             _response = conn.getresponse()
-            content = bytearray()
-            while chunk := _response.read(4096):
-                content.extend(chunk)
+            content = _response.read()
             if _response.status != 200:
                 raise HTTPError(f"HTTP request failed: {_response.status} {_response.reason}")
             response = HTTPResponse(content)
@@ -160,9 +161,9 @@ def _http_request(dev: adbutils.AdbDevice, device_port: int, method: str, path: 
             print(response.text.rstrip())
             print(f"<<< END timed_used = %.3f\n" % (end_time - start_time).total_seconds())
         return response
-    except requests.Timeout as e:
+    except (socket.timeout, TimeoutError) as e:
         raise HTTPTimeoutError(f"HTTP request timeout: {e}") from e
-    except requests.RequestException as e:
+    except (OSError, HTTPException) as e:
         raise HTTPError(f"HTTP request failed: {e}") from e
 
 
