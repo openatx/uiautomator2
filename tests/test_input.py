@@ -19,7 +19,7 @@ class MockInputMethodMixIn(InputMethodMixIn):
         self._jsonrpc = Mock()
         self._broadcast_calls = []
         self._shell_calls = []
-        self._current_ime = 'com.github.uiautomator/.AdbKeyboard'
+        self._current_ime = 'com.github.uiautomator2/.AdbKeyboard'
     
     @property
     def adb_device(self):

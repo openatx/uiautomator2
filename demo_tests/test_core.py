@@ -27,7 +27,7 @@ def test_uiautomator_keeper(d: u2.Device):
     kill_app_process(d)
     d.sleep(.2)
     assert get_app_process_pid(d) is None
-    d.shell('rm /data/local/tmp/u2.jar')
+    d.shell('rm /data/local/tmp/u2.apk')
     
     d.start_uiautomator()
     assert get_app_process_pid(d) > 0

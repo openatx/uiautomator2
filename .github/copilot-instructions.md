@@ -21,8 +21,8 @@ Always reference these instructions first and fallback to search or bash command
 - `poetry run uiautomator2 version` -- Check CLI functionality. Should output version number.
 
 ### Asset Synchronization (Optional)
-- `make sync` -- Download required APK and JAR assets. FAILS due to network restrictions in sandboxed environment. This is EXPECTED and not required for development.
-- Asset sync downloads Android APK and u2.jar from external hosts which are blocked in this environment.
+- `make sync` -- Download required u2.apk asset. FAILS due to network restrictions in sandboxed environment. This is EXPECTED and not required for development.
+- Asset sync downloads u2.apk from external hosts which are blocked in this environment.
 
 ### Commands That Will Fail (Expected)
 - `make test` -- Mobile tests require Android device via ADB. Will fail with "Can't find any android device/emulator" - this is EXPECTED.
@@ -55,7 +55,7 @@ After making changes, ALWAYS run this validation sequence:
 
 ### Test Directories
 - `tests/` -- Unit tests (25 tests, no device required)
-- `mobile_tests/` -- Integration tests (30 tests, require Android device)
+- `e2e_tests/` -- Integration/e2e tests (30 tests, require Android device)
 - `demo_tests/` -- Example/demo tests
 
 ### Build Configuration

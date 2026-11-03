@@ -3,9 +3,8 @@
 
 set -e
 
-APK_VERSION=$(cat ../version.py| grep apk_version | awk '{print $NF}')
-APK_VERSION=${APK_VERSION//[\"\']}
-JAR_VERSION="0.4.1"
+U2_VERSION=$(cat ../version.py| grep __u2_version__ | awk '{print $NF}')
+U2_VERSION=${U2_VERSION//[\"\']}
 
 cd "$(dirname $0)"
 
@@ -17,32 +16,17 @@ function download() {
 	curl -L "$URL" --output "$OUTPUT"
 }
 
-function download_apk(){
-	local VERSION=$1
-	local NAME=$2
-	local URL="https://github.com/openatx/android-uiautomator-server/releases/download/$VERSION/$NAME"
-	download "$URL" "$NAME"
-	unzip -tq "$NAME"
+function download_apk() {
+	local URL="https://github.com/openatx/android-uiautomator-server-jar/releases/download/$U2_VERSION/u2.apk"
+	download "$URL" "u2.apk"
+	unzip -tq "u2.apk"
 }
 
-function download_jar() {
-	local URL="https://github.com/openatx/android-uiautomator-server-jar/releases/download/$JAR_VERSION/u2.jar"
-	download "$URL" "u2.jar"
-	if test -s u2.jar; then
-		echo "Download Jar sucessfully"
-	else
-		echo "Download Jar failed"
-		exit 1
-	fi
-}
+echo "U2_VERSION: $U2_VERSION"
 
-echo "APK_VERSION: $APK_VERSION"
-
-download_jar
-download_apk "$APK_VERSION" "app-uiautomator.apk"
+download_apk
 cat > version.json <<EOF
 {
-  "com.github.uiautomator": "$APK_VERSION",
-  "u2.jar": "$JAR_VERSION"
+  "u2.apk": "$U2_VERSION"
 }
 EOF

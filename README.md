@@ -22,10 +22,10 @@ This framework mainly consists of two parts:
 
 Simply put, it exposes Android automation capabilities to Python through HTTP interfaces. This design makes Python-side code writing simpler and more intuitive.
 
-> The Device Side run with a jar file which is also open source. see <https://github.com/openatx/android-uiautomator-server-jar>
+> The Device Side runs with an APK which is also open source. see <https://github.com/openatx/android-uiautomator-server-jar>
 
 # Dependencies
-- Android version 4.4+
+- Android version 5.0+
 - Python 3.8+
 
 # Installation
@@ -286,7 +286,7 @@ Set or get clipboard content.
     d.set_clipboard('hello-world', 'label')
 
     # Get clipboard
-    # Depends on input method (com.github.uiautomator/.AdbKeyboard)
+    # Depends on input method (com.github.uiautomator2/.AdbKeyboard)
     d.set_input_ime()
     print(d.clipboard)
     ```

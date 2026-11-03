@@ -5,41 +5,9 @@
 __version__ = '0.0.0'
 
 
-# see release note for details <https://github.com/openatx/android-uiautomator-server/releases>
-__apk_version__ = '2.4.0'
-
-# old apk version history
-# 2.3.3 make float windows smaller
-# 2.3.2 merge pull requests # require atx-agent>=0.10.0
-# 2.3.1 support minicapagent, rotationagent, minitouchagent
-# 2.2.1 fix click bottom(infinitly display) not working bug
-# 2.2.0 add MinitouchAgent instead of /data/local/tmp/minitouch
-# 2.1.1 add show floatWindow support(pm grant, still have no idea), add TC_TREND analysis
-# 2.0.5 add ToastActivity to show toast or just launch and quit
-# 2.0.4 fix floatingWindow crash on Sumsung Android 9
-# 2.0.3 use android.app.Service instead of android.app.intentService to simpfy logic
-# 2.0.2 fix error: AndroidQ Service must be explicit
-# 2.0.1 fix AndroidQ support
-# 2.0.0 remove runWatchersOnWndowsChange, add setToastListener(bool), add floatWindow
-# 1.1.7 fix dumpHierarchy XML charactor error
-# 1.1.6 fix android P support
-# 1.1.5 waitForExists use UiObject2 method first then fallback to UiObject.waitForExists
-# 1.1.4 add ADB_EDITOR_CODE broadcast support, fix bug （toast捕获导致app闪退)
-# 1.1.3 use thread to make watchers.watched faster, try to fix input method type multi
-# 1.1.2 fix count error when have child && sync watched, to prevent watchers.remove error
-# 1.1.1 support toast capture
-# 1.1.0 update uiautomator-v18:2.1.2 -> uiautomator-v18:2.1.3 (This version fixed setWaitIdleTimeout not working bug)
-# 1.0.14 catch NullException, add gps mock support
-# 1.0.13 whatsinput suppoort, but not very well
-# 1.0.12 add toast support
-# 1.0.11 add auto install support
-# 1.0.10 fix service not started bug
-# 1.0.9 fix apk version code and version name
-# ERR: 1.0.8 bad version number. show ip on notification
-# ERR: 1.0.7 bad version number. new input method, some bug fix
-
-# __jar_version__ = 'v0.1.6'  # no useless for now.
-# v0.1.6 first release version
+# device side server apk version, sync.sh should also be updated
+# see release note for details <https://github.com/openatx/android-uiautomator-server-jar/releases>
+__u2_version__ = '0.5.0'
 
 # __atx_agent_version__ = '0.10.1' # sync.sh verison should also be updated
 # 0.10.1 update androidbinary version, https://github.com/openatx/atx-agent/issues/115

@@ -38,12 +38,13 @@ def cmd_init(args):
     if serial:
         d = u2.connect(serial, port=args.port)
         logger.debug("install apk to %s", d.serial)
-        d._setup_jar()
+        d._setup_apk()
+        d._setup_ime()
     else:
         for dev in adbutils.adb.iter_device():
             d = u2.connect(dev, port=args.port)
             logger.debug("install apk to %s", d.serial)
-            d._setup_jar()
+            d._setup_apk()
             d._setup_ime()
 
 
@@ -52,29 +53,26 @@ def cmd_purge(args):
     dev = adbutils.adb.device(args.serial)
     dev.uninstall("com.github.uiautomator")
     dev.uninstall("com.github.uiautomator.test")
+    dev.uninstall("com.github.uiautomator2")
     dev.shell(["/data/local/tmp/atx-agent", "server", "--stop"])
     dev.shell(["rm", "/data/local/tmp/atx-agent"])
     logger.info("atx-agent stopped and removed")
     dev.shell(["rm", "/data/local/tmp/minicap"])
     dev.shell(["rm", "/data/local/tmp/minicap.so"])
     dev.shell(["rm", "/data/local/tmp/minitouch"])
-    logger.info("minicap, minitouch removed")
-    dev.shell(["pm", "uninstall", "com.github.uiautomator"])
-    dev.shell(["pm", "uninstall", "com.github.uiautomator.test"])
-    logger.info("com.github.uiautomator uninstalled, all done !!!")
+    dev.shell(["rm", "/data/local/tmp/u2.apk"])
+    dev.shell(["rm", "/data/local/tmp/u2.jar"])
+    logger.info("minicap, minitouch, u2.apk removed")
+    logger.info("com.github.uiautomator2 uninstalled, all done !!!")
 
 
 def cmd_copy_assets(args):
     target_dir = pathlib.Path("assets")
     target_dir.mkdir(exist_ok=True)
-    with with_package_resource("assets/u2.jar") as jar_path:
-        target_path = target_dir / "u2.jar"
-        shutil.copy2(jar_path, target_path)
-        print("Copied u2.jar to", target_path)
-    with with_package_resource("assets/app-uiautomator.apk") as apk_path:
-        target_path = target_dir / "app-uiautomator.apk"
+    with with_package_resource("assets/u2.apk") as apk_path:
+        target_path = target_dir / "u2.apk"
         shutil.copy2(apk_path, target_path)
-        print("Copied app-uiautomator.apk to", target_path)
+        print("Copied u2.apk to", target_path)
         
 def cmd_screenshot(args):
     d = u2.connect(args.serial, port=args.port)

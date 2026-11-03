@@ -44,19 +44,22 @@ class InputMethodMixIn(AbstractShell):
     
     @property
     def __ime_id(self) -> str:
-        return 'com.github.uiautomator/.AdbKeyboard'
+        return 'com.github.uiautomator2/.AdbKeyboard'
 
     def set_input_ime(self, enable: bool = True):
         """ Enable of Disable InputIME """
         if not enable:
             self.shell(['ime', 'disable', self.__ime_id])
             return
+        ime_list = self.__get_ime_list()
+        if self.__ime_id not in ime_list:
+            # default_input_method may keep a stale value after the apk is
+            # uninstalled or upgraded, so always verify the ime is installed.
+            self._setup_ime()
+            ime_list = self.__get_ime_list()
         if self.current_ime() == self.__ime_id:
             return
-        # prepare ime
-        if self.__ime_id not in self.__get_ime_list():
-            self._setup_ime()
-        assert self.__ime_id in self.__get_ime_list()
+        assert self.__ime_id in ime_list
         
         self.shell(['ime', 'enable', self.__ime_id])
         self.shell(['ime', 'set', self.__ime_id])
@@ -68,10 +71,12 @@ class InputMethodMixIn(AbstractShell):
         
     def _setup_ime(self):
         logger.debug("installing AdbKeyboard ime")
-        with with_package_resource("assets/app-uiautomator.apk") as ime_apk_path:
+        # The u2.apk bundles the AdbKeyboard input method, it also runs the
+        # jsonrpc server through app_process after being pushed to the device.
+        with with_package_resource("assets/u2.apk") as ime_apk_path:
             try:
                 self.adb_device.install(str(ime_apk_path), nolaunch=True, uninstall=True)
-            except adbutils.AdbError as e:
+            except adbutils.AdbError:
                 self.adb_device.uninstall(self.__ime_id.split('/')[0])
                 self.adb_device.install(str(ime_apk_path), nolaunch=True, uninstall=True)
             
@@ -159,7 +164,7 @@ class InputMethodMixIn(AbstractShell):
             ime_method
 
         Example output:
-            "com.github.uiautomator/.FastInputIME"
+            "com.github.uiautomator2/.AdbKeyboard"
         """
         return self.shell(['settings', 'get', 'secure', 'default_input_method']).output.strip()
         # _INPUT_METHOD_RE = re.compile(r'mCurMethodId=([-_./\w]+)')

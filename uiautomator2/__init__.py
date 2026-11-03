@@ -670,7 +670,7 @@ class _AppMixIn(AbstractShell):
         Returns:
             a list of killed apps
         """
-        our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
+        our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test', 'com.github.uiautomator2']
         kill_pkgs = set(self.app_list_running()).difference(our_apps +
                                                             excludes)
         for pkg_name in kill_pkgs:
@@ -692,7 +692,7 @@ class _AppMixIn(AbstractShell):
 
     def app_uninstall_all(self, excludes=[], verbose=False):
         """ Uninstall all apps """
-        our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test']
+        our_apps = ['com.github.uiautomator', 'com.github.uiautomator.test', 'com.github.uiautomator2']
         output, _ = self.shell(['pm', 'list', 'packages', '-3'])
         pkgs = re.findall(r'package:([^\s]+)', output)
         pkgs = set(pkgs).difference(our_apps + excludes)

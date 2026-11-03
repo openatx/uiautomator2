@@ -31,7 +31,9 @@ def test_wait_timeout(d: u2.Device):
 
 
 def test_operation_delay(dev: u2.Session):
-    x, y = dev(text="App").center()
+    obj = dev(text="App")
+    assert obj.wait(timeout=10)
+    x, y = obj.center()
 
     # 测试前延迟
     start = time.time()

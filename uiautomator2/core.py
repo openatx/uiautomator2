@@ -24,7 +24,6 @@ from uiautomator2.exceptions import AccessibilityServiceAlreadyRegisteredError, 
     HTTPTimeoutError, LaunchUiAutomationError, RPCInvalidError, RPCStackOverflowError, RPCUnknownError, \
     UiAutomationNotConnectedError, UiObjectNotFoundError
 from uiautomator2.utils import with_package_resource
-from uiautomator2.version import __apk_version__
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +74,7 @@ class MockAdbProcess:
 
 def launch_uiautomator(dev: adbutils.AdbDevice, port: int) -> MockAdbProcess:
     """Launch uiautomator2 server on device"""
-    command = f"CLASSPATH=/data/local/tmp/u2.jar app_process / com.wetest.uia2.Main -p {port}"
+    command = f"CLASSPATH=/data/local/tmp/u2.apk app_process / com.github.uiautomator2.Console -p {port}"
     logger.debug("launch uiautomator with cmd: %s", command)
     conn = dev.shell(command, stream=True)
     process = MockAdbProcess(conn)
@@ -247,7 +246,7 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
             LaunchUiautomatorError: uiautomator2 server not ready
         """
         with self._lock:
-            self._setup_jar()
+            self._setup_apk()
             if self._process:
                 if self._process.pool() is not None:
                     self._process = None
@@ -255,14 +254,18 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
                 self._process = launch_uiautomator(self._dev, self._device_server_port)
                 self._wait_ready()
 
-    def _setup_jar(self):
-        with with_package_resource("assets/u2.jar") as jar_path:
-            target_path = "/data/local/tmp/u2.jar"
-            if self._check_device_file_hash(jar_path, target_path):
-                logger.debug("file u2.jar already pushed")
+    def _setup_apk(self):
+        with with_package_resource("assets/u2.apk") as apk_path:
+            target_path = "/data/local/tmp/u2.apk"
+            if self._check_device_file_hash(apk_path, target_path):
+                logger.debug("file u2.apk already pushed")
             else:
-                logger.debug("push %s -> %s", jar_path, target_path)
-                self._dev.sync.push(jar_path, target_path, check=True)
+                logger.debug("push %s -> %s", apk_path, target_path)
+                self._dev.sync.push(apk_path, target_path, check=True)
+
+    def _setup_jar(self):
+        """Deprecated, use _setup_apk instead """
+        self._setup_apk()
     
     def _check_device_file_hash(self, local_file: Union[str, Path], remote_file: str) -> bool:
         """ check if remote file hash is correct """
