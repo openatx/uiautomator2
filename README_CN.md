@@ -24,7 +24,7 @@
 - Discord: <https://discord.gg/PbJhnZJKDd>
 
 # 依赖
-- Android版本 4.4+
+- Android版本 5.0+
 - Python 3.8+
 
 # 安装
@@ -281,7 +281,7 @@ print(d.wlan_ip)
     d.set_clipboard('hello-world', 'label')
 
     # 获取剪贴板
-    # 依赖输入法(com.github.uiautomator/.AdbKeyboard)
+    # 依赖输入法(com.github.uiautomator2/.AdbKeyboard)
     d.set_input_ime()
     print(d.clipboard)
     ```

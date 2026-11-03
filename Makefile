@@ -4,7 +4,7 @@ format:
 	poetry run isort . -m HANGING_INDENT -l 120
 
 test:
-	poetry run pytest -v mobile_tests/
+	poetry run pytest -v e2e_tests/
 
 covtest:
 	poetry run coverage run -m pytest -v demo_tests tests
