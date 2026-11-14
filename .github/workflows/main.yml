@@ -9,28 +9,41 @@ on:
   pull_request:
     branches:
       - master
+  # Nightly run on master so retired runner images or Python builds vanish
+  # loudly overnight instead of being discovered by the next pull request.
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build-and-publish:
     name: ${{ matrix.os }} / ${{ matrix.python-version }}
     runs-on: ${{ matrix.image }}
+    timeout-minutes: 20
     strategy:
-      matrix:
-        os: [Ubuntu, Windows]
-        python-version: ["3.8", "3.11"]
-        include:
-          - os: Ubuntu
-            image: ubuntu-latest
-          - os: Windows
-            image: windows-2022
-          - os: macOS
-            image: macos-12
       fail-fast: false
+      matrix:
+        # Explicit combinations: every entry must carry python-version, or the
+        # job name loses it. The old macOS entry had none and ran as "macOS /".
+        include:
+          - { os: Ubuntu,  image: ubuntu-24.04, python-version: "3.8"  }
+          - { os: Ubuntu,  image: ubuntu-24.04, python-version: "3.11" }
+          - { os: Windows, image: windows-2022, python-version: "3.8"  }
+          - { os: Windows, image: windows-2022, python-version: "3.11" }
+          # Python 3.8 has no macOS arm64 build, so macOS runs 3.11.
+          - { os: macOS,   image: macos-15,     python-version: "3.11" }
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -62,14 +75,8 @@ jobs:
       run: |
         make cov
 
-    - name: Upload test results to Codecov
-      if: ${{ !cancelled() }} # Run even if tests fail
-      uses: codecov/test-results-action@v1
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4.0.1
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: openatx/uiautomator2
