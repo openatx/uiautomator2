@@ -1,16 +1,17 @@
 # coding: utf-8
 #
 
-import hashlib
 import json
 import socket
 import struct
 import threading
 import time
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import Mock, patch
 
 import pytest
+from adbutils import FileInfo
 
 from uiautomator2.core import DEFAULT_SERVER_PORT, BasicUiautomatorServer, _http_request
 from uiautomator2.exceptions import HTTPError, HTTPTimeoutError
@@ -27,94 +28,43 @@ def mock_server():
         yield server, mock_dev
 
 
-class TestCheckDeviceFileHash:
-    """Test the _check_device_file_hash method with toybox fallback"""
-    
-    def test_toybox_md5sum_success(self, mock_server):
-        """Test when toybox md5sum command works correctly"""
+class TestCheckDeviceFileSize:
+    """Test the _check_device_file_size method"""
+
+    def test_same_size(self, mock_server, tmp_path):
+        """Test when the remote file has the same size as the local one"""
         server, mock_dev = mock_server
-        
-        # Create a temporary file with known content
-        test_content = b"test content for md5"
-        local_md5 = hashlib.md5(test_content).hexdigest()
-        
-        # Mock the shell command to return toybox md5sum output
-        # Format: "md5hash  filename"
-        mock_dev.shell.return_value = f"{local_md5}  /data/local/tmp/u2.jar"
-        
-        # Mock the file read to return our test content
-        with patch("builtins.open", mock_open(read_data=test_content)):
-            result = server._check_device_file_hash("test.jar", "/data/local/tmp/u2.jar")
-        
-        # Verify the result is True (hash matches)
-        assert result is True
-        # Verify toybox md5sum was called
-        mock_dev.shell.assert_called_once_with(["toybox", "md5sum", "/data/local/tmp/u2.jar"])
-    
-    def test_toybox_not_found_fallback_to_md5(self, mock_server):
-        """Test fallback to md5 command when toybox is not found"""
+        local_file = tmp_path / "u2.jar"
+        local_file.write_bytes(b"test content")
+        mock_dev.sync.stat.return_value = FileInfo(
+            mode=0o100644, size=len(b"test content"), mtime=datetime.now(), path="/data/local/tmp/u2.jar")
+
+        assert server._check_device_file_size(local_file, "/data/local/tmp/u2.jar") is True
+        mock_dev.sync.stat.assert_called_once_with("/data/local/tmp/u2.jar")
+        # no shell command should be used anymore
+        mock_dev.shell.assert_not_called()
+
+    def test_size_mismatch(self, mock_server, tmp_path):
+        """Test when the remote file has a different size"""
         server, mock_dev = mock_server
-        
-        # Create a temporary file with known content
-        test_content = b"test content for md5"
-        local_md5 = hashlib.md5(test_content).hexdigest()
-        
-        # Mock the shell command to return different outputs
-        # First call: toybox not found
-        # Second call: md5 command output (format: "MD5 (filename) = md5hash")
-        mock_dev.shell.side_effect = [
-            "toybox: not found",
-            f"MD5 (/data/local/tmp/u2.jar) = {local_md5}"
-        ]
-        
-        # Mock the file read to return our test content
-        with patch("builtins.open", mock_open(read_data=test_content)):
-            result = server._check_device_file_hash("test.jar", "/data/local/tmp/u2.jar")
-        
-        # Verify the result is True (hash matches)
-        assert result is True
-        # Verify both commands were called
-        assert mock_dev.shell.call_count == 2
-        assert mock_dev.shell.call_args_list[0][0][0] == ["toybox", "md5sum", "/data/local/tmp/u2.jar"]
-        assert mock_dev.shell.call_args_list[1][0][0] == ["md5", "/data/local/tmp/u2.jar"]
-    
-    def test_hash_mismatch(self, mock_server):
-        """Test when the hash doesn't match"""
+        local_file = tmp_path / "u2.jar"
+        local_file.write_bytes(b"test content")
+        mock_dev.sync.stat.return_value = FileInfo(
+            mode=0o100644, size=1, mtime=datetime.now(), path="/data/local/tmp/u2.jar")
+
+        assert server._check_device_file_size(local_file, "/data/local/tmp/u2.jar") is False
+        mock_dev.shell.assert_not_called()
+
+    def test_file_not_exists(self, mock_server, tmp_path):
+        """Test when the remote file does not exist (adbutils reports mtime None)"""
         server, mock_dev = mock_server
-        
-        # Create a temporary file with known content
-        test_content = b"test content for md5"
-        different_md5 = hashlib.md5(b"different content").hexdigest()
-        
-        # Mock the shell command to return a different hash
-        mock_dev.shell.return_value = f"{different_md5}  /data/local/tmp/u2.jar"
-        
-        # Mock the file read to return our test content
-        with patch("builtins.open", mock_open(read_data=test_content)):
-            result = server._check_device_file_hash("test.jar", "/data/local/tmp/u2.jar")
-        
-        # Verify the result is False (hash doesn't match)
-        assert result is False
-    
-    def test_md5_command_also_fails(self, mock_server):
-        """Test when both toybox and md5 commands fail to find the file"""
-        server, mock_dev = mock_server
-        
-        # Create a temporary file with known content
-        test_content = b"test content for md5"
-        
-        # Mock the shell command to return errors for both commands
-        mock_dev.shell.side_effect = [
-            "toybox: not found",
-            "md5: /data/local/tmp/u2.jar: No such file or directory"
-        ]
-        
-        # Mock the file read to return our test content
-        with patch("builtins.open", mock_open(read_data=test_content)):
-            result = server._check_device_file_hash("test.jar", "/data/local/tmp/u2.jar")
-        
-        # Verify the result is False (file not found on device)
-        assert result is False
+        local_file = tmp_path / "u2.jar"
+        local_file.write_bytes(b"test content")
+        mock_dev.sync.stat.return_value = FileInfo(
+            mode=0, size=0, mtime=None, path="/data/local/tmp/u2.jar")
+
+        assert server._check_device_file_size(local_file, "/data/local/tmp/u2.jar") is False
+        mock_dev.shell.assert_not_called()
 
 
 class FakeU2Handler(BaseHTTPRequestHandler):

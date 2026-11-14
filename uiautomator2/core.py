@@ -6,7 +6,6 @@
 
 import atexit
 import datetime
-import hashlib
 import json
 import logging
 import os
@@ -258,23 +257,21 @@ class BasicUiautomatorServer(AbstractUiautomatorServer):
     def _setup_jar(self):
         with with_package_resource("assets/u2.jar") as jar_path:
             target_path = "/data/local/tmp/u2.jar"
-            if self._check_device_file_hash(jar_path, target_path):
+            if self._check_device_file_size(jar_path, target_path):
                 logger.debug("file u2.jar already pushed")
             else:
                 logger.debug("push %s -> %s", jar_path, target_path)
                 self._dev.sync.push(jar_path, target_path, check=True)
     
-    def _check_device_file_hash(self, local_file: Union[str, Path], remote_file: str) -> bool:
-        """ check if remote file hash is correct """
-        md5 = hashlib.md5()
-        with open(local_file, "rb") as f:
-            md5.update(f.read())
-        local_md5 = md5.hexdigest()
-        logger.debug("file %s md5: %s", os.path.basename(local_file), local_md5)
-        output = self._dev.shell(["toybox", "md5sum", remote_file])
-        if "toybox" in output and "not found" in output:
-            output = self._dev.shell(["md5", remote_file])
-        return local_md5 in output
+    def _check_device_file_size(self, local_file: Union[str, Path], remote_file: str) -> bool:
+        """ check whether remote file exists and has the same size as the local one """
+        local_size = os.path.getsize(local_file)
+        remote_info = self._dev.sync.stat(remote_file)
+        # adbutils returns mtime None when the file does not exist
+        if remote_info.mtime is None:
+            return False
+        logger.debug("file %s size: local=%d remote=%d", os.path.basename(local_file), local_size, remote_info.size)
+        return local_size == remote_info.size
 
     def _wait_ready(self, launch_timeout=30):
         """Wait until uiautomator2 server is ready"""
