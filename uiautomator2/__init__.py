@@ -472,6 +472,89 @@ class _Device(_BaseClient):
         return UiObject(self, Selector(**kwargs))
 
 
+# dumpsys activity activities prints one "Display #N" section per display and
+# one "* Task{...}" block per task. The header is the only reliable marker:
+# nested task fragments and activities are indented differently across versions.
+_DISPLAY_SECTION_RE = re.compile(r'(?m)^Display #(?P<id>\d+) \(activities from top to bottom\):')
+_TASK_BLOCK_RE = re.compile(r'(?m)^[ \t]*\*?[ \t]*(?:Root)?Task\{')
+# Android 13+ uses "topResumedActivity=", older versions "mResumedActivity:".
+_RESUMED_ACTIVITY_RE = re.compile(
+    r'(?<!\w)(?:topResumedActivity=|mResumedActivity:|ResumedActivity:)[ \t]*'
+    r'ActivityRecord\{[ \t]*[0-9a-f]+[ \t]+(?:u-?\d+[ \t]+)?'
+    r'(?P<package>[^\s/]+)/(?P<activity>[^\s}]+)')
+_PROCESS_RECORD_RE = re.compile(
+    r'app=ProcessRecord\{[ \t]*[0-9a-f]+[ \t]+(?P<pid>\d+):(?P<process>[^\s/]+)')
+
+
+def _parse_resumed_activity(text: str) -> Optional[Dict[str, Any]]:
+    m = _RESUMED_ACTIVITY_RE.search(text)
+    if not m:
+        return None
+    info = {
+        'package': m.group('package'),
+        'activity': m.group('activity'),
+        'pid': 0,
+    }
+    for process in _PROCESS_RECORD_RE.finditer(text):
+        process_name = process.group('process')
+        if process_name == info['package'] or process_name.startswith(info['package'] + ':'):
+            info['pid'] = int(process.group('pid'))
+            break
+    return info
+
+
+def _parse_foreground_app(output: str) -> Optional[Dict[str, Any]]:
+    """Return the app of the visible task from `dumpsys activity activities` output.
+
+    Window focus is not used on purpose: a floating window or a system dialog can
+    hold focus while the user's app is still the one on screen. Only tasks that
+    Android reports as visible are considered, and the primary display is
+    preferred so a task on a secondary display cannot win.
+    """
+    matches = list(_DISPLAY_SECTION_RE.finditer(output))
+    sections = []
+    for index, m in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(output)
+        sections.append((int(m.group('id')), output[m.end():end]))
+    if sections:
+        # Sections are printed from top to bottom, so take Display #0 if present.
+        section = next((text for display_id, text in sections if display_id == 0), sections[0][1])
+    else:
+        section = output
+
+    parts = _TASK_BLOCK_RE.split(section)
+    blocks = parts[1:]
+    if blocks:
+        # Only the task header carries the task's own visibility. Activity
+        # records further down the block may also print "visible=false" (for a
+        # paused activity in the same task), which must not hide the whole task.
+        headers = [block.split('\n', 1)[0] for block in blocks]
+        has_visibility = any('visible=' in header for header in headers)
+        candidates = [block for block, header in zip(blocks, headers) if not re.search(r'\bvisible=false\b', header)]
+        if has_visibility:
+            if not candidates:
+                # Everything is hidden (screen off, keyguard): don't guess from
+                # stale resumed lines, let the adbutils fallback answer or raise.
+                return None
+            for block in candidates:
+                info = _parse_resumed_activity(block)
+                if info:
+                    return info
+            # Android 13/14 prints the top-level resumed activity before the
+            # task blocks. Keep that preamble and the visible blocks, but drop
+            # hidden tasks so their stale activity cannot win.
+            return _parse_resumed_activity(parts[0] + ''.join(candidates))
+
+        # Older dumps have no visibility flag and only one task block.
+        info = _parse_resumed_activity(blocks[0])
+        if info:
+            return info
+
+    # Very old dumps put the resumed activity after the stacks. Use the first
+    # one, not the last ACTIVITY like `dumpsys activity top` does.
+    return _parse_resumed_activity(output)
+
+
 class _AppMixIn(AbstractShell):
     _device_server_port: int  # must be provided by BasicUiautomatorServer in the MRO
 
@@ -523,6 +606,15 @@ class _AppMixIn(AbstractShell):
         For developer:
             Function reset_uiautomator need this function, so can't use jsonrpc here.
         """
+        # adbutils looks at window focus first, which floating windows, dialogs
+        # and secondary displays can steal, and falls back to `dumpsys activity
+        # top` where the last ACTIVITY is often a background app. Prefer the
+        # activity manager's visible task instead.
+        output = self.shell(['dumpsys', 'activity', 'activities']).output
+        info = _parse_foreground_app(output)
+        if info:
+            return info
+
         info = self.adb_device.app_current()
         if info:
             return dataclasses.asdict(info)

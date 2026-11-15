@@ -1,0 +1,17 @@
+ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
+Display #0 (activities from top to bottom):
+  Stack #4: type=standard mode=fullscreen
+  isSleeping=false
+  mBounds=Rect(0, 0 - 0, 0)
+    Task id #51
+    mBounds=Rect(0, 0 - 0, 0)
+    mMinWidth=-1
+    mMinHeight=-1
+    mLastNonFullscreenBounds=null
+Running activities (most recent first):
+  TaskRecord{e0bdfdf #51 A=android.tplink.sjj.teststack U=0 StackId=4 sz=2}
+    Run #1: ActivityRecord{898d92a u0 android.tplink.sjj.teststack/.FirstActivity t51}
+    Run #0: ActivityRecord{4542de6 u0 android.tplink.sjj.teststack/.MainActivity t51}
+
+mResumedActivity: ActivityRecord{898d92a u0 android.tplink.sjj.teststack/.FirstActivity t51}
+mLastPausedActivity: ActivityRecord{4542de6 u0 android.tplink.sjj.teststack/.MainActivity t51}
