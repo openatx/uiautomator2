@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -5,6 +6,14 @@ from adbutils import RunningAppInfo
 
 from uiautomator2 import Device
 from uiautomator2.exceptions import DeviceError
+
+FIXTURES = Path(__file__).parent / 'fixtures' / 'dumpsys'
+
+
+def dumpsys(name):
+    # Fixtures are real `adb shell dumpsys activity activities` excerpts; see
+    # fixtures/dumpsys/README.md for devices, states and public sources.
+    return (FIXTURES / name).read_text(encoding='utf-8')
 
 
 def make_device(output, fallback=None):
@@ -21,81 +30,44 @@ def app_current(output, fallback=None):
     return info
 
 
-def test_floating_window_does_not_steal_current_app():
-    output = """ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
-Display #0 (activities from top to bottom):
-  * Task{8a7f2c1 #105 type=standard A=10234:org.telegram.messenger U=0 visible=false mode=fullscreen translucent=false sz=1}
-    isSleeping=false
-    topResumedActivity=ActivityRecord{6a3d5e1 u0 org.telegram.messenger/.LaunchActivity t105}
-    Hist #0: ActivityRecord{6a3d5e1 u0 org.telegram.messenger/.LaunchActivity t105}
-      app=ProcessRecord{93c2a11 4321:org.telegram.messenger/u0a234}
-  * Task{9d9e1f0 #123 type=standard A=10123:com.example.app U=0 visible=true mode=fullscreen translucent=false sz=1}
-    isSleeping=false
-    topResumedActivity=ActivityRecord{2f9f6a3 u0 com.example.app/.MainActivity t123}
-    Hist #1: ActivityRecord{2f9f6a3 u0 com.example.app/.MainActivity t123}
-      app=ProcessRecord{8f6a9b3 12345:com.example.app/u0a123}
-    Hist #0: ActivityRecord{11aa22b u0 com.example.app/.SettingsActivity t123}
-      visible=false
-"""
-    assert app_current(output) == {
-        'package': 'com.example.app',
-        'activity': '.MainActivity',
-        'pid': 12345,
+def test_background_app_is_not_current():
+    # Android 14: Settings is visible while Chrome is still alive in a
+    # visible=false task. Chrome is not resumed, so its block only has
+    # mLastPausedActivity; the visible task must still be the one returned.
+    assert app_current(dumpsys('android14-settings-foreground.txt')) == {
+        'package': 'com.android.settings',
+        'activity': '.Settings',
+        'pid': 3574,
     }
 
 
-def test_secondary_display_is_not_reported_as_current():
-    output = """ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
-Display #1 (activities from top to bottom):
-  * Task{c1d2e3f #201 type=standard A=10345:org.telegram.messenger U=0 visible=true mode=fullscreen translucent=false sz=1}
-    isSleeping=false
-    topResumedActivity=ActivityRecord{d4e5f60 u0 org.telegram.messenger/.LaunchActivity t201}
-    Hist #0: ActivityRecord{d4e5f60 u0 org.telegram.messenger/.LaunchActivity t201}
-      app=ProcessRecord{e5f6071 5432:org.telegram.messenger/u0a345}
-Display #0 (activities from top to bottom):
-  * Task{9d9e1f0 #123 type=standard A=10123:com.example.app U=0 visible=true mode=fullscreen translucent=false sz=1}
-    isSleeping=false
-    topResumedActivity=ActivityRecord{2f9f6a3 u0 com.example.app/.MainActivity t123}
-    Hist #0: ActivityRecord{2f9f6a3 u0 com.example.app/.MainActivity t123}
-      app=ProcessRecord{8f6a9b3 12345:com.example.app/u0a123}
-"""
-    assert app_current(output)['package'] == 'com.example.app'
+def test_secondary_display_is_not_current():
+    # Android 14 with an overlay display: Android prints Display #2 (Chrome)
+    # before Display #0 (Settings), and both tasks are visible. app_current()
+    # describes the primary display, so Settings must win.
+    assert app_current(dumpsys('android14-multi-display.txt')) == {
+        'package': 'com.android.settings',
+        'activity': '.Settings',
+        'pid': 3574,
+    }
 
 
-def test_primary_display_wins_when_it_is_printed_first():
-    output = """ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
-Display #0 (activities from top to bottom):
-  * Task{9d9e1f0 #123 type=standard A=10123:com.example.app U=0 visible=true mode=fullscreen translucent=false sz=1}
-    topResumedActivity=ActivityRecord{2f9f6a3 u0 com.example.app/.MainActivity t123}
-Display #1 (activities from top to bottom):
-  * Task{c1d2e3f #201 type=standard A=10345:org.telegram.messenger U=0 visible=true mode=fullscreen translucent=false sz=1}
-    topResumedActivity=ActivityRecord{d4e5f60 u0 org.telegram.messenger/.LaunchActivity t201}
-"""
-    assert app_current(output)['package'] == 'com.example.app'
+def test_primary_display_without_resumed_activity_falls_back():
+    # Screen-off dump: the visible launcher task on Display #0 has only
+    # mLastPausedActivity. The only ResumedActivity line in the tail belongs to
+    # Chrome on Display #2, which must not be used as a stale fallback.
+    fallback = RunningAppInfo(package='com.android.systemui', activity='.Keyguard', pid=111)
+    assert app_current(dumpsys('android14-primary-display-without-resumed.txt'), fallback) == {
+        'package': 'com.android.systemui',
+        'activity': '.Keyguard',
+        'pid': 111,
+    }
 
 
-def test_android14_top_level_resumed_activity_is_used_when_task_has_no_header():
-    # AOSP 14 prints the resumed activity before the task blocks, and the task
-    # block itself has no topResumedActivity line.
-    output = """ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
-Display #0 (activities from top to bottom):
-mResumedActivity: ActivityRecord{10684b5 u0 app.ericn.myapp/.SecondActivity t1068}
-RootTask #1068: type=standard mode=fullscreen
-isSleeping=false
-* Task{41d503 #1068 type=standard A=10287:app.ericn.myapp U=0 visible=true mode=fullscreen translucent=false sz=2}
-mBounds=Rect(0, 0 - 0, 0)
-affinity=10287:app.ericn.myapp
-RootTask #100: type=home mode=fullscreen
-* Task{77acb32 #100 type=home A=10291:com.android.launcher3 U=0 visible=false mode=fullscreen translucent=false sz=1}
-Hist #1: ActivityRecord{10684b5 u0 app.ericn.myapp/.SecondActivity t1068}
-Hist #0: ActivityRecord{da73511 u0 app.ericn.myapp/.MainActivity t1068}
-
-Resumed activities in task display areas (from top to bottom):
-Resumed: ActivityRecord{10684b5 u0 app.ericn.myapp/.SecondActivity t1068}
-
-ResumedActivity: ActivityRecord{10684b5 u0 app.ericn.myapp/.SecondActivity t1068}
-"""
-    assert app_current(output) == {
+def test_android13_top_level_resumed_activity_is_used():
+    # Real Android 13+ dump: mResumedActivity is printed before the task blocks
+    # and the task has no topResumedActivity= line.
+    assert app_current(dumpsys('android13-top-level-resumed.txt')) == {
         'package': 'app.ericn.myapp',
         'activity': '.SecondActivity',
         'pid': 0,
@@ -103,60 +75,12 @@ ResumedActivity: ActivityRecord{10684b5 u0 app.ericn.myapp/.SecondActivity t1068
 
 
 def test_android10_dump_without_task_blocks():
-    output = """ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
-Display #0 (activities from top to bottom):
-  Stack #1:
-    Task id #12
-      TaskRecord{e64923a #12 A=com.example.app U=0 StackId=1 sz=2}
-      Running activities (most recent first):
-        TaskRecord{e64923a #12 A=com.example.app U=0 StackId=1 sz=2}
-          Run #1: ActivityRecord{68c3212 u0 com.example.app/.SubActivity t12}
-          Run #0: ActivityRecord{18177e0 u0 com.example.app/.MainActivity t12}
-
-    mResumedActivity: ActivityRecord{68c3212 u0 com.example.app/.SubActivity t12}
-    mLastPausedActivity: ActivityRecord{18177e0 u0 com.example.app/.MainActivity t12}
-"""
-    assert app_current(output) == {
-        'package': 'com.example.app',
-        'activity': '.SubActivity',
+    # Real Android 10 style dump: Stack/TaskRecord output with no Task{ block,
+    # so the first mResumedActivity line is the answer.
+    assert app_current(dumpsys('android10-stack.txt')) == {
+        'package': 'android.tplink.sjj.teststack',
+        'activity': '.FirstActivity',
         'pid': 0,
-    }
-
-
-def test_old_dump_without_visibility_uses_first_task_block():
-    output = """ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
-Display #0 (activities from top to bottom):
-  * Task{aaa111 #1 type=standard A=10123:com.example.app U=0 mode=fullscreen sz=1}
-    topResumedActivity=ActivityRecord{2f9f6a3 u0 com.example.app/.MainActivity t1}
-  * Task{bbb222 #2 type=standard A=10234:org.telegram.messenger U=0 mode=fullscreen sz=1}
-    topResumedActivity=ActivityRecord{6a3d5e1 u0 org.telegram.messenger/.LaunchActivity t2}
-"""
-    assert app_current(output)['package'] == 'com.example.app'
-
-
-def test_hidden_task_resumed_line_is_not_used_as_last_resort():
-    output = """ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
-Display #0 (activities from top to bottom):
-  * Task{9d9e1f0 #123 type=standard A=10123:com.example.app U=0 visible=true mode=fullscreen translucent=false sz=1}
-    Hist #1: ActivityRecord{2f9f6a3 u0 com.example.app/.MainActivity t123}
-  * Task{8a7f2c1 #105 type=standard A=10234:org.telegram.messenger U=0 visible=false mode=fullscreen translucent=false sz=1}
-    topResumedActivity=ActivityRecord{6a3d5e1 u0 org.telegram.messenger/.LaunchActivity t105}
-"""
-    fallback = RunningAppInfo(package='com.android.systemui', activity='.Keyguard', pid=111)
-    assert app_current(output, fallback)['package'] == 'com.android.systemui'
-
-
-def test_all_tasks_hidden_falls_back_to_adbutils():
-    output = """ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
-Display #0 (activities from top to bottom):
-  * Task{8a7f2c1 #105 type=standard A=10234:org.telegram.messenger U=0 visible=false mode=fullscreen translucent=false sz=1}
-    topResumedActivity=ActivityRecord{6a3d5e1 u0 org.telegram.messenger/.LaunchActivity t105}
-"""
-    fallback = RunningAppInfo(package='com.android.systemui', activity='.Keyguard', pid=111)
-    assert app_current(output, fallback) == {
-        'package': 'com.android.systemui',
-        'activity': '.Keyguard',
-        'pid': 111,
     }
 
 

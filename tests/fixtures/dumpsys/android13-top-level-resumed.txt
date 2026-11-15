@@ -1,0 +1,34 @@
+ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
+Display #0 (activities from top to bottom):
+mResumedActivity: ActivityRecord{10684b5 u0 app.ericn.myapp/.SecondActivity t1068}
+RootTask #1068: type=standard mode=fullscreen
+isSleeping=false
+mBounds=Rect(0, 0 - 0, 0)
+mCreatedByOrganizer=false
+* Task{41d503 #1068 type=standard A=10287:app.ericn.myapp U=0 visible=true mode=fullscreen translucent=false sz=2}
+mBounds=Rect(0, 0 - 0, 0)
+mMinWidth=-1 mMinHeight=-1
+userId=0 effectiveUid=u0a287 mCallingUid=2000 mUserSetupComplete=true mCallingPackage=com.android.shell mCallingFeatureId=null
+affinity=10287:app.ericn.myapp
+intent={act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=app.ericn.myapp/.MainActivity}
+mActivityComponent=app.ericn.myapp/.MainActivity
+autoRemoveRecents=false isPersistable=true activityType=1
+rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE
+Activities=[ActivityRecord{da73511 u0 app.ericn.myapp/.MainActivity t1068}, ActivityRecord{10684b5 u0 app.ericn.myapp/.SecondActivity t1068}]
+askedCompatMode=false inRecents=true isAvailable=true
+mRootProcess=ProcessRecord{e2571b2 24749:app.ericn.myapp/u0a287}
+taskId=1068 rootTaskId=1068
+hasChildPipActivity=false
+mHasBeenVisible=true
+mResizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION mSupportsPictureInPicture=false isResizeable=true
+lastActiveTime=109671463 (inactive for 3s)
+Hist #1: ActivityRecord{10684b5 u0 app.ericn.myapp/.SecondActivity t1068}
+Intent { cmp=app.ericn.myapp/.SecondActivity }
+ProcessRecord{e2571b2 24749:app.ericn.myapp/u0a287}
+Hist #0: ActivityRecord{da73511 u0 app.ericn.myapp/.MainActivity t1068}
+Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=app.ericn.myapp/.MainActivity }
+
+Resumed activities in task display areas (from top to bottom):
+Resumed: ActivityRecord{10684b5 u0 app.ericn.myapp/.SecondActivity t1068}
+
+ResumedActivity: ActivityRecord{10684b5 u0 app.ericn.myapp/.SecondActivity t1068}
