@@ -132,6 +132,33 @@ dev = adbutils.device(transport_id=6)
 d = u2.connect(dev)
 ```
 
+### u2.jar Location on Device
+
+`u2.jar` is pushed to `/data/local/tmp/u2.jar` and launched with
+`CLASSPATH=/data/local/tmp/u2.jar`. On some devices that path is a directory
+(left over by another tool or by a failed push), which used to make adb push
+write `/data/local/tmp/u2.jar/u2.jar` and fail with
+`Push not complete, expect pushed ...`. A directory found at the jar path is now
+removed before pushing.
+
+If your device scans `/data/local/tmp` (risk-control software), or if that
+directory is read-only, point uiautomator2 somewhere else with the `U2_JAR_PATH`
+environment variable. The whole path is the jar file itself; its parent
+directory is created on the device when missing:
+
+```sh
+export U2_JAR_PATH=/data/local/tmp/u2dir/u2.jar
+```
+
+```python
+import uiautomator2 as u2
+d = u2.connect() # pushes u2.jar to U2_JAR_PATH and uses it as CLASSPATH
+```
+
+The value is read when the device connection is created, and the same path is
+used for the push and for the launch command. Note that a directory sitting at
+the jar path is deleted recursively, so keep other files out of it.
+
 ## Operating Elements with XPath
 
 What is XPath:

@@ -126,6 +126,30 @@ dev = adbutils.device(transport_id=6)
 d = u2.connect(dev)
 ```
 
+### u2.jar 在设备上的位置
+
+`u2.jar` 默认推送到 `/data/local/tmp/u2.jar`，启动命令使用
+`CLASSPATH=/data/local/tmp/u2.jar`。部分设备上这个路径是一个目录（其他工具
+或之前推送失败留下的），此时 adb push 会把文件写到
+`/data/local/tmp/u2.jar/u2.jar`，并报 `Push not complete, expect pushed ...`。
+现在推送前如果发现该路径是目录，会先删除它。
+
+如果设备上的风控软件会扫描 `/data/local/tmp`，或者该目录不可写，可以通过
+环境变量 `U2_JAR_PATH` 指定新的 jar 位置。整个值就是 jar 文件本身，父目录
+不存在时会自动创建：
+
+```sh
+export U2_JAR_PATH=/data/local/tmp/u2dir/u2.jar
+```
+
+```python
+import uiautomator2 as u2
+d = u2.connect() # u2.jar 会推送到 U2_JAR_PATH，并用它作为 CLASSPATH
+```
+
+该值在创建设备连接时读取，推送和启动使用同一个路径。注意：若 jar 路径上
+存在目录，会被递归删除，请不要在该目录里存放其他文件。
+
 ## 通过XPath操作元素
 
 什么是XPath：
