@@ -1285,6 +1285,7 @@ https://www.cnblogs.com/insist8089/p/6898181.html
 - https://github.com/zhangzhao4444/Maxim 基于Uiautomator的monkey
 - http://www.sikulix.com/ 基于图像识别的自动化测试框架，非常的老牌
 - http://airtest.netease.com/ 本项目的前身，后来被网易广州团队接手并继续优化。实现有一个不错的IDE (archived)
+- https://benchfleet.com BenchFleet：在一台电脑上运行和自动化多台真实安卓手机的桌面应用，使用 uiautomator2 读取并操作每台手机的界面，用于工作流、测试和 AI 代理（商业软件，3 台手机以内免费）
 
 排名有先后，欢迎补充
 

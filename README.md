@@ -1403,6 +1403,7 @@ Reference: https://www.cnblogs.com/insist8089/p/6898181.html (Chinese)
 - <https://github.com/zhangzhao4444/Maxim>: A monkey test tool based on UiAutomator.
 - <http://www.sikulix.com/>: A well-established image-based automation framework.
 - <http://airtest.netease.com/>: The predecessor of this project, later taken over and optimized by NetEase Guangzhou team. Features a good IDE. (archived)
+- <https://benchfleet.com>: A desktop app for running many real Android phones from one computer; it uses uiautomator2 to read and act on each phone's screen for workflows, tests and AI agents (commercial, free for 3 phones).
 
 (Order matters, additions welcome)
 
