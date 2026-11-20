@@ -110,3 +110,28 @@ def test_hide_keyboard_method():
     assert len(broadcast_calls) >= 1
     assert broadcast_calls[-1][0] == "ADB_KEYBOARD_HIDE"
     assert broadcast_calls[-1][1] == {}
+
+
+ADB_KEYBOARD = 'com.github.uiautomator/.AdbKeyboard'
+
+
+def test_send_keys_restores_previous_ime():
+    from uiautomator2 import Device
+    d = Mock()
+    d.current_ime.side_effect = ['com.example/.UserKeyboard', ADB_KEYBOARD]
+    d.is_input_ime_installed.return_value = True
+    with patch.object(InputMethodMixIn, 'send_keys') as ime_send_keys:
+        Device.send_keys(d, 'hello', clear=True)
+    d.clear_text.assert_called_once_with()
+    ime_send_keys.assert_called_once_with(d, 'hello')
+    d.shell.assert_called_once_with(['ime', 'set', 'com.example/.UserKeyboard'])
+
+
+def test_send_keys_keeps_adb_keyboard_chosen_before():
+    from uiautomator2 import Device
+    d = Mock()
+    d.current_ime.return_value = ADB_KEYBOARD
+    d.is_input_ime_installed.return_value = True
+    with patch.object(InputMethodMixIn, 'send_keys'):
+        Device.send_keys(d, 'hello')
+    d.shell.assert_not_called()
