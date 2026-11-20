@@ -993,16 +993,22 @@ class Device(_Device, _AppMixIn, _PluginMixIn, InputMethodMixIn, _DeprecatedMixI
             text: input text
             clear: clear text before input
         """
-        if clear:
-            self.clear_text()    
-        if self.is_input_ime_installed():
-            InputMethodMixIn.send_keys(self, text)
-            return
+        previous_ime = self.current_ime()
         try:
-            _Device.send_keys(self, text)            
-        except:
-            # 安装输入法后继续输入
-            InputMethodMixIn.send_keys(self, text)
+            if clear:
+                self.clear_text()
+            if self.is_input_ime_installed():
+                InputMethodMixIn.send_keys(self, text)
+                return
+            try:
+                _Device.send_keys(self, text)
+            except:
+                # 安装输入法后继续输入
+                InputMethodMixIn.send_keys(self, text)
+        finally:
+            # typing through AdbKeyboard makes it the default; give the user's keyboard back
+            if self.current_ime() != previous_ime:
+                self.shell(['ime', 'set', previous_ime])
 
 
 class Session(Device):
