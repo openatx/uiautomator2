@@ -110,3 +110,30 @@ def test_hide_keyboard_method():
     assert len(broadcast_calls) >= 1
     assert broadcast_calls[-1][0] == "ADB_KEYBOARD_HIDE"
     assert broadcast_calls[-1][1] == {}
+
+class ClipboardDevice:
+    """Records what the clipboard held when pasteClipboard was called"""
+
+    def __init__(self, clipboard):
+        self.clipboard = clipboard
+        self.pasted = []
+        self.jsonrpc = Mock()
+        self.jsonrpc.pasteClipboard.side_effect = lambda: self.pasted.append(self.clipboard)
+
+
+@pytest.mark.parametrize("previous", ["copied before", None])
+def test_send_keys_restores_clipboard(previous):
+    from uiautomator2 import _Device
+    d = ClipboardDevice(previous)
+    _Device.send_keys(d, "secret 1234")
+    assert d.pasted == ["secret 1234"]
+    assert d.clipboard == (previous or "")
+
+
+def test_send_keys_restores_clipboard_when_paste_fails():
+    from uiautomator2 import _Device
+    d = ClipboardDevice("copied before")
+    d.jsonrpc.pasteClipboard.side_effect = RuntimeError("paste failed")
+    with pytest.raises(RuntimeError):
+        _Device.send_keys(d, "secret 1234")
+    assert d.clipboard == "copied before"

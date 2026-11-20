@@ -438,10 +438,18 @@ class _Device(_BaseClient):
         """
         # 使用el =self(focused=True); el.set_text(el.get_text()+text)不可取
         # 因为placeholder中的文字也会加进去
+        previous = self.clipboard
         self.clipboard = text
-        if self.clipboard != text:
-            raise UiAutomationError("setClipboard failed")
-        self.jsonrpc.pasteClipboard()
+        try:
+            if self.clipboard != text:
+                raise UiAutomationError("setClipboard failed")
+            self.jsonrpc.pasteClipboard()
+        finally:
+            # do not leave the typed text (maybe a password) in the clipboard
+            try:
+                self.clipboard = previous or ""
+            except Exception as e:
+                logger.warning("restore clipboard failed: %s", e)
 
     def keyevent(self, v):
         """
