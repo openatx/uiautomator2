@@ -135,6 +135,73 @@ def test_xpath_all():
     assert el.text == "n1"
 
 
+@pytest.mark.parametrize("query,present", [("n1", True), ("missing", False)])
+@pytest.mark.parametrize("operation", ["wait", "get", "wait_gone"])
+def test_explicit_zero_timeout_checks_once(monkeypatch, query, present, operation):
+    import uiautomator2.xpath as xpath_module
+
+    device = Mock()
+    device.wait_timeout = 30
+    device.dump_hierarchy.return_value = mock.dump_hierarchy.return_value
+    entry = XPathEntry(device)
+
+    class Clock:
+        @staticmethod
+        def time():
+            return 100.0
+
+        @staticmethod
+        def sleep(seconds):
+            pytest.fail("timeout=0 must not sleep")
+
+    monkeypatch.setattr(xpath_module, "time", Clock)
+    selector = entry(query)
+    if operation == "get" and not present:
+        with pytest.raises(XPathElementNotFoundError):
+            selector.get(timeout=0)
+    else:
+        result = getattr(selector, operation)(timeout=0)
+        if operation == "wait":
+            assert result is present
+        elif operation == "wait_gone":
+            assert result is not present
+        else:
+            assert result.text == "n1"
+    assert device.dump_hierarchy.call_count == 1
+
+
+@pytest.mark.parametrize("timeout", [None, 0.25])
+@pytest.mark.parametrize("operation", ["wait", "get", "wait_gone"])
+def test_xpath_waits_preserve_positive_and_default_timeouts(monkeypatch, timeout, operation):
+    import uiautomator2.xpath as xpath_module
+
+    device = Mock()
+    device.wait_timeout = 0.25
+    device.dump_hierarchy.return_value = mock.dump_hierarchy.return_value
+
+    class Clock:
+        now = 100.0
+        sleeps = []
+
+        @classmethod
+        def time(cls):
+            return cls.now
+
+        @classmethod
+        def sleep(cls, seconds):
+            cls.sleeps.append(seconds)
+            cls.now += seconds
+
+    monkeypatch.setattr(xpath_module, "time", Clock)
+    selector = XPathEntry(device)("n1" if operation == "wait_gone" else "missing")
+    if operation == "get":
+        with pytest.raises(XPathElementNotFoundError):
+            selector.get(timeout=timeout)
+    else:
+        assert getattr(selector, operation)(timeout=timeout) is False
+    assert Clock.sleeps == [0.2, 0.2]
+
+
 def test_xpath_element():
     el = x("n1").get(timeout=0)
     assert el.text == "n1"
