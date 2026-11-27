@@ -453,7 +453,7 @@ class DeviceXPathSelector(XPathSelector):
         Raises:
             XPathElementNotFoundError
         """
-        if not self.wait(timeout or self._global_timeout):
+        if not self.wait(timeout):
             raise XPathElementNotFoundError(self)
         return self.get_last_match()
 
@@ -480,11 +480,11 @@ class DeviceXPathSelector(XPathSelector):
 
     def wait(self, timeout=None) -> bool:
         """ wait until element found """
-        deadline = time.time() + (timeout or self._global_timeout)
+        deadline = time.time() + (self._global_timeout if timeout is None else timeout)
         while True:
             if self.exists:
                 return True
-            if time.time() > deadline:
+            if time.time() >= deadline:
                 return False
             time.sleep(0.2)
 
@@ -504,12 +504,13 @@ class DeviceXPathSelector(XPathSelector):
         Returns:
             True if gone else False
         """
-        deadline = time.time() + (timeout or self._global_timeout)
-        while time.time() < deadline:
+        deadline = time.time() + (self._global_timeout if timeout is None else timeout)
+        while True:
             if not self.exists:
                 return True
+            if time.time() >= deadline:
+                return False
             time.sleep(0.2)
-        return False
 
     def click_nowait(self):
         x, y = self.all()[0].center()
